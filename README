@@ -1,0 +1,105 @@
+I. General information
+
+The directory contains the code of four TURN programs:
+
+1) turnserver: server relay (UDP-to-UDP).
+
+2) uclient: asynch multiple UDP clients. (for testing purposes only !)
+
+WARNING: the uclient program is a primitive client application. 
+It does not implement the re-transmission pattern that is necessary for 
+a correct TURN client implementation. In TURN, the retransmission burden 
+is lying entirely on the client application.
+
+3) peer: (for testing purposes only !) simple stateful UDP-only server, to be used as the final server 
+   in relay pattern ("peer"). When clients are communicating in the client-to-client 
+   pattern, this component is not needed.
+   
+4) stunclient: simple example of a STUN client.
+
+These programs were developed and tested on a Linux 2.6 system (32bits Ubuntu 11.04, specifically) 
+and FreeBSD 8 and 9, 32-bits and 64-bits. The tested compilers are gcc 4.2.+ and clang.
+
+II. Third-party tools.
+
+The relay programs are using a third-party open-source tool: the libevent2 IO library. 
+It is assumed to be installed in /usr/local/ directory. If the location is different, then
+the Makefile has to be adjusted.
+
+Libevent installation instructions:
+
+1) Linux: 
+
+	Download 2.0.x version of libevent from http://libevent.org and follow the included instructions.
+	
+2) FreeBSD:
+
+	$cd /usr/ports/devel/libevent2/
+	$sudo make install
+
+	or download and install it from http://libevent.org.
+
+III. Build
+
+"make" command will create bin directory. All four compiled programs are located in bin/ directory. 
+The programs can be either called directly, or a shell scripts can be used. 
+The script examples are located in scripts.examples directory.
+
+"make clean" command will clean all results of the build process.
+
+IV. Run
+
+1) uclient application is designed to simulate multiple clients. It uses asynch IO API in 
+libevent to handle multiple clients. A client connects to the relay, 
+negotiates the session, and sends multiple (configured number) messages to the server (relay), 
+expecting the same number of replies. The length of the messages is configurable. 
+The message is an arbitrary octet stream, but it can be configured as a string. 
+The number of the messages to send is configurable. 
+
+The command-line parameters are:
+
+    -m      number of clients (default is 1);
+    -l      message length (Default: 100 Bytes);
+    -p      remote server port (Default: 3478);
+    -n      number of messages to send (Default: 5);
+    -d	    local interface device (optional);
+    -L      local address;
+    -v      verbose;
+    -s	    use "send" method in TURN;
+    -y      use client-to-client connections: 
+	    	RTP/RTCP pair of channels to another RTP/RTCP pair of channels;
+	-h      hang on indefinitely after the last sent packet;
+	-e      peer address;
+	-r      peer port (default 3479);
+	-c      no rtcp connections;
+
+2) turnserver application is the relay server for uclient applications. 
+
+The command line parameters are:
+
+    -p      local port (Default: 3478)
+    -d	    local "external" interface device (optional) 
+    -L      local "external" address of relay server
+    -i	    local "internal" interface device for relay sockets (optional)
+    -E      local relay address (the local IP address that will be used to relay the packets to the peer)
+    -v      verbose
+    
+3) peer application is a simple UDP-only echo backend server for the relay server. 
+
+The command line parameters are:
+
+    -p      UDP listening port (Default: 3479). 
+    -d	    local interface device (optional)
+    -L      local address of peer server
+    -v      verbose
+
+4) stunclient is a basic STUN client. It sends a STUN request and shows the reply information.
+
+Usage: stunclient [options] <IP-address>
+
+The command line parameters are:
+
+    -p      remote port (Default: 3478). 
+    -L      local address.
+
+

@@ -1,0 +1,112 @@
+/*
+ * Copyright (C) 2012 Citrix Systems
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the project nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#ifndef __IOADEFS__
+#define __IOADEFS__
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/param.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <time.h>
+#include <stdarg.h>
+#include <errno.h>
+
+extern void rtpprintf(const char *format, ...);
+
+/* NS types: */
+
+#define	s08bits	char
+#define	s16bits	int16_t
+#define	s32bits	int32_t
+#define	s64bits	int64_t
+
+#define	u08bits	unsigned char
+#define	u16bits uint16_t
+#define	u32bits	uint32_t
+#define	u64bits	uint64_t
+
+#define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
+#define ns_bzero(ptr,sz) bzero((ptr),(sz))
+
+u64bits ioa_ntoh64(u64bits ull);
+u64bits ioa_hton64(u64bits ull);
+
+#define nswap16(s) ntohs(s)
+#define nswap32(ul) ntohl(ul)
+#define nswap64(ull) ioa_ntoh64(ull)
+
+struct _turn_mutex {
+  u32bits data;
+  void* mutex;
+};
+
+typedef struct _turn_mutex turn_mutex;
+
+int turn_mutex_init(turn_mutex* mutex);
+int turn_mutex_init_recursive(turn_mutex* mutex);
+
+int turn_mutex_lock(const turn_mutex *mutex);
+int turn_mutex_unlock(const turn_mutex *mutex);
+
+int turn_mutex_destroy(turn_mutex* mutex);
+
+#define TURN_MUTEX_DECLARE(mutex) turn_mutex mutex;
+#define TURN_MUTEX_INIT(mutex) turn_mutex_init(mutex)
+#define TURN_MUTEX_INIT_RECURSIVE(mutex) turn_mutex_init_recursive(mutex)
+#define TURN_MUTEX_LOCK(mutex) turn_mutex_lock(mutex)
+#define TURN_MUTEX_UNLOCK(mutex) turn_mutex_unlock(mutex)
+#define TURN_MUTEX_DESTROY(mutex) turn_mutex_destroy(mutex)
+
+#define turn_malloc(sz) malloc(sz)
+#define turn_free(ptr,sz) free(ptr)
+#define turn_realloc(ptr, old_sz, new_sz) realloc((ptr),(new_sz))
+#define turn_calloc(number, sz) calloc((number),(sz))
+
+#define turn_time() ((turn_time_t)time(NULL))
+
+typedef u32bits turn_time_t;
+
+#define turn_time_before(t1,t2) ((((s32bits)t1)-((s32bits)(t2))) < 0)
+
+#if !defined(UNUSED_ARG)
+#define UNUSED_ARG(A) do { A=A; } while(0)
+#endif
+
+#endif //__IODEFS__

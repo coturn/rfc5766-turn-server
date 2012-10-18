@@ -1,0 +1,12 @@
+CC ?= cc
+
+AR := ar -r
+
+OSLIBS :=
+
+CFLAGS += -O2 -Werror -Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual -Wredundant-decls 
+
+LIBEVENT_INCLUDE := /usr/local/include/
+LIBEVENT_LIB := /usr/local/lib/event2/
+
+include common.mk

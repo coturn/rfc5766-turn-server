@@ -1,0 +1,8 @@
+1) Authentication.
+2) Configuration, in /etc/turn.conf file.
+3) TCP support.
+4) TLS support.
+5) DTLS support (?)
+6) Multiple backend relay IP addresses.
+7) Multiple frontend IP addresses.
+8) Multithreaded implementation.
