@@ -235,12 +235,8 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 static int handle_turn_allocate(turn_turnserver *server,
 				ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 				int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-				ioa_net_data *in_buffer) {
+				ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
-	stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-
-	if (!out_buffer)
-		return -1;
 	allocation* a = get_allocation_ss(ss);
 
 	ts_ur_session* elem = &(ss->client_session);
@@ -251,10 +247,13 @@ static int handle_turn_allocate(turn_turnserver *server,
 			*err_code = 437;
 			*reason = (const u08bits *)"Wrong TID";
 		} else {
-			stun_set_allocate_response(out_buffer, tid,
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
+							tid,
 					get_local_addr_from_ioa_socket(get_relay_socket_ss(ss)),
 					get_remote_addr_from_ioa_socket(elem->s),
 					(a->expiration_time - turn_time()), 0, NULL, 0);
+			ioa_network_buffer_set_size(nbh,len);
 			*resp_constructed = 1;
 		}
 
@@ -377,21 +376,19 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			} else {
 
-				out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-				if (!out_buffer)
-					return -1;
-
 				a = get_allocation_ss(ss);
 				set_allocation_valid(a,1);
 
 				stun_tid_cpy(&(a->tid), tid);
 
-				stun_set_allocate_response(out_buffer, tid,
+				size_t len = ioa_network_buffer_get_size(nbh);
+
+				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
 							   get_local_addr_from_ioa_socket(get_relay_socket_ss(ss)),
 							   get_remote_addr_from_ioa_socket(elem->s), lifetime, 
 							   0,NULL,
 							   out_reservation_token);
-
+				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
 			}
 		}
@@ -403,7 +400,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 			*err_code = 437;
 		}
 
-		stun_set_allocate_response(out_buffer, tid, NULL, NULL, 0, *err_code, *reason, 0);
+		size_t len = ioa_network_buffer_get_size(nbh);
+		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, 0, *err_code, *reason, 0);
+		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
 	}
 
@@ -413,12 +412,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 static int handle_turn_refresh(turn_turnserver *server,
 			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-			       ioa_net_data *in_buffer) {
-
-	stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-
-	if (!out_buffer)
-		return -1;
+			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
 	allocation* a = get_allocation_ss(ss);
 
@@ -488,11 +482,13 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 			} else {
 
-				stun_init_success_response(method, out_buffer, tid);
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_success_response_str(method, ioa_network_buffer_data(nbh), &len, tid);
 				u32bits lt = nswap32(lifetime);
 
-				stun_attr_add(out_buffer, STUN_ATTRIBUTE_LIFETIME,
-						(const s08bits*) &lt, 4);
+				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME,
+						(const u08bits*) &lt, 4);
+				ioa_network_buffer_set_size(nbh,len);
 
 				*resp_constructed = 1;
 			}
@@ -505,7 +501,9 @@ static int handle_turn_refresh(turn_turnserver *server,
 			*err_code = 437;
 		}
 
-		stun_init_error_response(method, out_buffer, *err_code, *reason, tid);
+		size_t len = ioa_network_buffer_get_size(nbh);
+		stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+		ioa_network_buffer_set_size(nbh,len);
 
 		*resp_constructed = 1;
 	}
@@ -516,17 +514,13 @@ static int handle_turn_refresh(turn_turnserver *server,
 static int handle_turn_channel_bind(turn_turnserver *server,
 				    ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 				    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-				    ioa_net_data *in_buffer) {
+				    ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
 	FUNCSTART;
 	u16bits chnum = 0;
 	ioa_addr peer_addr;
 	addr_set_any(&peer_addr);
 	allocation* a = get_allocation_ss(ss);
-
-	stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-	if (!out_buffer)
-		return -1;
 
 	if (is_allocation_valid(a)) {
 
@@ -617,8 +611,10 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 			    *err_code = 500;
 			    *reason = (const u08bits *)"Cannot update channel lifetime (internal error)";
 			  } else {
-			    stun_set_channel_bind_response(out_buffer, tid, 0, NULL);
-			    *resp_constructed = 1;
+				  size_t len = ioa_network_buffer_get_size(nbh);
+				  stun_set_channel_bind_response_str(ioa_network_buffer_data(nbh), &len, tid, 0, NULL);
+				  ioa_network_buffer_set_size(nbh,len);
+				  *resp_constructed = 1;
 			  }
 			}
 		}
@@ -626,6 +622,18 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 	FUNCEND;
 	return 0;
+}
+
+static int send_data_from_ioa_socket(ioa_socket_handle s, ioa_addr* dest_addr, const s08bits* buffer, int len, int to_peer, void *socket_channel)
+{
+	if(len>(int)ioa_network_buffer_get_capacity())
+		return -1;
+	else {
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
+		ns_bcopy(buffer,ioa_network_buffer_data(nbh),len);
+		ioa_network_buffer_set_size(nbh,len);
+		return send_data_from_ioa_socket_nbh(s, dest_addr, nbh, to_peer, socket_channel);
+	}
 }
 
 static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
@@ -750,7 +758,7 @@ static int update_permission(ts_ur_super_session *ss, ioa_addr *peer_addr) {
 static int handle_turn_create_permission(turn_turnserver *server,
 					 ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 					 int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-					 ioa_net_data *in_buffer) {
+					 ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
 
 	int ret = -1;
 
@@ -758,10 +766,6 @@ static int handle_turn_create_permission(turn_turnserver *server,
 	addr_set_any(&peer_addr);
 
 	int addr_found = 0;
-
-	stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-	if (!out_buffer)
-		return -1;
 
 	UNUSED_ARG(server);
 
@@ -808,8 +812,10 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 		} else {
 
-			stun_init_success_response(STUN_METHOD_CREATE_PERMISSION,
-					out_buffer, tid);
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_init_success_response_str(STUN_METHOD_CREATE_PERMISSION,
+							ioa_network_buffer_data(nbh), &len, tid);
+			ioa_network_buffer_set_size(nbh,len);
 
 			ret = 0;
 			*resp_constructed = 1;
@@ -819,11 +825,10 @@ static int handle_turn_create_permission(turn_turnserver *server,
 	return ret;
 }
 
-static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer)
+static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed)
 {
 
 	stun_tid tid;
-	int resp_constructed = 0;
 	int err_code = 0;
 	const u08bits *reason = NULL;
 	int no_response = 0;
@@ -833,6 +838,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	u16bits ua_num = 0;
 	u16bits method = stun_get_method_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
 
+	*resp_constructed = 0;
+
 	stun_tid_from_message_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, &tid);
 
 	if (stun_is_request_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len)) {
@@ -841,35 +848,34 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		case STUN_METHOD_ALLOCATE:
 
-		  handle_turn_allocate(server, ss, &tid, &resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
+		  handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
 		  break;
 
 		case STUN_METHOD_REFRESH:
 
-		  handle_turn_refresh(server, ss, &tid, &resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
+		  handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
 		  break;
 
 		case STUN_METHOD_CHANNEL_BIND:
 
-		  handle_turn_channel_bind(server, ss, &tid, &resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
+		  handle_turn_channel_bind(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
 		  break;
 
 		case STUN_METHOD_CREATE_PERMISSION:
 
-		  handle_turn_create_permission(server, ss, &tid, &resp_constructed, &err_code, &reason, unknown_attrs,
-							&ua_num, in_buffer);
+		  handle_turn_create_permission(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs,
+							&ua_num, in_buffer, nbh);
 		  break;
 
 		case STUN_METHOD_BINDING:
 		{
-			stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-			if (!out_buffer)
-				return -1;
-
-			if (stun_set_binding_response(out_buffer, &tid, get_remote_addr_from_ioa_socket(elem->s), 0, NULL)
+			size_t len = ioa_network_buffer_get_size(nbh);
+			if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len,
+							&tid, get_remote_addr_from_ioa_socket(elem->s), 0, NULL)
 							>= 0) {
-				resp_constructed = 1;
+				*resp_constructed = 1;
 			}
+			ioa_network_buffer_set_size(nbh,len);
 		}
 			break;
 
@@ -911,36 +917,30 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 	if (ua_num > 0) {
 
-		stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-		if (!out_buffer)
-			return -1;
-
 		err_code = 420;
 
-		stun_init_error_response(method, out_buffer, err_code, NULL, &tid);
+		size_t len = ioa_network_buffer_get_size(nbh);
+		stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, NULL, &tid);
 
-		stun_attr_add(out_buffer, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES, (const s08bits*) unknown_attrs, (ua_num
+		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES, (const u08bits*) unknown_attrs, (ua_num
 						* 2));
+		ioa_network_buffer_set_size(nbh,len);
 
-		resp_constructed = 1;
+		*resp_constructed = 1;
 	}
 
 	if (!no_response) {
 
-		if (!resp_constructed) {
-
-			stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-			if (!out_buffer)
-				return -1;
+		if (!(*resp_constructed)) {
 
 			if (!err_code)
 				err_code = 400;
 
-			stun_init_error_response(method, out_buffer, err_code, reason, &tid);
-			resp_constructed = 1;
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid);
+			ioa_network_buffer_set_size(nbh,len);
+			*resp_constructed = 1;
 		}
-
-		stun_queue_advance_write(&(ss->turn_out_queue));
 	}
 
 	return 0;
@@ -1052,51 +1052,29 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 	FUNCEND;
 }
 
-static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss) {
+static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh) {
 
 	FUNCSTART;
-
-	if (!ss) {
-		FUNCEND;
-		return -1;
-	}
 
 	ts_ur_session* elem = &(ss->client_session);
 
 	if (elem->state != UR_STATE_READY) {
+		ioa_network_buffer_delete(nbh);
 		FUNCEND;
 		return -1;
-	}
-
-	while (stun_queue_size(&(ss->turn_out_queue)) > 0) {
-
-		const stun_buffer* out_buffer = stun_queue_get_read(
-				&(ss->turn_out_queue));
-
-		if (!out_buffer)
-			break;
+	} else {
 
 		if (server->verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
-					(long) (elem->s));
-		}
-		int ret = send_data_from_ioa_socket(elem->s, NULL,
-				(const s08bits*) out_buffer->buf, (int) out_buffer->len, 0, NULL);
-		if (ret < 0) {
-			FUNCEND;
-			return -1;
-		}
-		if (!ret) {
-			FUNCEND;
-			return ret;
+				"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
+				(long) (elem->s));
 		}
 
-		stun_queue_advance_read(&(ss->turn_out_queue));
+		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, 0, NULL);
+
+		FUNCEND;
+		return ret;
 	}
-
-	FUNCEND;
-	return 0;
 }
 
 static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg) {
@@ -1282,12 +1260,19 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 	} else if (stun_is_command_message_str((u08bits*)data->buffer, (size_t)data->len)) {
 
-		handle_turn_command(server, ss, data);
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
+		int resp_constructed = 0;
 
-		{
-			int ret = write_client_connection(server, ss);
+		handle_turn_command(server, ss, data, nbh, &resp_constructed);
+
+		if(resp_constructed) {
+
+			int ret = write_client_connection(server, ss, nbh);
+
 			FUNCEND;
 			return ret;
+		} else {
+			ioa_network_buffer_delete(nbh);
 		}
 
 	}
@@ -1370,24 +1355,20 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		return;
 	}
 
-	stun_buffer* out_buffer = stun_queue_get_write(&(ss->turn_out_queue));
-	if (!out_buffer)
-		return;
-
 	int offset = STUN_CHANNEL_HEADER_LENGTH;
 
-	int len = MIN(data->len, (int)(sizeof(out_buffer->buf) - 1 - offset));
+	int ilen = MIN(data->len, (int)(ioa_network_buffer_get_capacity() - offset));
 
-	if (len >= 0) {
+	if (ilen >= 0) {
 
-		ns_bcopy(data->buffer, (s08bits*)out_buffer->buf+offset, len);
-
-		out_buffer->len = len;
+		size_t len = (size_t)(ilen);
 
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
 
 			u16bits chnum = data->chnum;
+
+			ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
 
 			if(!chnum) {
 				/*
@@ -1401,30 +1382,30 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			}
 
 			if (chnum) {
-				stun_init_channel_message(chnum, out_buffer,
-							out_buffer->len);
+				ns_bcopy(data->buffer, (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
+				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
+				ioa_network_buffer_set_size(nbh,len);
 				if (server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 							"%s: send channel 0x%x\n", __FUNCTION__,
 							(int) (chnum));
 				}
 			} else {
-				s08bits ptr[STUN_BUFFER_SIZE];
-				ns_bcopy(out_buffer->buf + 4, ptr, len);
-				stun_init_indication(STUN_METHOD_DATA, out_buffer);
-				stun_attr_add(out_buffer, STUN_ATTRIBUTE_DATA, ptr, len);
-				stun_attr_add_addr(out_buffer,
+				stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
+				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
+								(const u08bits*)(data->buffer), (size_t)ilen);
+				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 						STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
 						data->remote_addr);
+				ioa_network_buffer_set_size(nbh,len);
 			}
 			if (server->verbose) {
-				u16bits* t = (u16bits*) (out_buffer->buf);
+				u16bits* t = (u16bits*) ioa_network_buffer_data(nbh);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n",
 						(int) (nswap16(t[0])));
 			}
 
-			stun_queue_advance_write(&(ss->turn_out_queue));
-			int ret = write_client_connection(server, ss);
+			int ret = write_client_connection(server, ss, nbh);
 			if (ret < 0) {
 				shutdown_client_connection(server, ss);
 			}
@@ -1462,10 +1443,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 		shutdown_client_connection(server, ss);
 		return;
 	case UR_STATE_READY:
-		ret = write_client_connection(server,ss);
-		if (ret >= 0) {
-			ret = read_client_connection(server, elem, ss, data);
-		}
+		read_client_connection(server, elem, ss, data);
 		break;
 	case UR_STATE_DONE:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

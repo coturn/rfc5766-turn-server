@@ -32,7 +32,7 @@
 #define __UCLIENT_ECHO__
 
 #include "ns_turn_utils.h"
-#include "ns_turn_buffer.h"
+#include "stun_buffer.h"
 
 extern int clmessage_length;
 extern int use_send_method;

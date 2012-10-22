@@ -40,24 +40,6 @@ typedef struct {
   ssize_t	len;
 } stun_buffer;
 
-//////////////////////////////////
-
-#define STUN_QUEUE_SIZE (16)
-#define STUN_QUEUE_MASK (0x0F)
-
-typedef struct {
-  stun_buffer q[STUN_QUEUE_SIZE];
-  uint8_t rptr;
-  uint8_t wptr;
-} stun_queue;
-
-void stun_queue_init(stun_queue* q);
-size_t stun_queue_size(const stun_queue *q);
-const stun_buffer* stun_queue_get_read(const stun_queue* q);
-stun_buffer* stun_queue_get_write(stun_queue* q);
-stun_buffer* stun_queue_advance_read(stun_queue* q);
-stun_buffer* stun_queue_advance_write(stun_queue* q);
-
 //////////////////////////////////////////////////////////////
 
 int stun_init_buffer(stun_buffer *buf);

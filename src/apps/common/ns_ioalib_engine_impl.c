@@ -29,6 +29,7 @@
  */
 
 #include "ns_turn_utils.h"
+#include "stun_buffer.h"
 #include "apputils.h"
 
 #include "ns_ioalib_impl.h"
@@ -569,30 +570,33 @@ static int udp_send(ioa_socket_raw fd, const ioa_addr* dest_addr, const s08bits*
 	return -1;
 }
 
-int send_data_from_ioa_socket(ioa_socket_handle s, ioa_addr* dest_addr, const s08bits* buffer, int len,
-				int to_peer, void *socket_channel)
+int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel)
 {
+
 	UNUSED_ARG(to_peer);
 	UNUSED_ARG(socket_channel);
 
 	int ret = -1;
 	if (s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! Trying to send data from closed socket: 0x%lx", (long) s);
-		return ret;
-	}
-	if (s && buffer && !(s->done)) {
-		if (!ioa_socket_tobeclosed(s) && s->e) {
-			if (s->fd >= 0) {
-				if (s->connected)
-					dest_addr = NULL; /* ignore dest_addr */
-				else if (!dest_addr)
-					dest_addr = &(s->remote_addr);
-				ret = udp_send(s->fd, dest_addr, buffer, len);
-				if (ret < 0)
-					perror("send");
+	} else {
+		if (s && nbh && !(s->done)) {
+			if (!ioa_socket_tobeclosed(s) && s->e) {
+				if (s->fd >= 0) {
+					if (s->connected)
+						dest_addr = NULL; /* ignore dest_addr */
+					else if (!dest_addr)
+						dest_addr = &(s->remote_addr);
+					ret = udp_send(s->fd, dest_addr, (s08bits*)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+					if (ret < 0)
+						perror("send");
+				}
 			}
 		}
 	}
+
+	ioa_network_buffer_delete(nbh);
+
 	return ret;
 }
 
@@ -626,6 +630,44 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 		}
 	}
 	return 0;
+}
+
+/*
+ * Network buffer functions
+ */
+ioa_network_buffer_handle ioa_network_buffer_allocate(void)
+{
+	stun_buffer *sb = malloc(sizeof(stun_buffer));
+	ns_bzero(sb,sizeof(stun_buffer));
+	return sb;
+}
+
+u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh)
+{
+	stun_buffer *sb = nbh;
+	return sb->buf;
+}
+
+size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
+{
+	stun_buffer *sb = nbh;
+	return (size_t)(sb->len);
+}
+
+size_t ioa_network_buffer_get_capacity(void)
+{
+	return STUN_BUFFER_SIZE;
+}
+
+void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
+{
+	stun_buffer *sb = nbh;
+	sb->len=(ssize_t)len;
+}
+void ioa_network_buffer_delete(ioa_network_buffer_handle nbh) {
+	if(nbh) {
+		free(nbh);
+	}
 }
 
 /******* debug ************/

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  */
 
-#include "ns_turn_buffer.h"
+#include "stun_buffer.h"
 
 ////////////////////// BUFFERS ///////////////////////////
 
@@ -259,51 +259,6 @@ int stun_is_binding_request(const stun_buffer* buf, size_t offset) {
 
 int stun_is_binding_response(const stun_buffer* buf) {
   return stun_is_binding_response_str(buf->buf, (size_t)(buf->len));
-}
-
-//////////////////// QUEUE /////////////////////////////
-
-void stun_queue_init(stun_queue* q) {
-  if(q) {
-    ns_bzero(q,sizeof(stun_queue));
-  }
-}
-
-size_t stun_queue_size(const stun_queue *q) {
-  if(!q) return 0;
-  else if(q->wptr>=q->rptr) return (q->wptr-q->rptr);
-  else return (q->wptr+STUN_QUEUE_SIZE-q->rptr);
-}
-
-const stun_buffer* stun_queue_get_read(const stun_queue* q) {
-  if(!q) return NULL;
-  else if(q->rptr==q->wptr) return NULL;
-  else return (const stun_buffer*)(&(q->q[q->rptr]));
-}
-
-stun_buffer* stun_queue_get_write(stun_queue* q) {
-  if(!q) return NULL;
-  else if((q->rptr==q->wptr+1)||((q->rptr+STUN_QUEUE_SIZE==q->wptr+1))) return NULL;
-  else return (stun_buffer*)(&(q->q[q->wptr]));
-}
-
-stun_buffer* stun_queue_advance_read(stun_queue* q) {
-  if(!q) return NULL;
-  else if(q->rptr==q->wptr) return NULL;
-  else {
-    q->rptr=(q->rptr+1) & STUN_QUEUE_MASK;
-    if(q->rptr==q->wptr) return NULL;
-    return &(q->q[q->rptr]);
-  }
-}
-  
-stun_buffer* stun_queue_advance_write(stun_queue* q) {
-  if(!q) return NULL;
-  else if((q->rptr==q->wptr+1)||((q->rptr+STUN_QUEUE_SIZE==q->wptr+1))) return NULL;
-  else {
-    q->wptr=(q->wptr+1) & STUN_QUEUE_MASK;
-    return &(q->q[q->wptr]);
-  }
 }
 
 ///////////////////////////////////////////////////////

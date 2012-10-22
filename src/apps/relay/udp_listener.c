@@ -131,6 +131,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			}
 
 		}
+
 	}
 
 	if (server->stats)

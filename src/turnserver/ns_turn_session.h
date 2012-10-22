@@ -32,7 +32,6 @@
 #define __TURN_SESSION__
 
 #include "ns_turn_utils.h"
-#include "ns_turn_buffer.h"
 #include "ns_turn_maps.h"
 #include "ns_turn_ioalib.h"
 #include "ns_turn_allocation.h"
@@ -49,7 +48,6 @@ typedef struct {
   void* server; 
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
-  stun_queue turn_out_queue;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
   ext_ctx_t ext_ctx;

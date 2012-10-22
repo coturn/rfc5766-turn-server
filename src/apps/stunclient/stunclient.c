@@ -37,7 +37,7 @@
 
 #include "ns_turn_utils.h"
 #include "apputils.h"
-#include "ns_turn_buffer.h"
+#include "stun_buffer.h"
 
 ////////////////////////////////////////////////////
 

@@ -94,8 +94,8 @@ static int send_socket(ioa_engine_handle e, ioa_socket_handle s, u08bits *buf, i
 static int we_need_extra_stun_service(void)
 {
 	ioa_addr ra, la;
-	make_ioa_addr((u08bits*)local_addr,0,&la);
-	make_ioa_addr((u08bits*)relay_addr,0,&ra);
+	make_ioa_addr((const u08bits*)local_addr,0,&la);
+	make_ioa_addr((const u08bits*)relay_addr,0,&ra);
 	return !addr_eq_no_port(&la,&ra);
 }
 

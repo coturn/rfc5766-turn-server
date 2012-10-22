@@ -229,12 +229,9 @@ static int udp_allocate(int verbose,
 						/* Try again ? */
 					}
 				} else {
-					perror("recv");
-					if (handle_socket_error()) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-								"socket error\n");
+					if (handle_socket_error())
 						continue;
-					}
+					perror("recv");
 					exit(-1);
 					break;
 				}

@@ -37,9 +37,9 @@
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_utils.h"
-#include "ns_turn_buffer.h"
 #include "ns_turn_maps.h"
 
+#include "stun_buffer.h"
 #include "apputils.h"
 
 //////////////// session info //////////////////////

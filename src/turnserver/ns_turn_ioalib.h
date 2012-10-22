@@ -60,6 +60,8 @@ typedef ioa_engine *ioa_engine_handle;
 
 typedef void *ioa_timer_handle;
 
+typedef void *ioa_network_buffer_handle;
+
 /* event data for net event */
 typedef struct _ioa_net_data {
 	ioa_addr	*remote_addr;
@@ -67,6 +69,16 @@ typedef struct _ioa_net_data {
 	int		 len;
 	u16bits		 chnum;
 } ioa_net_data;
+
+/*
+ * Network buffer functions
+ */
+ioa_network_buffer_handle ioa_network_buffer_allocate(void);
+u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh);
+size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh);
+size_t ioa_network_buffer_get_capacity(void);
+void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len);
+void ioa_network_buffer_delete(ioa_network_buffer_handle nbh);
 
 /*
  * Network event handler callback
@@ -107,7 +119,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);
 void *get_ioa_socket_session(ioa_socket_handle s);
 void set_ioa_socket_session(ioa_socket_handle s, void *ss);
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx);
-int send_data_from_ioa_socket(ioa_socket_handle s, ioa_addr* dest_addr, const s08bits* buffer, int len, int to_peer, void *socket_channel);
+int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
