@@ -60,20 +60,20 @@ typedef ioa_engine *ioa_engine_handle;
 
 typedef void *ioa_timer_handle;
 
-typedef void *ioa_network_buffer_handle;
+typedef NETWORK_BUFFER_TYPE *ioa_network_buffer_handle;
 
 /* event data for net event */
 typedef struct _ioa_net_data {
-	ioa_addr	*remote_addr;
-	s08bits		*buffer;
-	int		 len;
-	u16bits		 chnum;
+	ioa_addr			*remote_addr;
+	ioa_network_buffer_handle	nbh;
+	u16bits				chnum;
 } ioa_net_data;
 
 /*
  * Network buffer functions
  */
 ioa_network_buffer_handle ioa_network_buffer_allocate(void);
+void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh);
 u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_capacity(void);
@@ -91,7 +91,7 @@ typedef void (*ioa_net_event_handler)(ioa_socket_handle s, int event_type, ioa_n
 /*
  * New connection callback
  */
-typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, u08bits *buf, int len);
+typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd);
 
 /*
  * Timer callback

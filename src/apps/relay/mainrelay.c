@@ -85,10 +85,10 @@ static char relay_ifname[1025]="\0";
 
 //////////////////////////////////////////////////
 
-static int send_socket(ioa_engine_handle e, ioa_socket_handle s, u08bits *buf, int len)
+static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
 	UNUSED_ARG(e);
-	return open_client_connection_session(turn_server, s, 0, NULL, buf, len);
+	return open_client_connection_session(turn_server, s, 0, NULL, nd);
 }
 
 static int we_need_extra_stun_service(void)

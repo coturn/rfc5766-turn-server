@@ -31,8 +31,8 @@
 #include "apputils.h"
 
 #include "ns_turn_utils.h"
-#include "ns_turn_msg.h"
 
+#include "stun_buffer.h"
 #include "udp_listener.h"
 #include "ns_ioalib_impl.h"
 
@@ -84,23 +84,22 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_addr client_addr;
 
-	int rc = 0;
-
-	unsigned char buf[0xFFFF + 1];
+	stun_buffer *sbuf = malloc(sizeof(stun_buffer));
+	ioa_net_data nd = { &client_addr, sbuf, 0 };
 	ioa_addr si_other;
 	int slen = get_ioa_addr_len(&(server->addr));
 
 	int flags = MSG_DONTWAIT;
 
 	do {
-		rc = recvfrom(fd, buf, sizeof(buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
-	} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		sbuf->len = recvfrom(fd, sbuf->buf, sizeof(sbuf->buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
+	} while (sbuf->len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
-	if (rc > 0) {
+	if (sbuf->len > 0) {
 
-		buf[rc] = 0;
+		sbuf->buf[sbuf->len] = 0;
 
-		if (stun_is_request_str((u08bits*)buf, rc)) {
+		if (stun_is_request_str(sbuf->buf, sbuf->len)) {
 
 			addr_cpy(&client_addr, &si_other);
 
@@ -118,7 +117,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 				if (ioas) {
 
-					rc = server->e->connect_cb(server->e, ioas, buf, rc);
+					int rc = server->e->connect_cb(server->e, ioas, &nd);
 
 					if(rc < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
@@ -133,6 +132,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		}
 
 	}
+
+	ioa_network_buffer_delete(nd.nbh);
 
 	if (server->stats)
 		--(*(server->stats));

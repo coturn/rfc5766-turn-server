@@ -527,24 +527,31 @@ static void socket_input_handler(int fd, short what, void* arg)
 	ioa_socket_handle s = arg;
 
 	ioa_addr remote_addr;
-	s08bits buffer[2048];
+	stun_buffer *sbuf = malloc(sizeof(stun_buffer));
 
 	int len = 0;
 
 	if(s->fd>=0){
-		len = udp_recvfrom(fd, &remote_addr, &(s->local_addr), buffer, sizeof(buffer));
+		len = udp_recvfrom(fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
 	} else {
+		free(sbuf);
 		return;
 	}
 
 	if (len >= 0 && s->read_cb) {
 
-		ioa_net_data event_data = {&remote_addr, buffer, (size_t)len, 0 };
+		sbuf->len = len;
+		ioa_net_data event_data = {&remote_addr, sbuf, 0 };
 		ioa_net_event_handler cb = s->read_cb;
 		void* ctx = s->read_ctx;
 
 		cb(s, IOA_EV_READ, &event_data, ctx);
 
+		if(event_data.nbh)
+			free(sbuf);
+
+	} else {
+		free(sbuf);
 	}
 }
 
@@ -642,6 +649,11 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(void)
 	return sb;
 }
 
+void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh)
+{
+	UNUSED_ARG(nbh);
+}
+
 u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh)
 {
 	stun_buffer *sb = nbh;
@@ -650,8 +662,12 @@ u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh)
 
 size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
 {
-	stun_buffer *sb = nbh;
-	return (size_t)(sb->len);
+	if(!nbh)
+		return 0;
+	else {
+		stun_buffer *sb = nbh;
+		return (size_t)(sb->len);
+	}
 }
 
 size_t ioa_network_buffer_get_capacity(void)
@@ -665,9 +681,8 @@ void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
 	sb->len=(ssize_t)len;
 }
 void ioa_network_buffer_delete(ioa_network_buffer_handle nbh) {
-	if(nbh) {
+	if(nbh)
 		free(nbh);
-	}
 }
 
 /******* debug ************/

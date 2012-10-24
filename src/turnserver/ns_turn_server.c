@@ -266,7 +266,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 		int even_port = -1;
 		u64bits in_reservation_token = 0;
 
-		stun_attr_ref sar = stun_attr_get_first_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
@@ -342,7 +343,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 			};
-			sar = stun_attr_get_next_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar);
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+						     ioa_network_buffer_get_size(in_buffer->nbh), 
+						     sar);
 		}
 
 		if (!valid_transport_included) {
@@ -427,7 +430,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 		u32bits lifetime = 0;
 		int to_delete = 0;
 
-		stun_attr_ref sar = stun_attr_get_first_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
@@ -453,7 +457,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 			};
-			sar = stun_attr_get_next_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar);
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+						     ioa_network_buffer_get_size(in_buffer->nbh), sar);
 		}
 
 		if (*ua_num > 0) {
@@ -524,7 +529,8 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 	if (is_allocation_valid(a)) {
 
-		stun_attr_ref sar = stun_attr_get_first_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			u16bits attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
@@ -541,13 +547,17 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 			}
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS:
-				stun_attr_get_addr_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar, &peer_addr,
-						&(ss->default_peer_addr));
+				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
+						       ioa_network_buffer_get_size(in_buffer->nbh), 
+						       sar, &peer_addr,
+						       &(ss->default_peer_addr));
 				break;
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 			};
-			sar = stun_attr_get_next_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar);
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+						     ioa_network_buffer_get_size(in_buffer->nbh), 
+						     sar);
 		}
 
 		if (*ua_num > 0) {
@@ -624,18 +634,6 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 	return 0;
 }
 
-static int send_data_from_ioa_socket(ioa_socket_handle s, ioa_addr* dest_addr, const s08bits* buffer, int len, int to_peer, void *socket_channel)
-{
-	if(len>(int)ioa_network_buffer_get_capacity())
-		return -1;
-	else {
-		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
-		ns_bcopy(buffer,ioa_network_buffer_data(nbh),len);
-		ioa_network_buffer_set_size(nbh,len);
-		return send_data_from_ioa_socket_nbh(s, dest_addr, nbh, to_peer, socket_channel);
-	}
-}
-
 static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 			    ioa_net_data *in_buffer) {
@@ -653,7 +651,8 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 	if (is_allocation_valid(a)) {
 
-		stun_attr_ref sar = stun_attr_get_first_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			u16bits attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
@@ -667,9 +666,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					*err_code = 420;
 					*reason = (const u08bits *)"Address duplication";
 				} else {
-					stun_attr_get_addr_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len,
-									sar, &peer_addr,
-									&(ss->default_peer_addr));
+					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
+							       ioa_network_buffer_get_size(in_buffer->nbh),
+							       sar, &peer_addr,
+							       &(ss->default_peer_addr));
 				}
 			}
 				break;
@@ -686,7 +686,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 			};
-			sar = stun_attr_get_next_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar);
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+						     ioa_network_buffer_get_size(in_buffer->nbh), 
+						     sar);
 		}
 
 		if (*err_code) {
@@ -713,8 +715,12 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 				}
 
-				send_data_from_ioa_socket(get_relay_socket_ss(ss), &peer_addr,
-						(const s08bits*) value, len, 1, NULL);
+				ioa_network_buffer_handle nbh = in_buffer->nbh;
+				ns_bcopy(value,ioa_network_buffer_data(nbh),len);
+				ioa_network_buffer_header_init(nbh);
+				ioa_network_buffer_set_size(nbh,len);
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, 1, NULL);
+				in_buffer->nbh = NULL;
 			}
 
 		} else {
@@ -773,16 +779,18 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 	if (is_allocation_valid(a)) {
 
-		stun_attr_ref sar = stun_attr_get_first_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			u16bits attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
-				stun_attr_get_addr_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len,
-								sar, &peer_addr,
-								&(ss->default_peer_addr));
+				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
+						       ioa_network_buffer_get_size(in_buffer->nbh),
+						       sar, &peer_addr,
+						       &(ss->default_peer_addr));
 				addr_found = 1;
 				addr_set_port(&peer_addr, 0);
 				if (update_permission(ss, &peer_addr) < 0) {
@@ -794,7 +802,9 @@ static int handle_turn_create_permission(turn_turnserver *server,
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 			};
-			sar = stun_attr_get_next_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, sar);
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+						     ioa_network_buffer_get_size(in_buffer->nbh), 
+						     sar);
 		}
 
 		if (*ua_num > 0) {
@@ -836,13 +846,17 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	ts_ur_session* elem = &(ss->client_session);
 	u16bits unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
 	u16bits ua_num = 0;
-	u16bits method = stun_get_method_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len);
+	u16bits method = stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), 
+					     ioa_network_buffer_get_size(in_buffer->nbh));
 
 	*resp_constructed = 0;
 
-	stun_tid_from_message_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len, &tid);
+	stun_tid_from_message_str(ioa_network_buffer_data(in_buffer->nbh), 
+				  ioa_network_buffer_get_size(in_buffer->nbh), 
+				  &tid);
 
-	if (stun_is_request_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len)) {
+	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
+				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 		switch (method){
 
@@ -885,7 +899,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 		};
 
-	} else if (stun_is_indication_str((u08bits*)in_buffer->buffer, (size_t)in_buffer->len)) {
+	} else if (stun_is_indication_str(ioa_network_buffer_data(in_buffer->nbh), 
+					  ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 		no_response = 1;
 
@@ -963,11 +978,14 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 			if (!chn)
 				return -1;
 
-			rc = send_data_from_ioa_socket(get_relay_socket_ss(ss),
-					&(chn->peer_addr),
-					(s08bits*) in_buffer->buffer+STUN_CHANNEL_HEADER_LENGTH,
-					in_buffer->len-STUN_CHANNEL_HEADER_LENGTH,
-					1, chn->socket_channel);
+			ioa_network_buffer_handle nbh = in_buffer->nbh;
+			ns_bcopy((ioa_network_buffer_data(in_buffer->nbh)+STUN_CHANNEL_HEADER_LENGTH),
+				  ioa_network_buffer_data(nbh),
+				  ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+			ioa_network_buffer_header_init(nbh);
+			ioa_network_buffer_set_size(nbh,ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, 1, chn->socket_channel);
+			in_buffer->nbh = NULL;
 		}
 	}
 
@@ -1218,11 +1236,11 @@ static int refresh_relay_connection(turn_turnserver* server,
 }
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
-		ts_ur_super_session *ss, ioa_net_data *data) {
+				  ts_ur_super_session *ss, ioa_net_data *in_buffer) {
 
 	FUNCSTART;
 
-	if (!server || !elem || !ss || !data) {
+	if (!server || !elem || !ss || !in_buffer) {
 		FUNCEND;
 		return -1;
 	}
@@ -1232,7 +1250,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		return -1;
 	}
 
-	int ret = data->len;
+	int ret = (int)ioa_network_buffer_get_size(in_buffer->nbh);
 	if (ret < 0) {
 		FUNCEND;
 		return -1;
@@ -1240,15 +1258,18 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 	if (server->verbose) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"%s: data.buffer=0x%lx, data.len=%ld\n", __FUNCTION__,
-				(long) data->buffer, (long) data->len);
+			      "%s: data.buffer=0x%lx, data.len=%ld\n", __FUNCTION__,
+			      (long)ioa_network_buffer_data(in_buffer->nbh), 
+			      (long)ioa_network_buffer_get_size(in_buffer->nbh));
 	}
 
 	u16bits chnum = 0;
 
-	if (stun_is_channel_message_str((u08bits*)data->buffer, (size_t)data->len, &chnum)) {
+	if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh), 
+					ioa_network_buffer_get_size(in_buffer->nbh), 
+					&chnum)) {
 
-		int rc = write_to_peerchannel(ss, chnum, data);
+		int rc = write_to_peerchannel(ss, chnum, in_buffer);
 
 		if (server->verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote to peer %d bytes\n",
@@ -1258,12 +1279,13 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		FUNCEND;
 		return 0;
 
-	} else if (stun_is_command_message_str((u08bits*)data->buffer, (size_t)data->len)) {
+	} else if (stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), 
+					       ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
 		int resp_constructed = 0;
 
-		handle_turn_command(server, ss, data, nbh, &resp_constructed);
+		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed);
 
 		if(resp_constructed) {
 
@@ -1285,7 +1307,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 int open_client_connection_session(turn_turnserver* server,
 		ioa_socket_handle ioas, ext_ctx_t ext_ctx, ext_buffer_clean_cb func,
-		u08bits *buf, int len) {
+		ioa_net_data *nd) {
 
 	FUNCSTART;
 
@@ -1320,10 +1342,8 @@ int open_client_connection_session(turn_turnserver* server,
 			client_to_be_allocated_timeout_handler, ss, 0,
 			"client_to_be_allocated_timeout_handler");
 
-	if(buf) {
-		ioa_net_data nd = { get_remote_addr_from_ioa_socket(newelem->s), (s08bits*)buf, len, 0 };
-		client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
-	}
+	if(nd)
+		client_input_handler(newelem->s,IOA_EV_READ,nd,ss);
 
 	FUNCEND;
 
@@ -1333,7 +1353,7 @@ int open_client_connection_session(turn_turnserver* server,
 /////////////// io handlers ///////////////////
 
 static void peer_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *data, void *arg) {
+		ioa_net_data *in_buffer, void *arg) {
 
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
@@ -1357,7 +1377,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 	int offset = STUN_CHANNEL_HEADER_LENGTH;
 
-	int ilen = MIN(data->len, (int)(ioa_network_buffer_get_capacity() - offset));
+	int ilen = MIN((int)ioa_network_buffer_get_size(in_buffer->nbh),
+					(int)(ioa_network_buffer_get_capacity() - offset));
 
 	if (ilen >= 0) {
 
@@ -1366,9 +1387,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
 
-			u16bits chnum = data->chnum;
+			u16bits chnum = in_buffer->chnum;
 
-			ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
+			ioa_network_buffer_handle nbh = NULL;
 
 			if(!chnum) {
 				/*
@@ -1376,27 +1397,31 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				 * we do not need to go through this expensive block.
 				 */
 				turn_permission_info* tinfo = allocation_get_permission(a,
-								data->remote_addr);
+								in_buffer->remote_addr);
 					if (tinfo)
-					chnum = get_turn_channel_number(tinfo, data->remote_addr);
+					chnum = get_turn_channel_number(tinfo, in_buffer->remote_addr);
 			}
 
 			if (chnum) {
-				ns_bcopy(data->buffer, (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
+				nbh = in_buffer->nbh;
+				ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
+				ioa_network_buffer_header_init(nbh);
 				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
 				ioa_network_buffer_set_size(nbh,len);
+				in_buffer->nbh = NULL;
 				if (server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 							"%s: send channel 0x%x\n", __FUNCTION__,
 							(int) (chnum));
 				}
 			} else {
+				nbh = ioa_network_buffer_allocate();
 				stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
-								(const u08bits*)(data->buffer), (size_t)ilen);
+								ioa_network_buffer_data(in_buffer->nbh), (size_t)ilen);
 				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 						STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
-						data->remote_addr);
+						in_buffer->remote_addr);
 				ioa_network_buffer_set_size(nbh,len);
 			}
 			if (server->verbose) {

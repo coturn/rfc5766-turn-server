@@ -35,7 +35,7 @@
 
 ///////////////////////////////////////////////////////////////
 
-typedef struct {
+typedef struct _stun_buffer {
   u08bits	buf[STUN_BUFFER_SIZE];
   ssize_t	len;
 } stun_buffer;

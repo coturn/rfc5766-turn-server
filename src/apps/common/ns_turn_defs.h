@@ -109,4 +109,6 @@ typedef u32bits turn_time_t;
 #define UNUSED_ARG(A) do { A=A; } while(0)
 #endif
 
+#define NETWORK_BUFFER_TYPE struct _stun_buffer
+
 #endif //__IODEFS__

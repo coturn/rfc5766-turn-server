@@ -50,7 +50,9 @@ void delete_turn_server(turn_turnserver* server);
 
 ///////////////////////////////////////////
 
-int open_client_connection_session(turn_turnserver* server, ioa_socket_handle s, ext_ctx_t ext_ctx, ext_buffer_clean_cb func, u08bits *buf, int len);
+int open_client_connection_session(turn_turnserver* server, ioa_socket_handle s,
+				ext_ctx_t ext_ctx, ext_buffer_clean_cb func,
+				ioa_net_data *nd);
 
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
 
