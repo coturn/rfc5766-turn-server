@@ -57,8 +57,8 @@ struct _turn_turnserver {
 ///////////////////////////////////////////
 
 static int create_relay_connection(turn_turnserver* server,
-		ts_ur_super_session *ss, u32bits lifetime, int even_port,
-		u64bits in_reservation_token, u64bits *out_reservation_token,
+		ts_ur_super_session *ss, u32bits lifetime, int address_family,
+		int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
 		int *err_code, const u08bits **reason);
 
 static int refresh_relay_connection(turn_turnserver* server,
@@ -265,6 +265,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		u32bits lifetime = 0;
 		int even_port = -1;
 		u64bits in_reservation_token = 0;
+		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -327,6 +328,9 @@ static int handle_turn_allocate(turn_turnserver *server,
 			  if (len != 8) {
 			    *err_code = 400;
 			    *reason = (const u08bits *)"Wrong Format of Reservation Token";
+			  } else if(af != STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT) {
+				  *err_code = 400;
+				  *reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
 			  } else {
 			    if (even_port >= 0) {
 			      *err_code = 400;
@@ -338,6 +342,29 @@ static int handle_turn_allocate(turn_turnserver *server,
 			      in_reservation_token = stun_attr_get_reservation_token_value(sar);
 			    }
 			  }
+			}
+			  break;
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
+				if(in_reservation_token) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Address family attribute can not be used with reservation token request";
+				} else {
+					int af_req = stun_get_requested_address_family(sar);
+					if(af == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT) {
+						switch (af_req) {
+						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+						case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+							af = af_req;
+							break;
+						default:
+							*err_code = 440;
+							*reason = (const u08bits *)"Unsupported address family requested";
+						}
+					} else {
+						*err_code = 400;
+						*reason = (const u08bits *)"Only one address family attribute can be used in a request";
+					}
+				}
 			}
 			  break;
 			default:
@@ -369,7 +396,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
-			if (create_relay_connection(server, ss, lifetime, even_port,
+			if (create_relay_connection(server, ss, lifetime, af, even_port,
 						    in_reservation_token, &out_reservation_token, err_code, reason) < 0) {
 				if (!*err_code) {
 				  *err_code = 437;
@@ -451,6 +478,31 @@ static int handle_turn_refresh(turn_turnserver *server,
 						if (!lifetime)
 							to_delete = 1;
 					}
+				}
+			}
+				break;
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: {
+				int af_req = stun_get_requested_address_family(sar);
+				ioa_addr *addr = get_local_addr_from_ioa_socket(a->relay_session.s);
+				int is_err = 0;
+				switch (af_req) {
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+					if(addr->ss.ss_family != AF_INET) {
+						is_err = 1;
+					}
+					break;
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+					if(addr->ss.ss_family != AF_INET6) {
+						is_err = 1;
+					}
+					break;
+				default:
+					is_err = 1;
+				}
+
+				if(is_err) {
+					*err_code = 443;
+					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
 			}
 				break;
@@ -551,6 +603,14 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 						       ioa_network_buffer_get_size(in_buffer->nbh), 
 						       sar, &peer_addr,
 						       &(ss->default_peer_addr));
+
+				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
+
+				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+					*err_code = 443;
+					*reason = (const u08bits *)"Peer Address Family Mismatch";
+				}
+
 				break;
 			default:
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
@@ -663,7 +723,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
 				if (addr_found) {
-					*err_code = 420;
+					*err_code = 400;
 					*reason = (const u08bits *)"Address duplication";
 				} else {
 					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
@@ -675,7 +735,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				break;
 			case STUN_ATTRIBUTE_DATA: {
 				if (len >= 0) {
-					*err_code = 420;
+					*err_code = 400;
 					*reason = (const u08bits *)"Data duplication";
 				} else {
 					len = stun_attr_get_len(sar);
@@ -724,7 +784,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 		} else {
-			*err_code = 420;
+			*err_code = 400;
 			*reason = (const u08bits *)"No address found";
 		}
 	}
@@ -791,11 +851,19 @@ static int handle_turn_create_permission(turn_turnserver *server,
 						       ioa_network_buffer_get_size(in_buffer->nbh),
 						       sar, &peer_addr,
 						       &(ss->default_peer_addr));
-				addr_found = 1;
-				addr_set_port(&peer_addr, 0);
-				if (update_permission(ss, &peer_addr) < 0) {
-					*err_code = 500;
-					*reason = (const u08bits *)"Cannot update permission (internal error)";
+
+				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
+
+				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+					*err_code = 443;
+					*reason = (const u08bits *)"Peer Address Family Mismatch";
+				} else {
+					addr_found = 1;
+					addr_set_port(&peer_addr, 0);
+					if (update_permission(ss, &peer_addr) < 0) {
+						*err_code = 500;
+						*reason = (const u08bits *)"Cannot update permission (internal error)";
+					}
 				}
 			}
 				break;
@@ -1126,8 +1194,8 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 }
 
 static int create_relay_connection(turn_turnserver* server,
-				   ts_ur_super_session *ss, u32bits lifetime, int even_port,
-				   u64bits in_reservation_token, u64bits *out_reservation_token,
+				   ts_ur_super_session *ss, u32bits lifetime, int address_family,
+				   int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
 				   int *err_code, const u08bits **reason) {
 
 	if (server && ss) {
@@ -1151,11 +1219,14 @@ static int create_relay_connection(turn_turnserver* server,
 
 		} else {
 
-			int res = create_relay_ioa_sockets(server->e, even_port,
-					&(newelem->s), &rtcp_s, out_reservation_token);
+			int res = create_relay_ioa_sockets(server->e, address_family, even_port,
+					&(newelem->s), &rtcp_s, out_reservation_token,
+					err_code, reason);
 			if (res < 0) {
-				*err_code = 508;
-				*reason = (const u08bits *)"Cannot create socket";
+				if(!(*err_code))
+					*err_code = 508;
+				if(!(*reason))
+					*reason = (const u08bits *)"Cannot create socket";
 				return -1;
 			}
 		}

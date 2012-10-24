@@ -47,6 +47,7 @@ int udp_verbose=0;
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
+int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 
 //////////////// local definitions /////////////////
 
@@ -64,7 +65,8 @@ static char Usage[] =
   "        -h      hang on indefinitely after the last sent packet\n"
   "        -e      peer address\n"
   "        -r      peer port (default 3479)\n"
-  "        -c      no rtcp connections\n";
+  "        -c      no rtcp connections\n"
+  "        -x      IPv6 relayed address requested\n";
 
 //////////////////////////////////////////////////
 
@@ -84,11 +86,14 @@ int main(int argc, char **argv)
   
   memset(local_addr, 0, sizeof(local_addr));
   
-  while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:vsyhc")) != -1) {
+  while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:vsyhcx")) != -1) {
     switch(c) {
     case 'd':
       strcpy((char*)ifname,optarg);
       break;
+    case 'x':
+	    default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+	    break;
     case 'l':
       length = atoi(optarg);
       break;

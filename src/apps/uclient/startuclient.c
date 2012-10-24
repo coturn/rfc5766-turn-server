@@ -46,6 +46,17 @@ static const int never_allocate_rtcp = 0;
 
 /////////////////////////////////////////
 
+static int get_allocate_address_family(ioa_addr *relay_addr) {
+	if(relay_addr->ss.ss_family == AF_INET)
+		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+	else if(relay_addr->ss.ss_family == AF_INET6)
+		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+	else
+		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
+}
+
+/////////////////////////////////////////
+
 static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
 		const unsigned char* ifname, const char *local_address, int verbose,
 		app_ur_conn_info *udp_info) {
@@ -119,7 +130,8 @@ static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
 
 static int udp_allocate(int verbose,
 		app_ur_conn_info *udp_info,
-		ioa_addr *relay_addr) {
+		ioa_addr *relay_addr,
+		int af) {
 
 	int fd = udp_info->fd;
 
@@ -130,7 +142,9 @@ static int udp_allocate(int verbose,
 		int allocate_sent = 0;
 
 		stun_buffer message;
-		stun_set_allocate_request(&message, 1800);
+		if(current_reservation_token)
+			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+		stun_set_allocate_request(&message, 1800, af);
 		if(!no_rtcp) {
 		  allocate_rtcp = !allocate_rtcp;
 		  if (!never_allocate_rtcp && allocate_rtcp) {
@@ -499,15 +513,15 @@ int start_connection(uint16_t udp_remote_port,
 	}
 
 	if(!no_rtcp) {
-	  if (udp_allocate(verbose, udp_info, &relay_addr) < 0) {
+	  if (udp_allocate(verbose, udp_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info_rtcp, &relay_addr_rtcp) < 0) {
+	  if (udp_allocate(verbose, udp_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	} else {
-	  if (udp_allocate(verbose, udp_info, &relay_addr) < 0) {
+	  if (udp_allocate(verbose, udp_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	}
@@ -591,31 +605,31 @@ int start_c2c_connection(uint16_t udp_remote_port,
 	  }
 
 	if(!no_rtcp) {
-	  if (udp_allocate(verbose, udp_info1, &relay_addr1)
+	  if (udp_allocate(verbose, udp_info1, &relay_addr1, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
 	  if (udp_allocate(verbose, udp_info1_rtcp,
-			   &relay_addr1_rtcp) < 0) {
+			   &relay_addr1_rtcp, default_address_family) < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info2, &relay_addr2)
+	  if (udp_allocate(verbose, udp_info2, &relay_addr2, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
 	  if (udp_allocate(verbose, udp_info2_rtcp,
-			   &relay_addr2_rtcp) < 0) {
+			   &relay_addr2_rtcp, default_address_family) < 0) {
 	    exit(-1);
 	  }
 	} else {
-	  if (udp_allocate(verbose, udp_info1, &relay_addr1)
+	  if (udp_allocate(verbose, udp_info1, &relay_addr1, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }	  
-	  if (udp_allocate(verbose, udp_info2, &relay_addr2)
+	  if (udp_allocate(verbose, udp_info2, &relay_addr2, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }

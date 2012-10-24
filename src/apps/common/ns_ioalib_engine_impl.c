@@ -296,8 +296,8 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 
 /************************ Sockets *********************************/
 
-int create_relay_ioa_sockets(ioa_engine_handle e, int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s, 
-			     uint64_t *out_reservation_token) {
+int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
+			     uint64_t *out_reservation_token, int *err_code, const u08bits **reason) {
 
 	*rtp_s = NULL;
 	if(rtcp_s)
@@ -307,6 +307,28 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int even_port, ioa_socket_hand
 
 	ioa_addr relay_addr;
 	addr_cpy(&relay_addr, ioa_engine_get_relay_addr(e));
+
+	switch(address_family) {
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+		if(relay_addr.ss.ss_family != AF_INET) {
+			*err_code = 440;
+			*reason = (const u08bits *)"Unsupported address family";
+			return -1;
+		}
+		break;
+	case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+		if(relay_addr.ss.ss_family != AF_INET6) {
+			*err_code = 440;
+			*reason = (const u08bits *)"Unsupported address family";
+			return -1;
+		}
+		break;
+	default:
+		*err_code = 440;
+		*reason = (const u08bits *)"Unsupported address family";
+		return -1;
+	};
 
 	int rtcp_port=-1;
 

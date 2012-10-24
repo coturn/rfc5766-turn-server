@@ -290,7 +290,7 @@ int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits
 
 ////////// ALLOCATE ///////////////////////////////////
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime) {
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
@@ -310,6 +310,26 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime) {
     u32bits field=nswap32(lifetime);
     if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
   }
+
+  //ADRESS-FAMILY
+  switch (address_family) {
+  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+  {
+	  u08bits field[4];
+	  field[0] = (u08bits)address_family;
+	  field[1]=0;
+	  field[2]=0;
+	  field[3]=0;
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY,field,sizeof(field))<0) return -1;
+	  break;
+  }
+  case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+	  /* ignore */
+	  break;
+  default:
+	  return -1;
+  };
 
   return 0;
 }
@@ -517,6 +537,25 @@ const u08bits* stun_attr_get_value(stun_attr_ref attr) {
     return ((const u08bits*)attr)+4;
   }
   return NULL;
+}
+
+int stun_get_requested_address_family(stun_attr_ref attr)
+{
+	if (attr) {
+		int len = (int) (nswap16(((const u16bits*)attr)[1]));
+		if (len != 4)
+			return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
+		int val = ((const u08bits*) attr)[4];
+		switch (val){
+		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+			return val;
+		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+			return val;
+		default:
+			return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
+		};
+	}
+	return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 }
 
 u16bits stun_attr_get_channel_number(stun_attr_ref attr) {

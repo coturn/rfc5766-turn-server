@@ -41,6 +41,7 @@ extern int hang_on;
 extern int c2c;
 extern ioa_addr peer_addr;
 extern int no_rtcp;
+extern int default_address_family;
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address, int length, 

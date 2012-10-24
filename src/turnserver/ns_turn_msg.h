@@ -87,6 +87,7 @@
 #define STUN_ATTRIBUTE_REFLECTED_FROM (0x000B)
 #define STUN_ATTRIBUTE_REALM (0x0014)
 #define STUN_ATTRIBUTE_NONCE (0x0015)
+#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY (0x0017)
 #define STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS (0x0020)
 
 #define STUN_ATTRIBUTE_SOFTWARE (0x8022)
@@ -106,6 +107,13 @@
 #define STUN_ATTRIBUTE_RESERVATION_TOKEN (0x0022)
 
 #define STUN_VALID_CHANNEL(chn) ((chn)>=0x4000 && (chn)<=0x7FFF)
+
+///////// values //////////////////
+
+#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 (0x01)
+#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6 (0x02)
+#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT (0x00)
+#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID (-1)
 
 ///////////////////////////////////
 
@@ -191,7 +199,7 @@ u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
 int stun_get_channel_message_len_str(const u08bits* buf);
 int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits chnumber);
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime);
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family);
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr,
 				   const ioa_addr *reflexive_addr,
@@ -201,6 +209,8 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
 					  const ioa_addr* peer_addr, u16bits channel_number);
 void stun_set_channel_bind_response_str(u08bits* buf, size_t *len, stun_tid* tid, int error_code, const u08bits *reason);
+
+int stun_get_requested_address_family(stun_attr_ref attr);
 
 ///////////////////////////////////////////////////////////////
 
