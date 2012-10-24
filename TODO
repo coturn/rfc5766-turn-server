@@ -1,11 +1,10 @@
 1) FINGERPRINT and other aux attributes, if unsupported yet.
-2) IPv6 support: RFC6156.
-3) Traffic Translation (RFC5766 and RFC6156).
-4) Authentication.
-5) Configuration, in /etc/turn.conf file.
-6) TCP support.
-7) TLS support.
-8) DTLS support (?).
-9) Multiple backend relay IP addresses.
-10) Multiple frontend IP addresses.
-11) Multithreaded implementation.
+2) Traffic Translation (RFC5766 and RFC6156).
+3) Authentication.
+4) Configuration, in /etc/turn.conf file.
+5) TCP support.
+6) TLS support.
+7) DTLS support (?).
+8) Multiple backend relay IP addresses.
+9) Multiple frontend IP addresses.
+10) Multithreaded implementation.
