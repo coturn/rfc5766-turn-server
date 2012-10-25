@@ -157,6 +157,8 @@ static int udp_allocate(int verbose,
 		  }
 		}
 
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
 		while (!allocate_sent) {
 
 			int len = send_buffer(fd, &message);
@@ -266,6 +268,8 @@ static int udp_allocate(int verbose,
 			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
 					4);
 
+			stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
 			while (!refresh_sent) {
 
 				int len = send_buffer(fd, &message);
@@ -343,6 +347,8 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		stun_buffer message;
 
 		*chn = stun_set_channel_bind_request(&message, peer_addr, 0);
+
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
 		while (!cb_sent) {
 
@@ -422,6 +428,8 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 
 		stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
 		while (!cp_sent) {
 

@@ -64,6 +64,8 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
 
+u32bits ns_crc32(const u08bits *buffer, u32bits len);
+
 ///////////////////////////////////////////////////////
 
 #endif //__TURN_ULIB__

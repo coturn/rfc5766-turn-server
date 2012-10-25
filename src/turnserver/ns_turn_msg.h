@@ -156,6 +156,7 @@ int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, i
 u08bits* stun_get_app_data_ptr_str(u08bits* buf, int *olength);
 
 int stun_is_command_message_str(const u08bits* buf, size_t blen);
+int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint);
 int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset);
 int stun_is_request_str(const u08bits* buf, size_t len);
 int stun_is_success_response_str(const u08bits* buf, size_t len);
@@ -211,6 +212,8 @@ u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
 void stun_set_channel_bind_response_str(u08bits* buf, size_t *len, stun_tid* tid, int error_code, const u08bits *reason);
 
 int stun_get_requested_address_family(stun_attr_ref attr);
+
+int stun_attr_add_fingerprint_str(u08bits *buf, size_t *len);
 
 ///////////////////////////////////////////////////////////////
 

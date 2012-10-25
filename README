@@ -84,6 +84,7 @@ The command line parameters are:
     -i	    local "internal" interface device for relay sockets (optional)
     -E      local relay address (the local IP address that will be used to relay the packets to the peer)
     -v      verbose
+    -f      set fingerprints
     
 3) peer application is a simple UDP-only echo backend server for the relay server. 
 

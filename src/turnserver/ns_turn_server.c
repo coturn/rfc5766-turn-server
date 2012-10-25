@@ -51,6 +51,7 @@ struct _turn_turnserver {
 
 	ioa_engine_handle e;
 	int verbose;
+	int fingerprint;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
 };
@@ -1356,8 +1357,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		FUNCEND;
 		return 0;
 
-	} else if (stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), 
-					       ioa_network_buffer_get_size(in_buffer->nbh))) {
+	} else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh),
+					       ioa_network_buffer_get_size(in_buffer->nbh), 0)) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
 		int resp_constructed = 0;
@@ -1365,6 +1366,16 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed);
 
 		if(resp_constructed) {
+
+			if(server->fingerprint) {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				if(stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh),&len)<0) {
+					FUNCEND;
+					ioa_network_buffer_delete(nbh);
+					return -1;
+				}
+				ioa_network_buffer_set_size(nbh,len);
+			}
 
 			int ret = write_client_connection(server, ss, nbh);
 
@@ -1590,7 +1601,7 @@ static int clean_server(turn_turnserver* server) {
 
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
-		int stun_port) {
+		int stun_port, int fingerprint) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -1600,6 +1611,7 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
+	server->fingerprint = fingerprint;
 	server->stats = stats;
 	if (stun_port < 1)
 		stun_port = DEFAULT_STUN_PORT;

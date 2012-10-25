@@ -41,7 +41,6 @@
 #include "ns_turn_server.h"
 #include "ns_turn_maps.h"
 #include "stunservice.h"
-#include "ns_turn_server.h"
 
 #include "apputils.h"
 
@@ -57,7 +56,8 @@ static char Usage[] =
   "	-L      local address\n"
   "	-i	local \"internal\" interface device for relay sockets (optional)\n"
   "	-E      local relay address\n"
-  "	-v      verbose\n";
+  "	-v      verbose\n"
+  "	-f      set fingerprints\n";
 
 //////////////////////////////////////////////////
 
@@ -82,6 +82,7 @@ static rtcp_map* rtcpmap;
 static turnipports* tp;
 static char ifname[1025]="\0";
 static char relay_ifname[1025]="\0";
+static int fingerprint = 0;
 
 //////////////////////////////////////////////////
 
@@ -116,7 +117,8 @@ static void setup_relay_server(void) {
   turn_server = create_turn_server(verbose,
 				   ioa_eng,
 				   &stats,
-				   0);
+				   0,
+				   fingerprint);
   
   if(we_need_extra_stun_service())
 	  stunservice = start_internal_stun_server(verbose, relay_ifname, relay_addr, 0, event_base);
@@ -211,7 +213,7 @@ int main(int argc, char **argv)
   local_addr[0]=0;
   relay_addr[0]=0;
     
-  while ((c = getopt(argc, argv, "i:d:p:L:E:R:r:w:v")) != -1) {
+  while ((c = getopt(argc, argv, "i:d:p:L:E:R:r:w:vf")) != -1) {
     switch(c) {
     case 'i':
       strcpy(relay_ifname,optarg);
@@ -231,7 +233,9 @@ int main(int argc, char **argv)
     case 'v':
       verbose = 1;
       break;
-
+    case 'f':
+      fingerprint = 1;
+      break;
     default:
       fprintf(stderr, "%s\n", Usage);
       exit(1);

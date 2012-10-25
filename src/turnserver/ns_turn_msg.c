@@ -30,6 +30,7 @@
 
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_addr.h"
+#include "ns_turn_utils.h"
 
 /////////////////////////////////////////////////////////////////
 
@@ -88,6 +89,18 @@ int stun_is_command_message_str(const u08bits* buf, size_t blen) {
     }
   }
   return 0;
+}
+
+int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint) {
+	if(!stun_is_command_message_str(buf,blen))
+		return 0;
+	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
+	if(!sar)
+		return !must_check_fingerprint;
+	const u32bits* fingerprint = (const u32bits*)stun_attr_get_value(sar);
+	if(!fingerprint)
+		return !must_check_fingerprint;
+	return (*fingerprint == ns_crc32(buf,blen-8));
 }
 
 int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset) {
@@ -786,6 +799,17 @@ u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len) {
   }
 
   return 0;
+}
+
+////////////// FINGERPRINT ////////////////////////////
+
+int stun_attr_add_fingerprint_str(u08bits *buf, size_t *len)
+{
+	u32bits crc32 = 0;
+	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_FINGERPRINT, (u08bits*)&crc32, 4);
+	crc32 = ns_crc32(buf,*len-8);
+	*((u32bits*)(buf+*len-4))=crc32;
+	return 0;
 }
 
 ///////////////////////////////////////////////////////
