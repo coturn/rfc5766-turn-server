@@ -181,3 +181,15 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
 
 //////////////////////////////////////////////////////////////////////////////
 
+int ioa_addr_real_family(ioa_addr *addr) {
+	if(addr) {
+		ioa_addr ca_real;
+		ioa_addr_map_to_real(addr,&ca_real);
+		if(ca_real.ss.ss_family == AF_INET6)
+			return AF_INET6;
+	}
+	return AF_INET;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+

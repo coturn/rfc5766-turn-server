@@ -32,6 +32,7 @@
 
 #include "ns_turn_utils.h"
 #include "ns_turn_allocation.h"
+#include "ns_turn_msg_addr.h"
 
 ///////////////////////////////////////////
 
@@ -487,12 +488,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 				int is_err = 0;
 				switch (af_req) {
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-					if(addr->ss.ss_family != AF_INET) {
+					if(ioa_addr_real_family(addr) != AF_INET) {
 						is_err = 1;
 					}
 					break;
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-					if(addr->ss.ss_family != AF_INET6) {
+					if(ioa_addr_real_family(addr) != AF_INET6) {
 						is_err = 1;
 					}
 					break;
@@ -606,7 +607,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+				if(ioa_addr_real_family(relay_addr) != ioa_addr_real_family(&peer_addr)) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
@@ -854,7 +855,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+				if(ioa_addr_real_family(relay_addr) != ioa_addr_real_family(&peer_addr)) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				} else {

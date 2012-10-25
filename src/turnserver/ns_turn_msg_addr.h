@@ -42,6 +42,8 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
 int ioa_addr_map_to_real(const ioa_addr *ca, ioa_addr *ca_real);
 int ioa_addr_map_from_real(const ioa_addr *ca_real, ioa_addr *ca);
 
+int ioa_addr_real_family(ioa_addr *addr);
+
 ///////////////////////////////////////////
 
 #endif //__LIB_TURN_MSG_ADDR__
