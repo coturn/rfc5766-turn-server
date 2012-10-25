@@ -58,20 +58,21 @@ The number of the messages to send is configurable.
 
 The command-line parameters are:
 
-    -m      number of clients (default is 1);
-    -l      message length (Default: 100 Bytes);
-    -p      remote server port (Default: 3478);
-    -n      number of messages to send (Default: 5);
-    -d	    local interface device (optional);
-    -L      local address;
-    -v      verbose;
-    -s	    use "send" method in TURN;
-    -y      use client-to-client connections: 
+	-m      number of clients (default is 1);
+	-l      message length (Default: 100 Bytes);
+	-p      remote server port (Default: 3478);
+	-n      number of messages to send (Default: 5);
+	-d      local interface device (optional);
+	-L      local address;
+	-v      verbose;
+	-s      use "send" method in TURN;
+	-y      use client-to-client connections: 
 	    	RTP/RTCP pair of channels to another RTP/RTCP pair of channels;
 	-h      hang on indefinitely after the last sent packet;
 	-e      peer address;
 	-r      peer port (default 3479);
 	-c      no rtcp connections;
+	-x      request IPv6 relayed address (RFC6156)
 
 2) turnserver application is the relay server for uclient applications. 
 
