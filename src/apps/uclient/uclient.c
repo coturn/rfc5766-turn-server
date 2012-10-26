@@ -621,6 +621,7 @@ static int refresh_channel(app_ur_session* elem) {
     stun_init_request(STUN_METHOD_REFRESH, &message);
     uint32_t lt=htonl(600);
     stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*)&lt, 4);
+    stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
     send_buffer(elem->pinfo.fd, &message);
   }
 
@@ -629,11 +630,13 @@ static int refresh_channel(app_ur_session* elem) {
     {
       stun_init_request(STUN_METHOD_CREATE_PERMISSION,&message);
       stun_attr_add_addr(&message,STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
+      stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
       send_buffer(elem->pinfo.fd, &message);
     }
 
     if(STUN_VALID_CHANNEL(elem->chnum)) {
       stun_set_channel_bind_request(&message,&(elem->pinfo.peer_addr),elem->chnum);
+      stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
       send_buffer(elem->pinfo.fd, &message);
     }
   }
