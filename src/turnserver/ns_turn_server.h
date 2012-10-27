@@ -39,6 +39,12 @@
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
+typedef enum {
+	DONT_FRAGMENT_UNSUPPORTED=0,
+	DONT_FRAGMENT_SUPPORTED,
+	DONT_FRAGMENT_SUPPORT_EMULATED
+} dont_fragment_option_t;
+
 ///////////////////////////////////////////
 
 turn_turnserver* create_turn_server(int verbose,
@@ -46,7 +52,7 @@ turn_turnserver* create_turn_server(int verbose,
 				    u32bits *stats,
 				    int stun_port,
 				    int fingerprint,
-				    int dont_fragment);
+				    dont_fragment_option_t dont_fragment);
 
 void delete_turn_server(turn_turnserver* server);
 

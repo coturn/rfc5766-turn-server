@@ -52,7 +52,7 @@ struct _turn_turnserver {
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
-	int dont_fragment;
+	dont_fragment_option_t dont_fragment;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
 };
@@ -1605,7 +1605,7 @@ static int clean_server(turn_turnserver* server) {
 
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
-		int stun_port, int fingerprint, int dont_fragment) {
+		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));

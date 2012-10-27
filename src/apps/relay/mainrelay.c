@@ -119,7 +119,7 @@ static void setup_relay_server(void) {
 				   &stats,
 				   0,
 				   fingerprint,
-				   1);
+				   DONT_FRAGMENT_SUPPORTED);
   
   if(we_need_extra_stun_service())
 	  stunservice = start_internal_stun_server(verbose, relay_ifname, relay_addr, 0, event_base);
