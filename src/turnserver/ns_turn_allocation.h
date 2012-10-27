@@ -91,7 +91,6 @@ struct _allocation {
   int is_valid;
   turn_time_t expiration_time;
   stun_tid tid;
-  int current_df_relay_flag;
   ioa_timer_handle lifetime_ev;
   turn_permission_map addr_to_perm;
   ts_ur_session relay_session;

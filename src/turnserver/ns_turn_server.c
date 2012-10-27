@@ -52,6 +52,7 @@ struct _turn_turnserver {
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
+	int dont_fragment;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
 };
@@ -297,6 +298,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
+				if(!(server->dont_fragment))
+					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 				break;
 			case STUN_ATTRIBUTE_LIFETIME: {
 			  if (stun_attr_get_len(sar) != 4) {
@@ -724,7 +727,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
-				set_df = 1;
+				if(!(server->dont_fragment))
+					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+				else
+					set_df = 1;
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
 				if (addr_found) {
@@ -769,17 +775,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 					a->addr_to_perm, &peer_addr);
 			if (tinfo) {
 
-				if (set_df) {
-					if (!(a->current_df_relay_flag)) {
-						set_df_on_ioa_socket(get_relay_socket_ss(ss), 1);
-						a->current_df_relay_flag = 1;
-					}
-				} else {
-					if (a->current_df_relay_flag) {
-						set_df_on_ioa_socket(get_relay_socket_ss(ss), 0);
-						a->current_df_relay_flag = 0;
-					}
-				}
+				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
 				ioa_network_buffer_handle nbh = in_buffer->nbh;
 				ns_bcopy(value,ioa_network_buffer_data(nbh),len);
@@ -1053,6 +1049,9 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 			if (!chn)
 				return -1;
 
+			/* Channel packets are always sent with DF=0: */
+			set_df_on_ioa_socket(get_relay_socket_ss(ss), 0);
+
 			ioa_network_buffer_handle nbh = in_buffer->nbh;
 			ns_bcopy((ioa_network_buffer_data(in_buffer->nbh)+STUN_CHANNEL_HEADER_LENGTH),
 				  ioa_network_buffer_data(nbh),
@@ -1256,6 +1255,11 @@ static int create_relay_connection(turn_turnserver* server,
 		}
 
 		newelem->state = UR_STATE_READY;
+
+		/* RFC6156: do not use DF when IPv6 is involved: */
+		if((ioa_addr_real_family(get_local_addr_from_ioa_socket(newelem->s)) == AF_INET6) ||
+		   (ioa_addr_real_family(get_local_addr_from_ioa_socket(ss->client_session.s)) == AF_INET6))
+			set_do_not_use_df(newelem->s);
 
 		register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
 				peer_input_handler, ss);
@@ -1601,7 +1605,7 @@ static int clean_server(turn_turnserver* server) {
 
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
-		int stun_port, int fingerprint) {
+		int stun_port, int fingerprint, int dont_fragment) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -1611,6 +1615,7 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
+	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
 	server->stats = stats;
 	if (stun_port < 1)

@@ -73,6 +73,9 @@ struct _ioa_socket
 	volatile int done;
 	unsigned long tid;
 	void* session;
+	int current_df_relay_flag;
+	/* RFC6156: if IPv6 is involved, do not use DF: */
+	int do_not_use_df;
 	TURN_MUTEX_DECLARE(mutex)
 };
 

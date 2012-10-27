@@ -145,6 +145,8 @@ static int udp_allocate(int verbose,
 		if(current_reservation_token)
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		stun_set_allocate_request(&message, 1800, af);
+		if(dont_fragment)
+			stun_attr_add(&message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
 		if(!no_rtcp) {
 		  allocate_rtcp = !allocate_rtcp;
 		  if (!never_allocate_rtcp && allocate_rtcp) {

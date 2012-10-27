@@ -73,6 +73,7 @@ The command-line parameters are:
 	-r      peer port (default 3479);
 	-c      no rtcp connections;
 	-x      request IPv6 relayed address (RFC6156)
+    -g      set DONT_FRAGMENT parameter in TURN requests
 
 2) turnserver application is the relay server for uclient applications. 
 

@@ -64,9 +64,24 @@ u64bits ioa_hton64(u64bits v)
 	return _ioa_ntoh64(v);
 }
 
-int set_df_on_ioa_socket(ioa_socket_handle s, int value) {
+int set_df_on_ioa_socket(ioa_socket_handle s, int value)
+{
+	if (s->do_not_use_df)
+		value = 0;
 
-  return set_socket_df(s->fd, s->family, value);
+	if (s->current_df_relay_flag != value) {
+		s->current_df_relay_flag = value;
+		return set_socket_df(s->fd, s->family, value);
+	}
+
+	return 0;
+}
+
+void set_do_not_use_df(ioa_socket_handle s)
+{
+	s->do_not_use_df = 1;
+	s->current_df_relay_flag = 0;
+	set_socket_df(s->fd, s->family, 0);
 }
 
 /************** ENGINE *************************/
