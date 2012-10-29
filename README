@@ -58,8 +58,8 @@ The command line parameters are:
     -L      Listener IP address of relay server. Multiple listeners can be specified.
     -i	    Relay interface device for relay sockets (optional).
     -E      Relay address (the local IP address that will be used to relay the packets to the peer).
-    -v      verbose.
     -f      set TURN fingerprints.
+    -v      verbose.
     
 2) uclient application is for test purposes only. 
 It was designed to simulate multiple clients. It uses asynch IO API in 

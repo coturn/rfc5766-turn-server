@@ -136,19 +136,7 @@ int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engi
 	return 0;
 }
 
-void ioa_engine_update_relay_address(ioa_engine_handle e, const s08bits* relay_ifname, const s08bits* relay_address)
-{
-	if (e && relay_address) {
-		strncpy(e->relay_ifname, relay_ifname, sizeof(e->relay_ifname) - 1);
-		strncpy(e->relay_address, relay_address, sizeof(e->relay_address) - 1);
-		if (make_ioa_addr((const u08bits*) (e->relay_address), 0, &(e->relay_addr)) < 0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Cannot create relay address %s\n", __FUNCTION__,
-							e->relay_address);
-		}
-	}
-}
-
-const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e)
+static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e)
 {
 	if (e) {
 		return &(e->relay_addr);

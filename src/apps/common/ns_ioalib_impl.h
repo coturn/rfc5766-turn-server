@@ -96,11 +96,8 @@ void close_ioa_engine(ioa_engine_handle e);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
-const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e);
-
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
-void ioa_engine_update_relay_address(ioa_engine_handle e, const s08bits* relay_ifname, const s08bits* relay_address);
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 
 #endif /* __IOA_LIBIMPL__ */

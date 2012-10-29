@@ -51,13 +51,13 @@
 static char Usage[] =
   "Usage: turnserver [options]\n"
   "Options:\n"
-  "	-p      local port (Default: 3478)\n"
-  "	-d	local \"external\" interface device (optional)\n"
-  "	-L      local address\n"
-  "	-i	local \"internal\" interface device for relay sockets (optional)\n"
-  "	-E      local relay address\n"
-  "	-v      verbose\n"
-  "	-f      set fingerprints\n";
+  "	-p      TURN listener port (Default: 3478)\n"
+  "	-d	Listener interface device (optional)\n"
+  "	-L      Listener IP address of relay server. Multiple listeners can be specified\n"
+  "	-i	Relay interface device for relay sockets (optional)\n"
+  "	-E      Relay address (the local IP address that will be used to relay the packets to the peer)\n"
+  "	-f      set TURN fingerprints\n"
+  "	-v      verbose\n";
 
 //////////////////////////////////////////////////
 
