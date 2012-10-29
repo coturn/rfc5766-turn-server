@@ -63,7 +63,10 @@ static char Usage[] =
 
 static struct event_base* event_base = NULL;
 static ioa_engine_handle ioa_eng = NULL;
-static udp_listener_relay_server_type* udp_listener_server = NULL;
+
+static size_t listeners_number = 0;
+static char **listener_addrs = NULL;
+static udp_listener_relay_server_type **listener_servers = NULL;
 
 static turn_turnserver* turn_server = NULL;
 
@@ -74,7 +77,7 @@ static uint32_t stats=0;
 //////////////////////////////////////////////////
 
 static int port = RELAY_DEFAULT_PORT;
-static char local_addr[256];
+
 static char relay_addr[256];
 static int verbose=0;
 
@@ -86,6 +89,16 @@ static int fingerprint = 0;
 
 //////////////////////////////////////////////////
 
+static void add_listener_addr(const char* addr) {
+	++listeners_number;
+	listener_addrs = realloc(listener_addrs, sizeof(char*)*listeners_number);
+	listener_addrs[listeners_number-1]=strdup(addr);
+	listener_servers = realloc(listener_servers, sizeof(udp_listener_relay_server_type*)*listeners_number);
+	listener_servers[listeners_number-1] = NULL;
+}
+
+//////////////////////////////////////////////////
+
 static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
 	UNUSED_ARG(e);
@@ -94,54 +107,72 @@ static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *n
 
 static int we_need_extra_stun_service(void)
 {
+	size_t i = 0;
 	ioa_addr ra, la;
-	make_ioa_addr((const u08bits*)local_addr,0,&la);
 	make_ioa_addr((const u08bits*)relay_addr,0,&ra);
-	return !addr_eq_no_port(&la,&ra);
+
+	for(i=0;i<listeners_number;i++) {
+		make_ioa_addr((const u08bits*)(listener_addrs[i]),0,&la);
+		if(addr_eq_no_port(&la,&ra))
+			return 0;
+	}
+
+	return 1;
 }
 
-static void setup_relay_server(void) {
-    
-  event_base = event_base_new();
+static void setup_relay_server(void)
+{
+	size_t i = 0;
 
-  tp=turnipports_create(LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY);
+	event_base = event_base_new();
 
-  ioa_eng = create_ioa_engine(event_base, tp, relay_ifname, relay_addr, verbose);
+	tp = turnipports_create(LOW_DEFAULT_PORTS_BOUNDARY, HIGH_DEFAULT_PORTS_BOUNDARY);
 
-  register_callback_on_ioa_engine_new_connection(ioa_eng, send_socket);
+	ioa_eng = create_ioa_engine(event_base, tp, relay_ifname, relay_addr, verbose);
 
-  rtcpmap=rtcp_map_create(ioa_eng);
+	register_callback_on_ioa_engine_new_connection(ioa_eng, send_socket);
 
-  ioa_engine_set_rtcp_map(ioa_eng, rtcpmap);
+	rtcpmap = rtcp_map_create(ioa_eng);
 
-  turn_server = create_turn_server(verbose,
-				   ioa_eng,
-				   &stats,
-				   0,
-				   fingerprint,
-				   DONT_FRAGMENT_SUPPORTED);
-  
-  if(we_need_extra_stun_service())
-	  stunservice = start_internal_stun_server(verbose, relay_ifname, relay_addr, 0, event_base);
+	ioa_engine_set_rtcp_map(ioa_eng, rtcpmap);
 
-  udp_listener_server = create_udp_listener_server(ifname, local_addr, port,
-  						     verbose,
-  						     ioa_eng,
-  						     &stats);
+	turn_server = create_turn_server(verbose, ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED);
+
+	if (we_need_extra_stun_service())
+		stunservice = start_internal_stun_server(verbose, relay_ifname, relay_addr, 0, event_base);
+
+	for(i=0;i<listeners_number;i++)
+		listener_servers[i] = create_udp_listener_server(ifname, listener_addrs[i], port, verbose, ioa_eng, &stats);
 }
 
 ///////////////////////////////////////////////////////////////
 
 static void clean_relay_server(void)
 {
+	size_t i = 0;
 
 	if (stunservice) {
 		clean_internal_stun_server(&stunservice);
 	}
 
-	if (udp_listener_server) {
-		delete_udp_listener_server(udp_listener_server,0);
-		udp_listener_server = NULL;
+	if(listener_servers) {
+		for(i=0;i<listeners_number; i++) {
+			if (listener_servers[i]) {
+				delete_udp_listener_server(listener_servers[i],0);
+				listener_servers[i] = NULL;
+			}
+		}
+		free(listener_servers);
+	}
+
+	if(listener_addrs) {
+		for(i=0;i<listeners_number; i++) {
+			if (listener_addrs[i]) {
+				free(listener_addrs[i]);
+				listener_addrs[i] = NULL;
+			}
+		}
+		free(listener_addrs);
 	}
 
 	if (turn_server) {
@@ -211,7 +242,6 @@ int main(int argc, char **argv)
 
   srandom((unsigned int)time(NULL));
   
-  local_addr[0]=0;
   relay_addr[0]=0;
     
   while ((c = getopt(argc, argv, "i:d:p:L:E:R:r:w:vf")) != -1) {
@@ -226,7 +256,7 @@ int main(int argc, char **argv)
       port = atoi(optarg);
       break;
     case 'L':
-      strncpy(local_addr, optarg, sizeof(local_addr)-1);
+      add_listener_addr(optarg);
       break;
     case 'E':
       strncpy(relay_addr, optarg, sizeof(relay_addr)-1);

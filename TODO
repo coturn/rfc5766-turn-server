@@ -5,5 +5,4 @@
 5) TLS support.
 6) DTLS support (?).
 7) Multiple backend relay IP addresses.
-8) Multiple frontend IP addresses.
-9) Multithreaded implementation.
+8) Multithreaded implementation.

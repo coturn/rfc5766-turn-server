@@ -49,7 +49,20 @@ The script examples are located in scripts.examples directory.
 
 IV. Run
 
-1) uclient application is designed to simulate multiple clients. It uses asynch IO API in 
+1) turnserver application is a TURN relay server implementation. 
+
+The command line parameters are:
+
+    -p      TURN listener port (Default: 3478).
+    -d	    Listener interface device (optional). 
+    -L      Listener IP address of relay server. Multiple listeners can be specified.
+    -i	    Relay interface device for relay sockets (optional).
+    -E      Relay address (the local IP address that will be used to relay the packets to the peer).
+    -v      verbose.
+    -f      set TURN fingerprints.
+    
+2) uclient application is for test purposes only. 
+It was designed to simulate multiple clients. It uses asynch IO API in 
 libevent to handle multiple clients. A client connects to the relay, 
 negotiates the session, and sends multiple (configured number) messages to the server (relay), 
 expecting the same number of replies. The length of the messages is configurable. 
@@ -58,36 +71,27 @@ The number of the messages to send is configurable.
 
 The command-line parameters are:
 
-	-m      number of clients (default is 1);
+	-m      number of clients (default is 1, 2 or 4, depending on options below);
 	-l      message length (Default: 100 Bytes);
-	-p      remote server port (Default: 3478);
+	-p      TURN server port (Default: 3478);
 	-n      number of messages to send (Default: 5);
 	-d      local interface device (optional);
-	-L      local address;
+	-L      local IP address (optional);
 	-v      verbose;
-	-s      use "send" method in TURN;
+	-s      use "send" method in TURN; by default, it uses TURN "channels".
 	-y      use client-to-client connections: 
 	    	RTP/RTCP pair of channels to another RTP/RTCP pair of channels;
+	    	with this option the peer application is not used,
+	    	as the relay endpoints are talking to each other; 
 	-h      hang on indefinitely after the last sent packet;
 	-e      peer address;
 	-r      peer port (default 3479);
-	-c      no rtcp connections;
-	-x      request IPv6 relayed address (RFC6156)
-    -g      set DONT_FRAGMENT parameter in TURN requests
-
-2) turnserver application is the relay server for uclient applications. 
-
-The command line parameters are:
-
-    -p      local port (Default: 3478)
-    -d	    local "external" interface device (optional) 
-    -L      local "external" address of relay server
-    -i	    local "internal" interface device for relay sockets (optional)
-    -E      local relay address (the local IP address that will be used to relay the packets to the peer)
-    -v      verbose
-    -f      set fingerprints
+	-c      do not create rtcp connections;
+	-x      request IPv6 relayed address (RFC6156);
+    -g      set DONT_FRAGMENT parameter in TURN requests;
     
-3) peer application is a simple UDP-only echo backend server for the relay server. 
+3) peer application is a simple UDP-only echo backend server. This application
+is used for the test purposes only, as a 'peer' for the uclient application. 
 
 The command line parameters are:
 
