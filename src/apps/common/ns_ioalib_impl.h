@@ -49,8 +49,9 @@ struct _ioa_engine
   int deallocate_eb;
   ioa_engine_new_connection_event_handler connect_cb;
   s08bits relay_ifname[1025];
-  s08bits relay_address[1025];
-  ioa_addr relay_addr;
+  size_t relays_number;
+  size_t relay_addr_counter;
+  ioa_addr *relay_addrs;
   int verbose;
   turnipports* tp;
   rtcp_map *rtcp_map;
@@ -91,7 +92,9 @@ typedef struct _timer_event
 /* engine handling */
 
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp, 
-				    const s08bits* relay_if, const s08bits* relay_addr, int verbose);
+				    const s08bits* relay_if,
+				    size_t relays_number, s08bits **relay_addrs,
+				    int verbose);
 void close_ioa_engine(ioa_engine_handle e);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
