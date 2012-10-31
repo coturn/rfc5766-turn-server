@@ -227,10 +227,8 @@ static int udp_allocate(int verbose,
 									"%s: rtv=%llu\n", __FUNCTION__, rtv);
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						allocate_received = 1;
-						if (verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
 								      err_code,(char*)err_msg);
-						}
 						if (err_code != 437) {
 							allocate_finished = 1;
 							return -1;
@@ -240,10 +238,8 @@ static int udp_allocate(int verbose,
 							sleep(5);
 						}
 					} else {
-						if (verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 									"unknown allocate response\n");
-						}
 						/* Try again ? */
 					}
 				} else {
@@ -313,15 +309,11 @@ static int udp_allocate(int verbose,
 						}
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						refresh_received = 1;
-						if (verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
 								      err_code,(char*)err_msg);
-						}
 						return -1;
 					} else {
-						if (verbose) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown\n");
-						}
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown refresh response\n");
 						/* Try again ? */
 					}
 				} else {
@@ -394,15 +386,11 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					}
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cb_received = 1;
-					if (verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "channel bind: error %d (%s)\n",
 							      err_code,(char*)err_msg);
-					}
 					return -1;
 				} else {
-					if (verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown\n");
-					}
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown channel bind response\n");
 					/* Try again ? */
 				}
 			} else {
@@ -475,15 +463,11 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 					}
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cp_received = 1;
-					if (verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create permission error %d (%s)\n",
 							      err_code,(char*)err_msg);
-					}
 					return -1;
 				} else {
-					if (verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown\n");
-					}
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown create permission response\n");
 					/* Try again ? */
 				}
 			} else {

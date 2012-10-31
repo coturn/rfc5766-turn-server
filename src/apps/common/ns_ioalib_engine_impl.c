@@ -86,33 +86,37 @@ void set_do_not_use_df(ioa_socket_handle s)
 
 /************** ENGINE *************************/
 
-ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp,
-				    const s08bits* relay_ifname,
-				    size_t relays_number,
-				    s08bits **relay_addrs,
-				    int verbose) {
+ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
+				size_t relays_number, s08bits **relay_addrs, int verbose)
+{
 
-	ioa_engine_handle e = malloc(sizeof(ioa_engine));
-	ns_bzero(e,sizeof(ioa_engine));
-	e->verbose = verbose;
-	e->tp = tp;
-	if (eb) {
-		e->event_base = eb;
-		e->deallocate_eb = 0;
+	if (!relays_number || !relay_addrs || !tp) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
+		return NULL;
 	} else {
-		e->event_base = event_base_new();
-		e->deallocate_eb = 1;
+		ioa_engine_handle e = malloc(sizeof(ioa_engine));
+		ns_bzero(e,sizeof(ioa_engine));
+		e->verbose = verbose;
+		e->tp = tp;
+		if (eb) {
+			e->event_base = eb;
+			e->deallocate_eb = 0;
+		} else {
+			e->event_base = event_base_new();
+			e->deallocate_eb = 1;
+		}
+		if (relay_ifname)
+			strncpy(e->relay_ifname, relay_ifname, sizeof(e->relay_ifname) - 1);
+		if (relay_addrs) {
+			size_t i = 0;
+			e->relay_addrs = malloc(relays_number * sizeof(ioa_addr));
+			for (i = 0; i < relays_number; i++)
+				make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]));
+			e->relays_number = relays_number;
+		}
+		e->relay_addr_counter = (size_t) random() % relays_number;
+		return e;
 	}
-	if (relay_ifname)
-		strncpy(e->relay_ifname, relay_ifname, sizeof(e->relay_ifname) - 1);
-	if (relay_addrs) {
-		size_t i = 0;
-		e->relay_addrs = malloc(relays_number * sizeof(ioa_addr));
-		for(i=0;i<relays_number;i++)
-			make_ioa_addr((u08bits*)relay_addrs[i],0,&(e->relay_addrs[i]));
-		e->relays_number = relays_number;
-	}
-	return e;
 }
 
 void close_ioa_engine(ioa_engine_handle e)
@@ -338,6 +342,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 			return -1;
 		}
 
+		sock_bind_to_device((*rtp_s)->fd, (unsigned char*)e->relay_ifname);
+
 		ioa_addr rtcp_local_addr;
 		addr_cpy(&rtcp_local_addr, &relay_addr);
 
@@ -348,6 +354,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 				IOA_CLOSE_SOCKET(*rtp_s);
 				return -1;
 			}
+
+			sock_bind_to_device((*rtcp_s)->fd, (unsigned char*)e->relay_ifname);
 		}
 
 		addr_debug_print(e->verbose, &relay_addr, "Server relay addr");

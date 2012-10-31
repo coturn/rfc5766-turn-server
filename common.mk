@@ -30,9 +30,9 @@ bin/stunclient	:	${COMMON_DEPS} src/apps/stunclient/stunclient.c
 	mkdir -p bin
 	${CC} ${CLIENT_CFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LINKFLAGS} 
 
-bin/turnserver	:	${COMMON_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/stunservice.h src/apps/relay/udp_listener.c src/apps/relay/stunservice.c  
+bin/turnserver	:	${COMMON_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c  
 	mkdir -p bin
-	${CC} ${CFLAGS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c src/apps/relay/stunservice.c ${COMMON_MODS} -o $@ ${LINKFLAGS} 
+	${CC} ${CFLAGS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} -o $@ ${LINKFLAGS} 
 
 bin/peer	:	${COMMON_DEPS} ${NONRELAY_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c src/apps/peer/server.h
 	mkdir -p bin

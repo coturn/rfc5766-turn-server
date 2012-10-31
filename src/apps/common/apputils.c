@@ -107,26 +107,29 @@ int socket_set_reusable(evutil_socket_t fd) {
 
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {
 
-  if(fd>=0 && ifname && ifname[0]) {
+	if (fd >= 0 && ifname && ifname[0]) {
 
 #if defined(SO_BINDTODEVICE)
 
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
+		struct ifreq ifr;
+		memset(&ifr, 0, sizeof(ifr));
 
-    strncpy(ifr.ifr_name, (const char*)ifname, sizeof(ifr.ifr_name));
+		strncpy(ifr.ifr_name, (const char*) ifname, sizeof(ifr.ifr_name));
 
-    if(setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-      perror("cannot bind socket to device");
-      return -1;
-    }
+		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *) &ifr, sizeof(ifr)) < 0) {
+			if (errno == EPERM)
+				perror("You must obtain superuser privileges to bind a socket to device");
+			else
+				perror("Cannot bind socket to device");
+		}
+
+		return -1;
 
 #endif
 
-    return 0;
-  }
+	}
 
-  return 0;
+	return 0;
 }
 
 int addr_connect(evutil_socket_t fd, const ioa_addr* addr)

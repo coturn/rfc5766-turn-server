@@ -172,6 +172,9 @@ static void setup_listener_servers(void)
 
 	listener.ioa_eng = create_ioa_engine(listener.event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
 
+	if(!listener.ioa_eng)
+		exit(-1);
+
 	register_callback_on_ioa_engine_new_connection(listener.ioa_eng, send_socket);
 
 	listener.rtcpmap = rtcp_map_create(listener.ioa_eng);
@@ -254,14 +257,11 @@ static void setup_relay_servers(void)
 		if(relay_servers_number<2) {
 			relay_servers[i]->thr = pthread_self();
 		} else {
-			pthread_attr_t attr;
-			pthread_attr_init(&attr);
-			pthread_attr_setdetachstate(&attr, PTHREAD_DETACHED);
-			if(pthread_create(&(relay_servers[i]->thr), &attr, run_relay_thread, relay_servers[i])<0) {
+			if(pthread_create(&(relay_servers[i]->thr), NULL, run_relay_thread, relay_servers[i])<0) {
 				perror("Cannot create relay thread\n");
 				exit(-1);
 			}
-			pthread_attr_destroy(&attr);
+			pthread_detach(relay_servers[i]->thr);
 		}
 	}
 }
@@ -391,6 +391,18 @@ int main(int argc, char **argv)
       fprintf(stderr, "%s\n", Usage);
       exit(1);
     }
+  }
+
+  if(!relays_number) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n", __FUNCTION__);
+      fprintf(stderr, "%s\n", Usage);
+      exit(1);
+  }
+
+  if(!listener.number) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
+    fprintf(stderr, "%s\n", Usage);
+    exit(1);
   }
 
   setup_server();
