@@ -158,6 +158,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 		}
 		struct relay_server *rs = ptr;
 		open_client_connection_session(rs->server, &sm);
+		ioa_network_buffer_delete(sm.nbh);
 	}
 }
 

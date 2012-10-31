@@ -1394,7 +1394,6 @@ int open_client_connection_session(turn_turnserver* server,
 				struct socket_message *sm) {
 
 	FUNCSTART;
-
 	if (!server)
 		return -1;
 
@@ -1425,7 +1424,9 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum };
+	sm->nbh=NULL;
 	client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
+	ioa_network_buffer_delete(nd.nbh);
 
 	FUNCEND;
 
