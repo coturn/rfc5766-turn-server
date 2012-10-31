@@ -36,6 +36,13 @@
 
 //////////////////////////////////////////
 
+struct socket_message {
+	ioa_addr remote_addr;
+	ioa_socket_handle s;
+	ioa_network_buffer_handle nbh;
+	u16bits chnum;
+};
+
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
@@ -58,9 +65,7 @@ void delete_turn_server(turn_turnserver* server);
 
 ///////////////////////////////////////////
 
-int open_client_connection_session(turn_turnserver* server, ioa_socket_handle s,
-				ext_ctx_t ext_ctx, ext_buffer_clean_cb func,
-				ioa_net_data *nd);
+int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);
 
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
 

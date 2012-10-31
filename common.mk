@@ -1,6 +1,6 @@
 
 INCFLAGS:=-Isrc/apps/common -Isrc/turnserver -I${LIBEVENT_INCLUDE} 
-LIBFLAGS:=-L${LIBEVENT_LIB} -Llib -levent -lturn
+LIBFLAGS:=${LIBEVENT_LIB} -Llib -lturn
 LINKFLAGS:=${LIBFLAGS} ${OSLIBS}
 
 CFLAGS += ${INCFLAGS}

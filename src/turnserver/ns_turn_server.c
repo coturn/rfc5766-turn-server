@@ -107,13 +107,6 @@ static void delete_ur_map_ss(void *p) {
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_ur_map_session_elem_data(&(ss->client_session));
 		free_allocation(get_allocation_ss(ss));
-		if (ss->ext_buffer) {
-			if (ss->ext_buffer_clean_func)
-				(ss->ext_buffer_clean_func)(ss->ext_buffer);
-			else
-			  turn_free(ss->ext_buffer,ss->ext_buffer_size);
-			ss->ext_buffer = NULL;
-		}
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 		turn_free(p,sizeof(ts_ur_super_session));
 	}
@@ -1398,25 +1391,22 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 }
 
 int open_client_connection_session(turn_turnserver* server,
-		ioa_socket_handle ioas, ext_ctx_t ext_ctx, ext_buffer_clean_cb func,
-		ioa_net_data *nd) {
+				struct socket_message *sm) {
 
 	FUNCSTART;
 
 	if (!server)
 		return -1;
 
-	if (!ioas)
+	if (!(sm->s))
 		return -1;
 
 	ts_ur_super_session* ss = create_new_ss();
 	ss->server = server;
-	ss->ext_ctx = ext_ctx;
-	ss->ext_buffer_clean_func = func;
 
 	ts_ur_session *newelem = &(ss->client_session);
 
-	newelem->s = ioas;
+	newelem->s = sm->s;
 
 	register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
 			client_input_handler, ss);
@@ -1434,8 +1424,8 @@ int open_client_connection_session(turn_turnserver* server,
 			client_to_be_allocated_timeout_handler, ss, 0,
 			"client_to_be_allocated_timeout_handler");
 
-	if(nd)
-		client_input_handler(newelem->s,IOA_EV_READ,nd,ss);
+	ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum };
+	client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
 
 	FUNCEND;
 

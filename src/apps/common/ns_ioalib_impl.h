@@ -36,6 +36,7 @@
 #define __IOA_LIBIMPL__
 
 #include <event2/event.h>
+#include <event2/thread.h>
 
 #include "ns_turn_ioalib.h"
 #include "turn_ports.h"

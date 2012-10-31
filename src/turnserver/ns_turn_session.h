@@ -38,19 +38,12 @@
 
 //////////////// session info //////////////////////
 
-typedef long ext_ctx_t;
-typedef void (*ext_buffer_clean_cb)(s08bits*);
-
 typedef struct {
-  s08bits *ext_buffer;
-  u32bits ext_buffer_size;
-  ext_buffer_clean_cb ext_buffer_clean_func;
   void* server; 
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
-  ext_ctx_t ext_ctx;
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

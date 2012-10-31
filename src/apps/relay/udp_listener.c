@@ -311,7 +311,7 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
 void delete_udp_listener_server(udp_listener_relay_server_type* server, int delete_engine) {
   if(server) {
     clean_server(server);
-    if(delete_engine)
+    if(delete_engine && (server->e))
     	close_ioa_engine(server->e);
     free(server);
   }
