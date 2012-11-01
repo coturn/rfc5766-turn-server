@@ -37,6 +37,32 @@
 
 #include "ns_turn_ioaddr.h"
 
+////////////// Mutexes /////////////////////
+
+struct _turn_mutex {
+  u32bits data;
+  void* mutex;
+};
+
+typedef struct _turn_mutex turn_mutex;
+
+int turn_mutex_init(turn_mutex* mutex);
+int turn_mutex_init_recursive(turn_mutex* mutex);
+
+int turn_mutex_lock(const turn_mutex *mutex);
+int turn_mutex_unlock(const turn_mutex *mutex);
+
+int turn_mutex_destroy(turn_mutex* mutex);
+
+#define TURN_MUTEX_DECLARE(mutex) turn_mutex mutex;
+#define TURN_MUTEX_INIT(mutex) turn_mutex_init(mutex)
+#define TURN_MUTEX_INIT_RECURSIVE(mutex) turn_mutex_init_recursive(mutex)
+#define TURN_MUTEX_LOCK(mutex) turn_mutex_lock(mutex)
+#define TURN_MUTEX_UNLOCK(mutex) turn_mutex_unlock(mutex)
+#define TURN_MUTEX_DESTROY(mutex) turn_mutex_destroy(mutex)
+
+/////// Sockets //////////////////////////////
+
 enum _SOCKET_TYPE {
 	UDP_SOCKET,
 	TCP_SOCKET
@@ -59,6 +85,8 @@ typedef struct _ioa_engine ioa_engine;
 typedef ioa_engine *ioa_engine_handle;
 
 typedef void *ioa_timer_handle;
+
+#define NETWORK_BUFFER_TYPE struct _stun_buffer
 
 typedef NETWORK_BUFFER_TYPE *ioa_network_buffer_handle;
 
@@ -131,5 +159,8 @@ int ioa_socket_tobeclosed(ioa_socket_handle s);
 void* create_ioa_socket_channel(ioa_socket_handle s, ioa_addr* peer_addr, u16bits chnum);
 void refresh_ioa_socket_channel(void *socket_channel);
 void delete_ioa_socket_channel(void *socket_channel);
+
+/* Log */
+void rtpprintf(const char *format, ...);
 
 #endif /* __IOA_LIB__ */

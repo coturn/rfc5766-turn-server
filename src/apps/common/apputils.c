@@ -320,16 +320,4 @@ int handle_socket_error() {
   return 0;
 }
 
-//////////////// trivial  address mapping /////////////////////
-
-int ioa_addr_map_to_real(const ioa_addr *ca, ioa_addr *ca_real) {
-  addr_cpy(ca_real,ca);
-  return 0;
-}
-
-int ioa_addr_map_from_real(const ioa_addr *ca_real, ioa_addr *ca) {
-  addr_cpy(ca,ca_real);
-  return 0;
-}
-
 //////////////////////////////////////////////////////////////

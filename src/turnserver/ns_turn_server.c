@@ -486,12 +486,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 				int is_err = 0;
 				switch (af_req) {
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-					if(ioa_addr_real_family(addr) != AF_INET) {
+					if(addr->ss.ss_family != AF_INET) {
 						is_err = 1;
 					}
 					break;
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-					if(ioa_addr_real_family(addr) != AF_INET6) {
+					if(addr->ss.ss_family != AF_INET6) {
 						is_err = 1;
 					}
 					break;
@@ -606,7 +606,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(ioa_addr_real_family(relay_addr) != ioa_addr_real_family(&peer_addr)) {
+				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
@@ -849,7 +849,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(ioa_addr_real_family(relay_addr) != ioa_addr_real_family(&peer_addr)) {
+				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				} else {
@@ -1250,8 +1250,8 @@ static int create_relay_connection(turn_turnserver* server,
 		newelem->state = UR_STATE_READY;
 
 		/* RFC6156: do not use DF when IPv6 is involved: */
-		if((ioa_addr_real_family(get_local_addr_from_ioa_socket(newelem->s)) == AF_INET6) ||
-		   (ioa_addr_real_family(get_local_addr_from_ioa_socket(ss->client_session.s)) == AF_INET6))
+		if((get_local_addr_from_ioa_socket(newelem->s)->ss.ss_family == AF_INET6) ||
+		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.ss_family == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
 		register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,

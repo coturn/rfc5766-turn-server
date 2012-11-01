@@ -84,7 +84,7 @@ static app_ur_super_session* create_new_ss(void) {
   return init_super_session((app_ur_super_session*)malloc(sizeof(app_ur_super_session)));
 }
 
-static void delete_ur_map_session_elem_data(app_ur_session* cdi) {
+static void uc_delete_ur_map_session_elem_data(app_ur_session* cdi) {
   if(cdi) {
     EVENT_DEL(cdi->timer_ev);
     EVENT_DEL(cdi->input_ev);
@@ -107,7 +107,7 @@ static int remove_all_from_ur_map_ss(ur_map* map, app_ur_super_session* ss)
 			ret |= ur_map_del(map, (ur_map_key_type)ss->session.pinfo.fd, NULL);
 		}
 
-		delete_ur_map_session_elem_data(&(ss->session));
+		uc_delete_ur_map_session_elem_data(&(ss->session));
 
 		free(ss);
 

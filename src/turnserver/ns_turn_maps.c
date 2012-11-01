@@ -30,6 +30,8 @@
 
 #include "ns_turn_maps.h"
 
+#include "ns_turn_ioalib.h"
+
 #include "ns_turn_khash.h"
 
 KHASH_MAP_INIT_INT64(3, ur_map_value_type)

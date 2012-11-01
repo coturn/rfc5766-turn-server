@@ -40,30 +40,6 @@
 
 /************** Utils **************************/
 
-static inline u64bits _ioa_ntoh64(u64bits v)
-{
-	if (nswap16(1) == 1)
-		return v;
-	u08bits *src = (u08bits*) &v;
-	u08bits* dst = src + 7;
-	while (src < dst) {
-		u08bits vdst = *dst;
-		*(dst--) = *src;
-		*(src++) = vdst;
-	}
-	return v;
-}
-
-u64bits ioa_ntoh64(u64bits v)
-{
-	return _ioa_ntoh64(v);
-}
-
-u64bits ioa_hton64(u64bits v)
-{
-	return _ioa_ntoh64(v);
-}
-
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 {
 	if (s->do_not_use_df)

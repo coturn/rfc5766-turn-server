@@ -48,8 +48,6 @@
 #include <stdarg.h>
 #include <errno.h>
 
-extern void rtpprintf(const char *format, ...);
-
 /* NS types: */
 
 #define	s08bits	char
@@ -65,34 +63,26 @@ extern void rtpprintf(const char *format, ...);
 #define ns_bcopy(src,dst,sz) bcopy((src),(dst),(sz))
 #define ns_bzero(ptr,sz) bzero((ptr),(sz))
 
-u64bits ioa_ntoh64(u64bits ull);
-u64bits ioa_hton64(u64bits ull);
-
 #define nswap16(s) ntohs(s)
 #define nswap32(ul) ntohl(ul)
 #define nswap64(ull) ioa_ntoh64(ull)
 
-struct _turn_mutex {
-  u32bits data;
-  void* mutex;
-};
+static inline u64bits _ioa_ntoh64(u64bits v)
+{
+	if (nswap16(1) == 1)
+		return v;
+	u08bits *src = (u08bits*) &v;
+	u08bits* dst = src + 7;
+	while (src < dst) {
+		u08bits vdst = *dst;
+		*(dst--) = *src;
+		*(src++) = vdst;
+	}
+	return v;
+}
 
-typedef struct _turn_mutex turn_mutex;
-
-int turn_mutex_init(turn_mutex* mutex);
-int turn_mutex_init_recursive(turn_mutex* mutex);
-
-int turn_mutex_lock(const turn_mutex *mutex);
-int turn_mutex_unlock(const turn_mutex *mutex);
-
-int turn_mutex_destroy(turn_mutex* mutex);
-
-#define TURN_MUTEX_DECLARE(mutex) turn_mutex mutex;
-#define TURN_MUTEX_INIT(mutex) turn_mutex_init(mutex)
-#define TURN_MUTEX_INIT_RECURSIVE(mutex) turn_mutex_init_recursive(mutex)
-#define TURN_MUTEX_LOCK(mutex) turn_mutex_lock(mutex)
-#define TURN_MUTEX_UNLOCK(mutex) turn_mutex_unlock(mutex)
-#define TURN_MUTEX_DESTROY(mutex) turn_mutex_destroy(mutex)
+#define ioa_ntoh64 _ioa_ntoh64
+#define ioa_hton64 _ioa_ntoh64
 
 #define turn_malloc(sz) malloc(sz)
 #define turn_free(ptr,sz) free(ptr)
@@ -108,7 +98,5 @@ typedef u32bits turn_time_t;
 #if !defined(UNUSED_ARG)
 #define UNUSED_ARG(A) do { A=A; } while(0)
 #endif
-
-#define NETWORK_BUFFER_TYPE struct _stun_buffer
 
 #endif //__IODEFS__

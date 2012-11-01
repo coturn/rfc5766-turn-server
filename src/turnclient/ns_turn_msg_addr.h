@@ -28,44 +28,16 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURN_ULIB__
-#define __TURN_ULIB__
-
-#include "ns_turn_defs.h"
-
-#if !defined(TURN_LOG_FUNC)
-#define TURN_LOG_FUNC turn_log_func_default
-#endif
+#ifndef __LIB_TURN_MSG_ADDR__
+#define __LIB_TURN_MSG_ADDR__
 
 #include "ns_turn_ioaddr.h"
 
-///////// types ////////////
+///////////////////////////////////////////
 
-enum _UR_STATE {
-  UR_STATE_UNKNOWN=0,
-  UR_STATE_READY,
-  UR_STATE_SHUTTING_DOWN,
-  UR_STATE_WAITING_FOR_VERIFICATION,
-  UR_STATE_DONE
-};
+int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed, u32bits mc, const u08bits *tsx_id);
+int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u32bits mc, const u08bits *tsx_id);
 
-typedef enum _UR_STATE UR_STATE;
+///////////////////////////////////////////
 
-//////////////////////// LOG //////////////////////////
-
-typedef enum {
-  TURN_LOG_LEVEL_INFO = 0,
-  TURN_LOG_LEVEL_CONTROL,
-  TURN_LOG_LEVEL_WARNING,
-  TURN_LOG_LEVEL_ERROR
-} TURN_LOG_LEVEL;
-
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
-
-void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
-
-u32bits ns_crc32(const u08bits *buffer, u32bits len);
-
-///////////////////////////////////////////////////////
-
-#endif //__TURN_ULIB__
+#endif //__LIB_TURN_MSG_ADDR__

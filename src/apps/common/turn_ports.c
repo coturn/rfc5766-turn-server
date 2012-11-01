@@ -30,6 +30,8 @@
 
 #include "ns_turn_maps.h"
 
+#include "ns_turn_ioalib.h"
+
 #include "turn_ports.h"
 
 ////////// DATA ////////////////////////////////////////////

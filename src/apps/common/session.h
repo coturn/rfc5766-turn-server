@@ -42,6 +42,18 @@
 #include "stun_buffer.h"
 #include "apputils.h"
 
+///////// types ////////////
+
+enum _UR_STATE {
+  UR_STATE_UNKNOWN=0,
+  UR_STATE_READY,
+  UR_STATE_SHUTTING_DOWN,
+  UR_STATE_WAITING_FOR_VERIFICATION,
+  UR_STATE_DONE
+};
+
+typedef enum _UR_STATE UR_STATE;
+
 //////////////// session info //////////////////////
 
 typedef struct {
