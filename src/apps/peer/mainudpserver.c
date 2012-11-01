@@ -42,8 +42,9 @@
 static char Usage[] =
   "Usage: server [options]\n"
   "Options:\n"
-  "        -p      port (Default: 3479)\n"
-  "        -L      local address\n"
+  "        -p      Listening UDP port (Default: 3479)\n"
+  "        -d      Listening interface device (optional)\n"
+  "        -L      Listening address\n"
   "        -v      verbose\n";
 
 
@@ -51,39 +52,45 @@ static char Usage[] =
 
 int main(int argc, char **argv)
 {
-  int port = PEER_DEFAULT_PORT;
-  char local_addr[256];
-  int verbose=0;
-  char c;
-  char ifname[1025]="\0";
+	int port = PEER_DEFAULT_PORT;
+	char local_addr[256];
+	int verbose = 0;
+	char c;
+	char ifname[1025] = "\0";
 
-  srandom((unsigned int)time(NULL));
-  
-  local_addr[0]=0;
-  
-  while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
-    switch(c) {
-    case 'd':
-      strcpy(ifname,optarg);
-      break;
-    case 'p':
-      port = atoi(optarg);
-      break;
-    case 'L':
-      strncpy(local_addr, optarg, sizeof(local_addr)-1);
-      break;
-    case 'v':
-      verbose = 1;
-      break;
-    default:
-      fprintf(stderr, "%s\n", Usage);
-      exit(1);
-    }
-  
-  server_type* server = start_udp_server(verbose, ifname, local_addr, port);
-  run_udp_server(server);
-  clean_udp_server(server);
-  
-  return 0;
+	srandom((unsigned int) time(NULL));
+
+	local_addr[0] = 0;
+
+	while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
+		switch (c){
+		case 'd':
+			strcpy(ifname, optarg);
+			break;
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'L':
+			strncpy(local_addr, optarg, sizeof(local_addr) - 1);
+			break;
+		case 'v':
+			verbose = 1;
+			break;
+		default:
+			fprintf(stderr, "%s\n", Usage);
+			exit(1);
+		}
+
+	if(!local_addr[0]) {
+		fprintf(stderr, "%s\n", Usage);
+		exit(1);
+	}
+
+
+	server_type* server = start_udp_server(verbose, ifname, local_addr, port);
+	run_udp_server(server);
+	clean_udp_server(server);
+
+	return 0;
 }
 

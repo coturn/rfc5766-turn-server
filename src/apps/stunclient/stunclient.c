@@ -143,8 +143,8 @@ static int run_stunclient(const char* rip, int rport, const char* lip) {
 static char Usage[] =
   "Usage: stunclient [options] address\n"
   "Options:\n"
-  "        -p      remote port (Default: 3478)\n"
-  "        -L      local address\n";
+  "        -p      STUN server port (Default: 3478)\n"
+  "        -L      Local address to use (optional)\n";
 
 //////////////////////////////////////////////////
 

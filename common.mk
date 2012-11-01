@@ -1,6 +1,6 @@
 
 INCFLAGS:=-Isrc/apps/common -Isrc/turnserver -Isrc/turnclient -I${LIBEVENT_INCLUDE} 
-LIBFLAGS:=${LIBEVENT_LIB} -Llib
+LIBFLAGS:=${LIBEVENT_LIB} -Llib -Lbuild
 LINKFLAGS:=${LIBFLAGS} ${OSLIBS}
 
 CFLAGS += ${INCFLAGS}
@@ -27,26 +27,26 @@ IMPL_MODS := src/apps/common/ns_ioalib_engine_impl.c src/apps/common/turn_ports.
 NONRELAY_DEPS := src/apps/common/session.c src/apps/common/session.h
 NONRELAY_MODS := src/apps/common/session.c
 
-all	:	bin/stunclient bin/uclient bin/turnserver bin/peer lib/libturnserver.a lib/libturnclient.a
+all	:	testapps/bin/stunclient testapps/bin/uclient bin/turnserver testapps/bin/peer lib/libturnclient.a
 	rm -rf include
 	mkdir -p include/turn/client
 	cp -r src/turnclient/*.h include/turn/client/  
 
-bin/uclient	:	${COMMON_DEPS} ${NONRELAY_DEPS} src/turnserver/ns_turn_khash.h build/obj/ns_turn_maps.o lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h 
-	mkdir -p bin
+testapps/bin/uclient	:	${COMMON_DEPS} ${NONRELAY_DEPS} src/turnserver/ns_turn_khash.h build/obj/ns_turn_maps.o lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h 
+	mkdir -p testapps/bin
 	${CC} ${CLIENT_CFLAGS} ${CFLAGS} ${NONRELAY_MODS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c build/obj/ns_turn_maps.o ${COMMON_MODS} -o $@ ${LINKFLAGS} -lturnclient 
 
-bin/stunclient	:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
-	mkdir -p bin
+testapps/bin/stunclient	:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
+	mkdir -p testapps/bin
 	${CC} ${CLIENT_CFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LINKFLAGS} -lturnclient  
 
-bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} lib/libturnserver.a src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c  
+bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c  
 	mkdir -p bin
-	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} -o $@ ${LINKFLAGS} -lturnserver  
+	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}  
 
-bin/peer	:	${COMMON_DEPS} ${NONRELAY_DEPS} ${IMPL_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c src/apps/peer/server.h
-	mkdir -p bin
-	${CC} ${PEER_CFLAGS} ${CFLAGS} ${NONRELAY_MODS} ${IMPL_MODS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ ${LINKFLAGS} -lturnserver 
+testapps/bin/peer	:	${COMMON_DEPS} ${NONRELAY_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c src/apps/peer/server.h
+	mkdir -p testapps/bin
+	${CC} ${PEER_CFLAGS} ${CFLAGS} ${NONRELAY_MODS} ${IMPL_MODS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS} 
 	
 ### Client Library:
 	
@@ -54,28 +54,24 @@ lib/libturnclient.a	:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 	mkdir -p lib
 	${AR} $@ ${LIBCLIENTTURN_OBJS}
 
-build/obj/ns_turn_ioaddr.o	:	src/turnclient/ns_turn_ioaddr.c ${LUBTURN_DEPS}
+build/obj/ns_turn_ioaddr.o	:	src/turnclient/ns_turn_ioaddr.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
 	${CC} ${CFLAGS} -c src/turnclient/ns_turn_ioaddr.c -o $@
 
-build/obj/ns_turn_msg_addr.o	:	src/turnclient/ns_turn_msg_addr.c ${LUBTURN_DEPS}
+build/obj/ns_turn_msg_addr.o	:	src/turnclient/ns_turn_msg_addr.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
 	${CC} ${CFLAGS} -c src/turnclient/ns_turn_msg_addr.c -o $@
 
-build/obj/ns_turn_msg.o	:	src/turnclient/ns_turn_msg.c ${LUBTURN_DEPS}
+build/obj/ns_turn_msg.o	:	src/turnclient/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
 	${CC} ${CFLAGS} -c src/turnclient/ns_turn_msg.c -o $@
 
-build/obj/ns_turn_utils.o	:	src/turnclient/ns_turn_utils.c ${LUBTURN_DEPS}
+build/obj/ns_turn_utils.o	:	src/turnclient/ns_turn_utils.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
 	${CC} ${CFLAGS} -c src/turnclient/ns_turn_utils.c -o $@
 
-### Server Library:
+### Server Obj:
 
-lib/libturnserver.a	:	${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS}
-	mkdir -p lib
-	${AR} $@ ${LIBSERVERTURN_OBJS}
-	
 build/obj/ns_turn_server.o	:	src/turnserver/ns_turn_server.c ${LUBTURN_DEPS}
 	mkdir -p build/obj
 	${CC} ${CFLAGS} -c src/turnserver/ns_turn_server.c -o $@
@@ -95,6 +91,6 @@ build/obj/ns_turn_allocation.o	:	src/turnserver/ns_turn_allocation.c ${LUBTURN_D
 ### Clean all:
 
 clean	:	
-	rm -rf bin build lib obj *~ */*~ */*/*~ */*/*/*~ *core include 
+	rm -rf bin testapps build lib obj *~ */*~ */*/*~ */*/*/*~ *core include 
 
 

@@ -98,9 +98,9 @@ is used for the test purposes only, as a 'peer' for the uclient application.
 
 The command line parameters are:
 
-    -p      UDP listening port (Default: 3479). 
-    -d	    local interface device (optional)
-    -L      local address of peer server
+    -p      Listening UDP port (Default: 3479). 
+    -d	    Listening interface device (optional)
+    -L      Listening address of peer server
     -v      verbose
 
 4) stunclient is a basic STUN client. It sends a STUN request and shows the reply information.
@@ -109,7 +109,7 @@ Usage: stunclient [options] <IP-address>
 
 The command line parameters are:
 
-    -p      remote port (Default: 3478). 
-    -L      local address.
+    -p      STUN server port (Default: 3478). 
+    -L      local address to use (optional).
 
 
