@@ -35,6 +35,8 @@
 
 ///////////////////////////////////////////////////////////////
 
+#define STUN_BUFFER_SIZE (65507)
+
 typedef struct _stun_buffer {
   u08bits	buf[STUN_BUFFER_SIZE];
   ssize_t	len;

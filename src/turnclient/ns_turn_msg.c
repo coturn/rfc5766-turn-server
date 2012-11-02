@@ -263,7 +263,7 @@ void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 }
 
 int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length) {
-  if(length<0 || (STUN_BUFFER_SIZE<(4+length))) return -1;
+  if(length<0 || (MAX_STUN_MESSAGE_SIZE<(4+length))) return -1;
   ((u16bits*)(buf))[0]=nswap16(chnumber);
   ((u16bits*)(buf))[1]=nswap16((u16bits)length);
   *len=4+length;
@@ -274,14 +274,14 @@ int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, i
 
 u08bits* stun_get_app_data_ptr_str(u08bits* buf, int *olength) {
   u16bits length=nswap16(((u16bits*)(buf))[1]);
-  if(STUN_BUFFER_SIZE<(4+length)) return NULL;
+  if(MAX_STUN_MESSAGE_SIZE<(4+length)) return NULL;
   if(olength) *olength=(int)length;
   return buf+4;
 }
 
 int stun_get_channel_message_len_str(const u08bits* buf) {
   u16bits length=nswap16(((const u16bits*)buf)[1]);
-  if(STUN_BUFFER_SIZE<(4+length)) return -1;
+  if(MAX_STUN_MESSAGE_SIZE<(4+length)) return -1;
   return (4+length);
 }
 
@@ -677,7 +677,7 @@ int stun_attr_add_str(u08bits* buf, size_t *len, u16bits attr, const u08bits* av
   if(newlenrem4) {
     newlen=newlen+(4-newlenrem4);
   }
-  if(newlen>=STUN_BUFFER_SIZE) return -1;
+  if(newlen>=MAX_STUN_MESSAGE_SIZE) return -1;
   else {
     u08bits* attr_start=buf+clen;
     

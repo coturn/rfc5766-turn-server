@@ -37,6 +37,8 @@
 
 static const int verbose_packets=0;
 
+static size_t current_clients_number = 0;
+
 static ev_uint32_t tot_send_messages=0;
 static ev_uint32_t tot_recv_messages=0;
 
@@ -44,8 +46,6 @@ static struct event_base* client_event_base=NULL;
 
 static int client_write(app_ur_session *elem);
 static int client_shutdown(app_ur_session *elem);
-
-static ur_map *client_map=NULL;
 
 static unsigned int current_time = 0;
 
@@ -71,20 +71,21 @@ static int refresh_channel(app_ur_session* elem);
 
 //////////////////////// SS ////////////////////////////////////////
 
-static app_ur_super_session* init_super_session(app_ur_super_session *ss) {
+static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
-    memset(ss,0,sizeof(app_ur_super_session));
-    ss->session.pinfo.fd=-1;
-    ss->tcp_session.pinfo.fd=-1;
+    memset(ss,0,sizeof(app_ur_session));
+    ss->pinfo.fd=-1;
   }
   return ss;
 }
 
-static app_ur_super_session* create_new_ss(void) {
-  return init_super_session((app_ur_super_session*)malloc(sizeof(app_ur_super_session)));
+static app_ur_session* create_new_ss(void)
+{
+	++current_clients_number;
+	return init_app_session((app_ur_session*) malloc(sizeof(app_ur_session)));
 }
 
-static void uc_delete_ur_map_session_elem_data(app_ur_session* cdi) {
+static void uc_delete_session_elem_data(app_ur_session* cdi) {
   if(cdi) {
     EVENT_DEL(cdi->timer_ev);
     EVENT_DEL(cdi->input_ev);
@@ -95,24 +96,16 @@ static void uc_delete_ur_map_session_elem_data(app_ur_session* cdi) {
   }
 }
 
-static int remove_all_from_ur_map_ss(ur_map* map, app_ur_super_session* ss)
+static int remove_all_from_ss(app_ur_session* ss)
 {
-	if (!map || !ss)
-		return 0;
-	else {
-
-		int ret = 0;
-
-		if (ss->session.pinfo.fd >= 0) {
-			ret |= ur_map_del(map, (ur_map_key_type)ss->session.pinfo.fd, NULL);
-		}
-
-		uc_delete_ur_map_session_elem_data(&(ss->session));
+	if (ss) {
+		uc_delete_session_elem_data(ss);
 
 		free(ss);
-
-		return ret;
+		--current_clients_number;
 	}
+
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -273,11 +266,7 @@ static int client_shutdown(app_ur_session *elem) {
   elem->ctime=current_time;
   elems[elem->clnum]=NULL;
 
-  app_ur_super_session *ss=get_from_ur_map_ss(client_map,elem->pinfo.fd);
-
-  if(ss) {
-    remove_all_from_ur_map_ss(client_map,ss);  
-  }
+  remove_all_from_ss(elem);
   
   if (udp_verbose)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"done, connection 0x%lx closed.\n",(long)elem);
@@ -337,11 +326,12 @@ static void client_input_handler(evutil_socket_t fd, short what, void* arg) {
 
   if(!(what&EV_READ)||!arg) return;
 
-  app_ur_super_session* ss = get_from_ur_map_ss(client_map,fd);
-  if(!ss) {
+  UNUSED_ARG(fd);
+
+  app_ur_session* elem = arg;
+  if(!elem) {
     return;
   }
-  app_ur_session* elem=&(ss->session);
   
   switch(elem->state) {
   case UR_STATE_SHUTTING_DOWN:
@@ -373,17 +363,17 @@ static int start_client(const char *remote_address, int port,
 			int messagenumber, 
 			int i) {
 
-  app_ur_super_session* ss=create_new_ss();
-  app_ur_super_session* ss_rtcp=NULL;
+  app_ur_session* ss=create_new_ss();
+  app_ur_session* ss_rtcp=NULL;
 
   if(!no_rtcp)
     ss_rtcp = create_new_ss();
 
-  app_ur_conn_info *udp_info=&(ss->session.pinfo);
+  app_ur_conn_info *udp_info=&(ss->pinfo);
   app_ur_conn_info *udp_info_rtcp=NULL;
 
   if(!no_rtcp) 
-    udp_info_rtcp = &(ss_rtcp->session.pinfo);
+    udp_info_rtcp = &(ss_rtcp->pinfo);
 
   uint16_t chnum=0;
   uint16_t chnum_rtcp=0;
@@ -401,7 +391,7 @@ static int start_client(const char *remote_address, int port,
   
   struct event* ev = event_new(client_event_base,udp_info->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
-				(char*)"Listening client socket");
+				ss);
 
   event_add(ev,NULL);
   
@@ -410,49 +400,41 @@ static int start_client(const char *remote_address, int port,
   if(!no_rtcp) {
     ev_rtcp = event_new(client_event_base,udp_info_rtcp->fd,
 			EV_READ|EV_PERSIST,client_input_handler,
-			(char*)"Listening client socket");
+			ss_rtcp);
   
     event_add(ev_rtcp,NULL);
   }
   
-  app_ur_session* udp_elem=&(ss->session);
-  udp_elem->state=UR_STATE_READY;
+  ss->state=UR_STATE_READY;
   
-  udp_elem->input_ev=ev;
-  udp_elem->tot_msgnum=messagenumber;
-  udp_elem->wmsgnum=udp_elem->tot_msgnum;
-  udp_elem->rmsgnum=0;
-  udp_elem->wait_cycles=0;
-  udp_elem->clnum=i;
-  udp_elem->chnum=chnum;
-  
-  app_ur_session* udp_elem_rtcp=NULL;
+  ss->input_ev=ev;
+  ss->tot_msgnum=messagenumber;
+  ss->wmsgnum=ss->tot_msgnum;
+  ss->rmsgnum=0;
+  ss->wait_cycles=0;
+  ss->clnum=i;
+  ss->chnum=chnum;
 
   if(!no_rtcp) {
-    udp_elem_rtcp = &(ss_rtcp->session);
-    udp_elem_rtcp->state=UR_STATE_READY;
+
+    ss_rtcp->state=UR_STATE_READY;
     
-    udp_elem_rtcp->input_ev=ev_rtcp;
-    udp_elem_rtcp->tot_msgnum=udp_elem->tot_msgnum;
-    if(udp_elem_rtcp->tot_msgnum<1) udp_elem_rtcp->tot_msgnum=1;
-    udp_elem_rtcp->wmsgnum=udp_elem_rtcp->tot_msgnum;
-    udp_elem_rtcp->rmsgnum=0;
-    udp_elem_rtcp->wait_cycles=0;
-    udp_elem_rtcp->clnum=i+1;
-    udp_elem_rtcp->chnum=chnum_rtcp;
+    ss_rtcp->input_ev=ev_rtcp;
+    ss_rtcp->tot_msgnum=ss->tot_msgnum;
+    if(ss_rtcp->tot_msgnum<1) ss_rtcp->tot_msgnum=1;
+    ss_rtcp->wmsgnum=ss_rtcp->tot_msgnum;
+    ss_rtcp->rmsgnum=0;
+    ss_rtcp->wait_cycles=0;
+    ss_rtcp->clnum=i+1;
+    ss_rtcp->chnum=chnum_rtcp;
   }
-
-  add_all_to_ur_map_ss(client_map,ss);
-
-  if(!no_rtcp)
-    add_all_to_ur_map_ss(client_map,ss_rtcp);
   
-  elems[i]=udp_elem;
+  elems[i]=ss;
 
-  refresh_channel(udp_elem);
+  refresh_channel(ss);
 
   if(!no_rtcp)
-    elems[i+1]=udp_elem_rtcp;
+    elems[i+1]=ss_rtcp;
 
   return 0;
 }
@@ -462,29 +444,29 @@ static int start_c2c(const char *remote_address, int port,
 			    int messagenumber, 
 			    int i) {
 
-  app_ur_super_session* ss1=create_new_ss();
-  app_ur_super_session* ss1_rtcp=NULL;
+  app_ur_session* ss1=create_new_ss();
+  app_ur_session* ss1_rtcp=NULL;
 
   if(!no_rtcp)
     ss1_rtcp = create_new_ss();
 
-  app_ur_super_session* ss2=create_new_ss();
-  app_ur_super_session* ss2_rtcp=NULL;
+  app_ur_session* ss2=create_new_ss();
+  app_ur_session* ss2_rtcp=NULL;
 
   if(!no_rtcp)
     ss2_rtcp = create_new_ss();
 
-  app_ur_conn_info *udp_info1=&(ss1->session.pinfo);
+  app_ur_conn_info *udp_info1=&(ss1->pinfo);
   app_ur_conn_info *udp_info1_rtcp=NULL;
 
   if(!no_rtcp)
-    udp_info1_rtcp = &(ss1_rtcp->session.pinfo);
+    udp_info1_rtcp = &(ss1_rtcp->pinfo);
 
-  app_ur_conn_info *udp_info2=&(ss2->session.pinfo);
+  app_ur_conn_info *udp_info2=&(ss2->pinfo);
   app_ur_conn_info *udp_info2_rtcp=NULL;
 
   if(!no_rtcp)
-    udp_info2_rtcp = &(ss2_rtcp->session.pinfo);
+    udp_info2_rtcp = &(ss2_rtcp->pinfo);
 
   uint16_t chnum1=0;
   uint16_t chnum1_rtcp=0;
@@ -511,7 +493,7 @@ static int start_c2c(const char *remote_address, int port,
   
   struct event* ev1 = event_new(client_event_base,udp_info1->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
-				(char*)"Listening client socket");
+				ss1);
 
   event_add(ev1,NULL);
   
@@ -520,14 +502,14 @@ static int start_c2c(const char *remote_address, int port,
   if(!no_rtcp) {
     ev1_rtcp = event_new(client_event_base,udp_info1_rtcp->fd,
 			 EV_READ|EV_PERSIST,client_input_handler,
-			 (char*)"Listening client socket");
+			 ss1_rtcp);
     
     event_add(ev1_rtcp,NULL);
   }
 
   struct event* ev2 = event_new(client_event_base,udp_info2->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
-				(char*)"Listening client socket");
+				ss2);
 
   event_add(ev2,NULL);
   
@@ -536,81 +518,64 @@ static int start_c2c(const char *remote_address, int port,
   if(!no_rtcp) {
     ev2_rtcp = event_new(client_event_base,udp_info2_rtcp->fd,
 			 EV_READ|EV_PERSIST,client_input_handler,
-			 (char*)"Listening client socket");
+			 ss2_rtcp);
     
     event_add(ev2_rtcp,NULL);
   }
 
-  app_ur_session* udp_elem1=&(ss1->session);
-  udp_elem1->state=UR_STATE_READY;
+  ss1->state=UR_STATE_READY;
   
-  udp_elem1->input_ev=ev1;
-  udp_elem1->tot_msgnum=messagenumber;
-  udp_elem1->wmsgnum=udp_elem1->tot_msgnum;
-  udp_elem1->rmsgnum=0;
-  udp_elem1->wait_cycles=0;
-  udp_elem1->clnum=i;
-  udp_elem1->chnum=chnum1;
-  
-  app_ur_session* udp_elem1_rtcp=NULL;
+  ss1->input_ev=ev1;
+  ss1->tot_msgnum=messagenumber;
+  ss1->wmsgnum=ss1->tot_msgnum;
+  ss1->rmsgnum=0;
+  ss1->wait_cycles=0;
+  ss1->clnum=i;
+  ss1->chnum=chnum1;
 
   if(!no_rtcp) {
 
-    udp_elem1_rtcp = &(ss1_rtcp->session);
-    udp_elem1_rtcp->state=UR_STATE_READY;
+    ss1_rtcp->state=UR_STATE_READY;
     
-    udp_elem1_rtcp->input_ev=ev1_rtcp;
-    udp_elem1_rtcp->tot_msgnum=udp_elem1->tot_msgnum;
-    if(udp_elem1_rtcp->tot_msgnum<1) udp_elem1_rtcp->tot_msgnum=1;
-    udp_elem1_rtcp->wmsgnum=udp_elem1_rtcp->tot_msgnum;
-    udp_elem1_rtcp->rmsgnum=0;
-    udp_elem1_rtcp->wait_cycles=0;
-    udp_elem1_rtcp->clnum=i+1;
-    udp_elem1_rtcp->chnum=chnum1_rtcp;
+    ss1_rtcp->input_ev=ev1_rtcp;
+    ss1_rtcp->tot_msgnum=ss1->tot_msgnum;
+    if(ss1_rtcp->tot_msgnum<1) ss1_rtcp->tot_msgnum=1;
+    ss1_rtcp->wmsgnum=ss1_rtcp->tot_msgnum;
+    ss1_rtcp->rmsgnum=0;
+    ss1_rtcp->wait_cycles=0;
+    ss1_rtcp->clnum=i+1;
+    ss1_rtcp->chnum=chnum1_rtcp;
   }
 
-  app_ur_session* udp_elem2=&(ss2->session);
-  udp_elem2->state=UR_STATE_READY;
+  ss2->state=UR_STATE_READY;
   
-  udp_elem2->input_ev=ev2;
-  udp_elem2->tot_msgnum=udp_elem1->tot_msgnum;
-  udp_elem2->wmsgnum=udp_elem2->tot_msgnum;
-  udp_elem2->rmsgnum=0;
-  udp_elem2->wait_cycles=0;
-  udp_elem2->clnum=i+2;
-  udp_elem2->chnum=chnum2;
+  ss2->input_ev=ev2;
+  ss2->tot_msgnum=ss1->tot_msgnum;
+  ss2->wmsgnum=ss2->tot_msgnum;
+  ss2->rmsgnum=0;
+  ss2->wait_cycles=0;
+  ss2->clnum=i+2;
+  ss2->chnum=chnum2;
 
-  app_ur_session* udp_elem2_rtcp=NULL;
 
   if(!no_rtcp) {
-    udp_elem2_rtcp = &(ss2_rtcp->session);
-    udp_elem2_rtcp->state=UR_STATE_READY;
+    ss2_rtcp->state=UR_STATE_READY;
   
-    udp_elem2_rtcp->input_ev=ev2_rtcp;
-    udp_elem2_rtcp->tot_msgnum=udp_elem1_rtcp->tot_msgnum;
-    udp_elem2_rtcp->wmsgnum=udp_elem2_rtcp->tot_msgnum;
-    udp_elem2_rtcp->rmsgnum=0;
-    udp_elem2_rtcp->wait_cycles=0;
-    udp_elem2_rtcp->clnum=i+3;
-    udp_elem2_rtcp->chnum=chnum2_rtcp;
+    ss2_rtcp->input_ev=ev2_rtcp;
+    ss2_rtcp->tot_msgnum=ss1_rtcp->tot_msgnum;
+    ss2_rtcp->wmsgnum=ss2_rtcp->tot_msgnum;
+    ss2_rtcp->rmsgnum=0;
+    ss2_rtcp->wait_cycles=0;
+    ss2_rtcp->clnum=i+3;
+    ss2_rtcp->chnum=chnum2_rtcp;
   }
-
-  add_all_to_ur_map_ss(client_map,ss1);
-
-  if(!no_rtcp)
-    add_all_to_ur_map_ss(client_map,ss1_rtcp);
   
-  add_all_to_ur_map_ss(client_map,ss2);
-
+  elems[i++]=ss1;
   if(!no_rtcp)
-    add_all_to_ur_map_ss(client_map,ss2_rtcp);
-  
-  elems[i++]=udp_elem1;
+    elems[i++]=ss1_rtcp;
+  elems[i++]=ss2;
   if(!no_rtcp)
-    elems[i++]=udp_elem1_rtcp;
-  elems[i++]=udp_elem2;
-  if(!no_rtcp)
-    elems[i++]=udp_elem2_rtcp;
+    elems[i++]=ss2_rtcp;
 
   return 0;
 }
@@ -701,8 +666,6 @@ void start_mclient(const char *remote_address, int port,
 
 	client_event_base = event_base_new();
 
-	client_map = ur_map_create();
-
 	int i = 0;
 	int tot_clients = 0;
 
@@ -779,7 +742,7 @@ void start_mclient(const char *remote_address, int port,
 
 		run_events();
 
-		int msz = ur_map_size(client_map);
+		int msz = (int)current_clients_number;
 		if (msz < 1) {
 			break;
 		}
@@ -797,8 +760,6 @@ void start_mclient(const char *remote_address, int port,
 			"%s: tot_send_messages=%lu, tot_recv_messages=%lu\n", __FUNCTION__,
 			(unsigned long) tot_send_messages,
 			(unsigned long) tot_recv_messages);
-
-	ur_map_free(&client_map);
 
 	if (client_event_base)
 		event_base_free(client_event_base);

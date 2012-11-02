@@ -37,7 +37,6 @@
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_utils.h"
-#include "ns_turn_maps.h"
 
 #include "stun_buffer.h"
 #include "apputils.h"
@@ -59,9 +58,7 @@ typedef enum _UR_STATE UR_STATE;
 typedef struct {
   ioa_addr local_addr;
   ioa_addr remote_addr;
-#if defined(TURN_CLIENT)
   ioa_addr peer_addr;
-#endif
   ioa_socket_raw fd;
 } app_ur_conn_info;
 
@@ -69,7 +66,6 @@ typedef struct {
   UR_STATE state;
   app_ur_conn_info pinfo;
   unsigned int ctime;
-#if defined(TURN_CLIENT)
   uint16_t chnum;
   int tot_msgnum;
   int wmsgnum;
@@ -78,25 +74,11 @@ typedef struct {
   int clnum;
   struct event *timer_ev;
   int timer_cycle;
-#endif
   int known_mtu;
   struct event *input_ev; 
   stun_buffer in_buffer;
   stun_buffer out_buffer;
 } app_ur_session;
-
-typedef struct {
-  void* server; 
-  app_ur_session session;
-  app_ur_session tcp_session;
-} app_ur_super_session;
-
-/////////////// SS //////////////
-
-app_ur_super_session* get_from_ur_map_ss(ur_map* map, ioa_socket_raw fd);
-
-int add_to_ur_map_ss(ur_map* map, ioa_socket_raw fd, app_ur_super_session* value);
-int add_all_to_ur_map_ss(ur_map* map, app_ur_super_session* ss);
 
 ///////////////////////////////////////////////////////
 

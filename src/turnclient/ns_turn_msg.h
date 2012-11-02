@@ -33,7 +33,7 @@
 
 #include "ns_turn_ioaddr.h"
 
-#define STUN_BUFFER_SIZE (65536)
+#define MAX_STUN_MESSAGE_SIZE (65507)
 
 #define DEFAULT_STUN_PORT (3478)
 
