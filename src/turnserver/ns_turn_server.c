@@ -671,7 +671,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				    *err_code = 500;
 				    *reason = (const u08bits *)"Wrong turn permission info";
 				  }
-				  chn->socket_channel = create_ioa_socket_channel(get_relay_socket(a), &peer_addr, chnum);
+				  chn->socket_channel = create_ioa_socket_channel(get_relay_socket(a), chn);
 				}
 
 			}
@@ -1530,9 +1530,9 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	UNUSED_ARG(s);
 	UNUSED_ARG(event_type);
 
-	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
+	ts_ur_super_session* ss = arg;
 
-	turn_turnserver *server = (turn_turnserver*) (ss->server);
+	turn_turnserver *server = ss->server;
 
 	if (!server) {
 		return;

@@ -38,7 +38,6 @@
 
 /////////// PERMISSIONS AND CHANNELS ///////////////////
 
-typedef struct _ch_info ch_info;
 typedef struct _turn_permission_info turn_permission_info;
 typedef turn_permission_info** turn_permission_map;
 
@@ -83,6 +82,8 @@ struct _ch_info {
   void *owner; //perm
   void *socket_channel; //optimization
 };
+
+typedef struct _ch_info ch_info;
 
 typedef struct _perm_list {
   struct _perm_list *next;

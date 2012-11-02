@@ -29,14 +29,15 @@
  */
 
 #include "ns_turn_utils.h"
+#include "ns_turn_session.h"
+#include "ns_turn_server.h"
+
 #include "stun_buffer.h"
 #include "apputils.h"
 
 #include "ns_ioalib_impl.h"
 
 #include <pthread.h>
-
-#define PTHREAD_SELF() (unsigned long)(pthread_self())
 
 /************** Utils **************************/
 
@@ -431,20 +432,97 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 	return ret;
 }
 
+static void channel_input_handler(ioa_socket_handle s, int event_type,
+		ioa_net_data *in_buffer, void *arg) {
+
+	if (!(event_type & IOA_EV_READ) || !arg)
+		return;
+
+	ch_info* chn = arg;
+
+	ts_ur_super_session* ss = s->session;
+
+	if(!ss) return;
+
+	turn_turnserver *server = ss->server;
+
+	if (!server) {
+		return;
+	}
+
+	int offset = STUN_CHANNEL_HEADER_LENGTH;
+
+	int ilen = MIN((int)ioa_network_buffer_get_size(in_buffer->nbh),
+					(int)(ioa_network_buffer_get_capacity() - offset));
+
+	if (ilen >= 0) {
+
+		size_t len = (size_t)(ilen);
+
+		u16bits chnum = chn->chnum;
+
+		if (chnum) {
+
+			ioa_network_buffer_handle nbh = in_buffer->nbh;
+			ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
+			ioa_network_buffer_header_init(nbh);
+			stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
+			ioa_network_buffer_set_size(nbh,len);
+			in_buffer->nbh = NULL;
+			if (s->e->verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+						"%s: send channel 0x%x\n", __FUNCTION__,
+						(int) (chnum));
+			}
+
+			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL);
+		}
+	}
+}
+
 void refresh_ioa_socket_channel(void *socket_channel)
 {
-  UNUSED_ARG(socket_channel);
+	UNUSED_ARG(socket_channel);
 }
 
-void *create_ioa_socket_channel(ioa_socket_handle s, ioa_addr* peer_addr, u16bits chnum) {
-  UNUSED_ARG(s);
-  UNUSED_ARG(peer_addr);
-  UNUSED_ARG(chnum);
-  return NULL;
+void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
+{
+	ch_info *chn = channel_info;
+
+	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET);
+	if (cs == NULL) {
+		perror("socket");
+		return NULL;
+	}
+
+	sock_bind_to_device(cs->fd, (unsigned char*)cs->e->relay_ifname);
+
+	if(bind_ioa_socket(cs, &(s->local_addr))<0) {
+		IOA_CLOSE_SOCKET(cs);
+		return NULL;
+	}
+
+	if (addr_connect(cs->fd, &(chn->peer_addr)) < 0) {
+		IOA_CLOSE_SOCKET(cs);
+		return NULL;
+	}
+
+	addr_cpy(&(cs->remote_addr),&(chn->peer_addr));
+	cs->connected = 1;
+
+	set_ioa_socket_session(cs, s->session);
+	cs->current_df_relay_flag = s->current_df_relay_flag;
+	cs->do_not_use_df = s->do_not_use_df;
+
+	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn);
+
+	return cs;
 }
 
-void delete_ioa_socket_channel(void *socket_channel) {
-  UNUSED_ARG(socket_channel);
+void delete_ioa_socket_channel(void *socket_channel)
+{
+	ioa_socket_handle cs = socket_channel;
+	IOA_CLOSE_SOCKET(cs);
 }
 
 void close_ioa_socket(ioa_socket_handle s)
@@ -484,10 +562,12 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
 
-		if ((s->local_addr_known) || (s->bound && (addr_get_port(&(s->local_addr)) > 0))) {
+		if (s->local_addr_known) {
 			return &(s->local_addr);
-		}
-		if (addr_get_from_sock(s->fd, &(s->local_addr)) == 0) {
+		} else if (s->bound && (addr_get_port(&(s->local_addr)) > 0)) {
+			s->local_addr_known = 1;
+			return &(s->local_addr);
+		} else if (addr_get_from_sock(s->fd, &(s->local_addr)) == 0) {
 			s->local_addr_known = 1;
 			return &(s->local_addr);
 		}
@@ -561,40 +641,34 @@ static void socket_input_handler(int fd, short what, void* arg)
 	}
 }
 
-static int udp_send(ioa_socket_raw fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
+static inline int udp_send(ioa_socket_raw fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
 {
-
-	if (fd >= 0 && buffer) {
-		int rc = 0;
-		if (dest_addr) {
-			int slen = get_ioa_addr_len(dest_addr);
-			do {
-				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
-		} else {
-			do {
-				rc = send(fd, buffer, len, 0);
-			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
-		}
-
-		return rc;
+	int rc = 0;
+	if (dest_addr) {
+		int slen = get_ioa_addr_len(dest_addr);
+		do {
+			rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
+		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+	} else {
+		do {
+			rc = send(fd, buffer, len, 0);
+		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
 	}
 
-	return -1;
+	return rc;
 }
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel)
 {
-
-	UNUSED_ARG(to_peer);
-	UNUSED_ARG(socket_channel);
-
 	int ret = -1;
 	if (s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! Trying to send data from closed socket: 0x%lx", (long) s);
 	} else {
 		if (s && nbh && !(s->done)) {
 			if (!ioa_socket_tobeclosed(s) && s->e) {
+
+				if(to_peer && socket_channel)
+					s = socket_channel; //Use dedicated socket
 				if (s->fd >= 0) {
 					if (s->connected)
 						dest_addr = NULL; /* ignore dest_addr */
@@ -617,7 +691,6 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 {
 	if (cb) {
 		if ((event_type & IOA_EV_READ) && s) {
-			s->tid = PTHREAD_SELF();
 			s->e = e;
 			EVENT_DEL(s->read_event);
 			s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);

@@ -73,7 +73,6 @@ struct _ioa_socket
 	ioa_net_event_handler read_cb;
 	void *read_ctx;
 	volatile int done;
-	unsigned long tid;
 	void* session;
 	int current_df_relay_flag;
 	/* RFC6156: if IPv6 is involved, do not use DF: */
