@@ -117,11 +117,34 @@ int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engi
 	return 0;
 }
 
-static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e)
+static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, int address_family, int *err_code)
 {
 	if (e && e->relays_number) {
-		e->relay_addr_counter = e->relay_addr_counter % e->relays_number;
-		return &(e->relay_addrs[e->relay_addr_counter++]);
+
+		size_t i = 0;
+
+		for(i=0; i<e->relays_number; i++) {
+
+			e->relay_addr_counter = e->relay_addr_counter % e->relays_number;
+			const ioa_addr *relay_addr = &(e->relay_addrs[e->relay_addr_counter++]);
+
+			switch (address_family){
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+				if (relay_addr->ss.ss_family == AF_INET)
+					return relay_addr;
+				break;
+			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+				if (relay_addr->ss.ss_family == AF_INET6)
+					return relay_addr;
+				break;
+			default:
+				*err_code = 440;
+				return NULL;
+			};
+		}
+
+		*err_code = 440;
 	}
 	return NULL;
 }
@@ -287,29 +310,13 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 	for (iip = 0; iip < e->relays_number; ++iip) {
 
 		ioa_addr relay_addr;
-		addr_cpy(&relay_addr, ioa_engine_get_relay_addr(e));
+		addr_cpy(&relay_addr, ioa_engine_get_relay_addr(e, address_family, err_code));
 
-		switch (address_family){
-		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-			if (relay_addr.ss.ss_family != AF_INET) {
-				*err_code = 440;
+		if(*err_code) {
+			if(*err_code == 440)
 				*reason = (const u08bits *) "Unsupported address family";
-				return -1;
-			}
-			break;
-		case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-			if (relay_addr.ss.ss_family != AF_INET6) {
-				*err_code = 440;
-				*reason = (const u08bits *) "Unsupported address family";
-				return -1;
-			}
-			break;
-		default:
-			*err_code = 440;
-			*reason = (const u08bits *) "Unsupported address family";
 			return -1;
-		};
+		}
 
 		int rtcp_port = -1;
 
