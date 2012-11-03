@@ -36,13 +36,6 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
-/////////// PERMISSIONS AND CHANNELS ///////////////////
-
-typedef struct _turn_permission_info turn_permission_info;
-typedef turn_permission_info** turn_permission_map;
-
-typedef struct _allocation allocation;
-
 ///////// types ////////////
 
 enum _UR_STATE {
@@ -73,7 +66,7 @@ static inline void delete_ur_map_session_elem_data(ts_ur_session* cdi)
 
 ////////////////////////////////
 
-struct _ch_info {
+typedef struct _ch_info {
   u16bits chnum;
   u16bits port;
   ioa_addr peer_addr;
@@ -81,26 +74,26 @@ struct _ch_info {
   ioa_timer_handle lifetime_ev;
   void *owner; //perm
   void *socket_channel; //optimization
-};
-
-typedef struct _ch_info ch_info;
+} ch_info;
 
 typedef struct _perm_list {
   struct _perm_list *next;
 } perm_list;
 
-struct _turn_permission_info {
+typedef struct _turn_permission_info {
   perm_list list;
   ur_map *channels;
   ioa_addr addr;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   void* owner; //a
-};
+} turn_permission_info;
+
+typedef turn_permission_info** turn_permission_map;
 
 //////////////// ALLOCATION //////////////////////
 
-struct _allocation {
+typedef struct _allocation {
   int is_valid;
   turn_time_t expiration_time;
   stun_tid tid;
@@ -108,7 +101,7 @@ struct _allocation {
   turn_permission_map addr_to_perm;
   ts_ur_session relay_session;
   ur_map *channel_to_ch_info;
-};
+} allocation;
 
 //////////// PERMISSION AND CHANNELS ////////////////////
 
