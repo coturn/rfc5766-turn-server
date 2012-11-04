@@ -66,19 +66,21 @@ V. Run
 
 The command line parameters are:
 
-    -p      TURN listener port (Default: 3478).
-    -d	    Listener interface device (optional). 
-    -L      Listener IP address of relay server. Multiple listeners can be specified.
-    		If no address is specified, then the server will listen to all local addresses.
-    -i	    Relay interface device for relay sockets (optional).
-    -E      Relay address (the local IP address that will be used to relay the packets to the peer).
-    		Multiple relay addresses may be specified - they will be used in the round-robin manner.
-    		If no address is specified, then the server will use all local non-loopback
-    		addresses as the relay addresses.
-    -f      set TURN fingerprints.
-    -m	    number of extra threads to handle established connections.
-	    	The default value is 0, everything by default is handled in a single thread.
-    -v      verbose.
+	-d, --listening-device	Listener interface device (optional, Linux only).
+	-p, --listening-port	TURN listener port (Default: 3478).
+	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.
+							If no IP(s) specified, then all IPv4 and IPv6 system IPs will be used
+							for listening.
+	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).
+							Multiple relay addresses may be used.
+							If no relay IP(s) specified, then all non-loopback system Ips will be used.
+	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).
+	-m, --relay-threads		number of extra threads to handle the established connections.
+							By default, everything in handled in single thread 
+							(the default number of extra threads is 0).
+	-v, --verbose			verbose.
+	-f, --fingerprint		use fingerprints in the TURN messages.
+	-h, --help				help.
     
 2) uclient application is for test purposes only. 
 It was designed to simulate multiple clients. It uses asynch IO API in 

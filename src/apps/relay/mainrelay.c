@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <ifaddrs.h>
+#include <getopt.h>
 #include <pthread.h>
 
 #include <event2/bufferevent.h>
@@ -52,20 +53,6 @@
 #include "ns_ioalib_impl.h"
 
 //////////////// local definitions /////////////////
-
-static char Usage[] =
-  "Usage: turnserver [options]\n"
-  "Options:\n"
-  "	-p      TURN listener port (Default: 3478)\n"
-  "	-d	Listener interface device (optional)\n"
-  "	-L      Listener IP address of relay server. Multiple listeners can be specified\n"
-  "	-i	Relay interface device for relay sockets (optional)\n"
-  "	-E      Relay address (the local IP address that will be used to relay the packets to the peer)\n"
-  "	-f      set TURN fingerprints\n"
-  "	-m	number of extra threads to handle established connections (default is 0)\n"
-  "	-v      verbose\n";
-
-//////////////////////////////////////////////////
 
 struct listener_server {
 	size_t number;
@@ -431,71 +418,102 @@ static int make_local_relays_list(int allow_local)
 
 //////////////////////////////////////////////////
 
+static char Usage[] = "Usage: turnserver [options]\n"
+	"Options:\n"
+	"	-d, --listening-device	Listener interface device (optional, Linux only)\n"
+	"	-p, --listening-port	TURN listener port (Default: 3478)\n"
+	"	-L, --listening-ip	Listener IP address of relay server. Multiple listeners can be specified\n"
+	"	-E, --relay-ip		Relay address (the local IP address that will be used to relay the packets to the peer)\n"
+	"	-i, --relay-device	Relay interface device for relay sockets (optional, Linux only)\n"
+	"	-m, --relay-threads	number of extra threads to handle established connections (default is 0)\n"
+	"	-v, --verbose		verbose\n"
+	"	-f, --fingerprint	use fingerprints in the TURN messages\n"
+	"	-h, --help		help\n";
+
+#define OPTIONS "d:p:L:E:i:m:vfh"
+
+static struct option long_options[] = {
+				{ "listening-device", required_argument, NULL, 'd' },
+				{ "listening-port", required_argument, NULL, 'p' },
+				{ "listening-ip", required_argument, NULL, 'L' },
+				{ "relay-ip", required_argument, NULL, 'E' },
+				{ "relay-device", required_argument, NULL, 'i' },
+				{ "relay-threads", required_argument, NULL, 'm' },
+				{ "verbose", no_argument, NULL, 'v' },
+				{ "findgerprint", no_argument, NULL, 'f' },
+				{ "help", no_argument, NULL, 'h' },
+				{ NULL, no_argument, NULL, 0 }
+};
+
 int main(int argc, char **argv)
 {
-  char c=0;
+	char c = 0;
 
-  srandom((unsigned int)time(NULL));
-    
-  while ((c = getopt(argc, argv, "i:d:p:L:E:R:r:w:m:vf")) != -1) {
-    switch(c) {
-    case 'i':
-      strcpy(relay_ifname,optarg);
-      break;
-    case 'm':
-      relay_servers_number = atoi(optarg)+1;
-      break;
-    case 'd':
-      strcpy(ifname,optarg);
-      break;
-    case 'p':
-      port = atoi(optarg);
-      break;
-    case 'L':
-      add_listener_addr(optarg);
-      break;
-    case 'E':
-      add_relay_addr(optarg);
-      break;
-    case 'v':
-      verbose = 1;
-      break;
-    case 'f':
-      fingerprint = 1;
-      break;
-    default:
-      fprintf(stderr, "%s\n", Usage);
-      exit(1);
-    }
-  }
+	srandom((unsigned int) time(NULL));
 
-  if(!listener.number) {
-	  make_local_listeners_list();
-	  if(!listener.number) {
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
-		  fprintf(stderr, "%s\n", Usage);
-		  exit(1);
-	  }
-  }
+	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+		switch (c){
+		case 'i':
+			strcpy(relay_ifname, optarg);
+			break;
+		case 'm':
+			relay_servers_number = atoi(optarg) + 1;
+			break;
+		case 'd':
+			strcpy(ifname, optarg);
+			break;
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'L':
+			add_listener_addr(optarg);
+			break;
+		case 'E':
+			add_relay_addr(optarg);
+			break;
+		case 'v':
+			verbose = 1;
+			break;
+		case 'f':
+			fingerprint = 1;
+			break;
+		case 'h':
+			fprintf(stdout, "%s\n", Usage);
+			exit(0);
+		default:
+			fprintf(stderr, "%s\n", Usage);
+			exit(1);
+		}
+	}
 
-  if(!relays_number) {
-	  make_local_relays_list(0);
-	  if(!relays_number) {
-		  make_local_relays_list(1);
-		  if(!relays_number) {
-			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n", __FUNCTION__);
-			  fprintf(stderr, "%s\n", Usage);
-			  exit(1);
-		  }
-	  }
-  }
+	if (!listener.number) {
+		make_local_listeners_list();
+		if (!listener.number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
+			fprintf(stderr, "%s\n", Usage);
+			exit(1);
+		}
+	}
 
-  setup_server();
+	if (!relays_number) {
+		make_local_relays_list(0);
+		if (!relays_number) {
+			make_local_relays_list(1);
+			if (!relays_number) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
+								__FUNCTION__);
+				fprintf(stderr, "%s\n", Usage);
+				exit(1);
+			}
+		}
+	}
 
-  run_server(listener.event_base);
+	setup_server();
 
-  clean_server();
+	run_server(listener.event_base);
 
-  return 0;
+	clean_server();
+
+	return 0;
 }
 
