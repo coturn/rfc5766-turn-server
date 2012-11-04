@@ -33,6 +33,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <limits.h>
+#include <ifaddrs.h>
 #include <pthread.h>
 
 #include <event2/bufferevent.h>
@@ -356,6 +358,79 @@ static void clean_server(void)
 
 //////////////////////////////////////////////////
 
+static int make_local_listeners_list(void)
+{
+	struct ifaddrs * ifs = NULL;
+	struct ifaddrs * ifa = NULL;
+
+	char saddr[INET6_ADDRSTRLEN] = "\0";
+
+	getifaddrs(&ifs);
+
+	if (ifs) {
+		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+
+			if (ifa ->ifa_addr->sa_family == AF_INET) {
+				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
+								INET_ADDRSTRLEN))
+					continue;
+			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
+				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
+								INET6_ADDRSTRLEN))
+					continue;
+				if(strstr(saddr,"fe80") == saddr)
+					continue;
+			} else
+				continue;
+
+			add_listener_addr(saddr);
+			printf("Added listener address %s (%s)\n",saddr,ifa->ifa_name);
+		}
+		freeifaddrs(ifs);
+	}
+
+	return 0;
+}
+
+static int make_local_relays_list(int allow_local)
+{
+	struct ifaddrs * ifs = NULL;
+	struct ifaddrs * ifa = NULL;
+
+	char saddr[INET6_ADDRSTRLEN] = "\0";
+
+	getifaddrs(&ifs);
+
+	if (ifs) {
+		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+
+			if(!allow_local && (strstr(ifa->ifa_name,"lo") == ifa->ifa_name))
+				continue;
+
+			if (ifa ->ifa_addr->sa_family == AF_INET) {
+				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
+								INET_ADDRSTRLEN))
+					continue;
+			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
+				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
+								INET6_ADDRSTRLEN))
+					continue;
+				if(strstr(saddr,"fe80") == saddr)
+					continue;
+			} else
+				continue;
+
+			add_relay_addr(saddr);
+			printf("Added relay address %s (%s)\n",saddr,ifa->ifa_name);
+		}
+		freeifaddrs(ifs);
+	}
+
+	return 0;
+}
+
+//////////////////////////////////////////////////
+
 int main(int argc, char **argv)
 {
   char c=0;
@@ -394,16 +469,25 @@ int main(int argc, char **argv)
     }
   }
 
-  if(!relays_number) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n", __FUNCTION__);
-      fprintf(stderr, "%s\n", Usage);
-      exit(1);
+  if(!listener.number) {
+	  make_local_listeners_list();
+	  if(!listener.number) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
+		  fprintf(stderr, "%s\n", Usage);
+		  exit(1);
+	  }
   }
 
-  if(!listener.number) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
-    fprintf(stderr, "%s\n", Usage);
-    exit(1);
+  if(!relays_number) {
+	  make_local_relays_list(0);
+	  if(!relays_number) {
+		  make_local_relays_list(1);
+		  if(!relays_number) {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n", __FUNCTION__);
+			  fprintf(stderr, "%s\n", Usage);
+			  exit(1);
+		  }
+	  }
   }
 
   setup_server();
