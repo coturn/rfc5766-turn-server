@@ -310,7 +310,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 	for (iip = 0; iip < e->relays_number; ++iip) {
 
 		ioa_addr relay_addr;
-		addr_cpy(&relay_addr, ioa_engine_get_relay_addr(e, address_family, err_code));
+		const ioa_addr *ra = ioa_engine_get_relay_addr(e, address_family, err_code);
+		if(ra)
+			addr_cpy(&relay_addr, ra);
 
 		if(*err_code) {
 			if(*err_code == 440)

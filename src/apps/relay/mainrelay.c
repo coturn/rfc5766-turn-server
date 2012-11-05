@@ -96,6 +96,11 @@ static int fingerprint = 0;
 
 //////////////////////////////////////////////////
 
+#define DEFAULT_CONFIG_FILE "turn.conf"
+const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
+
+//////////////////////////////////////////////////
+
 static void add_listener_addr(const char* addr) {
 	++listener.number;
 	listener.addrs = realloc(listener.addrs, sizeof(char*)*listener.number);
@@ -418,17 +423,117 @@ static int make_local_relays_list(int allow_local)
 
 //////////////////////////////////////////////////
 
+static char *skip_blanks(char* s)
+{
+	while(*s==' ' || *s=='\t' || *s=='\n')
+		++s;
+
+	return s;
+}
+
+static FILE *find_config_file(const char *config_file)
+{
+	if (config_file && config_file[0]) {
+		if (config_file[0] == '/') {
+			FILE *f = fopen(config_file, "r");
+			if (f)
+				return f;
+		} else {
+			int i = 0;
+			size_t cflen = strlen(config_file);
+
+			while (config_file_search_dirs[i]) {
+				size_t dirlen = strlen(config_file_search_dirs[i]);
+				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
+				strcpy(fn,config_file_search_dirs[i]);
+				strcpy(fn+dirlen,config_file);
+				FILE *f = fopen(fn, "r");
+				if (f) {
+					fprintf(stdout,"Configuration file found: %s\n",fn);
+					free(fn);
+					return f;
+				}
+				free(fn);
+				++i;
+			}
+		}
+	}
+	return NULL;
+}
+
+static char** read_config_file(char **argv, int argc, int *newargc)
+{
+	int i=0;
+	char config_file[1025];
+	char **newargv = NULL;
+
+	strcpy(config_file,DEFAULT_CONFIG_FILE);
+
+	newargv=malloc(sizeof(char*)*argc);
+	*newargc=0;
+
+	for(i=0;i<argc;i++) {
+		if(!strcmp(argv[i],"-c")) {
+			if(i<argc-1) {
+				strncpy(config_file,argv[i+1],sizeof(config_file)-1);
+			} else {
+				fprintf(stderr,"Wrong usage of -c option\n");
+			}
+		} else if(!strcmp(argv[i],"-n")) {
+			config_file[0]=0;
+		} else {
+			newargv[(*newargc)++] = strdup(argv[i]);
+		}
+	}
+
+	if(!config_file[0])
+		return newargv;
+
+	FILE *f = find_config_file(config_file);
+
+	if(f) {
+		char sbuf[1025];
+		char sarg[1035];
+
+		strcpy(sarg,"--");
+		for(;;) {
+			char *s = fgets(sbuf,sizeof(sbuf)-1,f);
+			if(!s) break;
+			s = skip_blanks(s);
+			if(s[0]=='#')
+				continue;
+			size_t slen = strlen(s);
+			while(slen && (s[slen-1]==10 || s[slen-1]==13)) s[--slen]=0;
+			if(slen) {
+				strcpy(sarg+2,s);
+				newargv=realloc(newargv,sizeof(char*)*(*newargc+1));
+				newargv[(*newargc)++] = strdup(sarg);
+			}
+		}
+
+		fclose(f);
+
+	} else {
+		fprintf(stderr,"Cannot file config file: %s\n",config_file);
+		exit(-1);
+	}
+
+	return newargv;
+}
+
 static char Usage[] = "Usage: turnserver [options]\n"
 	"Options:\n"
 	"	-d, --listening-device	Listener interface device (optional, Linux only)\n"
 	"	-p, --listening-port	TURN listener port (Default: 3478)\n"
 	"	-L, --listening-ip	Listener IP address of relay server. Multiple listeners can be specified\n"
-	"	-E, --relay-ip		Relay address (the local IP address that will be used to relay the packets to the peer)\n"
 	"	-i, --relay-device	Relay interface device for relay sockets (optional, Linux only)\n"
-	"	-m, --relay-threads	number of extra threads to handle established connections (default is 0)\n"
-	"	-v, --verbose		verbose\n"
-	"	-f, --fingerprint	use fingerprints in the TURN messages\n"
-	"	-h, --help		help\n";
+	"	-E, --relay-ip		Relay address (the local IP address that will be used to relay the packets to the peer)\n"
+	"	-m, --relay-threads	Number of extra threads to handle established connections (default is 0)\n"
+	"	-v, --verbose		Verbose\n"
+	"	-f, --fingerprint	Use fingerprints in the TURN messages\n"
+	"	-c			Configuration file name (default - turn.cong)\n"
+	"	-n			Do not use configuration file\n"
+	"	-h, --help		Help\n";
 
 #define OPTIONS "d:p:L:E:i:m:vfh"
 
@@ -436,8 +541,8 @@ static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
 				{ "listening-port", required_argument, NULL, 'p' },
 				{ "listening-ip", required_argument, NULL, 'L' },
-				{ "relay-ip", required_argument, NULL, 'E' },
 				{ "relay-device", required_argument, NULL, 'i' },
+				{ "relay-ip", required_argument, NULL, 'E' },
 				{ "relay-threads", required_argument, NULL, 'm' },
 				{ "verbose", no_argument, NULL, 'v' },
 				{ "findgerprint", no_argument, NULL, 'f' },
@@ -450,6 +555,12 @@ int main(int argc, char **argv)
 	char c = 0;
 
 	srandom((unsigned int) time(NULL));
+
+	int newargc=0;
+	char** newargv=read_config_file(argv,argc,&newargc);
+
+	argc=newargc;
+	argv=newargv;
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
 		switch (c){
@@ -482,7 +593,7 @@ int main(int argc, char **argv)
 			exit(0);
 		default:
 			fprintf(stderr, "%s\n", Usage);
-			exit(1);
+			exit(-1);
 		}
 	}
 
@@ -491,7 +602,7 @@ int main(int argc, char **argv)
 		if (!listener.number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
 			fprintf(stderr, "%s\n", Usage);
-			exit(1);
+			exit(-1);
 		}
 	}
 
@@ -503,7 +614,7 @@ int main(int argc, char **argv)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
 								__FUNCTION__);
 				fprintf(stderr, "%s\n", Usage);
-				exit(1);
+				exit(-1);
 			}
 		}
 	}

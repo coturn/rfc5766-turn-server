@@ -71,10 +71,10 @@ The command line parameters are:
 	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.
 							If no IP(s) specified, then all IPv4 and IPv6 system IPs will be used
 							for listening.
+	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).
 	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).
 							Multiple relay addresses may be used.
 							If no relay IP(s) specified, then all non-loopback system Ips will be used.
-	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).
 	-m, --relay-threads		number of extra threads to handle the established connections.
 							By default, everything in handled in single thread 
 							(the default number of extra threads is 0).

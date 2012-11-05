@@ -1,8 +1,7 @@
 Current implementation supports UDP functionality of RFC 5766 and RFC 6156. Things to be added:
 
-1) Configuration, in /etc/turn.conf file.
-2) Authentication.
-3) TCP support.
-4) TLS support.
-5) DTLS support (?).
-6) RFC 6062 support (?).
+1) Authentication.
+2) TCP support.
+3) TLS support.
+4) DTLS support (?).
+5) RFC 6062 support (?).
