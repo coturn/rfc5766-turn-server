@@ -94,6 +94,9 @@ static char ifname[1025]="\0";
 static char relay_ifname[1025]="\0";
 static int fingerprint = 0;
 
+static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
+static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
+
 //////////////////////////////////////////////////
 
 #define DEFAULT_CONFIG_FILE "turn.conf"
@@ -161,7 +164,7 @@ static void setup_listener_servers(void)
 {
 	size_t i = 0;
 
-	listener.tp = turnipports_create(LOW_DEFAULT_PORTS_BOUNDARY, HIGH_DEFAULT_PORTS_BOUNDARY);
+	listener.tp = turnipports_create(min_port, max_port);
 
 	listener.event_base = event_base_new();
 
@@ -423,6 +426,24 @@ static int make_local_relays_list(int allow_local)
 
 //////////////////////////////////////////////////
 
+static char Usage[] = "Usage: turnserver [options]\n"
+	"Options:\n"
+	"	-d, --listening-device	Listener interface device (optional, Linux only)\n"
+	"	-p, --listening-port	TURN listener port (Default: 3478)\n"
+	"	-L, --listening-ip	Listener IP address of relay server. Multiple listeners can be specified\n"
+	"	-i, --relay-device	Relay interface device for relay sockets (optional, Linux only)\n"
+	"	-E, --relay-ip		Relay address (the local IP address that will be used to relay the packets to the peer)\n"
+	"	-m, --relay-threads	Number of extra threads to handle established connections (default is 0)\n"
+	"	-l, --min-port		Lower bound of the UDP port range for relay endpoints allocation.\n"
+	"				Default value is 49152, according to RFC 5766.\n"
+	"	-r, --max-port		Upper bound of the UDP port range for relay endpoints allocation.\n"
+	"				Default value is 65535, according to RFC 5766.\n"
+	"	-v, --verbose		Verbose\n"
+	"	-f, --fingerprint	Use fingerprints in the TURN messages\n"
+	"	-c			Configuration file name (default - turn.conf)\n"
+	"	-n			Do not use configuration file\n"
+	"	-h			Help\n";
+
 static char *skip_blanks(char* s)
 {
 	while(*s==' ' || *s=='\t' || *s=='\n')
@@ -481,6 +502,9 @@ static char** read_config_file(char **argv, int argc, int *newargc)
 			}
 		} else if(!strcmp(argv[i],"-n")) {
 			config_file[0]=0;
+		} else if(!strcmp(argv[i],"-h")) {
+			fprintf(stdout, "%s\n", Usage);
+			exit(0);
 		} else {
 			newargv[(*newargc)++] = strdup(argv[i]);
 		}
@@ -521,21 +545,7 @@ static char** read_config_file(char **argv, int argc, int *newargc)
 	return newargv;
 }
 
-static char Usage[] = "Usage: turnserver [options]\n"
-	"Options:\n"
-	"	-d, --listening-device	Listener interface device (optional, Linux only)\n"
-	"	-p, --listening-port	TURN listener port (Default: 3478)\n"
-	"	-L, --listening-ip	Listener IP address of relay server. Multiple listeners can be specified\n"
-	"	-i, --relay-device	Relay interface device for relay sockets (optional, Linux only)\n"
-	"	-E, --relay-ip		Relay address (the local IP address that will be used to relay the packets to the peer)\n"
-	"	-m, --relay-threads	Number of extra threads to handle established connections (default is 0)\n"
-	"	-v, --verbose		Verbose\n"
-	"	-f, --fingerprint	Use fingerprints in the TURN messages\n"
-	"	-c			Configuration file name (default - turn.cong)\n"
-	"	-n			Do not use configuration file\n"
-	"	-h, --help		Help\n";
-
-#define OPTIONS "d:p:L:E:i:m:vfh"
+#define OPTIONS "d:p:L:E:i:m:l:r:vfh"
 
 static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
@@ -544,11 +554,25 @@ static struct option long_options[] = {
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
 				{ "relay-threads", required_argument, NULL, 'm' },
-				{ "verbose", no_argument, NULL, 'v' },
-				{ "findgerprint", no_argument, NULL, 'f' },
-				{ "help", no_argument, NULL, 'h' },
+				{ "min-port", required_argument, NULL, 'l' },
+				{ "max-port", required_argument, NULL, 'r' },
+				{ "verbose", optional_argument, NULL, 'v' },
+				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ NULL, no_argument, NULL, 0 }
 };
+
+static int get_bool_value(const char* s)
+{
+	if(!s || !(s[0])) return 1;
+	if(s[0]=='0' || s[0]=='n' || s[0]=='N') return 0;
+	if(s[0]=='y' || s[0]=='Y') return 1;
+	if(s[0]>'0' && s[0]<='9') return 1;
+	if(!strcmp(s,"off") || !strcmp(s,"OFF") || !strcmp(s,"Off")) return 0;
+	if(!strcmp(s,"on") || !strcmp(s,"ON") || !strcmp(s,"On")) return 1;
+	fprintf(stderr,"Unknown boolean value: %s. You can use on/off, yes/no, 1/0.\n",s);
+	exit(-1);
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -576,6 +600,12 @@ int main(int argc, char **argv)
 		case 'p':
 			port = atoi(optarg);
 			break;
+		case 'l':
+			min_port = atoi(optarg);
+			break;
+		case 'r':
+			max_port = atoi(optarg);
+			break;
 		case 'L':
 			add_listener_addr(optarg);
 			break;
@@ -583,18 +613,23 @@ int main(int argc, char **argv)
 			add_relay_addr(optarg);
 			break;
 		case 'v':
-			verbose = 1;
+			verbose = get_bool_value(optarg);
 			break;
 		case 'f':
-			fingerprint = 1;
+			fingerprint = get_bool_value(optarg);
 			break;
-		case 'h':
-			fprintf(stdout, "%s\n", Usage);
-			exit(0);
 		default:
 			fprintf(stderr, "%s\n", Usage);
 			exit(-1);
 		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if(argc>0) {
+		fprintf(stderr,"Unknown argument: %s\n",argv[argc-1]);
+		exit(-1);
 	}
 
 	if (!listener.number) {

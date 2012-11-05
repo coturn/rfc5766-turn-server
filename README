@@ -78,9 +78,18 @@ The command line parameters are:
 	-m, --relay-threads		number of extra threads to handle the established connections.
 							By default, everything in handled in single thread 
 							(the default number of extra threads is 0).
+	-l, --min-port			Lower bound of the UDP port range for relay endpoints allocation.
+							Default value is 49152, according to RFC 5766.
+	-r, --max-port			Upper bound of the UDP port range for relay endpoints allocation.
+							Default value is 65535, according to RFC 5766.
 	-v, --verbose			verbose.
 	-f, --fingerprint		use fingerprints in the TURN messages.
-	-h, --help				help.
+	-c						Configuration file name (default - turn.conf).
+							The format of config file can be seen in the supplied etc/turn.conf 
+							example file. Long names of the options are used as the configuration items
+							names in the file.  
+	-n						Do not use configuration file.
+	-h						help.
     
 2) uclient application is for test purposes only. 
 It was designed to simulate multiple clients. It uses asynch IO API in 
