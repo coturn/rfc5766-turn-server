@@ -67,7 +67,7 @@ static unsigned int __turn_getSTime(void) {
 
 ////////////////////////////////////////////////////////////////////
 
-static int refresh_channel(app_ur_session* elem);
+static int refresh_channel(app_ur_session* elem, u16bits method);
 
 //////////////////////// SS ////////////////////////////////////////
 
@@ -153,7 +153,9 @@ static int client_read(app_ur_session *elem) {
 	elem->ctime = current_time;
 
 	int fd = elem->pinfo.fd;
-
+	app_ur_conn_info *udp_info = &(elem->pinfo);
+	int err_code = 0;
+	u08bits err_msg[129];
 	int rc = 0;
 
 	if (udp_verbose && verbose_packets) {
@@ -210,6 +212,10 @@ static int client_read(app_ur_session *elem) {
 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 			return 0;
+		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
+							&err_code,err_msg,sizeof(err_msg),
+							udp_info->realm,udp_info->nonce)) {
+			return refresh_channel(elem, stun_get_method(&elem->in_buffer));
 		} else if (stun_is_error_response(&(elem->in_buffer), NULL,NULL,0)) {
 			return 0;
 		} else if (stun_is_channel_message(&(elem->in_buffer), &chnumber)) {
@@ -431,7 +437,7 @@ static int start_client(const char *remote_address, int port,
   
   elems[i]=ss;
 
-  refresh_channel(ss);
+  refresh_channel(ss,0);
 
   if(!no_rtcp)
     elems[i+1]=ss_rtcp;
@@ -580,35 +586,62 @@ static int start_c2c(const char *remote_address, int port,
   return 0;
 }
 
-static int refresh_channel(app_ur_session* elem) {
+static int refresh_channel(app_ur_session* elem, u16bits method)
+{
 
-  stun_buffer message;
+	stun_buffer message;
+	app_ur_conn_info *udp_info = &(elem->pinfo);
 
-  {
-    stun_init_request(STUN_METHOD_REFRESH, &message);
-    uint32_t lt=htonl(600);
-    stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*)&lt, 4);
-    stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
-    send_buffer(elem->pinfo.fd, &message);
-  }
+	if (!method || (method == STUN_METHOD_REFRESH)) {
+		stun_init_request(STUN_METHOD_REFRESH, &message);
+		uint32_t lt = htonl(600);
+		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
+		if (udp_info->nonce[0]) {
+			if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
+							udp_info->realm, g_upwd, udp_info->nonce) < 0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
+		stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+		send_buffer(elem->pinfo.fd, &message);
+	}
 
-  if(!addr_any(&(elem->pinfo.peer_addr))) {
+	if (!addr_any(&(elem->pinfo.peer_addr))) {
 
-    {
-      stun_init_request(STUN_METHOD_CREATE_PERMISSION,&message);
-      stun_attr_add_addr(&message,STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
-      stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
-      send_buffer(elem->pinfo.fd, &message);
-    }
+		if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
+			stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
+			stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
+			if (udp_info->nonce[0]) {
+				if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
+								udp_info->realm, g_upwd, udp_info->nonce) < 0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
+					return -1;
+				}
+			}
+			stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+			send_buffer(elem->pinfo.fd, &message);
+		}
 
-    if(STUN_VALID_CHANNEL(elem->chnum)) {
-      stun_set_channel_bind_request(&message,&(elem->pinfo.peer_addr),elem->chnum);
-      stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
-      send_buffer(elem->pinfo.fd, &message);
-    }
-  }
+		if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {
+			if (STUN_VALID_CHANNEL(elem->chnum)) {
+				stun_set_channel_bind_request(&message, &(elem->pinfo.peer_addr), elem->chnum);
+				if (udp_info->nonce[0]) {
+					if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len),
+									g_uname, udp_info->realm, g_upwd,
+									udp_info->nonce) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										" Cannot add integrity to the message\n");
+						return -1;
+					}
+				}
+				stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+				send_buffer(elem->pinfo.fd, &message);
+			}
+		}
+	}
 
-  return 0;
+	return 0;
 }
 
 static void client_timer_handler(evutil_socket_t fd, short what, void* arg) {
@@ -619,7 +652,7 @@ static void client_timer_handler(evutil_socket_t fd, short what, void* arg) {
   app_ur_session* elem = (app_ur_session*)arg;
 
   if(((elem->timer_cycle++) & (4096-1)) == (4096-1)) {
-    refresh_channel(elem);
+    refresh_channel(elem,0);
   }
 
   if(elem->wmsgnum<1) {

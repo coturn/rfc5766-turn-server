@@ -35,13 +35,14 @@
 #include "startuclient.h"
 #include "ns_turn_msg.h"
 #include "uclient.h"
+#include "session.h"
 
 /////////////////////////////////////////
 
 #define MAX_CONNECT_EFFORTS (77)
 
 static uint64_t current_reservation_token = 0;
-static int allocate_rtcp = 1;
+static int allocate_rtcp = 0;
 static const int never_allocate_rtcp = 0;
 
 /////////////////////////////////////////
@@ -134,11 +135,16 @@ static int udp_allocate(int verbose,
 		int af) {
 
 	int fd = udp_info->fd;
-
-	int allocate_finished = 0;
 	int af_cycle = 0;
 
+	int allocate_finished;
+
+	beg_allocate:
+
+	allocate_finished=0;
+
 	while (!allocate_finished && af_cycle++ < 32) {
+
 		int allocate_sent = 0;
 
 		stun_buffer message;
@@ -148,15 +154,21 @@ static int udp_allocate(int verbose,
 		if(dont_fragment)
 			stun_attr_add(&message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
 		if(!no_rtcp) {
-		  allocate_rtcp = !allocate_rtcp;
 		  if (!never_allocate_rtcp && allocate_rtcp) {
 		    uint64_t reservation_token = ioa_ntoh64(current_reservation_token);
 		    stun_attr_add(&message, STUN_ATTRIBUTE_RESERVATION_TOKEN,
 				  (char*) (&reservation_token), 8);
-		    current_reservation_token = 0;
 		  } else {
 		    stun_attr_add_even_port(&message, 1);
 		  }
+		}
+
+		if(udp_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+							udp_info->realm, g_upwd, udp_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
 		}
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
@@ -225,12 +237,17 @@ static int udp_allocate(int verbose,
 						if (verbose)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 									"%s: rtv=%llu\n", __FUNCTION__, rtv);
+					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
+									&err_code,err_msg,sizeof(err_msg),
+									udp_info->realm,udp_info->nonce)) {
+						goto beg_allocate;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						allocate_received = 1;
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
 								      err_code,(char*)err_msg);
 						if (err_code != 437) {
 							allocate_finished = 1;
+							current_reservation_token = 0;
 							return -1;
 						} else {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -254,7 +271,11 @@ static int udp_allocate(int verbose,
 	}
 	////////////<<== allocate response received
 
+	allocate_rtcp = !allocate_rtcp;
+
 	if (1) {
+
+		beg_refresh:
 
 		//==>>refresh request, for an example only:
 		{
@@ -265,6 +286,14 @@ static int udp_allocate(int verbose,
 			uint32_t lt = htonl(600);
 			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
 					4);
+
+			if(udp_info->nonce[0]) {
+				if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+							udp_info->realm, g_upwd, udp_info->nonce)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+					return -1;
+				}
+			}
 
 			stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -307,6 +336,10 @@ static int udp_allocate(int verbose,
 						if (verbose) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 						}
+					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
+										&err_code,err_msg,sizeof(err_msg),
+										udp_info->realm,udp_info->nonce)) {
+							goto beg_refresh;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						refresh_received = 1;
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
@@ -335,12 +368,22 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 	int fd = udp_info->fd;
 
+	beg_bind:
+
 	{
 		int cb_sent = 0;
 
 		stun_buffer message;
 
 		*chn = stun_set_channel_bind_request(&message, peer_addr, 0);
+
+		if(udp_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+						udp_info->realm, g_upwd, udp_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -384,6 +427,10 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success: 0x%x\n",
 								(int) (*chn));
 					}
+				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
+										&err_code,err_msg,sizeof(err_msg),
+										udp_info->realm,udp_info->nonce)) {
+										goto beg_bind;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cb_received = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "channel bind: error %d (%s)\n",
@@ -411,6 +458,8 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 
 	int fd = udp_info->fd;
 
+	beg_cp:
+
 	{
 		int cp_sent = 0;
 
@@ -418,6 +467,14 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 
 		stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+		if(udp_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+						udp_info->realm, g_upwd, udp_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -461,6 +518,10 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 					if (verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 					}
+				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
+									&err_code,err_msg,sizeof(err_msg),
+									udp_info->realm,udp_info->nonce)) {
+					goto beg_cp;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cp_received = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create permission error %d (%s)\n",

@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <ifaddrs.h>
 #include <getopt.h>
+#include <locale.h>
 #include <pthread.h>
 
 #include <event2/bufferevent.h>
@@ -96,6 +97,8 @@ static int fingerprint = 0;
 
 static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
 static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
+
+static turn_user_db *users = NULL;
 
 //////////////////////////////////////////////////
 
@@ -250,7 +253,7 @@ static void setup_relay_servers(void)
 		relay_servers[i]->out_buf = pair[1];
 		bufferevent_setcb(relay_servers[i]->in_buf, acceptsocket, NULL, NULL, relay_servers[i]);
 		bufferevent_enable(relay_servers[i]->in_buf, EV_READ);
-		relay_servers[i]->server = create_turn_server(verbose, relay_servers[i]->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED);
+		relay_servers[i]->server = create_turn_server(verbose, relay_servers[i]->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
 
 		if(relay_servers_number<2) {
 			relay_servers[i]->thr = pthread_self();
@@ -349,6 +352,11 @@ static void clean_server(void)
 	}
 
 	listener.number = 0;
+
+	if(users) {
+		ur_string_map_free(&(users->accounts));
+		free(users);
+	}
 }
 
 //////////////////////////////////////////////////
@@ -440,6 +448,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"				Default value is 65535, according to RFC 5766.\n"
 	"	-v, --verbose		Verbose\n"
 	"	-f, --fingerprint	Use fingerprints in the TURN messages\n"
+	"	-a, --lt-cred-mech	Use long-term credential mechanism\n"
+	"	-u, --user		User account, in form 'username:password'\n"
+	"	-e, --realm		Realm\n"
 	"	-c			Configuration file name (default - turn.conf)\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
@@ -545,7 +556,7 @@ static char** read_config_file(char **argv, int argc, int *newargc)
 	return newargv;
 }
 
-#define OPTIONS "d:p:L:E:i:m:l:r:vfh"
+#define OPTIONS "d:p:L:E:i:m:l:r:u:e:vfha"
 
 static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
@@ -556,6 +567,9 @@ static struct option long_options[] = {
 				{ "relay-threads", required_argument, NULL, 'm' },
 				{ "min-port", required_argument, NULL, 'l' },
 				{ "max-port", required_argument, NULL, 'r' },
+				{ "lt-cred-mech", optional_argument, NULL, 'a' },
+				{ "user", required_argument, NULL, 'u' },
+				{ "realm", required_argument, NULL, 'e' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ NULL, no_argument, NULL, 0 }
@@ -564,14 +578,49 @@ static struct option long_options[] = {
 static int get_bool_value(const char* s)
 {
 	if(!s || !(s[0])) return 1;
-	if(s[0]=='0' || s[0]=='n' || s[0]=='N') return 0;
-	if(s[0]=='y' || s[0]=='Y') return 1;
+	if(s[0]=='0' || s[0]=='n' || s[0]=='N' || s[0]=='f' || s[0]=='F') return 0;
+	if(s[0]=='y' || s[0]=='Y' || s[0]=='t' || s[0]=='T') return 1;
 	if(s[0]>'0' && s[0]<='9') return 1;
 	if(!strcmp(s,"off") || !strcmp(s,"OFF") || !strcmp(s,"Off")) return 0;
 	if(!strcmp(s,"on") || !strcmp(s,"ON") || !strcmp(s,"On")) return 1;
-	fprintf(stderr,"Unknown boolean value: %s. You can use on/off, yes/no, 1/0.\n",s);
+	fprintf(stderr,"Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n",s);
 	exit(-1);
 	return 0;
+}
+
+static int add_user_account(const char *user)
+{
+	if(user) {
+		char *s = strstr(user,":");
+		if(!s || (s==user) || (strlen(s)<2)) {
+			fprintf(stderr,"Wrong user account: %s\n",user);
+		} else {
+			size_t ulen = s-user;
+			char *uname = malloc(sizeof(char)*(ulen+1));
+			char *upwd = strdup(s+1);
+			strncpy(uname,user,ulen);
+			uname[ulen]=0;
+			if(SASLprep((u08bits*)uname)<0) {
+				fprintf(stderr,"Wrong user name: %s\n",user);
+				free(uname);
+				free(upwd);
+				return -1;
+			}
+			if(SASLprep((u08bits*)upwd)<0) {
+				fprintf(stderr,"Wrong user password: %s\n",user);
+				free(uname);
+				free(upwd);
+				return -1;
+			}
+			ur_string_map_lock(users->accounts);
+			ur_string_map_put(users->accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)upwd);
+			ur_string_map_unlock(users->accounts);
+			free(uname);
+			return 0;
+		}
+	}
+
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -579,9 +628,15 @@ int main(int argc, char **argv)
 	char c = 0;
 
 	srandom((unsigned int) time(NULL));
+	setlocale(LC_ALL, "C");
 
 	int newargc=0;
 	char** newargv=read_config_file(argv,argc,&newargc);
+
+	users = malloc(sizeof(turn_user_db));
+	ns_bzero(users,sizeof(turn_user_db));
+	users->ct = TURN_CREDENTIALS_NONE;
+	users->accounts = ur_string_map_create(free);
 
 	argc=newargc;
 	argv=newargv;
@@ -615,8 +670,18 @@ int main(int argc, char **argv)
 		case 'v':
 			verbose = get_bool_value(optarg);
 			break;
+		case 'a':
+			if(get_bool_value(optarg))
+				users->ct = TURN_CREDENTIALS_LONG_TERM;
+			break;
 		case 'f':
 			fingerprint = get_bool_value(optarg);
+			break;
+		case 'u':
+			add_user_account(optarg);
+			break;
+		case 'e':
+			strcpy((s08bits*)users->realm,optarg);
 			break;
 		default:
 			fprintf(stderr, "%s\n", Usage);

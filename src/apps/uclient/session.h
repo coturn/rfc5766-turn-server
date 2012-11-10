@@ -60,6 +60,8 @@ typedef struct {
   ioa_addr remote_addr;
   ioa_addr peer_addr;
   ioa_socket_raw fd;
+  u08bits nonce[129];
+  u08bits realm[129];
 } app_ur_conn_info;
 
 typedef struct {

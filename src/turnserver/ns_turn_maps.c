@@ -560,4 +560,255 @@ int ur_addr_map_unlock(const ur_addr_map* map) {
   return -1;
 }
 
+////////////////////  STRING LISTS ///////////////////////////////////
+
+typedef struct _string_list {
+  struct _string_list* next;
+} string_list;
+
+typedef struct _string_elem {
+  string_list list;
+  ur_string_map_key_type key;
+  u32bits key_size;
+  ur_string_map_value_type value;
+} string_elem;
+
+typedef struct _string_list_header {
+  string_list *list;
+} string_list_header;
+
+static size_t string_list_size(const string_list *sl) {
+  if(!sl) return 0;
+  return 1+string_list_size(sl->next);
+}
+
+static void string_list_free(string_list_header* slh, ur_string_map_func del_value_func) {
+  if(slh) {
+    string_list* list=slh->list;
+    while(list) {
+      string_elem *elem=(string_elem*)list;
+      string_list* tail=elem->list.next;
+      if(elem->key) turn_free(elem->key,elem->key_size);
+      if(del_value_func && elem->value)
+	      del_value_func(elem->value);
+      turn_free(elem,sizeof(string_elem));
+      list=tail;
+    }
+  }
+}
+
+static string_list* string_list_add(string_list* sl, const ur_string_map_key_type key, ur_string_map_value_type value) {
+  if(!key) return sl;
+  string_elem *elem=(string_elem*)turn_malloc(sizeof(string_elem));
+  elem->list.next=sl;
+  elem->key_size = strlen(key)+1;
+  elem->key=turn_malloc(elem->key_size);
+  ns_bcopy(key,elem->key,elem->key_size);
+  elem->value=value;
+  return &(elem->list);
+}
+
+static string_list* string_list_remove(string_list* sl, const ur_string_map_key_type key,
+					ur_string_map_func del_value_func, int *counter) {
+  if(!sl || !key) return sl;
+  string_elem *elem=(string_elem*)sl;
+  string_list* tail=elem->list.next;
+  if(strcmp(elem->key,key)==0) {
+    turn_free(elem->key,elem->key_size);
+    if(del_value_func)
+	    del_value_func(elem->value);
+    turn_free(elem,sizeof(string_elem));
+    if(counter) *counter+=1;
+    sl=string_list_remove(tail, key, del_value_func, counter);
+  } else {
+    elem->list.next=string_list_remove(tail,key,del_value_func,counter);
+  }
+  return sl;
+}
+
+static string_elem* string_list_get(string_list* sl, const ur_string_map_key_type key) {
+
+  if(!sl || !key) return NULL;
+
+  string_elem *elem=(string_elem*)sl;
+  if(strcmp(elem->key,key)==0) {
+    return elem;
+  } else {
+    return string_list_get(elem->list.next, key);
+  }
+}
+
+////////// STRING MAPS ////////////////////////////////////////////
+
+#define STRING_MAP_SIZE (1024)
+
+struct _ur_string_map {
+  string_list_header lists[STRING_MAP_SIZE];
+  u64bits magic;
+  ur_string_map_func del_value_func;
+  TURN_MUTEX_DECLARE(mutex)
+};
+
+static unsigned long string_hash(const ur_string_map_key_type key) {
+
+  u08bits *str=(u08bits*)key;
+
+  unsigned long hash = 0;
+  int c = 0;
+
+  while ((c = *str++))
+    hash = c + (hash << 6) + (hash << 16) - hash;
+
+  return hash;
+}
+
+static int string_map_index(const ur_string_map_key_type key) {
+  return (int)(string_hash(key) % STRING_MAP_SIZE);
+}
+
+static string_list_header* get_string_list_header(ur_string_map *map, const ur_string_map_key_type key) {
+  return &(map->lists[string_map_index(key)]);
+}
+
+static int ur_string_map_init(ur_string_map* map) {
+  if(map) {
+    ns_bzero(map,sizeof(ur_string_map));
+    map->magic=MAGIC_HASH;
+
+    TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
+
+    return 0;
+  }
+  return -1;
+}
+
+static int ur_string_map_valid(const ur_string_map *map) {
+  return (map && map->magic==MAGIC_HASH);
+}
+
+ur_string_map* ur_string_map_create(ur_string_map_func del_value_func) {
+  ur_string_map *map=(ur_string_map*)turn_malloc(sizeof(ur_string_map));
+  if(ur_string_map_init(map)<0) {
+    turn_free(map,sizeof(ur_string_map));
+    return NULL;
+  }
+  map->del_value_func = del_value_func;
+  return map;
+}
+
+/**
+ * @ret:
+ * 0 - success
+ * -1 - error
+ * if the string key exists, and the value is different, return error.
+ */
+int ur_string_map_put(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type value) {
+
+  if(!ur_string_map_valid(map)) return -1;
+
+  else {
+
+    string_list_header* slh = get_string_list_header(map, key);
+
+    string_elem *elem = string_list_get(slh->list, key);
+    if(elem) {
+      if(elem->value != value) {
+	      if(map->del_value_func)
+		      map->del_value_func(elem->value);
+	      elem->value = value;
+      }
+      return 0;
+    }
+
+    slh->list=string_list_add(slh->list,key,value);
+
+    return 0;
+  }
+}
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+int ur_string_map_get(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type *value) {
+
+  if(!ur_string_map_valid(map)) return 0;
+
+  else {
+
+    string_list_header* slh = get_string_list_header(map, key);
+    string_elem *elem = string_list_get(slh->list, key);
+    if(elem) {
+      if(value) *value=elem->value;
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+}
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+int ur_string_map_del(ur_string_map* map, const ur_string_map_key_type key) {
+
+  if(!ur_string_map_valid(map)) return 0;
+
+  else {
+
+    string_list_header* slh = get_string_list_header(map, key);
+
+    int counter=0;
+
+    slh->list=string_list_remove(slh->list, key, map->del_value_func, &counter);
+
+    return (counter>0);
+  }
+}
+
+void ur_string_map_free(ur_string_map** map) {
+  if(map && ur_string_map_valid(*map)) {
+    int i=0;
+    for(i=0;i<STRING_MAP_SIZE;i++) {
+      string_list_free(&((*map)->lists[i]),(*map)->del_value_func);
+    }
+    (*map)->magic=0;
+    TURN_MUTEX_DESTROY(&((*map)->mutex));
+    turn_free(*map,sizeof(ur_string_map));
+    *map=NULL;
+  }
+}
+
+size_t ur_string_map_size(const ur_string_map* map) {
+  if(ur_string_map_valid(map)) {
+    size_t ret=0;
+    int i=0;
+    for(i=0;i<STRING_MAP_SIZE;i++) {
+      ret+=string_list_size(map->lists[i].list);
+    }
+    return ret;
+  } else {
+    return 0;
+  }
+}
+
+int ur_string_map_lock(const ur_string_map* map) {
+  if(ur_string_map_valid(map)) {
+    TURN_MUTEX_LOCK((const turn_mutex*)&(map->mutex));
+    return 0;
+  }
+  return -1;
+}
+
+int ur_string_map_unlock(const ur_string_map* map) {
+  if(ur_string_map_valid(map)) {
+    TURN_MUTEX_UNLOCK((const turn_mutex*)&(map->mutex));
+    return 0;
+  }
+  return -1;
+}
+
 ////////////////////////////////////////////////////////////////

@@ -35,6 +35,8 @@
 
 #define MAX_STUN_MESSAGE_SIZE (65507)
 
+#define NONCE_LENGTH_32BITS (2)
+
 #define DEFAULT_STUN_PORT (3478)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -161,6 +163,7 @@ int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offs
 int stun_is_request_str(const u08bits* buf, size_t len);
 int stun_is_success_response_str(const u08bits* buf, size_t len);
 int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size);
+int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size, u08bits *realm, u08bits *nonce);
 int stun_is_response_str(const u08bits* buf, size_t len);
 int stun_is_indication_str(const u08bits* buf, size_t len);
 u16bits stun_get_method_str(const u08bits *buf, size_t len);
@@ -214,6 +217,16 @@ void stun_set_channel_bind_response_str(u08bits* buf, size_t *len, stun_tid* tid
 int stun_get_requested_address_family(stun_attr_ref attr);
 
 int stun_attr_add_fingerprint_str(u08bits *buf, size_t *len);
+
+int SASLprep(u08bits *s);
+
+/*
+ * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
+ */
+int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
+int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key);
+int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce);
 
 ///////////////////////////////////////////////////////////////
 

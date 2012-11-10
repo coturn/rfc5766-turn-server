@@ -30,6 +30,8 @@
 
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_addr.h"
+#include <md5.h>
+#include <openssl/ssl.h>
 
 /////////////////////////////////////////////////////////////////
 
@@ -145,6 +147,37 @@ int stun_is_error_response_str(const u08bits* buf, size_t len, int *err_code, u0
     return 1;
   }
   return 0;
+}
+
+int stun_is_challenge_response_str(const u08bits* buf, size_t len, int *err_code, u08bits *err_msg, size_t err_msg_size,
+				u08bits *realm, u08bits *nonce)
+{
+	int ret = stun_is_error_response_str(buf, len, err_code, err_msg, err_msg_size);
+
+	if(ret && (*err_code == 401 || *err_code == 438)) {
+
+		stun_attr_ref sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_REALM);
+		if(sar) {
+			const u08bits *value = stun_attr_get_value(sar);
+			if(value) {
+				size_t vlen = (size_t)stun_attr_get_len(sar);
+				ns_bcopy(value,realm,vlen);
+				realm[vlen]=0;
+				sar = stun_attr_get_first_by_type_str(buf,len,STUN_ATTRIBUTE_NONCE);
+				if(sar) {
+					value = stun_attr_get_value(sar);
+					if(value) {
+						vlen = (size_t)stun_attr_get_len(sar);
+						ns_bcopy(value,nonce,vlen);
+						nonce[vlen]=0;
+						return 1;
+					}
+				}
+			}
+		}
+	}
+
+	return 0;
 }
 
 int stun_is_response_str(const u08bits* buf, size_t len) {
@@ -912,4 +945,162 @@ static u32bits ns_crc32(const u08bits *buffer, u32bits len)
 	return (~crc);
 }
 
-///////////////////////////////////////////////////////
+//////////// SASLprep RFC 4013 /////////////////////////////////////////
+
+/* We support only basic ASCII table */
+
+int SASLprep(u08bits *s)
+{
+	if(s) {
+		u08bits *strin = s;
+		u08bits *strout = s;
+		for(;;) {
+			u08bits c = *strin;
+			if(!c) {
+				*strout=0;
+				break;
+			}
+
+			switch(c) {
+			case 0xAD:
+				++strin;
+				break;
+			case 0x7F:
+			case 0xA0:
+			case 0x20:
+				return -1;
+			default:
+				if(c<0x1F)
+					return -1;
+				if(c>=0x80 && c<=0x9F)
+					return -1;
+				*strout=c;
+				++strout;
+				++strin;
+			};
+		}
+	}
+
+	return 0;
+}
+
+//////////////// Message Integrity ////////////////////////////
+
+#define print_bin(str, len, field) print_bin_func(str,len,field,__FUNCTION__)
+void print_bin_func(const char *name, size_t len, const void *s, const char *func);
+void print_bin_func(const char *name, size_t len, const void *s, const char *func)
+{
+	printf("%s:%s:len=%d:[",func,name,(int)len);
+	size_t i;
+	for(i=0;i<len;i++) {
+		printf("%02x",(int)((const u08bits*)s)[i]);
+	}
+	printf("]\n");
+}
+
+static int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac)
+{
+	if (!HMAC(EVP_sha1(), key, 16, buf, len, hmac, NULL)) {
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key)
+{
+	MD5_CTX ctx;
+	size_t ulen = strlen((s08bits*)uname);
+	size_t rlen = strlen((s08bits*)realm);
+	size_t plen = strlen((s08bits*)upwd);
+	u08bits *str = malloc(ulen+1+rlen+1+plen+1);
+
+	strcpy((s08bits*)str,(s08bits*)uname);
+	str[ulen]=':';
+	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
+	str[ulen+1+rlen]=':';
+	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
+
+	MD5Init(&ctx);
+	MD5Update(&ctx,str,ulen+1+rlen+1+plen);
+	MD5Final(key,&ctx);
+	free(str);
+
+	return 0;
+}
+
+int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key)
+{
+	u08bits hmac[20];
+
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, hmac, sizeof(hmac))<0)
+		return -1;
+
+	if(stun_calculate_hmac(buf, *len-4-sizeof(hmac), key, buf+*len-sizeof(hmac))<0)
+		return -1;
+
+	return 0;
+}
+
+int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce)
+{
+	u08bits key[16];
+
+	if(stun_produce_integrity_key_str(uname, realm, upwd, key)<0)
+		return -1;
+
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((s08bits*)nonce))<0)
+		return -1;
+
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
+			return -1;
+
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
+			return -1;
+
+	return stun_attr_add_integrity_str(buf, len, key);
+}
+
+/*
+ * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
+ */
+int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd,
+				u08bits *key)
+{
+	int res = 0;
+	u08bits new_hmac[20];
+	const u08bits *old_hmac = NULL;
+
+	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
+	if (!sar)
+		return -1;
+
+	if (stun_produce_integrity_key_str(uname, realm, upwd, key) < 0)
+		return -1;
+
+	int orig_len = stun_get_command_message_len_str(buf, len);
+	if (orig_len < 0)
+		return -1;
+	int new_len = ((const u08bits*) sar - buf) + 4 + 20;
+	if (new_len > orig_len)
+		return -1;
+
+	if (stun_set_command_message_len_str(buf, new_len) < 0)
+		return -1;
+
+	res = stun_calculate_hmac(buf, (size_t) new_len - 4 - 20, key, new_hmac);
+	stun_set_command_message_len_str(buf, orig_len);
+	if(res<0)
+		return -1;
+
+	old_hmac = stun_attr_get_value(sar);
+	if(!old_hmac)
+		return -1;
+
+	if(bcmp(old_hmac,new_hmac,sizeof(new_hmac)))
+		return 0;
+
+	return 1;
+}
+
+///////////////////////////////////////////////////////////////

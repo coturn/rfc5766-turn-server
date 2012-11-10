@@ -54,12 +54,28 @@ typedef enum {
 
 ///////////////////////////////////////////
 
+typedef enum {
+	TURN_CREDENTIALS_NONE = 0,
+	TURN_CREDENTIALS_LONG_TERM,
+	TURN_CREDENTIALS_SHORT_TERM
+} turn_credential_type;
+
+struct _turn_user_db {
+	turn_credential_type ct;
+	u08bits realm[129];
+	ur_string_map *accounts;
+};
+typedef struct _turn_user_db turn_user_db;
+
+///////////////////////////////////////////
+
 turn_turnserver* create_turn_server(int verbose,
 				    ioa_engine_handle e,
 				    u32bits *stats,
 				    int stun_port,
 				    int fingerprint,
-				    dont_fragment_option_t dont_fragment);
+				    dont_fragment_option_t dont_fragment,
+				    turn_user_db *users);
 
 void delete_turn_server(turn_turnserver* server);
 

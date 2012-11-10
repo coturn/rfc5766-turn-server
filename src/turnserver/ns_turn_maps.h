@@ -33,10 +33,6 @@
 
 #include "ns_turn_ioaddr.h"
 
-//////////////// UR TIME /////////////////
-
-typedef turn_time_t ur_time;
-
 //////////////// UR MAP //////////////////
 
 typedef u64bits ur_map_key_type;
@@ -146,6 +142,46 @@ size_t ur_addr_map_size(const ur_addr_map* map);
 
 int ur_addr_map_lock(const ur_addr_map* map);
 int ur_addr_map_unlock(const ur_addr_map* map);
+
+//////////////// UR STRING MAP //////////////////
+
+typedef s08bits* ur_string_map_key_type;
+typedef void* ur_string_map_value_type;
+struct _ur_string_map;
+typedef struct _ur_string_map ur_string_map;
+
+typedef void (*ur_string_map_func)(ur_string_map_value_type);
+
+ur_string_map* ur_string_map_create(ur_string_map_func del_value_func);
+
+/**
+ * @ret:
+ * 0 - success
+ * -1 - error
+ * if the string key exists, and the value is different, return error.
+ */
+int ur_string_map_put(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type value);
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+int ur_string_map_get(ur_string_map* map, const ur_string_map_key_type key, ur_string_map_value_type *value);
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+int ur_string_map_del(ur_string_map* map, const ur_string_map_key_type key);
+
+void ur_string_map_free(ur_string_map** map);
+
+size_t ur_string_map_size(const ur_string_map* map);
+
+int ur_string_map_lock(const ur_string_map* map);
+int ur_string_map_unlock(const ur_string_map* map);
 
 ////////////////////////////////////////////
 

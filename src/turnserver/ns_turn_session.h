@@ -38,12 +38,18 @@
 
 //////////////// session info //////////////////////
 
+#define STUN_NONCE_EXPIRATION_TIME (600)
+
 typedef struct {
   void* server; 
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
+  u08bits nonce[NONCE_LENGTH_32BITS*8+1];
+  turn_time_t nonce_expiration_time;
+  u08bits username[513]; //size according to RFC5389
+  u08bits hmackey[16]; //MD5 key
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

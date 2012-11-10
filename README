@@ -25,7 +25,7 @@ The compiled binary image of this program is located in testapps/bin/ subdirecto
 These programs were developed and tested on a Linux 2.6 system (32bits Ubuntu 11.04, specifically) 
 and FreeBSD 8 and 9, 32-bits and 64-bits. The tested compilers are gcc 4.2.+ and clang.
   
-II. Third-party tools.
+II. Tools and libraries.
 
 The relay programs are using a third-party open-source tool: the libevent2 IO library. 
 It is assumed to be installed in /usr/local/ directory. If the location is different, then
@@ -43,6 +43,8 @@ Libevent installation instructions:
 	$sudo make install
 
 	or download and install it from http://libevent.org.
+	
+Other common libraries used in TURN server are pthread (for multithreading), md5 (for MD5 calculations) and openssl (for HMAC-SHA1).
 
 III. Build
 
@@ -82,8 +84,11 @@ The command line parameters are:
 							Default value is 49152, according to RFC 5766.
 	-r, --max-port			Upper bound of the UDP port range for relay endpoints allocation.
 							Default value is 65535, according to RFC 5766.
-	-v, --verbose			verbose.
-	-f, --fingerprint		use fingerprints in the TURN messages.
+	-v, --verbose			Verbose.
+	-f, --fingerprint		Use fingerprints in the TURN messages.
+	-a, --lt-cred-mech		Use long-term credential mechanism.
+	-u, --user				User account, in the column-separated form 'username:password'.
+	-e, --realm				Realm.
 	-c						Configuration file name (default - turn.conf).
 							The format of config file can be seen in the supplied etc/turn.conf 
 							example file. Long names of the options are used as the configuration items

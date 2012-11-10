@@ -55,6 +55,7 @@ struct _turn_turnserver {
 	dont_fragment_option_t dont_fragment;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
+	turn_user_db *users;
 };
 
 ///////////////////////////////////////////
@@ -228,6 +229,11 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 /////////////// TURN ///////////////////////////
 
+#define SKIP_AUTH_ATTRIBUTES case STUN_ATTRIBUTE_USERNAME: case STUN_ATTRIBUTE_REALM: case STUN_ATTRIBUTE_NONCE: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: \
+	sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),\
+		ioa_network_buffer_get_size(in_buffer->nbh), sar); \
+	continue
+
 static int handle_turn_allocate(turn_turnserver *server,
 				ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 				int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
@@ -268,6 +274,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
+			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_REQUESTED_TRANSPORT: {
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
@@ -461,6 +468,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
+			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_LIFETIME: {
@@ -586,6 +594,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
+			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_CHANNEL_NUMBER: {
@@ -717,6 +726,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
+			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
@@ -839,6 +849,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
+			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
@@ -899,6 +910,163 @@ static int handle_turn_create_permission(turn_turnserver *server,
 	return ret;
 }
 
+// AUTH ==>>
+
+static int need_stun_authentication(turn_turnserver *server)
+{
+	switch(server->users->ct) {
+	case TURN_CREDENTIALS_LONG_TERM:
+		return 1;
+	case TURN_CREDENTIALS_NONE:
+		return 0;
+	default:
+		fprintf(stderr,"Wrong credential mechanism used\n");
+		exit(-1);
+	};
+
+	return 0;
+}
+
+static int create_challenge_response(turn_turnserver *server,
+				ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
+				int *err_code, 	const u08bits **reason,
+				ioa_network_buffer_handle nbh,
+				u16bits method, int regenerate_nonce)
+{
+	int i = 0;
+	size_t len = ioa_network_buffer_get_size(nbh);
+	stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+	*resp_constructed = 1;
+	if(regenerate_nonce) {
+		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
+			u08bits *s = ss->nonce + 8*i;
+			sprintf((s08bits*)s,"%08x",(u32bits)random());
+		}
+		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
+	}
+	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE,
+					ss->nonce, (int)(sizeof(ss->nonce)-1));
+	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM,
+					server->users->realm, (int)(strlen((s08bits*)(server->users->realm))));
+	ioa_network_buffer_set_size(nbh,len);
+	return 0;
+}
+
+#if !defined(min)
+#define min(a,b) (a<=b ? a : b)
+#endif
+
+static int check_stun_auth(turn_turnserver *server,
+			ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
+			int *err_code, 	const u08bits **reason,
+			ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
+			u16bits method, int *message_integrity)
+{
+	u08bits uname[513];
+	ur_string_map_value_type upwd;
+	u08bits realm[129];
+	u08bits nonce[129];
+	size_t alen = 0;
+
+	if(!need_stun_authentication(server))
+		return 0;
+
+	int regenerate_nonce = turn_time_before(ss->nonce_expiration_time,turn_time()) || (ss->nonce[0]==0);
+
+	/* MESSAGE_INTEGRITY ATTR: */
+
+	stun_attr_ref sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+							    ioa_network_buffer_get_size(in_buffer->nbh),
+							    STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
+
+	if(!sar) {
+		*err_code = 401;
+		*reason = (u08bits*)"Unauthorised";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+	}
+
+	/* REALM ATTR: */
+
+	sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+					  ioa_network_buffer_get_size(in_buffer->nbh),
+					  STUN_ATTRIBUTE_REALM);
+
+	if(!sar) {
+		*err_code = 400;
+		*reason = (u08bits*)"Bad request";
+		return -1;
+	}
+
+	alen = min((size_t)stun_attr_get_len(sar),sizeof(realm)-1);
+	ns_bcopy(stun_attr_get_value(sar),realm,alen);
+	realm[alen]=0;
+
+	/* USERNAME ATTR: */
+
+	sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+					  ioa_network_buffer_get_size(in_buffer->nbh),
+					  STUN_ATTRIBUTE_USERNAME);
+
+	if(!sar) {
+		*err_code = 400;
+		*reason = (u08bits*)"Bad request";
+		return -1;
+	}
+
+	alen = min((size_t)stun_attr_get_len(sar),sizeof(uname)-1);
+	ns_bcopy(stun_attr_get_value(sar),uname,alen);
+	uname[alen]=0;
+
+	/* NONCE ATTR: */
+
+	sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+					  ioa_network_buffer_get_size(in_buffer->nbh),
+					  STUN_ATTRIBUTE_NONCE);
+
+	if(!sar) {
+		*err_code = 400;
+		*reason = (u08bits*)"Bad request";
+		return -1;
+	}
+
+	alen = min((size_t)stun_attr_get_len(sar),sizeof(nonce)-1);
+	ns_bcopy(stun_attr_get_value(sar),nonce,alen);
+	nonce[alen]=0;
+
+	/* Stale Nonce check: */
+
+	if(regenerate_nonce || strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
+		*err_code = 438;
+		*reason = (u08bits*)"Stale Nonce";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+	}
+
+	/* Password */
+	ur_string_map_lock(server->users->accounts);
+	if(!ur_string_map_get(server->users->accounts, (ur_string_map_key_type)uname, &upwd)) {
+		ur_string_map_unlock(server->users->accounts);
+		*err_code = 401;
+		*reason = (u08bits*)"Unauthorised";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+	}
+	ur_string_map_unlock(server->users->accounts);
+
+	/* Check integrity */
+	if(stun_check_message_integrity_str(ioa_network_buffer_data(in_buffer->nbh),
+					  ioa_network_buffer_get_size(in_buffer->nbh),
+					  uname,realm,upwd,ss->hmackey)<1) {
+		*err_code = 401;
+		*reason = (u08bits*)"Unauthorised";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+	}
+
+	*message_integrity = 1;
+
+	return 0;
+}
+
+//<<== AUTH
+
 static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed)
 {
 
@@ -906,6 +1074,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	int err_code = 0;
 	const u08bits *reason = NULL;
 	int no_response = 0;
+	int message_integrity = 0;
 
 	ts_ur_session* elem = &(ss->client_session);
 	u16bits unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
@@ -922,46 +1091,53 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		switch (method){
+		check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity);
 
-		case STUN_METHOD_ALLOCATE:
+		if (!err_code && !(*resp_constructed)) {
 
-		  handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
-		  break;
+			switch (method){
 
-		case STUN_METHOD_REFRESH:
+			case STUN_METHOD_ALLOCATE:
 
-		  handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
-		  break;
+				handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
+								unknown_attrs, &ua_num, in_buffer, nbh);
+				break;
 
-		case STUN_METHOD_CHANNEL_BIND:
+			case STUN_METHOD_REFRESH:
 
-		  handle_turn_channel_bind(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs, &ua_num, in_buffer, nbh);
-		  break;
+				handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason,
+								unknown_attrs, &ua_num, in_buffer, nbh);
+				break;
 
-		case STUN_METHOD_CREATE_PERMISSION:
+			case STUN_METHOD_CHANNEL_BIND:
 
-		  handle_turn_create_permission(server, ss, &tid, resp_constructed, &err_code, &reason, unknown_attrs,
-							&ua_num, in_buffer, nbh);
-		  break;
+				handle_turn_channel_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
+								unknown_attrs, &ua_num, in_buffer, nbh);
+				break;
 
-		case STUN_METHOD_BINDING:
-		{
-			size_t len = ioa_network_buffer_get_size(nbh);
-			if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len,
-							&tid, get_remote_addr_from_ioa_socket(elem->s), 0, NULL)
-							>= 0) {
-				*resp_constructed = 1;
+			case STUN_METHOD_CREATE_PERMISSION:
+
+				handle_turn_create_permission(server, ss, &tid, resp_constructed, &err_code, &reason,
+								unknown_attrs, &ua_num, in_buffer, nbh);
+				break;
+
+			case STUN_METHOD_BINDING:
+			{
+				size_t len = ioa_network_buffer_get_size(nbh);
+				if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, &tid,
+								get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
+					*resp_constructed = 1;
+				}
+				ioa_network_buffer_set_size(nbh, len);
 			}
-			ioa_network_buffer_set_size(nbh,len);
+				break;
+
+			default:
+				if (server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN request received\n");
+				}
+			};
 		}
-			break;
-
-		default:
-			if (server->verbose) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN request received\n");
-			}
-		};
 
 	} else if (stun_is_indication_str(ioa_network_buffer_data(in_buffer->nbh), 
 					  ioa_network_buffer_get_size(in_buffer->nbh))) {
@@ -989,6 +1165,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		};
 
 	} else {
+
+		no_response = 1;
+
 		if (server->verbose) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong STUN message received\n");
 		}
@@ -1003,6 +1182,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES, (const u08bits*) unknown_attrs, (ua_num
 						* 2));
+
 		ioa_network_buffer_set_size(nbh,len);
 
 		*resp_constructed = 1;
@@ -1019,6 +1199,12 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid);
 			ioa_network_buffer_set_size(nbh,len);
 			*resp_constructed = 1;
+		}
+
+		if(message_integrity) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_integrity_str(ioa_network_buffer_data(nbh),&len,ss->hmackey);
+			ioa_network_buffer_set_size(nbh,len);
 		}
 	}
 
@@ -1596,7 +1782,8 @@ static int clean_server(turn_turnserver* server) {
 
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
-		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment) {
+		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
+		turn_user_db *users) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -1606,6 +1793,7 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
+	server->users = users;
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
 	server->stats = stats;

@@ -43,6 +43,8 @@ extern ioa_addr peer_addr;
 extern int no_rtcp;
 extern int default_address_family;
 extern int dont_fragment;
+extern u08bits g_uname[513];
+extern u08bits g_upwd[129];
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address, int length, 

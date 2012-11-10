@@ -49,6 +49,8 @@ ioa_addr peer_addr;
 int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
+u08bits g_uname[513];
+u08bits g_upwd[129];
 
 //////////////// local definitions /////////////////
 
@@ -68,7 +70,9 @@ static char Usage[] =
   "        -r      peer port (default 3479)\n"
   "        -c      no rtcp connections\n"
   "        -x      IPv6 relayed address requested\n"
-  "        -g      include DONT_FRAGMENT option\n";
+  "        -g      include DONT_FRAGMENT option\n"
+  "	   -u	   STUN/TURN user name\n"
+  "	   -w	   STUN/TURN user password\n";
 
 //////////////////////////////////////////////////
 
@@ -88,8 +92,14 @@ int main(int argc, char **argv)
   
   memset(local_addr, 0, sizeof(local_addr));
   
-  while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:vsyhcxg")) != -1) {
+  while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:vsyhcxg")) != -1) {
     switch(c) {
+    case 'u':
+      strcpy((char*)g_uname,optarg);
+      break;
+    case 'w':
+      strcpy((char*)g_upwd,optarg);
+      break;
     case 'g':
       dont_fragment = 1;
       break;
