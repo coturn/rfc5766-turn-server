@@ -176,6 +176,7 @@ int ur_string_map_get(ur_string_map* map, const ur_string_map_key_type key, ur_s
  */
 int ur_string_map_del(ur_string_map* map, const ur_string_map_key_type key);
 
+void ur_string_map_clean(ur_string_map* map);
 void ur_string_map_free(ur_string_map** map);
 
 size_t ur_string_map_size(const ur_string_map* map);

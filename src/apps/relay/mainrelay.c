@@ -105,6 +105,12 @@ static turn_user_db *users = NULL;
 #define DEFAULT_CONFIG_FILE "turn.conf"
 const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
 
+static void read_config_file(int argc, char **argv, int users_only);
+static void reread_users(void) ;
+
+static int orig_argc = 0;
+static char **orig_argv = NULL;
+
 //////////////////////////////////////////////////
 
 static void add_listener_addr(const char* addr) {
@@ -194,18 +200,18 @@ static void run_events(struct event_base *eb)
 
 	struct timeval timeout;
 
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 1000000;
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 0;
 
 	event_base_loopexit(eb, &timeout);
 
 	event_base_dispatch(eb);
 }
 
-static void run_server(struct event_base *eb)
+static void run_listener_server(struct event_base *eb)
 {
 	unsigned int cycle = 0;
-	while (1) {
+	for (;;) {
 
 		if (verbose) {
 			if ((cycle++ & 15) == 0) {
@@ -215,6 +221,8 @@ static void run_server(struct event_base *eb)
 		}
 
 		run_events(eb);
+
+		reread_users();
 	}
 }
 
@@ -222,7 +230,8 @@ static void *run_relay_thread(void *arg)
 {
 	struct relay_server *rs = arg;
 
-	run_server(rs->event_base);
+	for(;;)
+		run_events(rs->event_base);
 
 	return arg;
 }
@@ -455,107 +464,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
 
-static char *skip_blanks(char* s)
-{
-	while(*s==' ' || *s=='\t' || *s=='\n')
-		++s;
-
-	return s;
-}
-
-static FILE *find_config_file(const char *config_file)
-{
-	if (config_file && config_file[0]) {
-		if (config_file[0] == '/') {
-			FILE *f = fopen(config_file, "r");
-			if (f)
-				return f;
-		} else {
-			int i = 0;
-			size_t cflen = strlen(config_file);
-
-			while (config_file_search_dirs[i]) {
-				size_t dirlen = strlen(config_file_search_dirs[i]);
-				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
-				strcpy(fn,config_file_search_dirs[i]);
-				strcpy(fn+dirlen,config_file);
-				FILE *f = fopen(fn, "r");
-				if (f) {
-					fprintf(stdout,"Configuration file found: %s\n",fn);
-					free(fn);
-					return f;
-				}
-				free(fn);
-				++i;
-			}
-		}
-	}
-	return NULL;
-}
-
-static char** read_config_file(char **argv, int argc, int *newargc)
-{
-	int i=0;
-	char config_file[1025];
-	char **newargv = NULL;
-
-	strcpy(config_file,DEFAULT_CONFIG_FILE);
-
-	newargv=malloc(sizeof(char*)*argc);
-	*newargc=0;
-
-	for(i=0;i<argc;i++) {
-		if(!strcmp(argv[i],"-c")) {
-			if(i<argc-1) {
-				strncpy(config_file,argv[i+1],sizeof(config_file)-1);
-			} else {
-				fprintf(stderr,"Wrong usage of -c option\n");
-			}
-		} else if(!strcmp(argv[i],"-n")) {
-			config_file[0]=0;
-		} else if(!strcmp(argv[i],"-h")) {
-			fprintf(stdout, "%s\n", Usage);
-			exit(0);
-		} else {
-			newargv[(*newargc)++] = strdup(argv[i]);
-		}
-	}
-
-	if(!config_file[0])
-		return newargv;
-
-	FILE *f = find_config_file(config_file);
-
-	if(f) {
-		char sbuf[1025];
-		char sarg[1035];
-
-		strcpy(sarg,"--");
-		for(;;) {
-			char *s = fgets(sbuf,sizeof(sbuf)-1,f);
-			if(!s) break;
-			s = skip_blanks(s);
-			if(s[0]=='#')
-				continue;
-			size_t slen = strlen(s);
-			while(slen && (s[slen-1]==10 || s[slen-1]==13)) s[--slen]=0;
-			if(slen) {
-				strcpy(sarg+2,s);
-				newargv=realloc(newargv,sizeof(char*)*(*newargc+1));
-				newargv[(*newargc)++] = strdup(sarg);
-			}
-		}
-
-		fclose(f);
-
-	} else {
-		fprintf(stderr,"Cannot file config file: %s\n",config_file);
-		exit(-1);
-	}
-
-	return newargv;
-}
-
 #define OPTIONS "d:p:L:E:i:m:l:r:u:e:vfha"
 
 static struct option long_options[] = {
@@ -574,6 +482,45 @@ static struct option long_options[] = {
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ NULL, no_argument, NULL, 0 }
 };
+
+static char *skip_blanks(char* s)
+{
+	while(*s==' ' || *s=='\t' || *s=='\n')
+		++s;
+
+	return s;
+}
+
+static FILE *find_config_file(const char *config_file, int print_file_name)
+{
+	if (config_file && config_file[0]) {
+		if (config_file[0] == '/') {
+			FILE *f = fopen(config_file, "r");
+			if (f)
+				return f;
+		} else {
+			int i = 0;
+			size_t cflen = strlen(config_file);
+
+			while (config_file_search_dirs[i]) {
+				size_t dirlen = strlen(config_file_search_dirs[i]);
+				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
+				strcpy(fn,config_file_search_dirs[i]);
+				strcpy(fn+dirlen,config_file);
+				FILE *f = fopen(fn, "r");
+				if (f) {
+					if(print_file_name)
+						fprintf(stdout,"Configuration file found: %s\n",fn);
+					free(fn);
+					return f;
+				}
+				free(fn);
+				++i;
+			}
+		}
+	}
+	return NULL;
+}
 
 static int get_bool_value(const char* s)
 {
@@ -623,70 +570,187 @@ static int add_user_account(const char *user)
 	return -1;
 }
 
+static void set_option(int c, const char *value)
+{
+	switch (c){
+	case 'i':
+		strcpy(relay_ifname, value);
+		break;
+	case 'm':
+		relay_servers_number = atoi(value) + 1;
+		break;
+	case 'd':
+		strcpy(ifname, value);
+		break;
+	case 'p':
+		port = atoi(value);
+		break;
+	case 'l':
+		min_port = atoi(value);
+		break;
+	case 'r':
+		max_port = atoi(value);
+		break;
+	case 'L':
+		add_listener_addr(value);
+		break;
+	case 'E':
+		add_relay_addr(value);
+		break;
+	case 'v':
+		verbose = get_bool_value(value);
+		break;
+	case 'a':
+		if (get_bool_value(value))
+			users->ct = TURN_CREDENTIALS_LONG_TERM;
+		break;
+	case 'f':
+		fingerprint = get_bool_value(value);
+		break;
+	case 'u':
+		add_user_account(value);
+		break;
+	case 'e':
+		strcpy((s08bits*) users->realm, value);
+		break;
+		/* these options are already taken care of before: */
+	case 'c':
+	case 'n':
+	case 'h':
+		break;
+	default:
+		fprintf(stderr, "%s\n", Usage);
+		exit(-1);
+	}
+}
+
+static int parse_arg_string(char *sarg, int *c, char **value)
+{
+	int i = 0;
+	char *name = sarg;
+	while(*sarg) {
+		if((*sarg==' ') || (*sarg=='=')) {
+			*sarg=0;
+			do {
+				++sarg;
+			} while((*sarg==' ') || (*sarg=='='));
+			*value = sarg;
+			break;
+		}
+		++sarg;
+		*value=sarg;
+	}
+
+	while(long_options[i].name) {
+		if(strcmp(long_options[i].name,name)) {
+			++i;
+			continue;
+		}
+		*c=long_options[i].val;
+		return 0;
+	}
+
+	return -1;
+}
+
+static void read_config_file(int argc, char **argv, int users_only)
+{
+	int i=0;
+	static char config_file[1025];
+
+	if(argv) {
+
+		strcpy(config_file,DEFAULT_CONFIG_FILE);
+
+		for(i=0;i<argc;i++) {
+			if(!strcmp(argv[i],"-c")) {
+				if(i<argc-1) {
+					strncpy(config_file,argv[i+1],sizeof(config_file)-1);
+				} else {
+					fprintf(stderr,"Wrong usage of -c option\n");
+				}
+			} else if(!strcmp(argv[i],"-n")) {
+				config_file[0]=0;
+			} else if(!strcmp(argv[i],"-h")) {
+				fprintf(stdout, "%s\n", Usage);
+				exit(0);
+			}
+		}
+	}
+
+	if(config_file[0]) {
+
+		FILE *f = find_config_file(config_file,!users_only);
+
+		if(f) {
+			char sbuf[1025];
+			char sarg[1035];
+
+			for(;;) {
+				char *s = fgets(sbuf,sizeof(sbuf)-1,f);
+				if(!s) break;
+				s = skip_blanks(s);
+				if(s[0]=='#')
+					continue;
+				if(!s[0])
+					continue;
+				size_t slen = strlen(s);
+				while(slen && (s[slen-1]==10 || s[slen-1]==13)) s[--slen]=0;
+				if(slen) {
+					strcpy(sarg,s);
+					int c = 0;
+					char *value = NULL;
+					if(parse_arg_string(sarg,&c,&value)<0) {
+						fprintf(stderr,"Bad configuration format: %s\n",sarg);
+					} else {
+						if(c=='u' || users_only==0)
+							set_option(c,value);
+					}
+				}
+			}
+		}
+
+		fclose(f);
+
+	} else if(!users_only) {
+		fprintf(stderr,"Cannot find config file: %s\n",config_file);
+		exit(-1);
+	}
+}
+
+static void reread_users(void)
+{
+	int c = 0;
+	ur_string_map_lock(users->accounts);
+	ur_string_map_clean(users->accounts);
+	read_config_file(0,NULL,1);
+	optind=0;
+	while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
+		if(c == 'u')
+			set_option(c,optarg);
+	}
+	ur_string_map_unlock(users->accounts);
+}
+
 int main(int argc, char **argv)
 {
-	char c = 0;
+	int c = 0;
 
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
-
-	int newargc=0;
-	char** newargv=read_config_file(argv,argc,&newargc);
 
 	users = malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->accounts = ur_string_map_create(free);
 
-	argc=newargc;
-	argv=newargv;
+	read_config_file(argc,argv,0);
+
+	orig_argc = argc;
+	orig_argv = argv;
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
-		switch (c){
-		case 'i':
-			strcpy(relay_ifname, optarg);
-			break;
-		case 'm':
-			relay_servers_number = atoi(optarg) + 1;
-			break;
-		case 'd':
-			strcpy(ifname, optarg);
-			break;
-		case 'p':
-			port = atoi(optarg);
-			break;
-		case 'l':
-			min_port = atoi(optarg);
-			break;
-		case 'r':
-			max_port = atoi(optarg);
-			break;
-		case 'L':
-			add_listener_addr(optarg);
-			break;
-		case 'E':
-			add_relay_addr(optarg);
-			break;
-		case 'v':
-			verbose = get_bool_value(optarg);
-			break;
-		case 'a':
-			if(get_bool_value(optarg))
-				users->ct = TURN_CREDENTIALS_LONG_TERM;
-			break;
-		case 'f':
-			fingerprint = get_bool_value(optarg);
-			break;
-		case 'u':
-			add_user_account(optarg);
-			break;
-		case 'e':
-			strcpy((s08bits*)users->realm,optarg);
-			break;
-		default:
-			fprintf(stderr, "%s\n", Usage);
-			exit(-1);
-		}
+		set_option(c,optarg);
 	}
 
 	argc -= optind;
@@ -721,7 +785,7 @@ int main(int argc, char **argv)
 
 	setup_server();
 
-	run_server(listener.event_base);
+	run_listener_server(listener.event_base);
 
 	clean_server();
 

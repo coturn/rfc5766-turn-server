@@ -594,6 +594,7 @@ static void string_list_free(string_list_header* slh, ur_string_map_func del_val
       turn_free(elem,sizeof(string_elem));
       list=tail;
     }
+    slh->list=NULL;
   }
 }
 
@@ -767,6 +768,15 @@ int ur_string_map_del(ur_string_map* map, const ur_string_map_key_type key) {
 
     return (counter>0);
   }
+}
+
+void ur_string_map_clean(ur_string_map* map) {
+	if (ur_string_map_valid(map)) {
+		int i = 0;
+		for (i = 0; i < STRING_MAP_SIZE; i++) {
+			string_list_free(&(map->lists[i]), map->del_value_func);
+		}
+	}
 }
 
 void ur_string_map_free(ur_string_map** map) {
