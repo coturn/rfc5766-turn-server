@@ -78,7 +78,7 @@ static char Usage[] =
 
 int main(int argc, char **argv)
 {
-  int port = RELAY_DEFAULT_PORT;
+  int port = DEFAULT_STUN_PORT;
   int length = 100;
   int messagenumber = 5;
   char local_addr[256];

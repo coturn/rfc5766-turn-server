@@ -229,7 +229,8 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 /////////////// TURN ///////////////////////////
 
-#define SKIP_AUTH_ATTRIBUTES case STUN_ATTRIBUTE_USERNAME: case STUN_ATTRIBUTE_REALM: case STUN_ATTRIBUTE_NONCE: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: \
+#define SKIP_AUTH_ATTRIBUTES case STUN_ATTRIBUTE_FINGERPRINT: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: break; \
+	case STUN_ATTRIBUTE_USERNAME: case STUN_ATTRIBUTE_REALM: case STUN_ATTRIBUTE_NONCE: \
 	sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),\
 		ioa_network_buffer_get_size(in_buffer->nbh), sar); \
 	continue
@@ -294,8 +295,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 					}
 				}
 			}
-				break;
-			case STUN_ATTRIBUTE_SOFTWARE:
 				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
 				if(!(server->dont_fragment))
@@ -469,8 +468,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
 			SKIP_AUTH_ATTRIBUTES;
-			case STUN_ATTRIBUTE_SOFTWARE:
-				break;
 			case STUN_ATTRIBUTE_LIFETIME: {
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
@@ -595,8 +592,6 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
 			SKIP_AUTH_ATTRIBUTES;
-			case STUN_ATTRIBUTE_SOFTWARE:
-				break;
 			case STUN_ATTRIBUTE_CHANNEL_NUMBER: {
 				if (chnum) {
 					chnum = 0;
@@ -727,8 +722,6 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
 			SKIP_AUTH_ATTRIBUTES;
-			case STUN_ATTRIBUTE_SOFTWARE:
-				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
 				if(!(server->dont_fragment))
 					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
@@ -850,8 +843,6 @@ static int handle_turn_create_permission(turn_turnserver *server,
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
 			SKIP_AUTH_ATTRIBUTES;
-			case STUN_ATTRIBUTE_SOFTWARE:
-				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
 				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
 						       ioa_network_buffer_get_size(in_buffer->nbh),
@@ -1396,7 +1387,7 @@ static int create_relay_connection(turn_turnserver* server,
 		if (in_reservation_token) {
 
 			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
-					lifetime, &newelem->s) < 0) {
+					&newelem->s) < 0) {
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
 				return -1;

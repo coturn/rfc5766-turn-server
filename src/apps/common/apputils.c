@@ -29,52 +29,44 @@
  */
 
 #include "ns_turn_utils.h"
-#include "ns_turn_msg_addr.h"
+#include "ns_turn_msg.h"
+
 #include "apputils.h"
 
-#include <pthread.h>
+#include <openssl/md5.h>
+#include <openssl/ssl.h>
 
-/////////////////////////////////////////////////////////////////
+///////////// Security functions implementation from ns_turn_msg.h ///////////
 
-int addr_to_buffer(const ioa_addr* addr, unsigned char* saddr8) {
-  uint16_t *saddr16=(uint16_t*)(saddr8);
-  saddr8[0]=0;
-  if(addr->ss.ss_family==AF_INET) {
-    saddr8[1]=0;
-    uint32_t *saddr32=(uint32_t*)(saddr8);
-    saddr8[0]=8;
-    saddr16[1]=addr->s4.sin_port;
-    saddr32[1]=addr->s4.sin_addr.s_addr;
-  } else if(addr->ss.ss_family==AF_INET6) {
-    saddr8[1]=1;
-    saddr8[0]=20;
-    saddr16[1]=addr->s6.sin6_port;
-    memcpy(saddr8+4,&(addr->s6.sin6_addr),16);
-  }
-  return saddr8[0];
+int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac)
+{
+	if (!HMAC(EVP_sha1(), key, 16, buf, len, hmac, NULL)) {
+		return -1;
+	} else {
+		return 0;
+	}
 }
 
-int addr_from_buffer(ioa_addr* addr, const unsigned char* saddr8) {
-  int ret=-1;
-  if(addr && saddr8) {
-    addr_set_any(addr);
-    if(saddr8[0]) {
-      const uint16_t *saddr16=(const uint16_t*)(saddr8);
-      if(saddr8[0]==8 && saddr8[1]==0) {
-	addr->ss.ss_family=AF_INET;
-	const uint32_t *saddr32=(const uint32_t*)(saddr8);
-	addr->s4.sin_port=saddr16[1];
-	addr->s4.sin_addr.s_addr=saddr32[1];
-	ret=0;
-      } else if(saddr8[0]==20 && saddr8[1]==1) {
-	addr->ss.ss_family=AF_INET6;
-	addr->s6.sin6_port=saddr16[1];
-	memcpy(&(addr->s6.sin6_addr),saddr8+4,16);
-	ret=0;
-      }
-    }
-  }
-  return ret;
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key)
+{
+	MD5_CTX ctx;
+	size_t ulen = strlen((s08bits*)uname);
+	size_t rlen = strlen((s08bits*)realm);
+	size_t plen = strlen((s08bits*)upwd);
+	u08bits *str = malloc(ulen+1+rlen+1+plen+1);
+
+	strcpy((s08bits*)str,(s08bits*)uname);
+	str[ulen]=':';
+	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
+	str[ulen+1+rlen]=':';
+	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
+
+	MD5_Init(&ctx);
+	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);
+	MD5_Final(key,&ctx);
+	free(str);
+
+	return 0;
 }
 
 /*********************** Sockets *********************************/
@@ -204,10 +196,8 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr)
 
 /////////////////// MTU /////////////////////////////////////////
 
-int set_socket_df(evutil_socket_t fd, int family, int value) {
-
-  UNUSED_ARG(fd);
-  UNUSED_ARG(family);
+int set_socket_df(evutil_socket_t fd, int family, int value)
+{
 
   int ret=0;
 

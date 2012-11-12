@@ -232,9 +232,8 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 ////////////// Reservation search ==>>/////////////////////
 
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, u32bits lifetime, ioa_socket_handle *s)
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
 {
-  UNUSED_ARG(lifetime);
   if (e && in_reservation_token && s) {
     *s = rtcp_map_get(e->rtcp_map, in_reservation_token);
     if (*s) {
@@ -617,9 +616,10 @@ static void socket_input_handler(int fd, short what, void* arg)
 	if (!(what & EV_READ) || !arg)
 		return;
 
-	UNUSED_ARG(fd);
-
 	ioa_socket_handle s = arg;
+
+	if(s->fd != fd)
+		return;
 
 	ioa_addr remote_addr;
 	stun_buffer *sbuf = malloc(sizeof(stun_buffer));
@@ -627,7 +627,7 @@ static void socket_input_handler(int fd, short what, void* arg)
 	int len = 0;
 
 	if(s->fd>=0){
-		len = udp_recvfrom(fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
+		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
 	} else {
 		free(sbuf);
 		return;
@@ -737,6 +737,7 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(void)
 	return sb;
 }
 
+/* We do not use special header in this simple implementation */
 void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh)
 {
 	UNUSED_ARG(nbh);

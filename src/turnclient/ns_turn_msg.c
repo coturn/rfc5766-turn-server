@@ -30,8 +30,6 @@
 
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_addr.h"
-#include <openssl/md5.h>
-#include <openssl/ssl.h>
 
 /////////////////////////////////////////////////////////////////
 
@@ -996,37 +994,6 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 		printf("%02x",(int)((const u08bits*)s)[i]);
 	}
 	printf("]\n");
-}
-
-static int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac)
-{
-	if (!HMAC(EVP_sha1(), key, 16, buf, len, hmac, NULL)) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key)
-{
-	MD5_CTX ctx;
-	size_t ulen = strlen((s08bits*)uname);
-	size_t rlen = strlen((s08bits*)realm);
-	size_t plen = strlen((s08bits*)upwd);
-	u08bits *str = malloc(ulen+1+rlen+1+plen+1);
-
-	strcpy((s08bits*)str,(s08bits*)uname);
-	str[ulen]=':';
-	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
-	str[ulen+1+rlen]=':';
-	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
-
-	MD5_Init(&ctx);
-	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);
-	MD5_Final(key,&ctx);
-	free(str);
-
-	return 0;
 }
 
 int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key)

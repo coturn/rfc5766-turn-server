@@ -99,4 +99,18 @@ typedef u32bits turn_time_t;
 #define UNUSED_ARG(A) do { A=A; } while(0)
 #endif
 
+#define MAX_STUN_MESSAGE_SIZE (65507)
+
+#define NONCE_LENGTH_32BITS (2)
+
+#define DEFAULT_STUN_PORT (3478)
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+#define DEFAULT_STUN_PORT_NBO (0x960D)
+#elif BYTE_ORDER == BIG_ENDIAN
+#define DEFAULT_STUN_PORT_NBO (0x0D96)
+#else
+#error WRONG BYTE_ORDER SETTING
+#endif
+
 #endif //__IODEFS__

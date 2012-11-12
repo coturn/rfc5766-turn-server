@@ -74,7 +74,7 @@ static uint32_t stats=0;
 
 //////////////////////////////////////////////////
 
-static int port = RELAY_DEFAULT_PORT;
+static int port = DEFAULT_STUN_PORT;
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;

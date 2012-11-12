@@ -33,20 +33,6 @@
 
 #include "ns_turn_ioaddr.h"
 
-#define MAX_STUN_MESSAGE_SIZE (65507)
-
-#define NONCE_LENGTH_32BITS (2)
-
-#define DEFAULT_STUN_PORT (3478)
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-#define DEFAULT_STUN_PORT_NBO (0x960D)
-#elif BYTE_ORDER == BIG_ENDIAN
-#define DEFAULT_STUN_PORT_NBO (0x0D96)
-#else
-#error WRONG BYTE_ORDER SETTING
-#endif
-
 #define STUN_HEADER_LENGTH (20)
 #define STUN_CHANNEL_HEADER_LENGTH (4)
 
@@ -224,9 +210,15 @@ int SASLprep(u08bits *s);
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
 int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
 int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce);
+
+/*
+ * To be implemented by application
+ */
+
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
+int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac);
 
 ///////////////////////////////////////////////////////////////
 

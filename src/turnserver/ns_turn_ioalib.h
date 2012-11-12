@@ -142,7 +142,7 @@ void delete_ioa_timer(ioa_timer_handle th);
 int create_relay_ioa_sockets(ioa_engine_handle e, int address_family,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
 				u64bits *out_reservation_token, int *err_code, const u08bits **reason);
-int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, u32bits lifetime, ioa_socket_handle *s);
+int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
 
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s);
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);

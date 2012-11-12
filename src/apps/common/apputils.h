@@ -34,14 +34,10 @@
 #include <event2/event.h>
 
 #include "ns_turn_ioaddr.h"
-#include "ns_turn_utils.h"
 
 //////////// Common defines ///////////////////////////
 
-#define UR_BUFFER_SIZE          (0xFFFF+1)
-#define RELAY_DEFAULT_PORT (3478)
-#define PEER_DEFAULT_PORT (RELAY_DEFAULT_PORT+1)
-#define ADDR_BUFFER_SIZE (1024)
+#define PEER_DEFAULT_PORT (DEFAULT_STUN_PORT+1)
 
 #define UR_CLIENT_SOCK_BUF_SIZE (65536)
 #define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE*2)
@@ -54,11 +50,6 @@
 
 #define ioa_socket_raw int
 
-//////////////////////////////////////////
-
-int addr_to_buffer(const ioa_addr* addr, unsigned char* saddr8);
-int addr_from_buffer(ioa_addr* addr, const unsigned char* saddr8);
-
 ///////////////////////// Sockets ///////////////////////////////
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
@@ -69,19 +60,11 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr);
 int addr_bind(evutil_socket_t fd, const ioa_addr* addr);
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
+int handle_socket_error(void);
+
 ///////////////////////// MTU //////////////////////////
 
-#define MAX_MTU (1500 - 20 - 8)
-#define MIN_MTU (576 - 20 - 8)
-#define SOSO_MTU (1300)
-
-#define MTU_STEP (68)
-
 int set_socket_df(evutil_socket_t fd, int family, int value);
-
-///////////////////////// MTU END //////////////////////
-
-int handle_socket_error(void);
 
 ///////////////////////////////////////////////////////
 
