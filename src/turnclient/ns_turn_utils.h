@@ -31,8 +31,6 @@
 #ifndef __TURN_ULIB__
 #define __TURN_ULIB__
 
-#include "ns_turn_defs.h"
-
 #if !defined(TURN_LOG_FUNC)
 #define TURN_LOG_FUNC turn_log_func_default
 #endif

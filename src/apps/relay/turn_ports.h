@@ -31,7 +31,6 @@
 #ifndef __TURN_PORTS__
 #define __TURN_PORTS__
 
-#include "ns_turn_defs.h"
 #include "ns_turn_ioaddr.h"
 
 //////////////////////////////////////////////////

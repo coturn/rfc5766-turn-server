@@ -17,7 +17,7 @@ CFLAGS += ${INCFLAGS}
 
 MAKE_DEPS := Makefile 
 
-LIBCLIENTTURN_HEADERS := src/apps/common/ns_turn_defs.h src/turnclient/ns_turn_ioaddr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_msg_addr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_utils.h
+LIBCLIENTTURN_HEADERS := src/ns_turn_defs.h src/turnclient/ns_turn_ioaddr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_msg_addr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_utils.h
 LIBCLIENTTURN_DEPS := ${LIBCLIENTTURN_HEADERS} ${MAKE_DEPS} 
 LIBCLIENTTURN_OBJS := build/obj/ns_turn_ioaddr.o build/obj/ns_turn_msg_addr.o build/obj/ns_turn_msg.o build/obj/ns_turn_utils.o
 
@@ -34,7 +34,8 @@ IMPL_MODS := src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c 
 all	:	testapps/bin/stunclient testapps/bin/uclient bin/turnserver testapps/bin/peer lib/libturnclient.a
 	rm -rf include
 	mkdir -p include/turn/client
-	cp -r src/turnclient/*.h include/turn/client/  
+	cp -r src/turnclient/*.h include/turn/client/
+	cp src/ns_turn_defs.h include/turn/ 
 
 testapps/bin/uclient	:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h 
 	mkdir -p testapps/bin
@@ -46,7 +47,9 @@ testapps/bin/stunclient	:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient
 
 bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c  
 	mkdir -p bin
-	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}  
+	rm -rf bin/turnadmin
+	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}
+	ln -s $@ bin/turnadmin  
 
 testapps/bin/peer	:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
 	mkdir -p testapps/bin

@@ -85,7 +85,7 @@ int main() {
 
 #define AC_VERSION_KHASH_H "0.2.2"
 
-#include "ns_turn_defs.h"
+#include "../ns_turn_defs.h"
 
 typedef u32bits khint_t;
 typedef khint_t khiter_t;
