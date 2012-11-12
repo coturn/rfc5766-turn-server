@@ -9,7 +9,7 @@ CFLAGS += -O2 -Werror -Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-
 LIBEVENT_INCLUDE := /usr/local/include/
 LIBEVENT_LIB := -L/usr/local/lib/event2/ -levent -levent_pthreads -lpthread -lssl
 
-INCFLAGS:=-Isrc/apps/common -Isrc/turnserver -Isrc/turnclient -I${LIBEVENT_INCLUDE} 
+INCFLAGS:=-Isrc/apps/common -Isrc/server -Isrc/client -I${LIBEVENT_INCLUDE} 
 LIBFLAGS:=${LIBEVENT_LIB} -Llib -Lbuild
 LINKFLAGS:=${LIBFLAGS} ${OSLIBS}
 
@@ -17,11 +17,11 @@ CFLAGS += ${INCFLAGS}
 
 MAKE_DEPS := Makefile 
 
-LIBCLIENTTURN_HEADERS := src/ns_turn_defs.h src/turnclient/ns_turn_ioaddr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_msg_addr.h src/turnclient/ns_turn_msg.h src/turnclient/ns_turn_utils.h
+LIBCLIENTTURN_HEADERS := src/ns_turn_defs.h src/client/ns_turn_ioaddr.h src/client/ns_turn_msg.h src/client/ns_turn_msg_addr.h src/client/ns_turn_msg.h src/client/ns_turn_utils.h
 LIBCLIENTTURN_DEPS := ${LIBCLIENTTURN_HEADERS} ${MAKE_DEPS} 
 LIBCLIENTTURN_OBJS := build/obj/ns_turn_ioaddr.o build/obj/ns_turn_msg_addr.o build/obj/ns_turn_msg.o build/obj/ns_turn_utils.o
 
-LIBSERVERTURN_HEADERS := ${LIBCLIENTTURN_HEADERS} src/turnserver/ns_turn_allocation.h src/turnserver/ns_turn_ioalib.h src/turnserver/ns_turn_khash.h src/turnserver/ns_turn_maps_rtcp.h src/turnserver/ns_turn_maps.h src/turnserver/ns_turn_server.h src/turnserver/ns_turn_session.h 
+LIBSERVERTURN_HEADERS := ${LIBCLIENTTURN_HEADERS} src/server/ns_turn_allocation.h src/server/ns_turn_ioalib.h src/server/ns_turn_khash.h src/server/ns_turn_maps_rtcp.h src/server/ns_turn_maps.h src/server/ns_turn_server.h src/server/ns_turn_session.h 
 LIBSERVERTURN_DEPS := ${LIBSERVERTURN_HEADERS} ${MAKE_DEPS} 
 LIBSERVERTURN_OBJS := ${LIBCLIENTTURN_OBJS} build/obj/ns_turn_allocation.o build/obj/ns_turn_maps_rtcp.o build/obj/ns_turn_maps.o build/obj/ns_turn_server.o
 
@@ -34,7 +34,7 @@ IMPL_MODS := src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c 
 all	:	testapps/bin/stunclient testapps/bin/uclient bin/turnserver testapps/bin/peer lib/libturnclient.a
 	rm -rf include
 	mkdir -p include/turn/client
-	cp -r src/turnclient/*.h include/turn/client/
+	cp -r src/client/*.h include/turn/client/
 	cp src/ns_turn_defs.h include/turn/ 
 
 testapps/bin/uclient	:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h 
@@ -61,39 +61,39 @@ lib/libturnclient.a	:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 	mkdir -p lib
 	${AR} $@ ${LIBCLIENTTURN_OBJS}
 
-build/obj/ns_turn_ioaddr.o	:	src/turnclient/ns_turn_ioaddr.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_ioaddr.o	:	src/client/ns_turn_ioaddr.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnclient/ns_turn_ioaddr.c -o $@
+	${CC} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
 
-build/obj/ns_turn_msg_addr.o	:	src/turnclient/ns_turn_msg_addr.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg_addr.o	:	src/client/ns_turn_msg_addr.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnclient/ns_turn_msg_addr.c -o $@
+	${CC} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
 
-build/obj/ns_turn_msg.o	:	src/turnclient/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_msg.o	:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnclient/ns_turn_msg.c -o $@
+	${CC} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
 
-build/obj/ns_turn_utils.o	:	src/turnclient/ns_turn_utils.c ${LUBCLIENTTURN_DEPS}
+build/obj/ns_turn_utils.o	:	src/client/ns_turn_utils.c ${LUBCLIENTTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnclient/ns_turn_utils.c -o $@
+	${CC} ${CFLAGS} -c src/client/ns_turn_utils.c -o $@
 
 ### Server Obj:
 
-build/obj/ns_turn_server.o	:	src/turnserver/ns_turn_server.c ${LUBTURN_DEPS}
+build/obj/ns_turn_server.o	:	src/server/ns_turn_server.c ${LUBTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnserver/ns_turn_server.c -o $@
+	${CC} ${CFLAGS} -c src/server/ns_turn_server.c -o $@
 
-build/obj/ns_turn_maps_rtcp.o	:	src/turnserver/ns_turn_maps_rtcp.c ${LUBTURN_DEPS}
+build/obj/ns_turn_maps_rtcp.o	:	src/server/ns_turn_maps_rtcp.c ${LUBTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnserver/ns_turn_maps_rtcp.c -o $@
+	${CC} ${CFLAGS} -c src/server/ns_turn_maps_rtcp.c -o $@
 
-build/obj/ns_turn_maps.o	:	src/turnserver/ns_turn_maps.c ${LUBTURN_DEPS}
+build/obj/ns_turn_maps.o	:	src/server/ns_turn_maps.c ${LUBTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnserver/ns_turn_maps.c -o $@
+	${CC} ${CFLAGS} -c src/server/ns_turn_maps.c -o $@
 
-build/obj/ns_turn_allocation.o	:	src/turnserver/ns_turn_allocation.c ${LUBTURN_DEPS}
+build/obj/ns_turn_allocation.o	:	src/server/ns_turn_allocation.c ${LUBTURN_DEPS}
 	mkdir -p build/obj
-	${CC} ${CFLAGS} -c src/turnserver/ns_turn_allocation.c -o $@
+	${CC} ${CFLAGS} -c src/server/ns_turn_allocation.c -o $@
 
 ### Clean all:
 
