@@ -44,7 +44,9 @@ Libevent installation instructions:
 
 	or download and install it from http://libevent.org.
 	
-Other common libraries used in TURN server are pthread (for multithreading), md5 (for MD5 calculations) and openssl (for HMAC-SHA1).
+TURN Server also uses openssl library - for MD5 and HMAC-SHA1.
+
+TURN Server uses pthread library for multithreading. 
 
 III. Build
 

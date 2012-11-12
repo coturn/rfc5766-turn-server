@@ -39,6 +39,9 @@
 #include <locale.h>
 #include <pthread.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 
@@ -105,7 +108,7 @@ static turn_user_db *users = NULL;
 #define DEFAULT_CONFIG_FILE "turn.conf"
 const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
 
-static void read_config_file(int argc, char **argv, int users_only);
+static int read_config_file(int argc, char **argv, int users_only);
 static void reread_users(void) ;
 
 static int orig_argc = 0;
@@ -491,10 +494,11 @@ static char *skip_blanks(char* s)
 	return s;
 }
 
-static FILE *find_config_file(const char *config_file, int print_file_name)
+static FILE *find_config_file(const char *config_file, int print_file_name, char **full_path_to_config_file)
 {
 	if (config_file && config_file[0]) {
 		if (config_file[0] == '/') {
+			*full_path_to_config_file = strdup(config_file);
 			FILE *f = fopen(config_file, "r");
 			if (f)
 				return f;
@@ -505,13 +509,13 @@ static FILE *find_config_file(const char *config_file, int print_file_name)
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
 				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
-				strcpy(fn,config_file_search_dirs[i]);
-				strcpy(fn+dirlen,config_file);
+				strcpy(fn, config_file_search_dirs[i]);
+				strcpy(fn + dirlen, config_file);
 				FILE *f = fopen(fn, "r");
 				if (f) {
-					if(print_file_name)
-						fprintf(stdout,"Configuration file found: %s\n",fn);
-					free(fn);
+					if (print_file_name)
+						fprintf(stdout, "Configuration file found: %s\n", fn);
+					*full_path_to_config_file = fn;
 					return f;
 				}
 				free(fn);
@@ -653,83 +657,114 @@ static int parse_arg_string(char *sarg, int *c, char **value)
 	return -1;
 }
 
-static void read_config_file(int argc, char **argv, int users_only)
+static int read_config_file(int argc, char **argv, int users_only)
 {
-	int i=0;
-	static char config_file[1025];
+	static char config_file[1025] = DEFAULT_CONFIG_FILE;
+	static char *full_path_to_config_file = NULL;
+	static turn_time_t mtime = 0;
 
-	if(argv) {
+	int i = 0;
+	FILE *f = NULL;
 
-		strcpy(config_file,DEFAULT_CONFIG_FILE);
+	if(users_only && full_path_to_config_file) {
+		struct stat sb;
+		if(stat(full_path_to_config_file,&sb)<0) {
+			perror("File statistics");
+		} else {
+			turn_time_t newmtime = (turn_time_t)(sb.st_mtime);
+			if(mtime == newmtime)
+				return 0;
 
-		for(i=0;i<argc;i++) {
-			if(!strcmp(argv[i],"-c")) {
-				if(i<argc-1) {
-					strncpy(config_file,argv[i+1],sizeof(config_file)-1);
-				} else {
-					fprintf(stderr,"Wrong usage of -c option\n");
-				}
-			} else if(!strcmp(argv[i],"-n")) {
-				config_file[0]=0;
-			} else if(!strcmp(argv[i],"-h")) {
-				fprintf(stdout, "%s\n", Usage);
-				exit(0);
-			}
 		}
 	}
 
-	if(config_file[0]) {
+	if (full_path_to_config_file)
+		f = fopen(full_path_to_config_file, "r");
+	else {
+		if (argv) {
 
-		FILE *f = find_config_file(config_file,!users_only);
-
-		if(f) {
-			char sbuf[1025];
-			char sarg[1035];
-
-			for(;;) {
-				char *s = fgets(sbuf,sizeof(sbuf)-1,f);
-				if(!s) break;
-				s = skip_blanks(s);
-				if(s[0]=='#')
-					continue;
-				if(!s[0])
-					continue;
-				size_t slen = strlen(s);
-				while(slen && (s[slen-1]==10 || s[slen-1]==13)) s[--slen]=0;
-				if(slen) {
-					strcpy(sarg,s);
-					int c = 0;
-					char *value = NULL;
-					if(parse_arg_string(sarg,&c,&value)<0) {
-						fprintf(stderr,"Bad configuration format: %s\n",sarg);
+			for (i = 0; i < argc; i++) {
+				if (!strcmp(argv[i], "-c")) {
+					if (i < argc - 1) {
+						strncpy(config_file, argv[i + 1], sizeof(config_file) - 1);
 					} else {
-						if(c=='u' || users_only==0)
-							set_option(c,value);
+						fprintf(stderr, "Wrong usage of -c option\n");
 					}
+				} else if (!strcmp(argv[i], "-n")) {
+					config_file[0] = 0;
+				} else if (!strcmp(argv[i], "-h")) {
+					fprintf(stdout, "%s\n", Usage);
+					exit(0);
+				}
+			}
+		}
+
+		f = find_config_file(config_file, !users_only, &full_path_to_config_file);
+	}
+
+	if (f && full_path_to_config_file) {
+
+		char sbuf[1025];
+		char sarg[1035];
+
+		struct stat sb;
+		if(stat(full_path_to_config_file,&sb)<0)
+			perror("File statistics");
+		else
+			mtime = (turn_time_t)(sb.st_mtime);
+
+
+		ur_string_map_lock(users->accounts);
+		ur_string_map_clean(users->accounts);
+
+		for (;;) {
+			char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
+			if (!s)
+				break;
+			s = skip_blanks(s);
+			if (s[0] == '#')
+				continue;
+			if (!s[0])
+				continue;
+			size_t slen = strlen(s);
+			while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
+				s[--slen] = 0;
+			if (slen) {
+				strcpy(sarg, s);
+				int c = 0;
+				char *value = NULL;
+				if (parse_arg_string(sarg, &c, &value) < 0) {
+					fprintf(stderr, "Bad configuration format: %s\n", sarg);
+				} else {
+					if (c == 'u' || (users_only == 0))
+						set_option(c, value);
 				}
 			}
 		}
 
 		fclose(f);
 
-	} else if(!users_only) {
-		fprintf(stderr,"Cannot find config file: %s\n",config_file);
+		return 1;
+
+	} else if (!users_only) {
+		fprintf(stderr, "Cannot find config file: %s\n", config_file);
 		exit(-1);
-	}
+		return -1; /* Unreachable */
+	} else
+		return 0;
 }
 
 static void reread_users(void)
 {
 	int c = 0;
-	ur_string_map_lock(users->accounts);
-	ur_string_map_clean(users->accounts);
-	read_config_file(0,NULL,1);
-	optind=0;
-	while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
-		if(c == 'u')
-			set_option(c,optarg);
+	if(read_config_file(0,NULL,1)) {
+		optind=0;
+		while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
+			if(c == 'u')
+				set_option(c,optarg);
+		}
+		ur_string_map_unlock(users->accounts);
 	}
-	ur_string_map_unlock(users->accounts);
 }
 
 int main(int argc, char **argv)
@@ -744,7 +779,8 @@ int main(int argc, char **argv)
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->accounts = ur_string_map_create(free);
 
-	read_config_file(argc,argv,0);
+	if(read_config_file(argc,argv,0))
+		ur_string_map_unlock(users->accounts);
 
 	orig_argc = argc;
 	orig_argv = argv;

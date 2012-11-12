@@ -30,7 +30,7 @@
 
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_addr.h"
-#include <md5.h>
+#include <openssl/md5.h>
 #include <openssl/ssl.h>
 
 /////////////////////////////////////////////////////////////////
@@ -1021,9 +1021,9 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	str[ulen+1+rlen]=':';
 	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
 
-	MD5Init(&ctx);
-	MD5Update(&ctx,str,ulen+1+rlen+1+plen);
-	MD5Final(key,&ctx);
+	MD5_Init(&ctx);
+	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);
+	MD5_Final(key,&ctx);
 	free(str);
 
 	return 0;
