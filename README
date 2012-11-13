@@ -106,15 +106,30 @@ The command line parameters are:
 	
 2) turnadmin application is a TURN relay administration tool. 
 
-Usage: bin/turnadmin [command] [options]
+Usage:
+
+Generate a key:
+$ turnadmin -k -u <username> -r <realm> -p <password>
+
+Add/update a user (and realm) in the config file:
+$ turnadmin -a [-c <config-file>] -u <username> -r <realm> -p <password>
+
+Delete a user from the config file:
+$ turnadmin -d [-c <config-file>] -u <username>
+
+Help:
+$ turnadmin -h  
 
 The command line parameters are:
 
-	-k, --key		Command: generate key for a user.
-	-u, --user		User name.
-	-r, --realm		Realm.
-	-p, --password	Password.
-	-h, --help		Help.
+	-k, --key			Command: generate key for a user.
+	-a, --add       	Command: add or update a user.
+	-d, --delete		Command: delete a user.
+	-c, --config-file 	Configuration file.
+	-u, --user			User name.
+	-r, --realm			Realm.
+	-p, --password		Password.
+	-h, --help			Help.
     
 3) uclient application is for test purposes only. 
 It was designed to simulate multiple clients. It uses asynch IO API in 

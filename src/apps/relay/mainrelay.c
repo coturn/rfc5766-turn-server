@@ -469,15 +469,18 @@ static char Usage[] = "Usage: turnserver [options]\n"
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"Options:\n"
-	"	-k, --key	Command: generate key for a user\n"
-	"	-u, --user	Username\n"
-	"	-r, --realm	Realm\n"
-	"	-p, --password	Password\n"
-	"	-h, --help	Help\n";
+	"	-k, --key		Command: generate key for a user\n"
+	"	-a, --add		Command: add/update a user\n"
+	"	-d, --delete		Command: delete a user\n"
+	"	-c, --config-file	configuration file\n"
+	"	-u, --user		Username\n"
+	"	-r, --realm		Realm\n"
+	"	-p, --password		Password\n"
+	"	-h, --help		Help\n";
 
 #define OPTIONS "d:p:L:E:i:m:l:r:u:e:vfha"
 
-#define ADMIN_OPTIONS "ku:r:p:h"
+#define ADMIN_OPTIONS "kadc:u:r:p:h"
 
 static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
@@ -498,6 +501,9 @@ static struct option long_options[] = {
 
 static struct option admin_long_options[] = {
 				{ "key", no_argument, NULL, 'k' },
+				{ "add", no_argument, NULL, 'a' },
+				{ "delete", no_argument, NULL, 'd' },
+				{ "config-file", required_argument, NULL, 'c' },
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
@@ -802,15 +808,28 @@ static int adminmain(int argc, char **argv)
 	int c = 0;
 
 	int kcommand = 0;
+	int acommand = 0;
+	int dcommand = 0;
 
-	u08bits user[513];
-	u08bits realm[129];
-	u08bits pwd[129];
+	u08bits user[513]="\0";
+	u08bits realm[129]="\0";
+	u08bits pwd[129]="\0";
+
+	char config_file[1025] = DEFAULT_CONFIG_FILE;
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
 		case 'k':
 			kcommand = 1;
+			break;
+		case 'a':
+			acommand = 1;
+			break;
+		case 'd':
+			dcommand = 1;
+			break;
+		case 'c':
+			strcpy(config_file,optarg);
 			break;
 		case 'u':
 			strcpy((char*)user,optarg);
@@ -843,6 +862,11 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
+	if(!user[0] || (kcommand + acommand + dcommand != 1)) {
+		fprintf(stderr, "%s\n", AdminUsage);
+		exit(-1);
+	}
+
 	if(kcommand) {
 		u08bits key[16];
 		size_t i = 0;
@@ -853,8 +877,123 @@ static int adminmain(int argc, char **argv)
 		}
 		printf("\n");
 	} else {
-		fprintf(stderr, "%s\n", AdminUsage);
-		exit(-1);
+
+		char *full_path_to_config_file = NULL;
+		FILE *f = find_config_file(config_file, 1, &full_path_to_config_file);
+		if(!f || !full_path_to_config_file) {
+			fprintf(stderr,"Cannot file %s file.\n",config_file);
+			exit(-1);
+		}
+
+		char **content = NULL;
+		size_t csz = 0;
+		char sarg[1025];
+		char sbuf[1025];
+		char us[1025];
+		int found = 0;
+		int realm_found = 0;
+		size_t i = 0;
+		u08bits key[16];
+
+		stun_produce_integrity_key_str(user, realm, pwd, key);
+
+		strcpy(us,(char*)user);
+		strcpy(us+strlen(us),":");
+
+		for (;;) {
+			char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
+			if (!s0)
+				break;
+
+			size_t slen = strlen(s0);
+			while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
+				s0[--slen] = 0;
+
+			char *s = skip_blanks(s0);
+
+			if (s[0] == '#')
+				goto add_and_cont;
+			if (!s[0])
+				goto add_and_cont;
+
+			strcpy(sarg, s);
+			int c = 0;
+			char *value = NULL;
+			if (parse_arg_string(sarg, &c, &value) >= 0) {
+				if (c == 'u') {
+					if(strstr(value,us)==value) {
+						if(dcommand)
+							continue;
+
+						if(found)
+							continue;
+						found = 1;
+						strcpy(us,"user=");
+						strcpy(us+strlen(us),(char*)user);
+						strcpy(us+strlen(us),":0x");
+						for(i=0;i<sizeof(key);i++) {
+							sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
+						}
+						s0 = us;
+					}
+				} else if(c == 'e') {
+					if(!realm_found) {
+						realm_found = 1;
+						strcpy(us,"realm=");
+						strcpy(us+strlen(us),(char*)realm);
+						s0 = us;
+					} else
+						continue;
+				}
+			}
+
+			add_and_cont:
+			content = realloc(content,sizeof(char*)*(++csz));
+			content[csz-1]=strdup(s0);
+		}
+
+		fclose(f);
+
+		if(!found && acommand) {
+			strcpy(us,"user=");
+			strcpy(us+strlen(us),(char*)user);
+			strcpy(us+strlen(us),":0x");
+			for(i=0;i<sizeof(key);i++) {
+				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
+			}
+			content = realloc(content,sizeof(char*)*(++csz));
+			content[csz-1]=strdup(us);
+		}
+
+		if(!realm_found && acommand) {
+			strcpy(us,"realm=");
+			strcpy(us+strlen(us),(char*)realm);
+			content = realloc(content,sizeof(char*)*(++csz));
+			content[csz-1]=strdup(us);
+		}
+
+		char *dir = malloc(strlen(full_path_to_config_file)+21);
+		strcpy(dir,full_path_to_config_file);
+		size_t dlen = strlen(dir);
+		while(dlen) {
+			if(dir[dlen-1]=='/')
+				break;
+			dir[--dlen]=0;
+		}
+		strcpy(dir+strlen(dir),".tmp_config");
+
+		f = fopen(dir,"w");
+		if(!f) {
+			perror("file open");
+			exit(-1);
+		}
+
+		for(i=0;i<csz;i++)
+			fprintf(f,"%s\n",content[i]);
+
+		fclose(f);
+
+		rename(dir,full_path_to_config_file);
 	}
 
 	return 0;
