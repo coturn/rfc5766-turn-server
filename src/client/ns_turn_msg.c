@@ -963,9 +963,13 @@ int SASLprep(u08bits *s)
 			case 0xAD:
 				++strin;
 				break;
-			case 0x7F:
 			case 0xA0:
 			case 0x20:
+				*strout=0x20;
+				++strout;
+				++strin;
+				break;
+			case 0x7F:
 				return -1;
 			default:
 				if(c<0x1F)
