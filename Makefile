@@ -49,7 +49,7 @@ bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTU
 	mkdir -p bin
 	rm -rf bin/turnadmin
 	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}
-	ln -s $@ bin/turnadmin  
+	cd bin; ln -s turnserver turnadmin  
 
 testapps/bin/peer	:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
 	mkdir -p testapps/bin

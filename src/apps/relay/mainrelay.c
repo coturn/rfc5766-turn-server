@@ -467,7 +467,17 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
 
+static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
+	"Options:\n"
+	"	-k, --key	Command: generate key for a user\n"
+	"	-u, --user	Username\n"
+	"	-r, --realm	Realm\n"
+	"	-p, --password	Password\n"
+	"	-h, --help	Help\n";
+
 #define OPTIONS "d:p:L:E:i:m:l:r:u:e:vfha"
+
+#define ADMIN_OPTIONS "ku:r:p:h"
 
 static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
@@ -483,6 +493,15 @@ static struct option long_options[] = {
 				{ "realm", required_argument, NULL, 'e' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
+				{ NULL, no_argument, NULL, 0 }
+};
+
+static struct option admin_long_options[] = {
+				{ "key", no_argument, NULL, 'k' },
+				{ "user", required_argument, NULL, 'u' },
+				{ "realm", required_argument, NULL, 'r' },
+				{ "password", required_argument, NULL, 'p' },
+				{ "help", no_argument, NULL, 'h' },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -548,23 +567,34 @@ static int add_user_account(const char *user)
 		} else {
 			size_t ulen = s-user;
 			char *uname = malloc(sizeof(char)*(ulen+1));
-			char *upwd = strdup(s+1);
 			strncpy(uname,user,ulen);
 			uname[ulen]=0;
 			if(SASLprep((u08bits*)uname)<0) {
 				fprintf(stderr,"Wrong user name: %s\n",user);
 				free(uname);
-				free(upwd);
 				return -1;
 			}
-			if(SASLprep((u08bits*)upwd)<0) {
-				fprintf(stderr,"Wrong user password: %s\n",user);
+			s = skip_blanks(s+1);
+			if(strstr(s,"0x")==s)
+				s+=2;
+			if(strlen(s)!=32) {
+				fprintf(stderr,"Wrong key: %s\n",s);
 				free(uname);
-				free(upwd);
 				return -1;
+			}
+			unsigned char *key = malloc(16);
+			char is[3];
+			int i;
+			unsigned int v;
+			is[2]=0;
+			for(i=0;i<16;i++) {
+				is[0]=s[i*2];
+				is[1]=s[i*2+1];
+				sscanf(is,"%02x",&v);
+				key[i]=(unsigned char)v;
 			}
 			ur_string_map_lock(users->accounts);
-			ur_string_map_put(users->accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)upwd);
+			ur_string_map_put(users->accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
 			ur_string_map_unlock(users->accounts);
 			free(uname);
 			return 0;
@@ -767,12 +797,78 @@ static void reread_users(void)
 	}
 }
 
+static int adminmain(int argc, char **argv)
+{
+	int c = 0;
+
+	int kcommand = 0;
+
+	u08bits user[513];
+	u08bits realm[129];
+	u08bits pwd[129];
+
+	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
+		switch (c){
+		case 'k':
+			kcommand = 1;
+			break;
+		case 'u':
+			strcpy((char*)user,optarg);
+			if(SASLprep((u08bits*)user)<0) {
+				fprintf(stderr,"Wrong user name: %s\n",user);
+				exit(-1);
+			}
+			break;
+		case 'r':
+			strcpy((char*)realm,optarg);
+			if(SASLprep((u08bits*)realm)<0) {
+				fprintf(stderr,"Wrong realm: %s\n",realm);
+				exit(-1);
+			}
+			break;
+		case 'p':
+			strcpy((char*)pwd,optarg);
+			if(SASLprep((u08bits*)pwd)<0) {
+				fprintf(stderr,"Wrong password: %s\n",pwd);
+				exit(-1);
+			}
+			break;
+		case 'h':
+			fprintf(stdout, "%s\n", AdminUsage);
+			exit(0);
+			break;
+		default:
+			fprintf(stderr, "%s\n", AdminUsage);
+			exit(-1);
+		}
+	}
+
+	if(kcommand) {
+		u08bits key[16];
+		size_t i = 0;
+		stun_produce_integrity_key_str(user, realm, pwd, key);
+		printf("0x");
+		for(i=0;i<sizeof(key);i++) {
+			printf("%02x",(unsigned int)key[i]);
+		}
+		printf("\n");
+	} else {
+		fprintf(stderr, "%s\n", AdminUsage);
+		exit(-1);
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
 
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
+
+	if(strstr(argv[0],"turnadmin"))
+		return adminmain(argc,argv);
 
 	users = malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));

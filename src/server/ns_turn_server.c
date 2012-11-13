@@ -954,7 +954,6 @@ static int check_stun_auth(turn_turnserver *server,
 			u16bits method, int *message_integrity)
 {
 	u08bits uname[513];
-	ur_string_map_value_type upwd;
 	u08bits realm[129];
 	u08bits nonce[129];
 	size_t alen = 0;
@@ -1033,19 +1032,23 @@ static int check_stun_auth(turn_turnserver *server,
 	}
 
 	/* Password */
-	ur_string_map_lock(server->users->accounts);
-	if(!ur_string_map_get(server->users->accounts, (ur_string_map_key_type)uname, &upwd)) {
+	if(ss->hmackey[0] == 0) {
+		ur_string_map_value_type ukey;
+		ur_string_map_lock(server->users->accounts);
+		if(!ur_string_map_get(server->users->accounts, (ur_string_map_key_type)uname, &ukey)) {
+			ur_string_map_unlock(server->users->accounts);
+			*err_code = 401;
+			*reason = (u08bits*)"Unauthorised";
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+		}
+		ns_bcopy(ukey,ss->hmackey,16);
 		ur_string_map_unlock(server->users->accounts);
-		*err_code = 401;
-		*reason = (u08bits*)"Unauthorised";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
 	}
-	ur_string_map_unlock(server->users->accounts);
 
 	/* Check integrity */
-	if(stun_check_message_integrity_str(ioa_network_buffer_data(in_buffer->nbh),
+	if(stun_check_message_integrity_by_key_str(ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
-					  uname,realm,upwd,ss->hmackey)<1) {
+					  ss->hmackey)<1) {
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
 		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);

@@ -206,10 +206,14 @@ int stun_attr_add_fingerprint_str(u08bits *buf, size_t *len);
 
 int SASLprep(u08bits *s);
 
+#define print_bin(str, len, field) print_bin_func(str,len,field,__FUNCTION__)
+void print_bin_func(const char *name, size_t len, const void *s, const char *func);
+
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
+int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *key);
+int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd);
 int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce);
 

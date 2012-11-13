@@ -984,8 +984,6 @@ int SASLprep(u08bits *s)
 
 //////////////// Message Integrity ////////////////////////////
 
-#define print_bin(str, len, field) print_bin_func(str,len,field,__FUNCTION__)
-void print_bin_func(const char *name, size_t len, const void *s, const char *func);
 void print_bin_func(const char *name, size_t len, const void *s, const char *func)
 {
 	printf("%s:%s:len=%d:[",func,name,(int)len);
@@ -1031,8 +1029,7 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd,
-				u08bits *key)
+int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *key)
 {
 	int res = 0;
 	u08bits new_hmac[20];
@@ -1040,9 +1037,6 @@ int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u
 
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY);
 	if (!sar)
-		return -1;
-
-	if (stun_produce_integrity_key_str(uname, realm, upwd, key) < 0)
 		return -1;
 
 	int orig_len = stun_get_command_message_len_str(buf, len);
@@ -1068,6 +1062,19 @@ int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u
 		return 0;
 
 	return 1;
+}
+
+/*
+ * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
+ */
+int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd)
+{
+	u08bits key[16];
+
+	if (stun_produce_integrity_key_str(uname, realm, upwd, key) < 0)
+		return -1;
+
+	return stun_check_message_integrity_by_key_str(buf, len, key);
 }
 
 ///////////////////////////////////////////////////////////////
