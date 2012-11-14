@@ -62,8 +62,12 @@ typedef enum {
 
 struct _turn_user_db {
 	turn_credential_type ct;
-	u08bits realm[129];
+	u08bits realm[STUN_MAX_REALM_SIZE+1];
+	size_t total_quota;
+	size_t user_quota;
+	size_t total_current_allocs;
 	ur_string_map *accounts;
+	ur_string_map *alloc_counters;
 };
 typedef struct _turn_user_db turn_user_db;
 

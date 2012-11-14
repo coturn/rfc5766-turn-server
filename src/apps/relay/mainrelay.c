@@ -367,6 +367,7 @@ static void clean_server(void)
 
 	if(users) {
 		ur_string_map_free(&(users->accounts));
+		ur_string_map_free(&(users->alloc_counters));
 		free(users);
 	}
 }
@@ -463,6 +464,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-a, --lt-cred-mech	Use long-term credential mechanism\n"
 	"	-u, --user		User account, in form 'username:password'\n"
 	"	-e, --realm		Realm\n"
+	"	-q, --user-quota	per-user allocation quota\n"
+	"	-Q, --total-quota	total allocation quota\n"
 	"	-c			Configuration file name (default - turn.conf)\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
@@ -478,7 +481,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "d:p:L:E:i:m:l:r:u:e:vfha"
+#define OPTIONS "d:p:L:E:i:m:l:r:u:e:q:Q:vfha"
 
 #define ADMIN_OPTIONS "kadc:u:r:p:h"
 
@@ -494,6 +497,8 @@ static struct option long_options[] = {
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'e' },
+				{ "user-quota", required_argument, NULL, 'q' },
+				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ NULL, no_argument, NULL, 0 }
@@ -653,6 +658,12 @@ static void set_option(int c, const char *value)
 	case 'e':
 		strcpy((s08bits*) users->realm, value);
 		break;
+	case 'q':
+		users->user_quota = atoi(optarg);
+		break;
+	case 'Q':
+		users->total_quota = atoi(optarg);
+		break;
 		/* these options are already taken care of before: */
 	case 'c':
 	case 'n':
@@ -811,9 +822,9 @@ static int adminmain(int argc, char **argv)
 	int acommand = 0;
 	int dcommand = 0;
 
-	u08bits user[513]="\0";
-	u08bits realm[129]="\0";
-	u08bits pwd[129]="\0";
+	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
+	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
+	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
 
 	char config_file[1025] = DEFAULT_CONFIG_FILE;
 
@@ -1013,6 +1024,7 @@ int main(int argc, char **argv)
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->accounts = ur_string_map_create(free);
+	users->alloc_counters = ur_string_map_create(NULL);
 
 	if(read_config_file(argc,argv,0))
 		ur_string_map_unlock(users->accounts);

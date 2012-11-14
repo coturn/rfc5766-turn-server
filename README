@@ -97,10 +97,14 @@ The command line parameters are:
 							The key is calculated over the user name, the realm, 
 							and the user password.
 	-e, --realm				Realm.
+	-q, --user-quota		per-user allocation quota.
+	-Q, --total-quota		total allocation quota.
 	-c						Configuration file name (default - turn.conf).
 							The format of config file can be seen in the supplied etc/turn.conf 
 							example file. Long names of the options are used as the configuration items
 							names in the file.  
+							If not absolute path is supplied, then the file is searched first in the
+							current directory, then in ./etc, then in /etc, then in /usr/local/etc.
 	-n						Do not use configuration file.
 	-h						help.
 	

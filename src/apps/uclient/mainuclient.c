@@ -49,8 +49,8 @@ ioa_addr peer_addr;
 int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
-u08bits g_uname[513];
-u08bits g_upwd[129];
+u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
+u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 
 //////////////// local definitions /////////////////
 

@@ -48,8 +48,8 @@ typedef struct {
   ioa_timer_handle to_be_allocated_timeout_ev;
   u08bits nonce[NONCE_LENGTH_32BITS*8+1];
   turn_time_t nonce_expiration_time;
-  u08bits username[513]; //size according to RFC5389
-  u08bits hmackey[16]; //MD5 key
+  u08bits username[STUN_MAX_USERNAME_SIZE+1];
+  u08bits hmackey[16];
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

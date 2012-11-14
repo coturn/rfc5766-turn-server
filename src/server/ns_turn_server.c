@@ -101,6 +101,50 @@ static ts_ur_super_session* create_new_ss(void) {
 			sizeof(ts_ur_super_session)));
 }
 
+static int check_new_allocation_quota(turn_turnserver *server, u08bits *username)
+{
+	int ret = 0;
+	if (server && username) {
+		ur_string_map_lock(server->users->alloc_counters);
+		if (server->users->total_quota && (server->users->total_current_allocs >= server->users->total_quota)) {
+			ret = -1;
+		} else {
+			ur_string_map_value_type value = 0;
+			if (!ur_string_map_get(server->users->alloc_counters, (ur_string_map_key_type) username, &value)) {
+				value = (ur_string_map_value_type) 1;
+				ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
+				++(server->users->total_current_allocs);
+			} else {
+				if ((server->users->user_quota) && ((size_t) value >= server->users->user_quota)) {
+					ret = -1;
+				} else {
+					value = (ur_string_map_value_type)(((size_t)value) + 1);
+					ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
+					++(server->users->total_current_allocs);
+				}
+			}
+		}
+		ur_string_map_unlock(server->users->alloc_counters);
+	}
+	return ret;
+}
+
+static void release_allocation_quota(turn_turnserver *server, u08bits *username)
+{
+	if (server && username) {
+		ur_string_map_lock(server->users->alloc_counters);
+		ur_string_map_value_type value = 0;
+		ur_string_map_get(server->users->alloc_counters, (ur_string_map_key_type) username, &value);
+		if (value) {
+			value = (ur_string_map_value_type)(((size_t)value) - 1);
+			ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
+		}
+		if (server->users->total_current_allocs)
+			--(server->users->total_current_allocs);
+		ur_string_map_unlock(server->users->alloc_counters);
+	}
+}
+
 /////////// clean all /////////////////////
 
 static void delete_ur_map_ss(void *p) {
@@ -118,6 +162,7 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
+		release_allocation_quota(ss->server,ss->username);
 		if (ss->client_session.s) {
 			set_ioa_socket_session(ss->client_session.s, NULL);
 		}
@@ -269,11 +314,28 @@ static int handle_turn_allocate(turn_turnserver *server,
 		int even_port = -1;
 		u64bits in_reservation_token = 0;
 		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+		u08bits username[STUN_MAX_USERNAME_SIZE+1]="\0";
+		size_t ulen = 0;
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
+
+			if(attr_type == STUN_ATTRIBUTE_USERNAME) {
+				const u08bits* value = stun_attr_get_value(sar);
+				if (value) {
+					ulen = stun_attr_get_len(sar);
+					if(ulen>=sizeof(username)) {
+						*err_code = 400;
+						*reason = (const u08bits *)"User name is too long";
+						break;
+					}
+					ns_bcopy(value,username,ulen);
+					username[ulen]=0;
+				}
+			}
+
 			switch (attr_type) {
 			SKIP_AUTH_ATTRIBUTES;
 			case STUN_ATTRIBUTE_REQUESTED_TRANSPORT: {
@@ -401,8 +463,16 @@ static int handle_turn_allocate(turn_turnserver *server,
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
-			if (create_relay_connection(server, ss, lifetime, af, even_port,
+			if(check_new_allocation_quota(server,username)<0) {
+
+				*err_code = 486;
+				*reason = (const u08bits *)"Allocation Quota Reached";
+
+			} else if (create_relay_connection(server, ss, lifetime, af, even_port,
 						    in_reservation_token, &out_reservation_token, err_code, reason) < 0) {
+
+				release_allocation_quota(server,username);
+
 				if (!*err_code) {
 				  *err_code = 437;
 				  if(!(*reason))
@@ -413,6 +483,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				a = get_allocation_ss(ss);
 				set_allocation_valid(a,1);
+
+				strcpy((char*)ss->username,(char*)username);
 
 				stun_tid_cpy(&(a->tid), tid);
 
@@ -953,9 +1025,9 @@ static int check_stun_auth(turn_turnserver *server,
 			ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
 			u16bits method, int *message_integrity)
 {
-	u08bits uname[513];
-	u08bits realm[129];
-	u08bits nonce[129];
+	u08bits uname[STUN_MAX_USERNAME_SIZE+1];
+	u08bits realm[STUN_MAX_REALM_SIZE+1];
+	u08bits nonce[STUN_MAX_NONCE_SIZE+1];
 	size_t alen = 0;
 
 	if(!need_stun_authentication(server))

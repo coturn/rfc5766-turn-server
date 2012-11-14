@@ -36,6 +36,11 @@
 #define STUN_HEADER_LENGTH (20)
 #define STUN_CHANNEL_HEADER_LENGTH (4)
 
+#define STUN_MAX_USERNAME_SIZE (513)
+#define STUN_MAX_REALM_SIZE (127)
+#define STUN_MAX_NONCE_SIZE (127)
+#define STUN_MAX_PWD_SIZE (127)
+
 #define STUN_MAGIC_COOKIE (0x2112A442)
 
 #define IS_STUN_REQUEST(msg_type)       (((msg_type) & 0x0110) == 0x0000)
