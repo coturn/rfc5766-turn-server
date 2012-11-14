@@ -7,6 +7,5 @@ Current implementation supports UDP functionality of RFC 5766 and RFC 6156. Thin
 5) RFC 6062 support (?).
 6) Locale support.
 7) Apply smarter rules on routed packets (like TTL etc).
-8) Limit number of allocations per user.
-9) Limit bandwidth per user. 
+8) Limit bandwidth per user. 
 
