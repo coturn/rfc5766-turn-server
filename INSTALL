@@ -1,0 +1,56 @@
+
+I. PLATFORMS
+
+The TURN Server and utilities were developed and tested on Linux and FreeBSD platforms.
+It may work on many other UNIXes, as well. 
+
+II. COMPILERS
+
+The approved compilers are gcc 4.2.1 (or better) and clang.
+
+III. LIBRARIES AND UTILITIES
+
+In addition to common UNIX OS services and libraries, this code requires:
+
+1) Libevent2 IO library. 
+It is assumed to be installed in /usr/local/ directory. If the location is 
+different, then the Makefile has to be adjusted.
+
+	Libevent installation instructions:
+	
+	*) FreeBSD:
+
+		$ cd /usr/ports/devel/libevent2/
+		$ sudo make install
+
+		or download and install it from http://libevent.org.
+
+	**) Linux and UNIXes: 
+
+		Download 2.x.xx version of libevent from http://libevent.org and 
+		follow the included instructions.
+		
+2) OpenSSL library 0.9.6 or better.
+
+3) Pthread library.
+
+IV. BUILD
+
+"make" command will create bin sub-directory and put the TURN server there. 
+The test applications will be located in testapps/bin/ 
+sub-directory.
+
+The supplied Makefile creates dynamically linked binaries.
+If statically linked binaries are desired, then the Makefile
+has to be changed, accordingly. 
+ 
+The programs can be either called directly, or a shell scripts can be used. 
+The script examples are located in scripts.examples directory.
+
+"make clean" command will clean all results of the build process.
+
+IV. CLIENT API LIBRARY.
+
+The compilation process will create lib/ sub-directory with libturnclient.a library. 
+The header files for this library are located in include/turn/client/ sub-directory.
+

@@ -31,16 +31,18 @@
 #include "uclient.h"
 #include "ns_turn_utils.h"
 #include "apputils.h"
+#include "session.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 /////////////// extern definitions /////////////////////
 
-int clmessage_length=0;
+int clmessage_length=100;
 int use_send_method=0;
 int c2c=0;
 int udp_verbose=0;
@@ -79,7 +81,6 @@ static char Usage[] =
 int main(int argc, char **argv)
 {
   int port = DEFAULT_STUN_PORT;
-  int length = 100;
   int messagenumber = 5;
   char local_addr[256];
   char c;
@@ -110,7 +111,7 @@ int main(int argc, char **argv)
 	    default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 	    break;
     case 'l':
-      length = atoi(optarg);
+      clmessage_length = atoi(optarg);
       break;
     case 's':
       use_send_method=1;
@@ -151,6 +152,9 @@ int main(int argc, char **argv)
     }
   }
 
+  if(clmessage_length < (int)sizeof(message_info))
+	  clmessage_length = (int)sizeof(message_info);
+
   if(optind>=argc) {
     fprintf(stderr, "%s\n", Usage);
     exit(-1);
@@ -162,7 +166,13 @@ int main(int argc, char **argv)
       return -1;
   }
 
-  start_mclient(argv[optind], port, ifname, local_addr, length, messagenumber, mclient);
+  struct sched_param param;
+  param.sched_priority = 10;
+  if(pthread_setschedparam(pthread_self(), SCHED_RR, &param)) {
+	  printf("Cannot set priority, you have to use superuser to run this program with high priority\n");
+  }
+
+  start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);
 
   return 0;
 }

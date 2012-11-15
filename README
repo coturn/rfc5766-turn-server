@@ -1,4 +1,4 @@
-I. General information
+I. GENERAL INFORMATION
 
 This directory contains the source code of five TURN-related programs:
 
@@ -25,49 +25,9 @@ The compiled binary image of this program is located in testapps/bin/ subdirecto
 5) stunclient: a simple STUN client example.
 The compiled binary image of this program is located in testapps/bin/ subdirectory.
 
-These programs were developed and tested on a Linux 2.6 system (32bits Ubuntu 11.04, specifically) 
-and FreeBSD 8 and 9, 32-bits and 64-bits. The tested compilers are gcc 4.2.+ and clang.
+See INSTALL for the compilation instructions.
   
-II. Tools and libraries.
-
-The relay programs are using a third-party open-source tool: the libevent2 IO library. 
-It is assumed to be installed in /usr/local/ directory. If the location is different, then
-the Makefile has to be adjusted.
-
-Libevent installation instructions:
-
-1) Linux: 
-
-	Download 2.0.x version of libevent from http://libevent.org and follow the included instructions.
-	
-2) FreeBSD:
-
-	$cd /usr/ports/devel/libevent2/
-	$sudo make install
-
-	or download and install it from http://libevent.org.
-	
-TURN Server also uses openssl library - for MD5 and HMAC-SHA1.
-
-TURN Server uses pthread library for multithreading. 
-
-III. Build
-
-"make" command will create bin sub-directory and put the TURN server there. 
-The test applications will be located in testapps/bin/ 
-sub-directory.
- 
-The programs can be either called directly, or a shell scripts can be used. 
-The script examples are located in scripts.examples directory.
-
-"make clean" command will clean all results of the build process.
-
-IV. Client API library.
-
-The compilation process will create lib/ sub-directory with libturnclient.a library. 
-The header files for this library are located in include/turn/client/ sub-directory.
-
-V. Run
+II. RUN
 
 1) turnserver application is a TURN relay server implementation. 
 
@@ -183,4 +143,8 @@ The command line parameters are:
     -p      STUN server port (Default: 3478). 
     -L      local address to use (optional).
 
+III. LIBRARIES
 
+In the lib/ sub-directory the compilation process will create TURN client messaging library.
+In the include/ sub-directory, the necessary include files will be placed.
+ 

@@ -69,19 +69,33 @@ typedef struct {
   app_ur_conn_info pinfo;
   unsigned int ctime;
   uint16_t chnum;
-  int tot_msgnum;
-  int wmsgnum;
-  int rmsgnum;
   int wait_cycles;
   int clnum;
-  struct event *timer_ev;
   int timer_cycle;
   int known_mtu;
   struct event *input_ev; 
   stun_buffer in_buffer;
   stun_buffer out_buffer;
+  //Msg counters:
+  int tot_msgnum;
+  int wmsgnum;
+  int rmsgnum;
+  int recvmsgnum;
+  u32bits recvtimems;
+  u32bits senttimems;
+  //Statistics:
+  size_t loss;
+  u64bits latency;
+  u64bits jitter;
 } app_ur_session;
 
 ///////////////////////////////////////////////////////
+
+typedef struct _message_info {
+	int msgnum;
+	u32bits mstime;
+} message_info;
+
+///////////////////////////////////////////////////////////////////////////////
 
 #endif //__SESSION__

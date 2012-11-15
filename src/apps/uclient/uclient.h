@@ -47,7 +47,7 @@ extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 
 void start_mclient(const char *remote_address, int port,
-		   const unsigned char* ifname, const char *local_address, int length, 
+		   const unsigned char* ifname, const char *local_address,
 		   int messagenumber, int mclient);
 
 int send_buffer(int fd, stun_buffer* message);

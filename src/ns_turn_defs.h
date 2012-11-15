@@ -93,7 +93,7 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 
 typedef u32bits turn_time_t;
 
-#define turn_time_before(t1,t2) ((((s32bits)t1)-((s32bits)(t2))) < 0)
+#define turn_time_before(t1,t2) ((((s32bits)(t1))-((s32bits)(t2))) < 0)
 
 #if !defined(UNUSED_ARG)
 #define UNUSED_ARG(A) do { A=A; } while(0)
