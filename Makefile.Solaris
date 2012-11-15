@@ -1,0 +1,4 @@
+CC = gcc
+OSLIBS = -lsocket -lnsl
+
+include common.mk

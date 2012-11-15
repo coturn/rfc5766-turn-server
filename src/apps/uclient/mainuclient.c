@@ -38,7 +38,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <pthread.h>
 
 /////////////// extern definitions /////////////////////
 
@@ -164,12 +163,6 @@ int main(int argc, char **argv)
     if (make_ioa_addr((const u08bits*) peer_address, peer_port,
 		      &peer_addr) < 0)
       return -1;
-  }
-
-  struct sched_param param;
-  param.sched_priority = 10;
-  if(pthread_setschedparam(pthread_self(), SCHED_RR, &param)) {
-	  printf("Cannot set priority, you have to use superuser to run this program with high priority\n");
   }
 
   start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);

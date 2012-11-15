@@ -41,6 +41,10 @@
 
 /************** Utils **************************/
 
+#if !defined(min)
+#define min(a,b) (a<=b ? a : b)
+#endif
+
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 {
 	if (s->do_not_use_df)
@@ -460,7 +464,7 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 
 	int offset = STUN_CHANNEL_HEADER_LENGTH;
 
-	int ilen = MIN((int)ioa_network_buffer_get_size(in_buffer->nbh),
+	int ilen = min((int)ioa_network_buffer_get_size(in_buffer->nbh),
 					(int)(ioa_network_buffer_get_capacity() - offset));
 
 	if (ilen >= 0) {

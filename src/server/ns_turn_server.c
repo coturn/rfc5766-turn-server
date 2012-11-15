@@ -1712,7 +1712,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 	int offset = STUN_CHANNEL_HEADER_LENGTH;
 
-	int ilen = MIN((int)ioa_network_buffer_get_size(in_buffer->nbh),
+	int ilen = min((int)ioa_network_buffer_get_size(in_buffer->nbh),
 					(int)(ioa_network_buffer_get_capacity() - offset));
 
 	if (ilen >= 0) {

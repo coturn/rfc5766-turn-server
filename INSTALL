@@ -49,7 +49,30 @@ The script examples are located in scripts.examples directory.
 
 "make clean" command will clean all results of the build process.
 
-IV. CLIENT API LIBRARY.
+IV. TEST
+
+If everything compiled properly, then the following programs must run 
+together successfully:
+
+Open threee shell screens or consoles:
+
+In shell number 1, run peer application: 
+ $ scripts.examples/peer.sh
+
+In shell number 2, run local TURN server application:
+ $ scripts.examples/secure_relay.sh
+
+In shell number 3, run test client application:
+
+ $ scripts.examples/secure_uclient.sh
+
+If the client application produces output and in 20 seconds prints 
+the jitter, loss and latency statistics, then everything runs fine.
+
+Use scripts relay.sh and secure_relay.sh as guidance how to run 
+the TURN server.
+
+V. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.
