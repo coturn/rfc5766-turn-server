@@ -2,21 +2,23 @@
 I. PLATFORMS
 
 The TURN Server and utilities were developed and tested on Linux, FreeBSD and
-Solaris 11 platforms.
+Solaris 11 platforms. Both 32 bits and 64 bits variants tested.
 
-It may work on many other UNIXes, as well. The Makefile may need adjustments
-for other UNIXes (see Makefile.Solaris as an example).
+It may work on many other UNIXes, as well. The build.sh script and/or 
+Makefile may need adjustments for other UNIXes.
 
 II. COMPILERS
 
-The approved compilers are gcc 4.2.1 (or better) and clang.
+The approved compilers are gcc 4.2.1 (or better) and clang. But it may work 
+with others compilers, too.
 
-III. LIBRARIES AND UTILITIES
+III. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common UNIX OS services and libraries, this code requires:
 
 1) Libevent2 IO library. 
-It is assumed to be installed in /usr/local/ directory. If the location is 
+It is assumed to be installed in /usr/local/ directory. By default,
+Libevent2 installs itself in that directory. If the location is 
 different, then the Makefile has to be adjusted.
 
 	Libevent installation instructions:
@@ -31,7 +33,8 @@ different, then the Makefile has to be adjusted.
 	**) Linux and UNIXes: 
 
 		Download 2.x.xx version of libevent from http://libevent.org and 
-		follow the included instructions.
+		follow the supplied instructions. The instructions are fairly
+		standard (./configure and make install).
 		
 2) OpenSSL library 0.9.6 or better.
 
@@ -39,9 +42,11 @@ different, then the Makefile has to be adjusted.
 
 IV. BUILD
 
-"make" command will create bin sub-directory and put the TURN server there. 
+build.sh script will create bin sub-directory and put the TURN server there. 
 The test applications will be located in testapps/bin/ 
 sub-directory.
+
+For most platforms, just "make" would suffice.
 
 The supplied Makefile creates dynamically linked binaries.
 If statically linked binaries are desired, then the Makefile
@@ -55,9 +60,10 @@ The script examples are located in scripts.examples directory.
 IV. TEST
 
 If everything compiled properly, then the following programs must run 
-together successfully:
+together successfully, simulating TURN processing in local networking 
+environment:
 
-Open threee shell screens or consoles:
+Open three shell screens or consoles:
 
 In shell number 1, run peer application: 
  $ scripts.examples/peer.sh
@@ -69,7 +75,7 @@ In shell number 3, run test client application:
 
  $ scripts.examples/secure_uclient.sh
 
-If the client application produces output and in 20 seconds prints 
+If the client application produces output and in 22 seconds prints 
 the jitter, loss and latency statistics, then everything runs fine.
 
 Use scripts relay.sh and secure_relay.sh as guidance how to run 

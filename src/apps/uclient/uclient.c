@@ -36,7 +36,6 @@
 
 #include <unistd.h>
 #include <time.h>
-#include <sched.h>
 
 static const int verbose_packets=0;
 
