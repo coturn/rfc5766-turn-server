@@ -231,12 +231,13 @@ static void run_listener_server(struct event_base *eb)
 
 static void *run_relay_thread(void *arg)
 {
-	struct relay_server *rs = arg;
-
-	for(;;)
-		run_events(rs->event_base);
-
-	return arg;
+  static int always_true = 1;
+  struct relay_server *rs = arg;
+  
+  while(always_true)
+    run_events(rs->event_base);
+  
+  return arg;
 }
 
 static void setup_relay_servers(void)
@@ -566,7 +567,6 @@ static int get_bool_value(const char* s)
 	if(!strcmp(s,"on") || !strcmp(s,"ON") || !strcmp(s,"On")) return 1;
 	fprintf(stderr,"Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n",s);
 	exit(-1);
-	return 0;
 }
 
 static int add_user_account(const char *user)
@@ -796,7 +796,6 @@ static int read_config_file(int argc, char **argv, int users_only)
 	} else if (!users_only) {
 		fprintf(stderr, "Cannot find config file: %s\n", config_file);
 		exit(-1);
-		return -1; /* Unreachable */
 	} else
 		return 0;
 }

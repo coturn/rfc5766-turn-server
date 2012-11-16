@@ -34,6 +34,7 @@
 #include "apputils.h"
 
 #include <openssl/md5.h>
+#include <openssl/hmac.h>
 #include <openssl/ssl.h>
 
 ///////////// Security functions implementation from ns_turn_msg.h ///////////
@@ -307,7 +308,6 @@ int handle_socket_error() {
     return 0;
     break;
   }
-  return 0;
 }
 
 //////////////////////////////////////////////////////////////

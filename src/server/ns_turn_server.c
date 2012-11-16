@@ -986,8 +986,6 @@ static int need_stun_authentication(turn_turnserver *server)
 		fprintf(stderr,"Wrong credential mechanism used\n");
 		exit(-1);
 	};
-
-	return 0;
 }
 
 static int create_challenge_response(turn_turnserver *server,

@@ -1,16 +1,28 @@
 
 I. PLATFORMS
 
-The TURN Server and utilities were developed and tested on Linux, FreeBSD and
-Solaris 11 platforms. Both 32 bits and 64 bits variants tested.
+The TURN Server and utilities were developed and tested on the following platforms:
+
+	- Linux (Ubuntu 11.04, 32 bits) 
+	- FreeBSD 6.3 32 bits
+	- FreeBSD 8.2 32 bits
+	- FreeBSD 9.0 64 bits
+	- Solaris 11 x86 64 bits
 
 It may work on many other UNIXes, as well. The build.sh script and/or 
 Makefile may need adjustments for other UNIXes.
 
 II. COMPILERS
 
-The approved compilers are gcc 4.2.1 (or better) and clang. But it may work 
-with others compilers, too.
+The TURN Server is written in C programming language. 
+
+The tested C compilers are:
+
+	- gcc 3.4.6, 4.2.1, 4.5.2 or better
+	- clang 3.0 or better
+	- Solaris Studio 12.3 C compiler, version 5.12
+
+It may be compiled with others compilers, too.
 
 III. EXTRA LIBRARIES AND UTILITIES
 
