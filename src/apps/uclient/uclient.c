@@ -346,7 +346,7 @@ static int client_write(app_ur_session *elem) {
     if(rc<0 && handle_socket_error()) return 0;
 
     ++elem->wmsgnum;
-    elem->senttimems = current_mstime;
+    elem->to_send_timems += RTP_PACKET_INTERVAL;
     
     if(rc >= 0) {
       if (udp_verbose && verbose_packets) {
@@ -662,7 +662,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 static inline void client_timer_handler(app_ur_session* elem)
 {
 
-	if (elem && (!(elem->wmsgnum) || time_minus(current_mstime, elem->senttimems) >= (RTP_PACKET_INTERVAL))) {
+	if (elem && !turn_time_before(current_mstime, elem->to_send_timems)) {
 
 		if (((elem->timer_cycle++) & (4096 - 1)) == (4096 - 1)) {
 			refresh_channel(elem,0);
@@ -682,7 +682,7 @@ static inline void client_timer_handler(app_ur_session* elem)
 				total_latency += elem->latency;
 				total_jitter += elem->jitter;
 				if (!hang_on)
-					client_shutdown(elem);
+				  client_shutdown(elem);
 			}
 		} else {
 			client_write(elem);
@@ -698,7 +698,7 @@ static void timer_handler(void)
 	__turn_getMSTime();
 
 	for (i = 0; i < total_clients; ++i) {
-		client_timer_handler(elems[i]);
+	  client_timer_handler(elems[i]);
 	}
 }
 
@@ -775,6 +775,11 @@ void start_mclient(const char *remote_address, int port,
 	    }
 	}
 
+	total_clients = tot_clients;
+
+	for(i=0;i<total_clients;i++) 
+	  elems[i]->to_send_timems = current_mstime + ((u32bits)random())%500;
+
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total connect time is %u\n",
 			((unsigned int) (current_time - stime)));
 
@@ -793,18 +798,19 @@ void start_mclient(const char *remote_address, int port,
 
 		if(show_statistics) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"%s: msz=%d, tot_send_messages=%lu, tot_recv_messages=%lu\n",
-				__FUNCTION__, msz, (unsigned long) tot_send_messages,
-				(unsigned long) tot_recv_messages);
+				      "%s: msz=%d, tot_send_messages=%lu, tot_recv_messages=%lu\n",
+				      __FUNCTION__, msz, (unsigned long) tot_send_messages,
+				      (unsigned long) tot_recv_messages);
 
 			show_statistics=0;
 		}
 	}
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-			"%s: tot_send_messages=%lu, tot_recv_messages=%lu\n", __FUNCTION__,
-			(unsigned long) tot_send_messages,
-			(unsigned long) tot_recv_messages);
+		      "%s: tot_send_messages=%lu, tot_recv_messages=%lu\n", 
+		      __FUNCTION__,
+		      (unsigned long) tot_send_messages,
+		      (unsigned long) tot_recv_messages);
 
 	if (client_event_base)
 		event_base_free(client_event_base);

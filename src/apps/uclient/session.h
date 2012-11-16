@@ -82,7 +82,7 @@ typedef struct {
   int rmsgnum;
   int recvmsgnum;
   u32bits recvtimems;
-  u32bits senttimems;
+  u32bits to_send_timems;
   //Statistics:
   size_t loss;
   u64bits latency;
