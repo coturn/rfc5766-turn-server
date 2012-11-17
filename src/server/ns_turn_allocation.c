@@ -178,7 +178,7 @@ turn_permission_info* get_from_turn_permission_map(const turn_permission_map map
   if(!addr) return NULL;
   u32bits hash=addr_hash_no_port(addr);
   turn_permission_info* ret=map[hash%TURN_PERMISSION_MAP_SIZE];
-  int found=0;
+  int found = 0;
   while(ret) {
     if(addr_eq_no_port(&ret->addr,addr)) {
       found=1;
@@ -187,6 +187,9 @@ turn_permission_info* get_from_turn_permission_map(const turn_permission_map map
       ret=(turn_permission_info*)(ret->list.next);
     }
   }
+
+  if(!found)
+    ret = NULL;
 
   return ret;
 }

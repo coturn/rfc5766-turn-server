@@ -1511,11 +1511,6 @@ static int create_relay_connection(turn_turnserver* server,
 
 		if (lifetime > 0 && a) {
 
-			struct timeval tv;
-
-			tv.tv_sec = lifetime;
-			tv.tv_usec = 0;
-
 			ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 					client_ss_allocation_timeout_handler, ss, 0,
 					"client_ss_allocation_timeout_handler");

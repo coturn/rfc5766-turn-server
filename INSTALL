@@ -3,7 +3,7 @@ I. PLATFORMS
 
 The TURN Server and utilities were developed and tested on the following platforms:
 
-	- Linux (Ubuntu 11.04, 32 bits) 
+	- Linux (Ubuntu 11.04 and 12.10, 32 bits) 
 	- FreeBSD 6.3 32 bits
 	- FreeBSD 8.2 32 bits
 	- FreeBSD 9.0 64 bits
@@ -48,7 +48,9 @@ different, then the Makefile has to be adjusted.
 		follow the supplied instructions. The instructions are fairly
 		standard (./configure and make install).
 		
-2) OpenSSL library 0.9.6 or better.
+2) OpenSSL development libraries and headers, version 0.9.6 or better.
+NOTE: the runtime libraries are not enough to compile the code,
+the full development OpenSSL setup is required.
 
 3) Pthread library.
 
