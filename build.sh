@@ -4,7 +4,19 @@ SYSTEM=`uname`
 
 if [ "${SYSTEM}" = "SunOS" ] ; then
 # Solaris
-    OSLIBS+="-lsocket -lnsl"
+    OSLIBS="-lsocket -lnsl -ldl"
+fi
+
+ISLINUX=`echo ${SYSTEM} | grep -i linux | cut -b 1`
+if [ ${ISLINUX} ] ; then
+#Linux
+  OSLIBS="-ldl"
+fi
+
+ISBSD=`echo ${SYSTEM} | grep -i bsd | cut -b 1`
+if [ ${ISBSD} ] ; then
+#BSD
+  OSLIBS=
 fi
 
 GNUOSCFLAGS="-Werror -Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual -Wredundant-decls"
