@@ -3,14 +3,13 @@ I. PLATFORMS
 
 The TURN Server and utilities were developed and tested on the following platforms:
 
-	- Linux Ubuntu 11.04, 32 bits
-	- Linux Ubuntu 12.10, 32 bits 
-	- FreeBSD 6.3 32 bits
-	- FreeBSD 8.2 32 bits
-	- FreeBSD 9.0 64 bits
+	- Linux Ubuntu 11.x and 12.x, 32 bits 
+	- FreeBSD 6.x 32 bits
+	- FreeBSD 8.x 32 bits
+	- FreeBSD 9.x 64 bits
 	- Solaris 11 x86 64 bits
 
-It may work on many other UNIXes, as well. The build.sh script and/or 
+It must work on many other UNIXes, as well. The build.sh script and/or 
 Makefile may need adjustments for other UNIXes.
 
 II. COMPILERS
@@ -50,11 +49,13 @@ If the location is  different, then the Makefile has to be adjusted.
 		$ cd /usr/ports/devel/libevent2/
 		$ sudo make install
 
-		or download and install it from http://libevent.org.
+		or download and install it 'manually' from http://libevent.org.
 
-	**) Ubuntu 12.10 and later: install packages libevent, libevent-core, libevent-dev, libevent-threads, 			libevent-openssl. Those packages include runtime libraries and development headers.
+	**) Linux Ubuntu 12.x package manager: install packages libevent, 
+	libevent-core, libevent-dev, libevent-threads, libevent-openssl. 
+	Those packages include runtime libraries and development headers.
 
-	***) Linux and UNIXes: 
+	***) Other Linuxes and UNIXes: 
 
 		Download 2.x.xx version of libevent from http://libevent.org and 
 		follow the supplied instructions. The instructions are fairly
@@ -66,10 +67,10 @@ libevent2, especially in the performance department. This is why we are
 not providing backward compatibility with the older libevent version.
 
 NOTE: if you are compiling libevent2 library yourself, then do that after full OpenSSL 
-installation. libevent2 depends on OpenSSL: if OpenSSL present, libevent2 compiles itself
-for extra functionality.
+installation. libevent2 depends on OpenSSL: if OpenSSL present, libevent2 compiles 
+itself with extra functionality.
 
-3) The system must have usual pthread library and headers available.
+3) The build system must have usual pthread library and headers available.
 
 IV. BUILD
 
@@ -87,6 +88,10 @@ The programs can be either called directly, or a shell scripts can be used.
 The script examples are located in scripts.examples directory.
 
 "make clean" command will clean all results of the build process.
+
+NOTE: On most modern systems, the build will produce dynamically linked 
+executables. If you want statically linked executables, you have to modify, 
+accordingly, the Makefile.
 
 IV. TEST
 
