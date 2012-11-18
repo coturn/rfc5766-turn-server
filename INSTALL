@@ -3,7 +3,8 @@ I. PLATFORMS
 
 The TURN Server and utilities were developed and tested on the following platforms:
 
-	- Linux (Ubuntu 11.04 and 12.10, 32 bits) 
+	- Linux Ubuntu 11.04, 32 bits
+	- Linux Ubuntu 12.10, 32 bits 
 	- FreeBSD 6.3 32 bits
 	- FreeBSD 8.2 32 bits
 	- FreeBSD 9.0 64 bits
@@ -18,7 +19,7 @@ The TURN Server is written in C programming language.
 
 The tested C compilers are:
 
-	- gcc 3.4.6, 4.2.1, 4.5.2 or better
+	- gcc 3.4.6 thru 4.7.2
 	- clang 3.0 or better
 	- Solaris Studio 12.3 C compiler, version 5.12
 
@@ -28,10 +29,19 @@ III. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common UNIX OS services and libraries, this code requires:
 
-1) Libevent2 IO library. 
-It is assumed to be installed in /usr/local/ directory. By default,
-Libevent2 installs itself in that directory. If the location is 
-different, then the Makefile has to be adjusted.
+1) OpenSSL development libraries and headers, version 0.9.6 or better.
+
+NOTE: the runtime libraries are not enough to compile the code,
+the full development OpenSSL setup is required. For example, in Ununtu, 
+the developer has to install the libssl-dev package.
+
+NOTE: The best results are usually obtained by downloading and
+installing a fresh 1.x.x OpenSSL full development version from their site.
+
+2) libevent2 IO library. 
+It is assumed to be installed either in /usr or /usr/local/ directory. 
+Default libevent2 installation installs it in one of those locations.
+If the location is  different, then the Makefile has to be adjusted.
 
 	Libevent installation instructions:
 	
@@ -42,17 +52,24 @@ different, then the Makefile has to be adjusted.
 
 		or download and install it from http://libevent.org.
 
-	**) Linux and UNIXes: 
+	**) Ubuntu 12.10 and later: install packages libevent, libevent-core, libevent-dev, libevent-threads, 			libevent-openssl. Those packages include runtime libraries and development headers.
+
+	***) Linux and UNIXes: 
 
 		Download 2.x.xx version of libevent from http://libevent.org and 
 		follow the supplied instructions. The instructions are fairly
 		standard (./configure and make install).
-		
-2) OpenSSL development libraries and headers, version 0.9.6 or better.
-NOTE: the runtime libraries are not enough to compile the code,
-the full development OpenSSL setup is required.
 
-3) Pthread library.
+NOTE: an older libevent version, version 1.x.x, is often included in some Linux 
+distributions. That version has its deficiencies and is inferior to the newer 
+libevent2, especially in the performance department. This is why we are 
+not providing backward compatibility with the older libevent version.
+
+NOTE: if you are compiling libevent2 library yourself, then do that after full OpenSSL 
+installation. libevent2 depends on OpenSSL: if OpenSSL present, libevent2 compiles itself
+for extra functionality.
+
+3) The system must have usual pthread library and headers available.
 
 IV. BUILD
 

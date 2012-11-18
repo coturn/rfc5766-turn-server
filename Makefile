@@ -1,10 +1,10 @@
 AR = ar -r
 
 LIBEVENT_INCLUDE = /usr/local/include/
-LIBEVENT_LIB = -L/usr/local/lib/event2/ -L/usr/local/lib/ -levent -levent_pthreads -lpthread -lssl -lcrypto
+LIBEVENT_LIB = -L/usr/local/lib/event2/ -L/usr/local/lib/ -levent -levent_pthreads 
 
 INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client -I${LIBEVENT_INCLUDE} 
-LIBFLAGS = ${LIBEVENT_LIB} -Llib
+LIBFLAGS = ${LIBEVENT_LIB} -lpthread -lssl -lcrypto -Llib
 LINKFLAGS = ${LIBFLAGS} ${OSLIBS}
 
 CFLAGS = -O2 ${OSCFLAGS} ${INCFLAGS}
