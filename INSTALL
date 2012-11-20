@@ -51,9 +51,19 @@ If the location is  different, then the Makefile has to be adjusted.
 
 		or download and install it 'manually' from http://libevent.org.
 
-	**) Linux Ubuntu 12.x package manager: install packages libevent, 
-	libevent-core, libevent-dev, libevent-threads, libevent-openssl. 
-	Those packages include runtime libraries and development headers.
+	**) Linux Ubuntu 11.10 and later:
+
+		With a package manager (like synaptic): 
+		install the packages:
+
+			libevent, 
+			libevent-core, 
+			libevent-dev, 
+			libevent-threads, 
+			libevent-openssl. 
+
+		This set of packages includes the necessary runtime libraries and 
+		the development headers.
 
 	***) Other Linuxes and UNIXes: 
 

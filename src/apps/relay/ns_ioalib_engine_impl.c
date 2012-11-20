@@ -155,7 +155,7 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, int addres
 
 /******************** Timers ****************************/
 
-static void timer_event_handler(int fd, short what, void* arg)
+static void timer_event_handler(evutil_socket_t fd, short what, void* arg)
 {
 	timer_event* te = arg;
 
@@ -252,7 +252,7 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
 
 static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st)
 {
-	int fd = -1;
+	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
 
 	switch (st){
@@ -263,18 +263,23 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 			return NULL;
 		}
 		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
-		socket_set_reusable(fd);
-		evutil_make_socket_nonblocking(fd);
 		break;
 	default:
-		/* we support only UDP sockets */
+		//TODO
 		return NULL;
 	}
+
+	socket_set_reusable(fd);
+	evutil_make_socket_nonblocking(fd);
 
 	ret = malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
+	if(st != UDP_SOCKET) {
+		ret->bev = bufferevent_socket_new(e->event_base, fd, 0);
+		bufferevent_enable(ret->bev, EV_READ); /* Start reading. */
+	}
 	ret->family = family;
 	ret->st = st;
 	ret->e = e;
@@ -414,8 +419,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 	return 0;
 }
 
-ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, const ioa_addr *remote_addr,
-				const ioa_addr *local_addr)
+ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
+				ioa_socket_raw fd, SOCKET_TYPE st,
+				const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
 	ioa_socket_handle ret = NULL;
 
@@ -427,8 +433,12 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
+	if(st != UDP_SOCKET) {
+		ret->bev = bufferevent_socket_new(e->event_base, fd, 0);
+		bufferevent_enable(ret->bev, EV_READ); /* Start reading. */
+	}
 	ret->family = local_addr->ss.ss_family;
-	ret->st = UDP_SOCKET;
+	ret->st = st;
 	ret->e = e;
 
 	if (local_addr) {
@@ -551,6 +561,10 @@ void close_ioa_socket(ioa_socket_handle s)
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,&(s->local_addr));
 		}
+		if(s->bev) {
+			bufferevent_free(s->bev);
+			s->bev=NULL;
+		}
 		if (s->fd >= 0) {
 			evutil_closesocket(s->fd);
 			s->fd = -1;
@@ -598,7 +612,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 	return NULL;
 }
 
-static int udp_recvfrom(ioa_socket_raw fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size)
+static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size)
 {
 
 	if (fd < 0 || !orig_addr || !like_addr || !buffer)
@@ -614,7 +628,7 @@ static int udp_recvfrom(ioa_socket_raw fd, ioa_addr* orig_addr, const ioa_addr *
 	return len;
 }
 
-static void socket_input_handler(int fd, short what, void* arg)
+static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 
 	if (!(what & EV_READ) || !arg)
@@ -630,7 +644,9 @@ static void socket_input_handler(int fd, short what, void* arg)
 
 	int len = 0;
 
-	if(s->fd>=0){
+	if(s->bev) {
+		len = (int)bufferevent_read(s->bev, sbuf->buf, sizeof(sbuf->buf));
+	} else if(s->fd>=0){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
 	} else {
 		free(sbuf);
@@ -638,7 +654,6 @@ static void socket_input_handler(int fd, short what, void* arg)
 	}
 
 	if (len >= 0 && s->read_cb) {
-
 		sbuf->len = len;
 		ioa_net_data event_data = {&remote_addr, sbuf, 0 };
 		ioa_net_event_handler cb = s->read_cb;
@@ -654,7 +669,15 @@ static void socket_input_handler(int fd, short what, void* arg)
 	}
 }
 
-static inline int udp_send(ioa_socket_raw fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
+static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
+{
+	if(bev && arg) {
+		ioa_socket_handle s = arg;
+		socket_input_handler(s->fd, EV_READ, arg);
+	}
+}
+
+static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
 {
 	int rc = 0;
 	if (dest_addr) {
@@ -682,7 +705,14 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_
 
 				if(to_peer && socket_channel)
 					s = socket_channel; //Use dedicated socket
-				if (s->fd >= 0) {
+				if (s->connected && s->bev) {
+					if(bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh))<0) {
+						ret = -1;
+						perror("send");
+					} else {
+						ret = (int)ioa_network_buffer_get_size(nbh);
+					}
+				} else if (s->fd >= 0) {
 					if (s->connected)
 						dest_addr = NULL; /* ignore dest_addr */
 					else if (!dest_addr)
@@ -706,10 +736,14 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 		if ((event_type & IOA_EV_READ) && s) {
 			s->e = e;
 			EVENT_DEL(s->read_event);
-			s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
+			if(s->bev) {
+				bufferevent_setcb(s->bev, socket_input_handler_bev, NULL, NULL, s);
+			} else {
+				s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
+				event_add(s->read_event,NULL);
+			}
 			s->read_cb = cb;
 			s->read_ctx = ctx;
-			event_add(s->read_event,NULL);
 			return 0;
 		}
 	}

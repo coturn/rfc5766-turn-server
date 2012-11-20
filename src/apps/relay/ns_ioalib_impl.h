@@ -36,6 +36,8 @@
 #define __IOA_LIBIMPL__
 
 #include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
 #include <event2/thread.h>
 
 #include "ns_turn_ioalib.h"
@@ -61,6 +63,7 @@ struct _ioa_engine
 struct _ioa_socket
 {
 	evutil_socket_t fd;
+	struct bufferevent *bev;
 	int family;
 	SOCKET_TYPE st;
 	int bound;
@@ -99,7 +102,7 @@ void close_ioa_engine(ioa_engine_handle e);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
-ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 

@@ -112,7 +112,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 			if (open_client_connection_socket(server, &info) >= 0) {
 
-				ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e, info.fd,
+				ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e,
+								info.fd, UDP_SOCKET,
 								&info.remote_addr, &info.local_addr);
 
 				if (ioas) {
