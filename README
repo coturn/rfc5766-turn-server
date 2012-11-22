@@ -59,6 +59,8 @@ The command line parameters are:
 	-e, --realm				Realm.
 	-q, --user-quota		per-user allocation quota.
 	-Q, --total-quota		total allocation quota.
+	    --no-udp			Do not start UDP listeners.
+	    --no-tcp			Do not start TCP listeners.
 	-c						Configuration file name (default - turn.conf).
 							The format of config file can be seen in the supplied etc/turn.conf 
 							example file. Long names of the options are used as the configuration items
@@ -123,6 +125,7 @@ The command-line parameters are:
 	-c      do not create rtcp connections;
 	-x      request IPv6 relayed address (RFC6156);
 	-g      set DONT_FRAGMENT parameter in TURN requests;
+	-t		use TCP (default is UDP)
     
 4) peer application is a simple UDP-only echo backend server. This application
 is used for the test purposes only, as a 'peer' for the uclient application. 

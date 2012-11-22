@@ -36,8 +36,6 @@
 #include "udp_listener.h"
 #include "ns_ioalib_impl.h"
 
-/* #define REQUEST_CLIENT_CERT */
-
 ///////////////////////////////////////////////////
 
 typedef struct {
@@ -70,6 +68,10 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 
 	udp_listener_relay_server_type* server = (udp_listener_relay_server_type*) arg;
+
+	if(!(server->e->connect_cb)) {
+		return;
+	}
 
 	FUNCSTART;
 
@@ -136,9 +138,6 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_network_buffer_delete(nd.nbh);
 
-	if (server->stats)
-		--(*(server->stats));
-
 	FUNCEND	;
 }
 
@@ -193,8 +192,6 @@ static evutil_socket_t open_client_connection_socket(udp_listener_relay_server_t
   
   evutil_make_socket_nonblocking(pinfo->fd);
 
-  set_socket_df(pinfo->fd, pinfo->remote_addr.ss.ss_family, 1);
-
   FUNCEND;
 
   return pinfo->fd;
@@ -223,8 +220,6 @@ static int create_server_socket(udp_listener_relay_server_type* server) {
   }
 
   addr_bind(server->udp_listen_fd,&server->addr);
-
-  set_socket_df(server->udp_listen_fd, server->addr.ss.ss_family, 1);
 
   evutil_make_socket_nonblocking(server->udp_listen_fd);
 

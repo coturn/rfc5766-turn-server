@@ -103,7 +103,8 @@ int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int 
 	const u32bits* fingerprint = (const u32bits*)stun_attr_get_value(sar);
 	if(!fingerprint)
 		return !must_check_fingerprint;
-	return (*fingerprint == nswap32(ns_crc32(buf,blen-8) ^ ((u32bits)0x5354554e)));
+	u32bits crc32len = (u32bits)((((const u08bits*)fingerprint)-buf)-4);
+	return (*fingerprint == nswap32(ns_crc32(buf,crc32len) ^ ((u32bits)0x5354554e)));
 }
 
 int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset) {
@@ -333,6 +334,42 @@ int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits
   if(chn!=chnumber) return 0;
   if(4+(size_t)(nswap16(((const u16bits*)(buf))[1]))!=len) return 0;
   return 1;
+}
+
+////////// STUN message ///////////////////////////////
+
+int stun_get_message_len_str(u08bits *buf, size_t blen) {
+	if (buf && blen) {
+		/* STUN request/response ? */
+		if (buf && blen >= STUN_HEADER_LENGTH) {
+			if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
+				if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
+					if (nswap32(((const u32bits*)(buf))[1])
+							== STUN_MAGIC_COOKIE) {
+						u16bits len = nswap16(((const u16bits*)(buf))[1]);
+						if ((len & 0x0003) == 0) {
+							len += STUN_HEADER_LENGTH;
+							if ((size_t) len <= blen) {
+								return (int)len;
+							}
+						}
+					}
+				}
+			}
+		}
+		/* STUN channel ? */
+		if(blen>=4) {
+			u16bits chn=nswap16(((const u16bits*)(buf))[0]);
+			if(STUN_VALID_CHANNEL(chn)) {
+				int bret = (4+(nswap16(((const u16bits*)(buf))[1])));
+				if((size_t)bret<=blen) {
+					return bret;
+				}
+			}
+		}
+	}
+
+	return -1;
 }
 
 ////////// ALLOCATE ///////////////////////////////////

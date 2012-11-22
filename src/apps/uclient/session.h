@@ -76,6 +76,8 @@ typedef struct {
   struct event *input_ev; 
   stun_buffer in_buffer;
   stun_buffer out_buffer;
+  u32bits refresh_time;
+  u32bits finished_time;
   //Msg counters:
   int tot_msgnum;
   int wmsgnum;

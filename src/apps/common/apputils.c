@@ -272,7 +272,6 @@ int handle_socket_error() {
      * Must close connection.
      */
     return 0;
-    break;
   case EHOSTDOWN:
     /* Host is down.
      * Just ignore, might be an attacker
@@ -286,14 +285,12 @@ int handle_socket_error() {
      * sending fake ICMP messages.
      */
     return 1;
-    break;
   case ENOMEM:
     /* Out of memory.
      * Must close connection.
      */
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Out of memory!\n");
     return 0;
-    break;
   case EACCES:
     /* Permission denied.
      * Just ignore, we might be blocked
@@ -301,12 +298,10 @@ int handle_socket_error() {
      * and hope for the best.
      */
     return 1;
-    break;
   default:
     /* Something unexpected happened */
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error! (errno = %d)\n", errno);
     return 0;
-    break;
   }
 }
 

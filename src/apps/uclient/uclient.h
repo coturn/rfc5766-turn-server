@@ -36,7 +36,8 @@
 
 extern int clmessage_length;
 extern int use_send_method;
-extern int udp_verbose;
+extern int clnet_verbose;
+extern int use_tcp;
 extern int hang_on;
 extern int c2c;
 extern ioa_addr peer_addr;
@@ -51,7 +52,7 @@ void start_mclient(const char *remote_address, int port,
 		   int messagenumber, int mclient);
 
 int send_buffer(int fd, stun_buffer* message);
-int recv_buffer(int fd, const ioa_addr *like_addr, stun_buffer* message);
+int recv_buffer(int fd, stun_buffer* message);
 
 #endif //__UCLIENT_ECHO__
 

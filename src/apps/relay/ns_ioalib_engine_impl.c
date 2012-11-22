@@ -61,7 +61,7 @@ int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 void set_do_not_use_df(ioa_socket_handle s)
 {
 	s->do_not_use_df = 1;
-	s->current_df_relay_flag = 0;
+	s->current_df_relay_flag = 1;
 	set_socket_df(s->fd, s->family, 0);
 }
 
@@ -265,7 +265,7 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
 	default:
-		//TODO
+		/* we do not support TCP sockets in the relay position */
 		return NULL;
 	}
 
@@ -276,13 +276,12 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
-	if(st != UDP_SOCKET) {
-		ret->bev = bufferevent_socket_new(e->event_base, fd, 0);
-		bufferevent_enable(ret->bev, EV_READ); /* Start reading. */
-	}
 	ret->family = family;
 	ret->st = st;
 	ret->e = e;
+
+	ret->read_event = event_new(e->event_base,ret->fd, EV_READ|EV_PERSIST, socket_input_handler, ret);
+	event_add(ret->read_event,NULL);
 
 	return ret;
 }
@@ -432,11 +431,9 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret = malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
+	evutil_make_socket_nonblocking(fd);
+
 	ret->fd = fd;
-	if(st != UDP_SOCKET) {
-		ret->bev = bufferevent_socket_new(e->event_base, fd, 0);
-		bufferevent_enable(ret->bev, EV_READ); /* Start reading. */
-	}
 	ret->family = local_addr->ss.ss_family;
 	ret->st = st;
 	ret->e = e;
@@ -533,10 +530,13 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	cs->connected = 1;
 
 	set_ioa_socket_session(cs, s->session);
-	cs->current_df_relay_flag = s->current_df_relay_flag;
+
 	cs->do_not_use_df = s->do_not_use_df;
 
-	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn);
+	if(s->current_df_relay_flag)
+		set_df_on_ioa_socket(cs,s->current_df_relay_flag);
+
+	register_callback_on_ioa_socket(cs, IOA_EV_READ, channel_input_handler, chn);
 
 	return cs;
 }
@@ -555,6 +555,7 @@ void close_ioa_socket(ioa_socket_handle s)
 			return;
 		}
 		s->done = 1;
+		ioa_network_buffer_delete(s->defer_nbh);
 		if (s->read_event) {
 			EVENT_DEL(s->read_event);
 		}
@@ -628,7 +629,7 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	return len;
 }
 
-static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
+void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 
 	if (!(what & EV_READ) || !arg)
@@ -639,13 +640,30 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 	if(s->fd != fd)
 		return;
 
+	int to_repeat,len;
 	ioa_addr remote_addr;
-	stun_buffer *sbuf = malloc(sizeof(stun_buffer));
+	stun_buffer *sbuf;
 
-	int len = 0;
+	read_again:
+
+	sbuf = malloc(sizeof(stun_buffer));
+	len = -1;
+	to_repeat = 0;
 
 	if(s->bev) {
-		len = (int)bufferevent_read(s->bev, sbuf->buf, sizeof(sbuf->buf));
+		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
+		if(inbuf) {
+			ev_ssize_t blen = evbuffer_copyout(inbuf, sbuf->buf, sizeof(sbuf->buf));
+			if(blen>0) {
+				int mlen = stun_get_message_len_str(sbuf->buf, blen);
+				if(mlen>0) {
+					len = (int)bufferevent_read(s->bev, sbuf->buf, mlen);
+					if(len>0) {
+						to_repeat = 1;
+					}
+				}
+			}
+		}
 	} else if(s->fd>=0){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
 	} else {
@@ -653,28 +671,67 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		return;
 	}
 
-	if (len >= 0 && s->read_cb) {
+	if (len >= 0) {
 		sbuf->len = len;
-		ioa_net_data event_data = {&remote_addr, sbuf, 0 };
-		ioa_net_event_handler cb = s->read_cb;
-		void* ctx = s->read_ctx;
+		if(s->read_cb) {
+			ioa_net_data event_data = {&remote_addr, sbuf, 0 };
+			ioa_net_event_handler cb = s->read_cb;
+			void* ctx = s->read_ctx;
 
-		cb(s, IOA_EV_READ, &event_data, ctx);
+			cb(s, IOA_EV_READ, &event_data, ctx);
 
-		if(event_data.nbh)
-			free(sbuf);
+			if(event_data.nbh)
+				free(sbuf);
 
-	} else {
-		free(sbuf);
+			sbuf = NULL;
+
+		} else {
+			ioa_network_buffer_delete(s->defer_nbh);
+			s->defer_nbh = sbuf;
+			sbuf = NULL;
+		}
 	}
+
+	if(sbuf) {
+		free(sbuf);
+		sbuf = NULL;
+	}
+
+	if(to_repeat)
+		goto read_again;
 }
 
-static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
+void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 {
+
 	if(bev && arg) {
 		ioa_socket_handle s = arg;
 		socket_input_handler(s->fd, EV_READ, arg);
 	}
+}
+
+void eventcb_bev(struct bufferevent *bev, short events, void *arg)
+{
+    if (events & BEV_EVENT_CONNECTED) {
+         // Connect okay
+    } else if (events & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+	    if(arg) {
+		    ioa_socket_handle s = arg;
+		    ts_ur_super_session *ss = s->session;
+		    if(ss) {
+			    turn_turnserver *server = ss->server;
+			    if(server) {
+				    shutdown_client_connection(server, ss);
+				    return;
+			    }
+		    }
+		    if(s->bev != bev) {
+		    	bufferevent_free(s->bev);
+		    	s->bev=NULL;
+		    }
+	    }
+	    bufferevent_free(bev);
+    }
 }
 
 static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
@@ -710,6 +767,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_
 						ret = -1;
 						perror("send");
 					} else {
+						bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
 						ret = (int)ioa_network_buffer_get_size(nbh);
 					}
 				} else if (s->fd >= 0) {
@@ -730,18 +788,11 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_
 	return ret;
 }
 
-int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx)
+int register_callback_on_ioa_socket(ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx)
 {
+
 	if (cb) {
 		if ((event_type & IOA_EV_READ) && s) {
-			s->e = e;
-			EVENT_DEL(s->read_event);
-			if(s->bev) {
-				bufferevent_setcb(s->bev, socket_input_handler_bev, NULL, NULL, s);
-			} else {
-				s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
-				event_add(s->read_event,NULL);
-			}
 			s->read_cb = cb;
 			s->read_ctx = ctx;
 			return 0;

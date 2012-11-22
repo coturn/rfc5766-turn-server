@@ -48,6 +48,7 @@
 #include "ns_turn_utils.h"
 
 #include "udp_listener.h"
+#include "tcp_listener.h"
 
 #include "ns_turn_server.h"
 #include "ns_turn_maps.h"
@@ -65,16 +66,20 @@ struct listener_server {
 	struct event_base* event_base;
 	ioa_engine_handle ioa_eng;
 	char **addrs;
-	udp_listener_relay_server_type **services;
+	udp_listener_relay_server_type **udp_services;
+	tcp_listener_relay_server_type **tcp_services;
 };
 
-struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL};
+struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 static uint32_t stats=0;
 
 //////////////////////////////////////////////////
 
 static int port = DEFAULT_STUN_PORT;
+
+static int no_udp = 0;
+static int no_tcp = 0;
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;
@@ -120,8 +125,10 @@ static void add_listener_addr(const char* addr) {
 	++listener.number;
 	listener.addrs = realloc(listener.addrs, sizeof(char*)*listener.number);
 	listener.addrs[listener.number-1]=strdup(addr);
-	listener.services = realloc(listener.services, sizeof(udp_listener_relay_server_type*)*listener.number);
-	listener.services[listener.number-1] = NULL;
+	listener.udp_services = realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.number);
+	listener.udp_services[listener.number-1] = NULL;
+	listener.tcp_services = realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.number);
+	listener.tcp_services[listener.number-1] = NULL;
 }
 
 static void add_relay_addr(const char* addr) {
@@ -166,6 +173,38 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 			exit(-1);
 		}
 		struct relay_server *rs = ptr;
+		if(sm.s->defer_nbh) {
+			if(!sm.nbh) {
+				sm.nbh = sm.s->defer_nbh;
+				sm.s->defer_nbh = NULL;
+			} else {
+				ioa_network_buffer_delete(sm.s->defer_nbh);
+				sm.s->defer_nbh = NULL;
+			}
+		}
+
+		ioa_socket_handle s = sm.s;
+
+		EVENT_DEL(s->read_event);
+		if(s->bev) {
+			bufferevent_free(s->bev);
+			s->bev=NULL;
+		}
+
+		s->e = rs->ioa_eng;
+		if (s->st == UDP_SOCKET) {
+			s->read_event = event_new(s->e->event_base, s->fd, EV_READ | EV_PERSIST,
+								socket_input_handler, s);
+			event_add(s->read_event, NULL);
+		} else {
+			s->bev = bufferevent_socket_new(s->e->event_base,
+							s->fd,
+							0);
+							bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+											eventcb_bev, s);
+			bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
+		}
+
 		open_client_connection_session(rs->server, &sm);
 		ioa_network_buffer_delete(sm.nbh);
 	}
@@ -191,8 +230,12 @@ static void setup_listener_servers(void)
 
 	ioa_engine_set_rtcp_map(listener.ioa_eng, listener.rtcpmap);
 
-	for(i=0;i<listener.number;i++)
-		listener.services[i] = create_udp_listener_server(ifname, listener.addrs[i], port, verbose, listener.ioa_eng, &stats);
+	for(i=0;i<listener.number;i++) {
+		if(!no_udp)
+			listener.udp_services[i] = create_udp_listener_server(ifname, listener.addrs[i], port, verbose, listener.ioa_eng, &stats);
+		if(!no_tcp)
+			listener.tcp_services[i] = create_tcp_listener_server(ifname, listener.addrs[i], port, verbose, listener.ioa_eng, &stats);
+	}
 }
 
 static void run_events(struct event_base *eb)
@@ -229,11 +272,35 @@ static void run_listener_server(struct event_base *eb)
 	}
 }
 
+static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
+{
+	struct bufferevent *pair[2];
+
+	if(e) {
+		rs->event_base = e->event_base;
+		rs->ioa_eng = e;
+	} else {
+		rs->event_base = event_base_new();
+		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
+		ioa_engine_set_rtcp_map(rs->ioa_eng, listener.rtcpmap);
+	}
+
+	bufferevent_pair_new(rs->event_base, BEV_OPT_THREADSAFE, pair);
+	rs->in_buf = pair[0];
+	rs->out_buf = pair[1];
+	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
+	bufferevent_enable(rs->in_buf, EV_READ | EV_WRITE);
+	bufferevent_enable(rs->out_buf, EV_READ | EV_WRITE);
+	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
+}
+
 static void *run_relay_thread(void *arg)
 {
   static int always_true = 1;
   struct relay_server *rs = arg;
   
+  setup_relay_server(rs, NULL);
+
   while(always_true)
     run_events(rs->event_base);
   
@@ -248,27 +315,10 @@ static void setup_relay_servers(void)
 
 	for(i=0;i<relay_servers_number;i++) {
 
-		struct bufferevent *pair[2];
 		relay_servers[i] = malloc(sizeof(struct relay_server));
 
 		if(relay_servers_number<2) {
-			relay_servers[i]->event_base = listener.event_base;
-			relay_servers[i]->ioa_eng = listener.ioa_eng;
-		} else {
-			relay_servers[i]->event_base = event_base_new();
-			relay_servers[i]->ioa_eng = create_ioa_engine(relay_servers[i]->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
-			register_callback_on_ioa_engine_new_connection(relay_servers[i]->ioa_eng, send_socket);
-			ioa_engine_set_rtcp_map(relay_servers[i]->ioa_eng, listener.rtcpmap);
-		}
-
-		bufferevent_pair_new(relay_servers[i]->event_base, BEV_OPT_THREADSAFE, pair);
-		relay_servers[i]->in_buf = pair[0];
-		relay_servers[i]->out_buf = pair[1];
-		bufferevent_setcb(relay_servers[i]->in_buf, acceptsocket, NULL, NULL, relay_servers[i]);
-		bufferevent_enable(relay_servers[i]->in_buf, EV_READ);
-		relay_servers[i]->server = create_turn_server(verbose, relay_servers[i]->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
-
-		if(relay_servers_number<2) {
+			setup_relay_server(relay_servers[i], listener.ioa_eng);
 			relay_servers[i]->thr = pthread_self();
 		} else {
 			if(pthread_create(&(relay_servers[i]->thr), NULL, run_relay_thread, relay_servers[i])<0) {
@@ -314,15 +364,26 @@ static void clean_server(void)
 		free(relay_servers);
 	}
 
-	if(listener.services) {
+	if(listener.udp_services) {
 		for(i=0;i<listener.number; i++) {
-			if (listener.services[i]) {
-				delete_udp_listener_server(listener.services[i],0);
-				listener.services[i] = NULL;
+			if (listener.udp_services[i]) {
+				delete_udp_listener_server(listener.udp_services[i],0);
+				listener.udp_services[i] = NULL;
 			}
 		}
-		free(listener.services);
-		listener.services = NULL;
+		free(listener.udp_services);
+		listener.udp_services = NULL;
+	}
+
+	if(listener.tcp_services) {
+		for(i=0;i<listener.number; i++) {
+			if (listener.tcp_services[i]) {
+				delete_tcp_listener_server(listener.tcp_services[i],0);
+				listener.tcp_services[i] = NULL;
+			}
+		}
+		free(listener.tcp_services);
+		listener.tcp_services = NULL;
 	}
 
 	if (listener.ioa_eng) {
@@ -467,6 +528,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-e, --realm		Realm\n"
 	"	-q, --user-quota	per-user allocation quota\n"
 	"	-Q, --total-quota	total allocation quota\n"
+	"	    --no-udp		Do not start UDP listeners\n"
+	"	    --no-tcp		Do not start TCP listeners\n"
 	"	-c			Configuration file name (default - turn.conf)\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
@@ -486,6 +549,11 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define ADMIN_OPTIONS "kadc:u:r:p:h"
 
+enum EXTRA_OPTS {
+	NO_UDP_OPT=256,
+	NO_TCP_OPT
+};
+
 static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
 				{ "listening-port", required_argument, NULL, 'p' },
@@ -502,6 +570,8 @@ static struct option long_options[] = {
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
+				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
+				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -665,6 +735,12 @@ static void set_option(int c, const char *value)
 		users->total_quota = atoi(optarg);
 		break;
 		/* these options are already taken care of before: */
+	case NO_UDP_OPT:
+		no_udp = get_bool_value(value);
+		break;
+	case NO_TCP_OPT:
+		no_tcp = get_bool_value(value);
+		break;
 	case 'c':
 	case 'n':
 	case 'h':

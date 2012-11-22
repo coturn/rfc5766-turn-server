@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2012 Citrix Systems
  *
  * All rights reserved.
  *
@@ -28,67 +28,30 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURN_SERVER__
-#define __TURN_SERVER__
+#ifndef __TCP_LISTENER__
+#define __TCP_LISTENER__
+
+#include <event2/event.h>
 
 #include "ns_turn_utils.h"
-#include "ns_turn_session.h"
 
-//////////////////////////////////////////
-
-struct socket_message {
-	ioa_addr remote_addr;
-	ioa_socket_handle s;
-	ioa_network_buffer_handle nbh;
-	u16bits chnum;
-};
-
-struct _turn_turnserver;
-typedef struct _turn_turnserver turn_turnserver;
-
-typedef enum {
-	DONT_FRAGMENT_UNSUPPORTED=0,
-	DONT_FRAGMENT_SUPPORTED,
-	DONT_FRAGMENT_SUPPORT_EMULATED
-} dont_fragment_option_t;
+#include "ns_turn_ioalib.h"
 
 ///////////////////////////////////////////
 
-typedef enum {
-	TURN_CREDENTIALS_NONE = 0,
-	TURN_CREDENTIALS_LONG_TERM,
-	TURN_CREDENTIALS_SHORT_TERM
-} turn_credential_type;
-
-struct _turn_user_db {
-	turn_credential_type ct;
-	u08bits realm[STUN_MAX_REALM_SIZE+1];
-	size_t total_quota;
-	size_t user_quota;
-	size_t total_current_allocs;
-	ur_string_map *accounts;
-	ur_string_map *alloc_counters;
-};
-typedef struct _turn_user_db turn_user_db;
+struct tcp_listener_relay_server_info;
+typedef struct tcp_listener_relay_server_info tcp_listener_relay_server_type;
 
 ///////////////////////////////////////////
 
-turn_turnserver* create_turn_server(int verbose,
-				    ioa_engine_handle e,
-				    u32bits *stats,
-				    int stun_port,
-				    int fingerprint,
-				    dont_fragment_option_t dont_fragment,
-				    turn_user_db *users);
-
-void delete_turn_server(turn_turnserver* server);
+tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
+							     const char *local_address, 
+							     int port,
+							     int verbose,
+							     ioa_engine_handle e,
+							     uint32_t *stats);
+void delete_tcp_listener_server(tcp_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////
 
-int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);
-int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss);
-void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
-
-///////////////////////////////////////////
-
-#endif //__TURN_SERVER__
+#endif //__TCP_LISTENER__

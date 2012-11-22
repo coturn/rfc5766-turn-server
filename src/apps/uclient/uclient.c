@@ -141,14 +141,11 @@ int send_buffer(int fd, stun_buffer* message)
 	return rc;
 }
 
-int recv_buffer(int fd, const ioa_addr *like_addr, stun_buffer* message) {
+int recv_buffer(int fd, stun_buffer* message) {
 
 	int rc = 0;
-	int slen = get_ioa_addr_len(like_addr);
-	ioa_addr raddr;
 	do {
-		rc = recvfrom(fd, message->buf, sizeof(message->buf) - 1, 0,
-				(struct sockaddr*) &raddr, (socklen_t*) &slen);
+		rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
 	} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
 	if (rc < 0)
@@ -170,18 +167,18 @@ static int client_read(app_ur_session *elem) {
 	elem->ctime = current_time;
 
 	int fd = elem->pinfo.fd;
-	app_ur_conn_info *udp_info = &(elem->pinfo);
+	app_ur_conn_info *clnet_info = &(elem->pinfo);
 	int err_code = 0;
 	u08bits err_msg[129];
 	int rc = 0;
 
-	if (udp_verbose && verbose_packets) {
+	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
 	}
 
-	rc = recv_buffer(fd, &(elem->pinfo.local_addr), &(elem->in_buffer));
+	rc = recv_buffer(fd, &(elem->in_buffer));
 
-	if (udp_verbose && verbose_packets) {
+	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int) rc);
 	}
 
@@ -229,7 +226,7 @@ static int client_read(app_ur_session *elem) {
 			return 0;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
-							udp_info->realm,udp_info->nonce)) {
+							clnet_info->realm,clnet_info->nonce)) {
 			return refresh_channel(elem, stun_get_method(&elem->in_buffer));
 		} else if (stun_is_error_response(&(elem->in_buffer), NULL,NULL,0)) {
 			return 0;
@@ -255,7 +252,7 @@ static int client_read(app_ur_session *elem) {
 			}
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"ERROR: Unknown message received\n");
+					"ERROR: Unknown message received of size: %d\n",(int)(elem->in_buffer.len));
 			return 0;
 		}
 
@@ -303,7 +300,7 @@ static int client_shutdown(app_ur_session *elem) {
 
   remove_all_from_ss(elem);
   
-  if (udp_verbose)
+  if (clnet_verbose)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"done, connection 0x%lx closed.\n",(long)elem);
   
   return 0;
@@ -337,7 +334,7 @@ static int client_write(app_ur_session *elem) {
 
     int fd=elem->pinfo.fd;
     
-    if (udp_verbose && verbose_packets) {
+    if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before write ...\n");
 	}
 
@@ -349,7 +346,7 @@ static int client_write(app_ur_session *elem) {
     elem->to_send_timems += RTP_PACKET_INTERVAL;
     
     if(rc >= 0) {
-      if (udp_verbose && verbose_packets) {
+      if (clnet_verbose && verbose_packets) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int) rc);
 	  }
       tot_send_messages++;
@@ -402,27 +399,27 @@ static int start_client(const char *remote_address, int port,
   if(!no_rtcp)
     ss_rtcp = create_new_ss();
 
-  app_ur_conn_info *udp_info=&(ss->pinfo);
-  app_ur_conn_info *udp_info_rtcp=NULL;
+  app_ur_conn_info *clnet_info=&(ss->pinfo);
+  app_ur_conn_info *clnet_info_rtcp=NULL;
 
   if(!no_rtcp) 
-    udp_info_rtcp = &(ss_rtcp->pinfo);
+    clnet_info_rtcp = &(ss_rtcp->pinfo);
 
   uint16_t chnum=0;
   uint16_t chnum_rtcp=0;
 
   start_connection(port, remote_address, 
 		   ifname, local_address, 
-		   udp_verbose,
-		   udp_info, &chnum,
-		   udp_info_rtcp, &chnum_rtcp);
+		   clnet_verbose,
+		   clnet_info, &chnum,
+		   clnet_info_rtcp, &chnum_rtcp);
   
-  evutil_make_socket_nonblocking(udp_info->fd);
+  evutil_make_socket_nonblocking(clnet_info->fd);
   
   if(!no_rtcp) 
-    evutil_make_socket_nonblocking(udp_info_rtcp->fd);
+    evutil_make_socket_nonblocking(clnet_info_rtcp->fd);
   
-  struct event* ev = event_new(client_event_base,udp_info->fd,
+  struct event* ev = event_new(client_event_base,clnet_info->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
 				ss);
 
@@ -431,7 +428,7 @@ static int start_client(const char *remote_address, int port,
   struct event* ev_rtcp = NULL;
 
   if(!no_rtcp) {
-    ev_rtcp = event_new(client_event_base,udp_info_rtcp->fd,
+    ev_rtcp = event_new(client_event_base,clnet_info_rtcp->fd,
 			EV_READ|EV_PERSIST,client_input_handler,
 			ss_rtcp);
   
@@ -485,17 +482,17 @@ static int start_c2c(const char *remote_address, int port,
   if(!no_rtcp)
     ss2_rtcp = create_new_ss();
 
-  app_ur_conn_info *udp_info1=&(ss1->pinfo);
-  app_ur_conn_info *udp_info1_rtcp=NULL;
+  app_ur_conn_info *clnet_info1=&(ss1->pinfo);
+  app_ur_conn_info *clnet_info1_rtcp=NULL;
 
   if(!no_rtcp)
-    udp_info1_rtcp = &(ss1_rtcp->pinfo);
+    clnet_info1_rtcp = &(ss1_rtcp->pinfo);
 
-  app_ur_conn_info *udp_info2=&(ss2->pinfo);
-  app_ur_conn_info *udp_info2_rtcp=NULL;
+  app_ur_conn_info *clnet_info2=&(ss2->pinfo);
+  app_ur_conn_info *clnet_info2_rtcp=NULL;
 
   if(!no_rtcp)
-    udp_info2_rtcp = &(ss2_rtcp->pinfo);
+    clnet_info2_rtcp = &(ss2_rtcp->pinfo);
 
   uint16_t chnum1=0;
   uint16_t chnum1_rtcp=0;
@@ -504,23 +501,23 @@ static int start_c2c(const char *remote_address, int port,
 
   start_c2c_connection(port, remote_address, 
 		       ifname, local_address, 
-		       udp_verbose,
-		       udp_info1, &chnum1,
-		       udp_info1_rtcp, &chnum1_rtcp,
-		       udp_info2, &chnum2,
-		       udp_info2_rtcp, &chnum2_rtcp);
+		       clnet_verbose,
+		       clnet_info1, &chnum1,
+		       clnet_info1_rtcp, &chnum1_rtcp,
+		       clnet_info2, &chnum2,
+		       clnet_info2_rtcp, &chnum2_rtcp);
   
-  evutil_make_socket_nonblocking(udp_info1->fd);
-  
-  if(!no_rtcp)
-    evutil_make_socket_nonblocking(udp_info1_rtcp->fd);
-  
-  evutil_make_socket_nonblocking(udp_info2->fd);
+  evutil_make_socket_nonblocking(clnet_info1->fd);
   
   if(!no_rtcp)
-    evutil_make_socket_nonblocking(udp_info2_rtcp->fd);
+    evutil_make_socket_nonblocking(clnet_info1_rtcp->fd);
   
-  struct event* ev1 = event_new(client_event_base,udp_info1->fd,
+  evutil_make_socket_nonblocking(clnet_info2->fd);
+  
+  if(!no_rtcp)
+    evutil_make_socket_nonblocking(clnet_info2_rtcp->fd);
+  
+  struct event* ev1 = event_new(client_event_base,clnet_info1->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
 				ss1);
 
@@ -529,14 +526,14 @@ static int start_c2c(const char *remote_address, int port,
   struct event* ev1_rtcp = NULL;
 
   if(!no_rtcp) {
-    ev1_rtcp = event_new(client_event_base,udp_info1_rtcp->fd,
+    ev1_rtcp = event_new(client_event_base,clnet_info1_rtcp->fd,
 			 EV_READ|EV_PERSIST,client_input_handler,
 			 ss1_rtcp);
     
     event_add(ev1_rtcp,NULL);
   }
 
-  struct event* ev2 = event_new(client_event_base,udp_info2->fd,
+  struct event* ev2 = event_new(client_event_base,clnet_info2->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
 				ss2);
 
@@ -545,7 +542,7 @@ static int start_c2c(const char *remote_address, int port,
   struct event* ev2_rtcp = NULL;
 
   if(!no_rtcp) {
-    ev2_rtcp = event_new(client_event_base,udp_info2_rtcp->fd,
+    ev2_rtcp = event_new(client_event_base,clnet_info2_rtcp->fd,
 			 EV_READ|EV_PERSIST,client_input_handler,
 			 ss2_rtcp);
     
@@ -605,15 +602,15 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 {
 
 	stun_buffer message;
-	app_ur_conn_info *udp_info = &(elem->pinfo);
+	app_ur_conn_info *clnet_info = &(elem->pinfo);
 
 	if (!method || (method == STUN_METHOD_REFRESH)) {
 		stun_init_request(STUN_METHOD_REFRESH, &message);
 		uint32_t lt = htonl(600);
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
-		if (udp_info->nonce[0]) {
+		if (clnet_info->nonce[0]) {
 			if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
-							udp_info->realm, g_upwd, udp_info->nonce) < 0) {
+							clnet_info->realm, g_upwd, clnet_info->nonce) < 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -627,9 +624,9 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
 			stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 			stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
-			if (udp_info->nonce[0]) {
+			if (clnet_info->nonce[0]) {
 				if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
-								udp_info->realm, g_upwd, udp_info->nonce) < 0) {
+								clnet_info->realm, g_upwd, clnet_info->nonce) < 0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
 					return -1;
 				}
@@ -641,10 +638,10 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {
 			if (STUN_VALID_CHANNEL(elem->chnum)) {
 				stun_set_channel_bind_request(&message, &(elem->pinfo.peer_addr), elem->chnum);
-				if (udp_info->nonce[0]) {
+				if (clnet_info->nonce[0]) {
 					if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len),
-									g_uname, udp_info->realm, g_upwd,
-									udp_info->nonce) < 0) {
+									g_uname, clnet_info->realm, g_upwd,
+									clnet_info->nonce) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 										" Cannot add integrity to the message\n");
 						return -1;
@@ -656,36 +653,42 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		}
 	}
 
+	elem->refresh_time = current_mstime + 30*1000;
+
 	return 0;
 }
 
 static inline void client_timer_handler(app_ur_session* elem)
 {
 
-	if (elem && !turn_time_before(current_mstime, elem->to_send_timems)) {
+	if (elem) {
 
-		if (((elem->timer_cycle++) & (4096 - 1)) == (4096 - 1)) {
-			refresh_channel(elem,0);
+		if (!turn_time_before(current_mstime, elem->refresh_time)) {
+			refresh_channel(elem, 0);
 		}
 
-		if (elem->wmsgnum >= elem->tot_msgnum) {
-			++(elem->wait_cycles);
-			if ((elem->wait_cycles > 50) || (elem->tot_msgnum - elem->rmsgnum) < 1) {
-				//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: c=%d, w=%d, r=%d\n",__FUNCTION__,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum);
-				/*
-				 TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ly=%llu, ls=%llu, j=%llu\n",__FUNCTION__,
-				 (unsigned long long)elem->latency,
-				 (unsigned long long)elem->loss,
-				 (unsigned long long)elem->jitter);
-				 */
-				total_loss += elem->loss;
-				total_latency += elem->latency;
-				total_jitter += elem->jitter;
-				if (!hang_on)
-				  client_shutdown(elem);
+		if (!turn_time_before(current_mstime, elem->to_send_timems)) {
+
+			if (elem->wmsgnum >= elem->tot_msgnum) {
+				if (!turn_time_before(current_mstime, elem->finished_time) ||
+					(elem->tot_msgnum - elem->rmsgnum) < 1) {
+					//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: c=%d, w=%d, r=%d\n",__FUNCTION__,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum);
+					/*
+					 TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ly=%llu, ls=%llu, j=%llu\n",__FUNCTION__,
+					 (unsigned long long)elem->latency,
+					 (unsigned long long)elem->loss,
+					 (unsigned long long)elem->jitter);
+					 */
+					total_loss += elem->loss;
+					total_latency += elem->latency;
+					total_jitter += elem->jitter;
+					if (!hang_on)
+						client_shutdown(elem);
+				}
+			} else {
+				client_write(elem);
+				elem->finished_time = current_mstime + 1*1000;
 			}
-		} else {
-			client_write(elem);
 		}
 	}
 }
@@ -788,7 +791,6 @@ void start_mclient(const char *remote_address, int port,
 	while (1) {
 
 		timer_handler();
-
 		run_events();
 
 		int msz = (int)current_clients_number;
@@ -801,7 +803,6 @@ void start_mclient(const char *remote_address, int port,
 				      "%s: msz=%d, tot_send_messages=%lu, tot_recv_messages=%lu\n",
 				      __FUNCTION__, msz, (unsigned long) tot_send_messages,
 				      (unsigned long) tot_recv_messages);
-
 			show_statistics=0;
 		}
 	}
@@ -815,14 +816,22 @@ void start_mclient(const char *remote_address, int port,
 	if (client_event_base)
 		event_base_free(client_event_base);
 
+	if(tot_send_messages<tot_recv_messages)
+		tot_recv_messages=tot_send_messages;
+
+	if(tot_recv_messages<1)
+		tot_recv_messages=1;
+
+	total_loss = tot_send_messages-tot_recv_messages;
+
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n",
 			((unsigned int)(current_time - stime)));
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%)\n",
-				(unsigned long long)total_loss, (((double)total_loss/(double)messagenumber)*100.00));
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
+				(unsigned long long)total_loss, (((double)total_loss/(double)tot_recv_messages)*100.00),'%');
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f\n",
-				((double)total_latency/(double)messagenumber));
+				((double)total_latency/(double)tot_recv_messages));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f\n",
-				((double)total_jitter/(double)messagenumber));
+				((double)total_jitter/(double)tot_recv_messages));
 }
 
 

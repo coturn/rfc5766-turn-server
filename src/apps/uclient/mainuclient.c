@@ -44,7 +44,8 @@
 int clmessage_length=100;
 int use_send_method=0;
 int c2c=0;
-int udp_verbose=0;
+int clnet_verbose=0;
+int use_tcp=0;
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
@@ -59,6 +60,7 @@ static char Usage[] =
   "Usage: uclient [options] address\n"
   "Options:\n"
   "        -l      message length (Default: 100 Bytes)\n"
+  "	   -t	   TCP (default - clnet)\n"
   "        -p      remote port (Default: 3478)\n"
   "        -n      number of messages to send (Default: 5)\n"
   "        -L      local address\n"
@@ -79,93 +81,97 @@ static char Usage[] =
 
 int main(int argc, char **argv)
 {
-  int port = DEFAULT_STUN_PORT;
-  int messagenumber = 5;
-  char local_addr[256];
-  char c;
-  int mclient=1;
-  unsigned char ifname[1025]="\0";
-  char peer_address[129]="\0";
-  int peer_port = PEER_DEFAULT_PORT;
-    
-  srandom((unsigned int)time(NULL));
-  
-  memset(local_addr, 0, sizeof(local_addr));
-  
-  while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:vsyhcxg")) != -1) {
-    switch(c) {
-    case 'u':
-      strcpy((char*)g_uname,optarg);
-      break;
-    case 'w':
-      strcpy((char*)g_upwd,optarg);
-      break;
-    case 'g':
-      dont_fragment = 1;
-      break;
-    case 'd':
-      strcpy((char*)ifname,optarg);
-      break;
-    case 'x':
-	    default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
-	    break;
-    case 'l':
-      clmessage_length = atoi(optarg);
-      break;
-    case 's':
-      use_send_method=1;
-      break;
-    case 'n':
-      messagenumber = atoi(optarg);
-      break;
-    case 'p':
-      port = atoi(optarg);
-      break;
-    case 'L':
-      strncpy(local_addr, optarg, sizeof(local_addr)-1);
-      break;
-    case 'e':
-      strncpy(peer_address, optarg, sizeof(peer_address)-1);
-      break;
-    case 'r':
-      peer_port = atoi(optarg);
-      break;
-    case 'v':
-      udp_verbose = 1;
-      break;
-    case 'h':
-      hang_on = 1;
-      break;
-    case 'c':
-      no_rtcp = 1;
-      break;
-    case 'm':
-      mclient = atoi(optarg);
-      break;
-    case 'y':
-      c2c=1;
-      break;
-    default:
-      fprintf(stderr,"%s\n", Usage);
-      exit(1);
-    }
-  }
+	int port = DEFAULT_STUN_PORT;
+	int messagenumber = 5;
+	char local_addr[256];
+	char c;
+	int mclient = 1;
+	unsigned char ifname[1025] = "\0";
+	char peer_address[129] = "\0";
+	int peer_port = PEER_DEFAULT_PORT;
 
-  if(clmessage_length < (int)sizeof(message_info))
-	  clmessage_length = (int)sizeof(message_info);
+	srandom((unsigned int) time(NULL));
 
-  if(optind>=argc) {
-    fprintf(stderr, "%s\n", Usage);
-    exit(-1);
-  }
+	memset(local_addr, 0, sizeof(local_addr));
 
-  if(!c2c) {
-    if (make_ioa_addr((const u08bits*) peer_address, peer_port,
-		      &peer_addr) < 0)
-      return -1;
-  }
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:vsyhcxgt")) != -1) {
+		switch (c){
+		case 'u':
+			strcpy((char*) g_uname, optarg);
+			break;
+		case 'w':
+			strcpy((char*) g_upwd, optarg);
+			break;
+		case 'g':
+			dont_fragment = 1;
+			break;
+		case 'd':
+			strcpy((char*) ifname, optarg);
+			break;
+		case 'x':
+			default_address_family
+							= STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+			break;
+		case 'l':
+			clmessage_length = atoi(optarg);
+			break;
+		case 's':
+			use_send_method = 1;
+			break;
+		case 'n':
+			messagenumber = atoi(optarg);
+			break;
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'L':
+			strncpy(local_addr, optarg, sizeof(local_addr) - 1);
+			break;
+		case 'e':
+			strncpy(peer_address, optarg, sizeof(peer_address) - 1);
+			break;
+		case 'r':
+			peer_port = atoi(optarg);
+			break;
+		case 'v':
+			clnet_verbose = 1;
+			break;
+		case 'h':
+			hang_on = 1;
+			break;
+		case 'c':
+			no_rtcp = 1;
+			break;
+		case 'm':
+			mclient = atoi(optarg);
+			break;
+		case 'y':
+			c2c = 1;
+			break;
+		case 't':
+			use_tcp = 1;
+			break;
 
-  start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);
+		default:
+			fprintf(stderr, "%s\n", Usage);
+			exit(1);
+		}
+	}
 
-  return 0;
+	if (clmessage_length < (int) sizeof(message_info))
+		clmessage_length = (int) sizeof(message_info);
+
+	if (optind >= argc) {
+		fprintf(stderr, "%s\n", Usage);
+		exit(-1);
+	}
+
+	if (!c2c) {
+		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0)
+			return -1;
+	}
+
+	start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);
+
+	return 0;
 }

@@ -34,26 +34,26 @@
 #include "ns_turn_utils.h"
 #include "session.h"
 
-int start_c2c_connection(uint16_t udp_remote_port, 
+int start_c2c_connection(uint16_t clnet_remote_port,
 			 const char *remote_address, 
 			 const unsigned char* ifname, const char *local_address,
 			 int verbose,
-			 app_ur_conn_info *udp_info1, 
+			 app_ur_conn_info *clnet_info1,
 			 uint16_t *chn1,
-			 app_ur_conn_info *udp_info1_rtcp, 
+			 app_ur_conn_info *clnet_info1_rtcp,
 			 uint16_t *chn1_rtcp,
-			 app_ur_conn_info *udp_info2, 
+			 app_ur_conn_info *clnet_info2,
 			 uint16_t *chn2,
-			 app_ur_conn_info *udp_info2_rtcp, 
+			 app_ur_conn_info *clnet_info2_rtcp,
 			 uint16_t *chn2_rtcp);
 
-int start_connection(uint16_t udp_remote_port, 
+int start_connection(uint16_t clnet_remote_port,
 		     const char *remote_address, 
 		     const unsigned char* ifname, const char *local_address,
 		     int verbose,
-		     app_ur_conn_info *udp_info, 
+		     app_ur_conn_info *clnet_info,
 		     uint16_t *chn,
-		     app_ur_conn_info *udp_info_rtcp, 
+		     app_ur_conn_info *clnet_info_rtcp,
 		     uint16_t *chn_rtcp);
 
 #endif //__STARTCLIENT_TURN__

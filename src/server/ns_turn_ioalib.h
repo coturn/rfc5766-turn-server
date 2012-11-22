@@ -148,7 +148,7 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s);
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);
 void *get_ioa_socket_session(ioa_socket_handle s);
 void set_ioa_socket_session(ioa_socket_handle s, void *ss);
-int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx);
+int register_callback_on_ioa_socket(ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx);
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)

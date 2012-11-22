@@ -58,33 +58,33 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 /////////////////////////////////////////
 
-static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
+static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		const unsigned char* ifname, const char *local_address, int verbose,
-		app_ur_conn_info *udp_info) {
+		app_ur_conn_info *clnet_info) {
 
 	ioa_addr local_addr;
-	evutil_socket_t udp_fd = -1;
+	evutil_socket_t clnet_fd = -1;
 
 	ioa_addr remote_addr;
 	memset((void *) &remote_addr, 0, sizeof(struct sockaddr_storage));
-	if (make_ioa_addr((const u08bits*) remote_address, udp_remote_port,
+	if (make_ioa_addr((const u08bits*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
 	memset((void *) &local_addr, 0, sizeof(struct sockaddr_storage));
 
-	udp_fd = socket(remote_addr.ss.ss_family, SOCK_DGRAM, 0);
-	if (udp_fd < 0) {
+	clnet_fd = socket(remote_addr.ss.ss_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
+	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
 	}
 
-	if (sock_bind_to_device(udp_fd, ifname) < 0) {
+	if (sock_bind_to_device(clnet_fd, ifname) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"Cannot bind client socket to device %s\n", ifname);
 	}
 
-	set_sock_buf_size(udp_fd, UR_CLIENT_SOCK_BUF_SIZE);
+	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
 
 	if (strlen(local_address) > 0) {
 
@@ -100,7 +100,7 @@ static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
 					&local_addr) < 0)
 				return -1;
 
-			int bindres = addr_bind(udp_fd, &local_addr);
+			int bindres = addr_bind(clnet_fd, &local_addr);
 			if (bindres >= 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: localport=%d\n",
 						__FUNCTION__, (int) localport);
@@ -111,7 +111,7 @@ static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
 		}
 	}
 
-	if (addr_connect(udp_fd, &remote_addr) < 0) {
+	if (addr_connect(clnet_fd, &remote_addr) < 0) {
 		perror("connect");
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: cannot connect to remote addr\n", __FUNCTION__);
@@ -120,21 +120,21 @@ static int udp_connect(uint16_t udp_remote_port, const char *remote_address,
 
 	addr_debug_print(verbose, &remote_addr, "Connected to");
 
-	if (udp_info) {
-		addr_cpy(&(udp_info->remote_addr), &remote_addr);
-		addr_cpy(&(udp_info->local_addr), &local_addr);
-		udp_info->fd = udp_fd;
+	if (clnet_info) {
+		addr_cpy(&(clnet_info->remote_addr), &remote_addr);
+		addr_cpy(&(clnet_info->local_addr), &local_addr);
+		clnet_info->fd = clnet_fd;
 	}
 
 	return 0;
 }
 
-static int udp_allocate(int verbose,
-		app_ur_conn_info *udp_info,
+static int clnet_allocate(int verbose,
+		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
 		int af) {
 
-	int fd = udp_info->fd;
+	int fd = clnet_info->fd;
 	int af_cycle = 0;
 
 	int allocate_finished;
@@ -163,9 +163,9 @@ static int udp_allocate(int verbose,
 		  }
 		}
 
-		if(udp_info->nonce[0]) {
+		if(clnet_info->nonce[0]) {
 			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-							udp_info->realm, g_upwd, udp_info->nonce)<0) {
+							clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -198,7 +198,7 @@ static int udp_allocate(int verbose,
 			stun_buffer message;
 			while (!allocate_received) {
 
-				int len = recv_buffer(fd, &(udp_info->remote_addr), &message);
+				int len = recv_buffer(fd, &message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -239,7 +239,7 @@ static int udp_allocate(int verbose,
 									"%s: rtv=%llu\n", __FUNCTION__, rtv);
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
-									udp_info->realm,udp_info->nonce)) {
+									clnet_info->realm,clnet_info->nonce)) {
 						goto beg_allocate;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						allocate_received = 1;
@@ -287,9 +287,9 @@ static int udp_allocate(int verbose,
 			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
 					4);
 
-			if(udp_info->nonce[0]) {
+			if(clnet_info->nonce[0]) {
 				if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-							udp_info->realm, g_upwd, udp_info->nonce)<0) {
+							clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 					return -1;
 				}
@@ -321,7 +321,7 @@ static int udp_allocate(int verbose,
 			stun_buffer message;
 			while (!refresh_received) {
 
-				int len = recv_buffer(fd, &(udp_info->remote_addr), &message);
+				int len = recv_buffer(fd, &message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -338,7 +338,7 @@ static int udp_allocate(int verbose,
 						}
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
-										udp_info->realm,udp_info->nonce)) {
+										clnet_info->realm,clnet_info->nonce)) {
 							goto beg_refresh;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						refresh_received = 1;
@@ -364,9 +364,9 @@ static int udp_allocate(int verbose,
 }
 
 static int turn_channel_bind(int verbose, uint16_t *chn,
-		app_ur_conn_info *udp_info, ioa_addr *peer_addr) {
+		app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
 
-	int fd = udp_info->fd;
+	int fd = clnet_info->fd;
 
 	beg_bind:
 
@@ -377,9 +377,9 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		*chn = stun_set_channel_bind_request(&message, peer_addr, 0);
 
-		if(udp_info->nonce[0]) {
+		if(clnet_info->nonce[0]) {
 			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						udp_info->realm, g_upwd, udp_info->nonce)<0) {
+						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -413,7 +413,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		stun_buffer message;
 		while (!cb_received) {
 
-			int len = recv_buffer(fd, &(udp_info->remote_addr), &message);
+			int len = recv_buffer(fd, &message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -429,7 +429,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					}
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
-										udp_info->realm,udp_info->nonce)) {
+										clnet_info->realm,clnet_info->nonce)) {
 										goto beg_bind;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cb_received = 1;
@@ -453,10 +453,10 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 	return 0;
 }
 
-static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
+static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		ioa_addr *peer_addr) {
 
-	int fd = udp_info->fd;
+	int fd = clnet_info->fd;
 
 	beg_cp:
 
@@ -468,9 +468,9 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 		stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
-		if(udp_info->nonce[0]) {
+		if(clnet_info->nonce[0]) {
 			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						udp_info->realm, g_upwd, udp_info->nonce)<0) {
+						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 				return -1;
 			}
@@ -505,7 +505,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 		stun_buffer message;
 		while (!cp_received) {
 
-			int len = recv_buffer(fd, &(udp_info->remote_addr), &message);
+			int len = recv_buffer(fd, &message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -520,7 +520,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 					}
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
-									udp_info->realm,udp_info->nonce)) {
+									clnet_info->realm,clnet_info->nonce)) {
 					goto beg_cp;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cp_received = 1;
@@ -543,40 +543,40 @@ static int turn_create_permission(int verbose, app_ur_conn_info *udp_info,
 	return 0;
 }
 
-int start_connection(uint16_t udp_remote_port, 
+int start_connection(uint16_t clnet_remote_port,
 		     const char *remote_address, 
 		     const unsigned char* ifname, const char *local_address,
 		     int verbose,
-		     app_ur_conn_info *udp_info, 
+		     app_ur_conn_info *clnet_info,
 		     uint16_t *chn,
-		     app_ur_conn_info *udp_info_rtcp, 
+		     app_ur_conn_info *clnet_info_rtcp,
 		     uint16_t *chn_rtcp) {
 
 	ioa_addr relay_addr;
 	ioa_addr relay_addr_rtcp;
 
-	if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			verbose, udp_info) < 0) {
+	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			verbose, clnet_info) < 0) {
 	  exit(-1);
 	}
 
 	if(!no_rtcp) {
-	  if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			  verbose, udp_info_rtcp) < 0) {
+	  if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			  verbose, clnet_info_rtcp) < 0) {
 	    exit(-1);
 	  }
 	}
 
 	if(!no_rtcp) {
-	  if (udp_allocate(verbose, udp_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
+	  if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr)) < 0) {
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	} else {
-	  if (udp_allocate(verbose, udp_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
+	  if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
 	    exit(-1);
 	  }
 	}
@@ -585,50 +585,50 @@ int start_connection(uint16_t udp_remote_port,
 		ioa_addr some_addr;
 		addr_cpy(&some_addr,&peer_addr);
 		addr_set_port(&some_addr,addr_get_port(&some_addr)+1);
-		if (turn_channel_bind(verbose, chn, udp_info, &some_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &some_addr) < 0) {
 			exit(-1);
 		}
-		if (turn_channel_bind(verbose, chn, udp_info, &some_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &some_addr) < 0) {
 			exit(-1);
 		}
-		if (turn_channel_bind(verbose, chn, udp_info, &peer_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
-		if (turn_channel_bind(verbose, chn, udp_info, &peer_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp) {
-		  if (turn_channel_bind(verbose, chn_rtcp, udp_info_rtcp, &peer_addr) < 0) {
+		  if (turn_channel_bind(verbose, chn_rtcp, clnet_info_rtcp, &peer_addr) < 0) {
 		    exit(-1);
 		  }
 		}
 	} else {
-		if (turn_create_permission(verbose, udp_info, &peer_addr) < 0) {
+		if (turn_create_permission(verbose, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp) {
-		  if (turn_create_permission(verbose, udp_info_rtcp, &peer_addr)
+		  if (turn_create_permission(verbose, clnet_info_rtcp, &peer_addr)
 		      < 0) {
 		    exit(-1);
 		  }
 		}
 	}
 
-	addr_cpy(&(udp_info->peer_addr), &peer_addr);
+	addr_cpy(&(clnet_info->peer_addr), &peer_addr);
 	if(!no_rtcp) 
-	  addr_cpy(&(udp_info_rtcp->peer_addr), &peer_addr);
+	  addr_cpy(&(clnet_info_rtcp->peer_addr), &peer_addr);
 
 	return 0;
 }
 
 
-int start_c2c_connection(uint16_t udp_remote_port,
+int start_c2c_connection(uint16_t clnet_remote_port,
 		const char *remote_address, const unsigned char* ifname,
-		const char *local_address, int verbose, app_ur_conn_info *udp_info1,
-		uint16_t *chn1, app_ur_conn_info *udp_info1_rtcp,
+		const char *local_address, int verbose, app_ur_conn_info *clnet_info1,
+		uint16_t *chn1, app_ur_conn_info *clnet_info1_rtcp,
 		uint16_t *chn1_rtcp,
-		app_ur_conn_info *udp_info2, uint16_t *chn2,
-		app_ur_conn_info *udp_info2_rtcp,
+		app_ur_conn_info *clnet_info2, uint16_t *chn2,
+		app_ur_conn_info *clnet_info2_rtcp,
 		uint16_t *chn2_rtcp) {
 
 	ioa_addr relay_addr1;
@@ -637,101 +637,101 @@ int start_c2c_connection(uint16_t udp_remote_port,
 	ioa_addr relay_addr2;
 	ioa_addr relay_addr2_rtcp;
 
-	if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			verbose, udp_info1) < 0) {
+	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			verbose, clnet_info1) < 0) {
 		exit(-1);
 	}
 
 	if(!no_rtcp) 
-	  if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			  verbose, udp_info1_rtcp) < 0) {
+	  if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			  verbose, clnet_info1_rtcp) < 0) {
 	    exit(-1);
 	  }
 
-	if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			verbose, udp_info2) < 0) {
+	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			verbose, clnet_info2) < 0) {
 		exit(-1);
 	}
 
 	if(!no_rtcp) 
-	  if (udp_connect(udp_remote_port, remote_address, ifname, local_address,
-			  verbose, udp_info2_rtcp) < 0) {
+	  if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
+			  verbose, clnet_info2_rtcp) < 0) {
 	    exit(-1);
 	  }
 
 	if(!no_rtcp) {
-	  if (udp_allocate(verbose, udp_info1, &relay_addr1, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info1_rtcp,
+	  if (clnet_allocate(verbose, clnet_info1_rtcp,
 			   &relay_addr1_rtcp, default_address_family) < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info2, &relay_addr2, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (udp_allocate(verbose, udp_info2_rtcp,
+	  if (clnet_allocate(verbose, clnet_info2_rtcp,
 			   &relay_addr2_rtcp, default_address_family) < 0) {
 	    exit(-1);
 	  }
 	} else {
-	  if (udp_allocate(verbose, udp_info1, &relay_addr1, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }	  
-	  if (udp_allocate(verbose, udp_info2, &relay_addr2, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family)
 	      < 0) {
 	    exit(-1);
 	  }
 	}
 
 	if (!use_send_method) {
-		if (turn_channel_bind(verbose, chn1, udp_info1, &relay_addr2) < 0) {
+		if (turn_channel_bind(verbose, chn1, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp)
-		  if (turn_channel_bind(verbose, chn1_rtcp, udp_info1_rtcp,
+		  if (turn_channel_bind(verbose, chn1_rtcp, clnet_info1_rtcp,
 					&relay_addr2_rtcp) < 0) {
 		    exit(-1);
 		  }
-		if (turn_channel_bind(verbose, chn2, udp_info2, &relay_addr1) < 0) {
+		if (turn_channel_bind(verbose, chn2, clnet_info2, &relay_addr1) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp)
-		  if (turn_channel_bind(verbose, chn2_rtcp, udp_info2_rtcp,
+		  if (turn_channel_bind(verbose, chn2_rtcp, clnet_info2_rtcp,
 					&relay_addr1_rtcp) < 0) {
 		    exit(-1);
 		  }
 	} else {
-		if (turn_create_permission(verbose, udp_info1, &relay_addr2) < 0) {
+		if (turn_create_permission(verbose, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp)
-		  if (turn_create_permission(verbose, udp_info1_rtcp, &relay_addr2_rtcp)
+		  if (turn_create_permission(verbose, clnet_info1_rtcp, &relay_addr2_rtcp)
 		      < 0) {
 		    exit(-1);
 		  }
-		if (turn_create_permission(verbose, udp_info2, &relay_addr1) < 0) {
+		if (turn_create_permission(verbose, clnet_info2, &relay_addr1) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp)
-		  if (turn_create_permission(verbose, udp_info2_rtcp, &relay_addr1_rtcp)
+		  if (turn_create_permission(verbose, clnet_info2_rtcp, &relay_addr1_rtcp)
 		      < 0) {
 		    exit(-1);
 		  }
 	}
 
-	addr_cpy(&(udp_info1->peer_addr), &relay_addr2);
+	addr_cpy(&(clnet_info1->peer_addr), &relay_addr2);
 	if(!no_rtcp)
-	  addr_cpy(&(udp_info1_rtcp->peer_addr), &relay_addr2_rtcp);
-	addr_cpy(&(udp_info2->peer_addr), &relay_addr1);
+	  addr_cpy(&(clnet_info1_rtcp->peer_addr), &relay_addr2_rtcp);
+	addr_cpy(&(clnet_info2->peer_addr), &relay_addr1);
 	if(!no_rtcp)
-	  addr_cpy(&(udp_info2_rtcp->peer_addr), &relay_addr1_rtcp);
+	  addr_cpy(&(clnet_info2_rtcp->peer_addr), &relay_addr1_rtcp);
 
 	return 0;
 }

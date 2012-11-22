@@ -1,20 +1,26 @@
 
 I. PLATFORMS
 
-The TURN Server and utilities were developed and tested on the following platforms:
+The TURN Server is using generic UNIX system APIs and is supposed to be usable to wide range
+on UNIX systems. 
 
-	- Linux Ubuntu 11.x and 12.x, 32 bits 
+The following platforms have been used in the development:
+
+	- Linux Ubuntu 11.x and 12.x, 32 and 64 bits 
 	- FreeBSD 6.x 32 bits
 	- FreeBSD 8.x 32 bits
-	- FreeBSD 9.x 64 bits
+	- PC-BSD 9.x 64 bits (a FreeBSD offspring)
 	- Solaris 11 x86 64 bits
 
 It must work on many other UNIXes, as well. The build.sh script and/or 
-Makefile may need adjustments for other UNIXes.
+Makefile may need adjustments for other UNIXes not mentioned above.
+
+The code of the client messaging library can be used on Windows, too.
 
 II. COMPILERS
 
-The TURN Server is written in C programming language. 
+The TURN Server is written in C programming language, for portability 
+and for the performance reasons. 
 
 The tested C compilers are:
 
@@ -26,61 +32,48 @@ It may be compiled with others compilers, too.
 
 III. EXTRA LIBRARIES AND UTILITIES
 
-In addition to common UNIX OS services and libraries, this code requires:
+In addition to common UNIX OS services and libraries, to compile this code, 
+OpenSSL and libevent2 are required. For build, both must be installed
+in full version (development headers and runtime libraries). For runtime, 
+only runtime setup is required. If the build is modified for static linking, 
+then even runtime installation is not needed.
 
-1) OpenSSL development libraries and headers, version 0.9.6 or better.
+OpenSSL and libevent2 can be downloaded from their web sites -
+http://www.openssl.org and http://www.libevent.org. The installation
+is pretty straightforward - the usual "./configure" and "make install" commands.
+Install them into their default locations - the build.sh script and
+the Makefile are assuming that they are installed in their default locations.
+If not, then you will have to modify those.
 
-NOTE: the runtime libraries are not enough to compile the code,
-the full development OpenSSL setup is required. For example, in Ununtu, 
-the developer has to install the libssl-dev package.
+FreeBSD, PC-BSD and Linux Ubuntu 11.10+ have even simpler way of the
+third party tools installation:      
 
-NOTE: The best results are usually obtained by downloading and
-installing a fresh 1.x.x OpenSSL full development version from their site.
+	*) PC-BSD or FreeBSD (the ports DB is assumed to be installed):
 
-2) libevent2 IO library. 
-It is assumed to be installed either in /usr or /usr/local/ directory. 
-Default libevent2 installation installs it in one of those locations.
-If the location is  different, then the Makefile has to be adjusted.
-
-	Libevent installation instructions:
-	
-	*) FreeBSD:
-
+		$ cd /usr/ports/security/openssl/
+		$ sudo make install
 		$ cd /usr/ports/devel/libevent2/
 		$ sudo make install
 
-		or download and install it 'manually' from http://libevent.org.
+	**) Linux Ubuntu 11.10+:
+		
+		$ sudo apt-get install libssl-dev
+		$ sudo apt-get install libevent-dev
+		
+		or you can use Synaptic or other software center. 
 
-	**) Linux Ubuntu 11.10 and later:
+NOTE: OpenSSL to be installed before libevent2.
 
-		With a package manager (like synaptic): 
-		install the packages:
-
-			libevent, 
-			libevent-core, 
-			libevent-dev, 
-			libevent-threads, 
-			libevent-openssl. 
-
-		This set of packages includes the necessary runtime libraries and 
-		the development headers.
-
-	***) Other Linuxes and UNIXes: 
-
-		Download 2.x.xx version of libevent from http://libevent.org and 
-		follow the supplied instructions. The instructions are fairly
-		standard (./configure and make install).
-
-NOTE: an older libevent version, version 1.x.x, is often included in some Linux 
+NOTE: An older libevent version, version 1.x.x, is often included in some Linux 
 distributions. That version has its deficiencies and is inferior to the newer 
 libevent2, especially in the performance department. This is why we are 
-not providing backward compatibility with the older libevent version.
+not providing backward compatibility with the older libevent version. 
+If you have a system with older libevent, then install the new libevent2 from 
+their web site. It was tested on older Linuxes and it works just fine. 
 
-NOTE: if you are compiling libevent2 library yourself, then do that after full OpenSSL 
-installation. libevent2 depends on OpenSSL: if OpenSSL present, libevent2 compiles 
-itself with extra functionality.
+NOTE: OpenSSL version 1.0.0 or newer is recommended.
 
-3) The build system must have usual pthread library and headers available.
+NOTE: The build system must have usual pthread library and headers available.
 
 IV. BUILD
 
@@ -88,7 +81,7 @@ build.sh script will create bin sub-directory and put the TURN server there.
 The test applications will be located in testapps/bin/ 
 sub-directory.
 
-For most platforms, just "make" would suffice.
+For most platforms, just simple "make" would suffice.
 
 The supplied Makefile creates dynamically linked binaries.
 If statically linked binaries are desired, then the Makefile
