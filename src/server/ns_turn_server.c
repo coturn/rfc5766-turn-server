@@ -1504,7 +1504,7 @@ static int create_relay_connection(turn_turnserver* server,
 		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.ss_family == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
-		register_callback_on_ioa_socket(newelem->s, IOA_EV_READ,
+		register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
 				peer_input_handler, ss);
 
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
@@ -1652,7 +1652,7 @@ int open_client_connection_session(turn_turnserver* server,
 
 	newelem->s = sm->s;
 
-	register_callback_on_ioa_socket(newelem->s, IOA_EV_READ,
+	register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
 			client_input_handler, ss);
 
 	newelem->state = UR_STATE_READY;
@@ -1761,9 +1761,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			}
 
 			int ret = write_client_connection(server, ss, nbh);
-			if (ret < 0) {
-				shutdown_client_connection(server, ss);
-			}
+			if (ret < 0)
+				set_ioa_socket_tobeclosed(s);
 		}
 	}
 }
@@ -1794,9 +1793,6 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	int ret = 0;
 
 	switch (elem->state) {
-	case UR_STATE_SHUTTING_DOWN:
-		shutdown_client_connection(server, ss);
-		return;
 	case UR_STATE_READY:
 		read_client_connection(server, elem, ss, data);
 		break;
@@ -1812,11 +1808,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	if (ret < 0 && server->verbose) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"Error on client handler: s=0x%lx\n", (long) (elem->s));
-	}
-
-	elem = &(ss->client_session);
-	if (ret < 0 || ioa_socket_tobeclosed(s)) {
-		shutdown_client_connection(server, ss);
+		set_ioa_socket_tobeclosed(s);
 	}
 }
 

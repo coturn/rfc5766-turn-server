@@ -87,6 +87,8 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	ioa_addr client_addr;
 	ns_bcopy(sa,&client_addr,socklen);
 
+	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
+
 	addr_debug_print(server->verbose, &client_addr,"tcp connected to");
 
 	ioa_socket_handle ioas =

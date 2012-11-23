@@ -53,6 +53,7 @@ int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAU
 int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
+int use_fingerprints = 1;
 
 //////////////// local definitions /////////////////
 

@@ -131,27 +131,62 @@ int send_buffer(int fd, stun_buffer* message)
 {
 
 	int rc = 0;
-	do {
-		rc = send(fd, message->buf, message->len, 0);
-	} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
 
-	if (rc < 0)
+	char *buffer = (char*)(message->buf);
+	size_t left = (size_t)(message->len);
+
+	while(left > 0) {
+		do {
+			rc = send(fd, buffer, left, 0);
+		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		if(rc>0) {
+			left -=(size_t)rc;
+			buffer += rc;
+		} else {
+			break;
+		}
+	}
+
+	if (left>0)
 		return -1;
 
-	return rc;
+	return (int)message->len;
 }
 
 int recv_buffer(int fd, stun_buffer* message) {
 
 	int rc = 0;
-	do {
-		rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
-	} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
-	if (rc < 0)
-		return -1;
+	if(!use_tcp) {
+		do {
+			rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
+		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
-	message->len = rc;
+		if (rc < 0)
+			return -1;
+
+		message->len = rc;
+
+	} else {
+		do {
+			rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
+		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		if(rc>0) {
+			int mlen = stun_get_message_len_str(message->buf, rc);
+			if(mlen>0 && mlen<=rc) {
+				do {
+					rc = recv(fd, message->buf, (size_t)mlen, 0);
+				} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+
+				if (rc < 0)
+					return -1;
+
+				message->len = rc;
+			} else {
+				rc = 0;
+			}
+		}
+	}
 
 	return rc;
 }
@@ -182,7 +217,7 @@ static int client_read(app_ur_session *elem) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int) rc);
 	}
 
-	if (rc >= 0) {
+	if (rc > 0) {
 
 		elem->in_buffer.len = rc;
 
@@ -205,7 +240,7 @@ static int client_read(app_ur_session *elem) {
 					STUN_ATTRIBUTE_DATA);
 			if (!sar) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-						"ERROR: received DATA message has no data\n");
+						"ERROR: received DATA message has no data, size=%d\n",rc);
 				return 0;
 			}
 
@@ -278,6 +313,10 @@ static int client_read(app_ur_session *elem) {
 		elem->wait_cycles = 0;
 		tot_recv_messages++;
 
+	} else if(rc == 0) {
+
+		return 0;
+
 	} else {
 
 		if (handle_socket_error())
@@ -327,7 +366,8 @@ static int client_write(app_ur_session *elem) {
     stun_attr_add_addr(&(elem->out_buffer),STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
     if(dont_fragment)
 	    stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
-    stun_attr_add_fingerprint_str(elem->out_buffer.buf,(size_t*)&(elem->out_buffer.len));
+    if(use_fingerprints)
+	    stun_attr_add_fingerprint_str(elem->out_buffer.buf,(size_t*)&(elem->out_buffer.len));
   }
 
   if (elem->out_buffer.len > 0) {
@@ -371,9 +411,6 @@ static void client_input_handler(evutil_socket_t fd, short what, void* arg) {
   }
   
   switch(elem->state) {
-  case UR_STATE_SHUTTING_DOWN:
-    client_shutdown(elem);
-    return;
   case UR_STATE_READY:
     client_read(elem);
     break;
@@ -615,7 +652,8 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 				return -1;
 			}
 		}
-		stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+		if(use_fingerprints)
+			    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 		send_buffer(elem->pinfo.fd, &message);
 	}
 
@@ -631,7 +669,8 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 					return -1;
 				}
 			}
-			stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+			if(use_fingerprints)
+				    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 			send_buffer(elem->pinfo.fd, &message);
 		}
 
@@ -647,7 +686,8 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 						return -1;
 					}
 				}
-				stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
+				if(use_fingerprints)
+					    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 				send_buffer(elem->pinfo.fd, &message);
 			}
 		}
@@ -708,8 +748,6 @@ static void timer_handler(void)
 void start_mclient(const char *remote_address, int port,
 		const unsigned char* ifname, const char *local_address,
 		int messagenumber, int mclient) {
-
-	//sleep(20);
 
 	if (mclient < 1)
 		mclient = 1;
@@ -828,9 +866,9 @@ void start_mclient(const char *remote_address, int port,
 			((unsigned int)(current_time - stime)));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
 				(unsigned long long)total_loss, (((double)total_loss/(double)tot_recv_messages)*100.00),'%');
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f\n",
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f ms\n",
 				((double)total_latency/(double)tot_recv_messages));
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f\n",
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms\n",
 				((double)total_jitter/(double)tot_recv_messages));
 }
 

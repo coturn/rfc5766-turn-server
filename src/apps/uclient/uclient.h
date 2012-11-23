@@ -46,6 +46,7 @@ extern int default_address_family;
 extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
+extern int use_fingerprints;
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address,

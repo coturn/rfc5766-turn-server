@@ -81,6 +81,7 @@ struct _ioa_socket
 	int current_df_relay_flag;
 	/* RFC6156: if IPv6 is involved, do not use DF: */
 	int do_not_use_df;
+	int tobeclosed;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -106,9 +107,5 @@ void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
-
-void socket_input_handler(evutil_socket_t fd, short what, void* arg);
-void socket_input_handler_bev(struct bufferevent *bev, void* arg);
-void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
 #endif /* __IOA_LIBIMPL__ */

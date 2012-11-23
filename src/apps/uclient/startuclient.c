@@ -118,6 +118,8 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		exit(-1);
 	}
 
+	usleep(50000);
+
 	addr_debug_print(verbose, &remote_addr, "Connected to");
 
 	if (clnet_info) {

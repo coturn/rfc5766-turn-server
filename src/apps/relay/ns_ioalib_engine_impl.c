@@ -39,6 +39,14 @@
 
 #include <pthread.h>
 
+#define TOO_BIG_BAD_TCP_MESSAGE (40000)
+
+/************** Forward function declarations ******/
+
+static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
+static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
+static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
+
 /************** Utils **************************/
 
 #if !defined(min)
@@ -211,11 +219,7 @@ void stop_ioa_timer(ioa_timer_handle th)
 {
 	if (th) {
 		timer_event *te = th;
-		if (te->ev) {
-			event_del(te->ev);
-			event_free(te->ev);
-			te->ev = NULL;
-		}
+		EVENT_DEL(te->ev);
 	}
 }
 
@@ -279,9 +283,6 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 	ret->family = family;
 	ret->st = st;
 	ret->e = e;
-
-	ret->read_event = event_new(e->event_base,ret->fd, EV_READ|EV_PERSIST, socket_input_handler, ret);
-	event_add(ret->read_event,NULL);
 
 	return ret;
 }
@@ -536,7 +537,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	if(s->current_df_relay_flag)
 		set_df_on_ioa_socket(cs,s->current_df_relay_flag);
 
-	register_callback_on_ioa_socket(cs, IOA_EV_READ, channel_input_handler, chn);
+	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn);
 
 	return cs;
 }
@@ -565,8 +566,8 @@ void close_ioa_socket(ioa_socket_handle s)
 		if(s->bev) {
 			bufferevent_free(s->bev);
 			s->bev=NULL;
-		}
-		if (s->fd >= 0) {
+			s->fd = -1;
+		} else if (s->fd >= 0) {
 			evutil_closesocket(s->fd);
 			s->fd = -1;
 		}
@@ -629,26 +630,17 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	return len;
 }
 
-void socket_input_handler(evutil_socket_t fd, short what, void* arg)
+static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 {
-
-	if (!(what & EV_READ) || !arg)
-		return;
-
-	ioa_socket_handle s = arg;
-
-	if(s->fd != fd)
-		return;
-
-	int to_repeat,len;
+	int len;
 	ioa_addr remote_addr;
-	stun_buffer *sbuf;
+	stun_buffer *sbuf = NULL;
 
-	read_again:
+	if(s->done)
+		goto do_flush;
 
 	sbuf = malloc(sizeof(stun_buffer));
 	len = -1;
-	to_repeat = 0;
 
 	if(s->bev) {
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
@@ -656,11 +648,12 @@ void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 			ev_ssize_t blen = evbuffer_copyout(inbuf, sbuf->buf, sizeof(sbuf->buf));
 			if(blen>0) {
 				int mlen = stun_get_message_len_str(sbuf->buf, blen);
-				if(mlen>0) {
+				if(mlen>0 && mlen<=(int)blen) {
 					len = (int)bufferevent_read(s->bev, sbuf->buf, mlen);
-					if(len>0) {
-						to_repeat = 1;
-					}
+				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
+					s->tobeclosed = 1;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bad TCP message, session to be closed.\n",
+							__FUNCTION__);
 				}
 			}
 		}
@@ -668,7 +661,8 @@ void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
 	} else {
 		free(sbuf);
-		return;
+		s->tobeclosed = 1;
+		goto do_flush;
 	}
 
 	if (len >= 0) {
@@ -697,40 +691,84 @@ void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		sbuf = NULL;
 	}
 
-	if(to_repeat)
-		goto read_again;
+	return len;
+
+	do_flush:
+	if(fd>=0 && !(s->bev)) {
+		char buffer[1024];
+		recv(fd, buffer, sizeof(buffer),0);
+	}
+	return 0;
 }
 
-void socket_input_handler_bev(struct bufferevent *bev, void* arg)
+static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 
-	if(bev && arg) {
-		ioa_socket_handle s = arg;
-		socket_input_handler(s->fd, EV_READ, arg);
+	if (!(what & EV_READ) || !arg)
+		return;
+
+	ioa_socket_handle s = arg;
+
+	if (!ioa_socket_tobeclosed(s))
+		socket_input_worker(fd, s);
+
+	if (ioa_socket_tobeclosed(s)) {
+		ts_ur_super_session *ss = s->session;
+		if (ss) {
+			turn_turnserver *server = ss->server;
+			if (server)
+				shutdown_client_connection(server, ss);
+		}
 	}
 }
 
-void eventcb_bev(struct bufferevent *bev, short events, void *arg)
+static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
+{
+
+	if (bev && arg) {
+		ioa_socket_handle s = arg;
+
+		while (!ioa_socket_tobeclosed(s)) {
+			if(socket_input_worker(s->fd, s)<=0)
+				break;
+		}
+
+		if (ioa_socket_tobeclosed(s)) {
+			ts_ur_super_session *ss = s->session;
+			if (ss) {
+				turn_turnserver *server = ss->server;
+				if (server)
+					shutdown_client_connection(server, ss);
+			}
+			return;
+		}
+	}
+}
+
+static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 {
     if (events & BEV_EVENT_CONNECTED) {
          // Connect okay
     } else if (events & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
+	    struct bufferevent *sbev = 0;
 	    if(arg) {
 		    ioa_socket_handle s = arg;
 		    ts_ur_super_session *ss = s->session;
-		    if(ss) {
-			    turn_turnserver *server = ss->server;
-			    if(server) {
-				    shutdown_client_connection(server, ss);
-				    return;
-			    }
+		    sbev = s->bev;
+		    if(sbev) {
+			    bufferevent_free(s->bev);
+			    s->bev=NULL;
+			    s->fd=-1;
+			    s->tobeclosed=1;
 		    }
-		    if(s->bev != bev) {
-		    	bufferevent_free(s->bev);
-		    	s->bev=NULL;
+		    if (ss) {
+		    	turn_turnserver *server = ss->server;
+		    	if (server)
+		    		shutdown_client_connection(server, ss);
 		    }
 	    }
-	    bufferevent_free(bev);
+	    if(bev!=sbev)
+		    bufferevent_free(bev);
     }
 }
 
@@ -751,33 +789,41 @@ static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const 
 	return rc;
 }
 
-int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel)
+int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
+				ioa_network_buffer_handle nbh, int to_peer,
+				void *socket_channel)
 {
 	int ret = -1;
-	if (s->done) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! Trying to send data from closed socket: 0x%lx", (long) s);
-	} else {
-		if (s && nbh && !(s->done)) {
-			if (!ioa_socket_tobeclosed(s) && s->e) {
+	if (s->done || (s->fd == -1)) {
 
-				if(to_peer && socket_channel)
-					s = socket_channel; //Use dedicated socket
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d\n",(long) s, (int)s->done, (int)s->fd);
+
+	} else if (nbh) {
+
+		if (!ioa_socket_tobeclosed(s) && s->e) {
+
+			if (to_peer && socket_channel)
+				s = socket_channel; //Use dedicated socket
+
+			if (s->done || (s->fd == -1)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! Trying to send data from closed socket: 0x%lx (2): done=%d, fd=%d\n",(long) s, (int)s->done, (int)s->fd);
+			} else {
 				if (s->connected && s->bev) {
-					if(bufferevent_write(s->bev, ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh))<0) {
+					if (bufferevent_write(s->bev,ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh))< 0) {
 						ret = -1;
-						perror("send");
+						perror("bufev send");
 					} else {
 						bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
-						ret = (int)ioa_network_buffer_get_size(nbh);
+						ret = (int) ioa_network_buffer_get_size(nbh);
 					}
 				} else if (s->fd >= 0) {
 					if (s->connected)
 						dest_addr = NULL; /* ignore dest_addr */
 					else if (!dest_addr)
 						dest_addr = &(s->remote_addr);
-					ret = udp_send(s->fd, dest_addr, (s08bits*)ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
+					ret = udp_send(s->fd, dest_addr, (s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
 					if (ret < 0)
-						perror("send");
+						perror("udp send");
 				}
 			}
 		}
@@ -788,11 +834,40 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_
 	return ret;
 }
 
-int register_callback_on_ioa_socket(ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx)
+int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx)
 {
 
 	if (cb) {
 		if ((event_type & IOA_EV_READ) && s) {
+
+			if(e)
+				s->e = e;
+
+			if(s->e) {
+				if(s->st == UDP_SOCKET) {
+					if(s->read_event) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"%s: software error: buffer preset 1\n", __FUNCTION__);
+					} else {
+						s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
+						event_add(s->read_event,NULL);
+					}
+				} else {
+					if(s->bev) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"%s: software error: buffer preset 2\n", __FUNCTION__);
+					} else {
+						s->bev = bufferevent_socket_new(s->e->event_base,
+										s->fd,
+										BEV_OPT_CLOSE_ON_FREE);
+						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+							eventcb_bev, s);
+						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+						bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
+					}
+				}
+			}
+
 			s->read_cb = cb;
 			s->read_ctx = ctx;
 			return 0;
@@ -805,6 +880,8 @@ int register_callback_on_ioa_socket(ioa_socket_handle s, int event_type, ioa_net
 int ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s) {
+		if(s->tobeclosed)
+			return 1;
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx\n",__FUNCTION__,(long)s);
 			return 1;
@@ -814,6 +891,11 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 		}
 	}
 	return 0;
+}
+
+void set_ioa_socket_tobeclosed(ioa_socket_handle s)
+{
+	s->tobeclosed = 1;
 }
 
 /*

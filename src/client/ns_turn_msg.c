@@ -355,6 +355,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen) {
 						}
 					}
 				}
+				return -1;
 			}
 		}
 		/* STUN channel ? */

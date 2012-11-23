@@ -185,25 +185,15 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 
 		ioa_socket_handle s = sm.s;
 
-		EVENT_DEL(s->read_event);
-		if(s->bev) {
-			bufferevent_free(s->bev);
-			s->bev=NULL;
+		if(s->read_event || s->bev) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
+					(long)s->read_event, (long)s->bev);
+			close_ioa_socket(s);
+			return;
 		}
 
 		s->e = rs->ioa_eng;
-		if (s->st == UDP_SOCKET) {
-			s->read_event = event_new(s->e->event_base, s->fd, EV_READ | EV_PERSIST,
-								socket_input_handler, s);
-			event_add(s->read_event, NULL);
-		} else {
-			s->bev = bufferevent_socket_new(s->e->event_base,
-							s->fd,
-							0);
-							bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
-											eventcb_bev, s);
-			bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
-		}
 
 		open_client_connection_session(rs->server, &sm);
 		ioa_network_buffer_delete(sm.nbh);
