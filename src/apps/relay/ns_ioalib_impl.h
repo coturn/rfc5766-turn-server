@@ -45,6 +45,16 @@
 #include "ns_turn_maps_rtcp.h"
 
 #include "apputils.h"
+#include "stun_buffer.h"
+
+#define TOO_BIG_BAD_TCP_MESSAGE (40000)
+#define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (16)
+
+typedef struct _stun_buffer_list_elem {
+	struct _stun_buffer_list_elem *next;
+	stun_buffer buf;
+	size_t tsz;
+} stun_buffer_list_elem;
 
 struct _ioa_engine
 {
@@ -58,6 +68,7 @@ struct _ioa_engine
   int verbose;
   turnipports* tp;
   rtcp_map *rtcp_map;
+  stun_buffer_list_elem *bufs;
 };
 
 struct _ioa_socket

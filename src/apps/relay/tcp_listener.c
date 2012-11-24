@@ -32,7 +32,6 @@
 
 #include "ns_turn_utils.h"
 
-#include "stun_buffer.h"
 #include "tcp_listener.h"
 #include "ns_ioalib_impl.h"
 

@@ -61,7 +61,7 @@ static char Usage[] =
   "Usage: uclient [options] address\n"
   "Options:\n"
   "        -l      message length (Default: 100 Bytes)\n"
-  "	   -t	   TCP (default - clnet)\n"
+  "        -t	   TCP (default - clnet)\n"
   "        -p      remote port (Default: 3478)\n"
   "        -n      number of messages to send (Default: 5)\n"
   "        -L      local address\n"
@@ -75,8 +75,8 @@ static char Usage[] =
   "        -c      no rtcp connections\n"
   "        -x      IPv6 relayed address requested\n"
   "        -g      include DONT_FRAGMENT option\n"
-  "	   -u	   STUN/TURN user name\n"
-  "	   -w	   STUN/TURN user password\n";
+  "        -u	   STUN/TURN user name\n"
+  "        -w	   STUN/TURN user password\n";
 
 //////////////////////////////////////////////////
 

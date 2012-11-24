@@ -32,7 +32,6 @@
 
 #include "ns_turn_utils.h"
 
-#include "stun_buffer.h"
 #include "udp_listener.h"
 #include "ns_ioalib_impl.h"
 
@@ -86,22 +85,23 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_addr client_addr;
 
-	stun_buffer *sbuf = malloc(sizeof(stun_buffer));
-	ioa_net_data nd = { &client_addr, sbuf, 0 };
+	ioa_network_buffer_handle *elem = ioa_network_buffer_allocate(server->e);
+	ioa_net_data nd = { &client_addr, elem, 0 };
 	ioa_addr si_other;
 	int slen = get_ioa_addr_len(&(server->addr));
+	ssize_t bsize = 0;
 
 	int flags = MSG_DONTWAIT;
 
 	do {
-		sbuf->len = recvfrom(fd, sbuf->buf, sizeof(sbuf->buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
-	} while (sbuf->len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
+	} while (bsize < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
-	if (sbuf->len > 0) {
+	if (bsize > 0) {
 
-		sbuf->buf[sbuf->len] = 0;
+		ioa_network_buffer_set_size(elem, (size_t)bsize);
 
-		if (stun_is_request_str(sbuf->buf, sbuf->len)) {
+		if (stun_is_request_str(ioa_network_buffer_data(elem), ioa_network_buffer_get_size(elem))) {
 
 			addr_cpy(&client_addr, &si_other);
 
@@ -136,7 +136,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	}
 
-	ioa_network_buffer_delete(nd.nbh);
+	ioa_network_buffer_delete(server->e, nd.nbh);
 
 	FUNCEND	;
 }

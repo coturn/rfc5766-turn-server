@@ -39,8 +39,6 @@
 
 #include <pthread.h>
 
-#define TOO_BIG_BAD_TCP_MESSAGE (40000)
-
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
@@ -50,7 +48,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 /************** Utils **************************/
 
 #if !defined(min)
-#define min(a,b) (a<=b ? a : b)
+#define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
@@ -71,6 +69,48 @@ void set_do_not_use_df(ioa_socket_handle s)
 	s->do_not_use_df = 1;
 	s->current_df_relay_flag = 1;
 	set_socket_df(s->fd, s->family, 0);
+}
+
+/************** Buffer List ********************/
+
+static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
+{
+	stun_buffer_list_elem *ret = NULL;
+
+	if(e && e->bufs) {
+		ret=e->bufs;
+		e->bufs=ret->next;
+	} else {
+		ret = malloc(sizeof(stun_buffer_list_elem));
+	}
+
+	ret->next=NULL;
+	ret->tsz=0;
+
+	return ret;
+}
+
+static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
+{
+	if(elem) {
+		if(e) {
+			if(e->bufs) {
+				if(e->bufs->tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE) {
+					elem->next = e->bufs;
+					e->bufs = elem;
+					elem->tsz = elem->next->tsz + 1;
+				} else {
+					free(elem);
+				}
+			} else {
+				e->bufs=elem;
+				elem->tsz = 0;
+				elem->next= NULL;
+			}
+		} else {
+			free(elem);
+		}
+	}
 }
 
 /************** ENGINE *************************/
@@ -556,10 +596,8 @@ void close_ioa_socket(ioa_socket_handle s)
 			return;
 		}
 		s->done = 1;
-		ioa_network_buffer_delete(s->defer_nbh);
-		if (s->read_event) {
-			EVENT_DEL(s->read_event);
-		}
+		ioa_network_buffer_delete(s->e, s->defer_nbh);
+		EVENT_DEL(s->read_event);
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,&(s->local_addr));
 		}
@@ -634,22 +672,21 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 {
 	int len;
 	ioa_addr remote_addr;
-	stun_buffer *sbuf = NULL;
 
 	if(s->done)
 		goto do_flush;
 
-	sbuf = malloc(sizeof(stun_buffer));
+	stun_buffer_list_elem *elem = new_blist_elem(s->e);
 	len = -1;
 
 	if(s->bev) {
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
 		if(inbuf) {
-			ev_ssize_t blen = evbuffer_copyout(inbuf, sbuf->buf, sizeof(sbuf->buf));
+			ev_ssize_t blen = evbuffer_copyout(inbuf, elem->buf.buf, sizeof(elem->buf.buf));
 			if(blen>0) {
-				int mlen = stun_get_message_len_str(sbuf->buf, blen);
+				int mlen = stun_get_message_len_str(elem->buf.buf, blen);
 				if(mlen>0 && mlen<=(int)blen) {
-					len = (int)bufferevent_read(s->bev, sbuf->buf, mlen);
+					len = (int)bufferevent_read(s->bev, elem->buf.buf, mlen);
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
 					s->tobeclosed = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bad TCP message, session to be closed.\n",
@@ -658,37 +695,37 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			}
 		}
 	} else if(s->fd>=0){
-		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)sbuf->buf, sizeof(sbuf->buf));
+		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf));
 	} else {
-		free(sbuf);
+		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
 		goto do_flush;
 	}
 
 	if (len >= 0) {
-		sbuf->len = len;
+		elem->buf.len = len;
 		if(s->read_cb) {
-			ioa_net_data event_data = {&remote_addr, sbuf, 0 };
+			ioa_net_data event_data = {&remote_addr, elem, 0 };
 			ioa_net_event_handler cb = s->read_cb;
 			void* ctx = s->read_ctx;
 
 			cb(s, IOA_EV_READ, &event_data, ctx);
 
 			if(event_data.nbh)
-				free(sbuf);
+				free_blist_elem(s->e,elem);
 
-			sbuf = NULL;
+			elem = NULL;
 
 		} else {
-			ioa_network_buffer_delete(s->defer_nbh);
-			s->defer_nbh = sbuf;
-			sbuf = NULL;
+			ioa_network_buffer_delete(s->e, s->defer_nbh);
+			s->defer_nbh = elem;
+			elem = NULL;
 		}
 	}
 
-	if(sbuf) {
-		free(sbuf);
-		sbuf = NULL;
+	if(elem) {
+		free_blist_elem(s->e,elem);
+		elem = NULL;
 	}
 
 	return len;
@@ -829,7 +866,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 		}
 	}
 
-	ioa_network_buffer_delete(nbh);
+	ioa_network_buffer_delete(s->e, nbh);
 
 	return ret;
 }
@@ -901,11 +938,11 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 /*
  * Network buffer functions
  */
-ioa_network_buffer_handle ioa_network_buffer_allocate(void)
+ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e)
 {
-	stun_buffer *sb = malloc(sizeof(stun_buffer));
-	ns_bzero(sb,sizeof(stun_buffer));
-	return sb;
+	stun_buffer_list_elem *elem = new_blist_elem(e);
+	ns_bzero(&(elem->buf),sizeof(stun_buffer));
+	return elem;
 }
 
 /* We do not use special header in this simple implementation */
@@ -916,8 +953,8 @@ void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh)
 
 u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh)
 {
-	stun_buffer *sb = nbh;
-	return sb->buf;
+	stun_buffer_list_elem *elem = nbh;
+	return elem->buf.buf;
 }
 
 size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
@@ -925,8 +962,8 @@ size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
 	if(!nbh)
 		return 0;
 	else {
-		stun_buffer *sb = nbh;
-		return (size_t)(sb->len);
+		stun_buffer_list_elem *elem = nbh;
+		return (size_t)(elem->buf.len);
 	}
 }
 
@@ -937,12 +974,12 @@ size_t ioa_network_buffer_get_capacity(void)
 
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
 {
-	stun_buffer *sb = nbh;
-	sb->len=(ssize_t)len;
+	stun_buffer_list_elem *elem = nbh;
+	elem->buf.len=(ssize_t)len;
 }
-void ioa_network_buffer_delete(ioa_network_buffer_handle nbh) {
-	if(nbh)
-		free(nbh);
+void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
+	stun_buffer_list_elem *elem = nbh;
+	free_blist_elem(e,elem);
 }
 
 /******* debug ************/

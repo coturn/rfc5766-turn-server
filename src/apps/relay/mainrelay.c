@@ -178,7 +178,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 				sm.nbh = sm.s->defer_nbh;
 				sm.s->defer_nbh = NULL;
 			} else {
-				ioa_network_buffer_delete(sm.s->defer_nbh);
+				ioa_network_buffer_delete(rs->ioa_eng, sm.s->defer_nbh);
 				sm.s->defer_nbh = NULL;
 			}
 		}
@@ -196,7 +196,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 		s->e = rs->ioa_eng;
 
 		open_client_connection_session(rs->server, &sm);
-		ioa_network_buffer_delete(sm.nbh);
+		ioa_network_buffer_delete(rs->ioa_eng, sm.nbh);
 	}
 }
 

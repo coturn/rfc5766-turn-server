@@ -1014,7 +1014,7 @@ static int create_challenge_response(turn_turnserver *server,
 }
 
 #if !defined(min)
-#define min(a,b) (a<=b ? a : b)
+#define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
 static int check_stun_auth(turn_turnserver *server,
@@ -1394,7 +1394,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 	ts_ur_session* elem = &(ss->client_session);
 
 	if (elem->state != UR_STATE_READY) {
-		ioa_network_buffer_delete(nbh);
+		ioa_network_buffer_delete(server->e, nbh);
 		FUNCEND;
 		return -1;
 	} else {
@@ -1602,7 +1602,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 	} else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh),
 					       ioa_network_buffer_get_size(in_buffer->nbh), 0)) {
 
-		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate();
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed);
@@ -1613,7 +1613,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				size_t len = ioa_network_buffer_get_size(nbh);
 				if(stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh),&len)<0) {
 					FUNCEND;
-					ioa_network_buffer_delete(nbh);
+					ioa_network_buffer_delete(server->e, nbh);
 					return -1;
 				}
 				ioa_network_buffer_set_size(nbh,len);
@@ -1624,7 +1624,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			FUNCEND;
 			return ret;
 		} else {
-			ioa_network_buffer_delete(nbh);
+			ioa_network_buffer_delete(server->e, nbh);
 		}
 
 	}
@@ -1672,7 +1672,7 @@ int open_client_connection_session(turn_turnserver* server,
 		ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum };
 		sm->nbh=NULL;
 		client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
-		ioa_network_buffer_delete(nd.nbh);
+		ioa_network_buffer_delete(server->e, nd.nbh);
 	}
 
 	FUNCEND;
@@ -1745,7 +1745,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							(int) (chnum));
 				}
 			} else {
-				nbh = ioa_network_buffer_allocate();
+				nbh = ioa_network_buffer_allocate(server->e);
 				stun_init_indication_str(STUN_METHOD_DATA, ioa_network_buffer_data(nbh), &len);
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_DATA,
 								ioa_network_buffer_data(in_buffer->nbh), (size_t)ilen);

@@ -720,8 +720,11 @@ static inline void client_timer_handler(app_ur_session* elem)
 					 (unsigned long long)elem->jitter);
 					 */
 					total_loss += elem->loss;
+					elem->loss=0;
 					total_latency += elem->latency;
+					elem->latency=0;
 					total_jitter += elem->jitter;
+					elem->jitter=0;
 					if (!hang_on)
 						client_shutdown(elem);
 				}
