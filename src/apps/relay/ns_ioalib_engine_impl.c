@@ -153,6 +153,17 @@ void close_ioa_engine(ioa_engine_handle e)
 	if (e) {
 	  if (e->deallocate_eb && e->event_base)
 	    event_base_free(e->event_base);
+
+	  stun_buffer_list_elem *elem=e->bufs;
+	  while(elem) {
+		  stun_buffer_list_elem *next=elem->next;
+		  free(elem);
+		  elem=next;
+	  }
+
+	  if(e->relay_addrs)
+		  free(e->relay_addrs);
+
 	  free(e);
 	}
 }

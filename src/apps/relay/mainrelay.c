@@ -45,6 +45,12 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/crypto.h>
+
 #include "ns_turn_utils.h"
 
 #include "udp_listener.h"
@@ -57,7 +63,35 @@
 
 #include "ns_ioalib_impl.h"
 
-//////////////// local definitions /////////////////
+//////////////// OpenSSL Init //////////////////////
+
+static void openssl_setup(void);
+static void openssl_cleanup(void);
+
+//////////////// Common params ////////////////////
+
+static int verbose=0;
+
+#define DEFAULT_CONFIG_FILE "turn.conf"
+const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
+
+////////////////  Listener server /////////////////
+
+static int listener_port = DEFAULT_STUN_PORT;
+
+static int no_udp = 0;
+static int no_tcp = 0;
+
+static char listener_ifname[1025]="\0";
+
+/*
+ * openssl genrsa -out pkey 2048
+ * openssl req -new -key pkey -out cert.req
+ * ppenssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
+ *
+*/
+static char cert_file[1025]="\0";
+static char pkey_file[1025]="\0";
 
 struct listener_server {
 	size_t number;
@@ -74,15 +108,19 @@ struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 static uint32_t stats=0;
 
-//////////////////////////////////////////////////
+//////////////// Relay servers //////////////////////////////////
 
-static int port = DEFAULT_STUN_PORT;
+static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
+static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
 
-static int no_udp = 0;
-static int no_tcp = 0;
+static char relay_ifname[1025]="\0";
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;
+
+static int fingerprint = 0;
+
+static turn_user_db *users = NULL;
 
 static size_t relay_servers_number = 1;
 struct relay_server {
@@ -95,23 +133,7 @@ struct relay_server {
 };
 static struct relay_server **relay_servers = NULL;
 
-/////////////////////////////////////////////////
-
-static int verbose=0;
-
-static char ifname[1025]="\0";
-static char relay_ifname[1025]="\0";
-static int fingerprint = 0;
-
-static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
-static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
-
-static turn_user_db *users = NULL;
-
-//////////////////////////////////////////////////
-
-#define DEFAULT_CONFIG_FILE "turn.conf"
-const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
+////////////// Configuration functionality ////////////////////////////////
 
 static int read_config_file(int argc, char **argv, int users_only);
 static void reread_users(void) ;
@@ -222,9 +244,9 @@ static void setup_listener_servers(void)
 
 	for(i=0;i<listener.number;i++) {
 		if(!no_udp)
-			listener.udp_services[i] = create_udp_listener_server(ifname, listener.addrs[i], port, verbose, listener.ioa_eng, &stats);
+			listener.udp_services[i] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
 		if(!no_tcp)
-			listener.tcp_services[i] = create_tcp_listener_server(ifname, listener.addrs[i], port, verbose, listener.ioa_eng, &stats);
+			listener.tcp_services[i] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
 	}
 }
 
@@ -520,6 +542,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-Q, --total-quota	total allocation quota\n"
 	"	    --no-udp		Do not start UDP listeners\n"
 	"	    --no-tcp		Do not start TCP listeners\n"
+	"	    --cert		Certificate file\n"
+	"	    --pkey		Private key file, PEM format\n"
 	"	-c			Configuration file name (default - turn.conf)\n"
 	"	-n			Do not use configuration file\n"
 	"	-h			Help\n";
@@ -541,7 +565,9 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
-	NO_TCP_OPT
+	NO_TCP_OPT,
+	CERT_FILE_OPT,
+	PKEY_FILE_OPT
 };
 
 static struct option long_options[] = {
@@ -562,6 +588,8 @@ static struct option long_options[] = {
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
+				{ "cert", required_argument, NULL, CERT_FILE_OPT },
+				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -685,10 +713,10 @@ static void set_option(int c, const char *value)
 		relay_servers_number = atoi(value) + 1;
 		break;
 	case 'd':
-		strcpy(ifname, value);
+		strcpy(listener_ifname, value);
 		break;
 	case 'p':
-		port = atoi(value);
+		listener_port = atoi(value);
 		break;
 	case 'l':
 		min_port = atoi(value);
@@ -724,13 +752,19 @@ static void set_option(int c, const char *value)
 	case 'Q':
 		users->total_quota = atoi(optarg);
 		break;
-		/* these options are already taken care of before: */
 	case NO_UDP_OPT:
 		no_udp = get_bool_value(value);
 		break;
 	case NO_TCP_OPT:
 		no_tcp = get_bool_value(value);
 		break;
+	case CERT_FILE_OPT:
+		strcpy(cert_file,optarg);
+		break;
+	case PKEY_FILE_OPT:
+		strcpy(pkey_file,optarg);
+		break;
+	/* these options have been already taken care of before: */
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1109,6 +1143,8 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
+	openssl_setup();
+
 	if (!listener.number) {
 		make_local_listeners_list();
 		if (!listener.number) {
@@ -1137,6 +1173,97 @@ int main(int argc, char **argv)
 
 	clean_server();
 
+	openssl_cleanup();
+
 	return 0;
 }
 
+////////// OpenSSL locking ////////////////////////////////////////
+
+static pthread_mutex_t* mutex_buf = NULL;
+
+static void locking_function(int mode, int n, const char *file, int line) {
+  UNUSED_ARG(file);
+  UNUSED_ARG(line);
+  if (mode & CRYPTO_LOCK)
+    pthread_mutex_lock(&mutex_buf[n]);
+  else
+    pthread_mutex_unlock(&mutex_buf[n]);
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+static void id_function(CRYPTO_THREADID *ctid)
+{
+    CRYPTO_THREADID_set_numeric(ctid, (unsigned long)pthread_self());
+}
+#else
+static unsigned long id_function(void)
+{
+    return (unsigned long)pthread_self();
+}
+#endif
+
+static int THREAD_setup(void) {
+
+#ifdef OPENSSL_THREADS
+
+	int i;
+
+	mutex_buf = (pthread_mutex_t*) malloc(CRYPTO_num_locks()
+			* sizeof(pthread_mutex_t));
+	if (!mutex_buf)
+		return 0;
+	for (i = 0; i < CRYPTO_num_locks(); i++)
+		pthread_mutex_init(&mutex_buf[i], NULL);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	CRYPTO_THREADID_set_callback(id_function);
+#else
+	CRYPTO_set_id_callback(id_function);
+#endif
+
+	CRYPTO_set_locking_callback(locking_function);
+#endif
+
+	return 1;
+}
+
+static int THREAD_cleanup(void) {
+
+#ifdef OPENSSL_THREADS
+
+  int i;
+
+  if (!mutex_buf)
+    return 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	CRYPTO_THREADID_set_callback(NULL);
+#else
+	CRYPTO_set_id_callback(NULL);
+#endif
+
+  CRYPTO_set_locking_callback(NULL);
+  for (i = 0; i < CRYPTO_num_locks(); i++)
+    pthread_mutex_destroy(&mutex_buf[i]);
+  free(mutex_buf);
+  mutex_buf = NULL;
+
+#endif
+
+  return 1;
+}
+
+static void openssl_setup(void)
+{
+	THREAD_setup();
+	SSL_load_error_strings();
+	OpenSSL_add_ssl_algorithms();
+}
+
+static void openssl_cleanup(void)
+{
+	THREAD_cleanup();
+}
+
+///////////////////////////////

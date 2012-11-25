@@ -61,6 +61,10 @@ The command line parameters are:
 	-Q, --total-quota		total allocation quota.
 	    --no-udp			Do not start UDP listeners.
 	    --no-tcp			Do not start TCP listeners.
+	    --cert				Certificate file. Use an absolute path or path relative 
+	    					to the configuration file.
+	    --pkey				Private key file, PEM format. Use an absolute path or 
+	    					path relative to the configuration file.
 	-c						Configuration file name (default - turn.conf).
 							The format of config file can be seen in the supplied etc/turn.conf 
 							example file. Long names of the options are used as the configuration items

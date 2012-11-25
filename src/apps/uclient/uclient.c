@@ -868,7 +868,7 @@ void start_mclient(const char *remote_address, int port,
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n",
 			((unsigned int)(current_time - stime)));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
-				(unsigned long long)total_loss, (((double)total_loss/(double)tot_recv_messages)*100.00),'%');
+				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%');
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f ms\n",
 				((double)total_latency/(double)tot_recv_messages));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms\n",
