@@ -1,7 +1,7 @@
-Current implementation supports UDP functionality of RFC 5766 and RFC 6156. Things to be added:
+Current implementation supports UDP and TCP functionality of RFC 5766 and RFC 6156. Things to be added:
 
 1) TLS support.
-2) Attack defence.
+2) Attack defense.
 3) DTLS support (?).
 4) RFC 6062 support (?).
 5) Locale support.
