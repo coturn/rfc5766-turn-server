@@ -1,8 +1,8 @@
 
 I. PLATFORMS
 
-The TURN Server is using generic UNIX system APIs and is supposed to be usable to wide range
-on UNIX systems. 
+The TURN Server is using generic *NIX system APIs and is supposed to be usable 
+on wide range of *NIX systems. 
 
 The following platforms have been used in the development:
 
@@ -12,8 +12,8 @@ The following platforms have been used in the development:
 	- PC-BSD 9.x 64 bits (a FreeBSD offspring)
 	- Solaris 11 x86 64 bits
 
-It must work on many other UNIXes, as well. The build.sh script and/or 
-Makefile may need adjustments for other UNIXes not mentioned above.
+It must work on many other *NIXes, as well. The build.sh script and/or 
+Makefile may need adjustments for other *NIXes not mentioned above.
 
 The code of the client messaging library can be used on Windows, too.
 
@@ -32,8 +32,9 @@ It may be compiled with others compilers, too.
 
 III. EXTRA LIBRARIES AND UTILITIES
 
-In addition to common UNIX OS services and libraries, to compile this code, 
-OpenSSL and libevent2 are required. For build, both must be installed
+In addition to common *NIX OS services and libraries, to compile this code, 
+OpenSSL (version 1.0.0a or better is recommended) and libevent2 (version 2.0.5 
+or better) are required. For build, both must be installed
 in full version (development headers and runtime libraries). For runtime, 
 only runtime setup is required. If the build is modified for static linking, 
 then even runtime installation is not needed.
@@ -62,16 +63,21 @@ third party tools installation:
 		
 		or you can use Synaptic or other software center. 
 
-NOTE: OpenSSL to be installed before libevent2.
+NOTE: OpenSSL to be installed before libevent2. When libevent2 is building, it 
+is checking whether OpenSSL has been already installed, and which version of 
+OpenSSL. If the OpenSSL is missed, or too old, then libevent_openssl library is 
+not being created during the build, and you will not be able to compile the 
+TURN Server.
 
-NOTE: An older libevent version, version 1.x.x, is often included in some Linux 
+NOTE: An older libevent version, version 1.x.x, is often included in some *NIX 
 distributions. That version has its deficiencies and is inferior to the newer 
 libevent2, especially in the performance department. This is why we are 
 not providing backward compatibility with the older libevent version. 
-If you have a system with older libevent, then install the new libevent2 from 
-their web site. It was tested on older Linuxes and it works just fine. 
+If you have a system with older libevent, then you have to install the new 
+libevent2 from their web site. It was tested on older *NIXes and it works 
+just fine. 
 
-NOTE: OpenSSL version 1.0.0 or newer is recommended.
+NOTE: OpenSSL version 1.0.0a or newer is recommended.
 
 NOTE: The build system must have usual pthread library and headers available.
 
@@ -99,7 +105,7 @@ accordingly, the Makefile.
 IV. TEST
 
 If everything compiled properly, then the following programs must run 
-together successfully, simulating TURN processing in local networking 
+together successfully, simulating TURN network routing in local networking 
 environment:
 
 Open three shell screens or consoles:
@@ -114,11 +120,19 @@ In shell number 3, run test client application:
 
  $ scripts.examples/secure_uclient.sh
 
+or
+
+ $ scripts.examples/secure_tcp_client.sh
+
+or
+
+ $ scripts.examples/secure_tls_client.sh
+
 If the client application produces output and in 22 seconds prints 
 the jitter, loss and latency statistics, then everything runs fine.
 
-Use scripts relay.sh and secure_relay.sh as guidance how to run 
-the TURN server.
+Check the README file se scripts relay.sh and secure_relay.sh as a guidance 
+how to run the TURN server.
 
 V. CLIENT API LIBRARY.
 
