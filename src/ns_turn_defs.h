@@ -70,8 +70,7 @@
 
 static inline u64bits _ioa_ntoh64(u64bits v)
 {
-	if (nswap16(1) == 1)
-		return v;
+#if BYTE_ORDER == LITTLE_ENDIAN
 	u08bits *src = (u08bits*) &v;
 	u08bits* dst = src + 7;
 	while (src < dst) {
@@ -79,6 +78,11 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 		*(dst--) = *src;
 		*(src++) = vdst;
 	}
+#elif BYTE_ORDER == BIG_ENDIAN
+	/* OK */
+#else
+#error WRONG BYTE_ORDER SETTING
+#endif
 	return v;
 }
 
@@ -105,6 +109,7 @@ typedef u32bits turn_time_t;
 #define NONCE_LENGTH_32BITS (2)
 
 #define DEFAULT_STUN_PORT (3478)
+#define DEFAULT_STUN_TLS_PORT (5349)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define DEFAULT_STUN_PORT_NBO (0x960D)

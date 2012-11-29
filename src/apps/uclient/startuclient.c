@@ -37,6 +37,8 @@
 #include "uclient.h"
 #include "session.h"
 
+#include <openssl/err.h>
+
 /////////////////////////////////////////
 
 #define MAX_CONNECT_EFFORTS (77)
@@ -57,6 +59,56 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 }
 
 /////////////////////////////////////////
+
+static SSL* tls_connect(ioa_socket_raw fd)
+{
+	SSL *ssl = SSL_new(root_tls_ctx);
+	SSL_set_fd(ssl, fd);
+	SSL_set_max_cert_list(ssl, 655350);
+
+	if (clnet_verbose)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "call SSL_connect...\n");
+
+	int rc = 0;
+
+	do {
+		do {
+			rc = SSL_connect(ssl);
+		} while (rc < 0 && errno == EINTR);
+		if (rc >= 0) {
+			break;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect\n",
+					__FUNCTION__);
+			switch (SSL_get_error(ssl, rc)) {
+			case SSL_ERROR_WANT_READ:
+			case SSL_ERROR_WANT_WRITE:
+				usleep(1000);
+				continue;
+			default: {
+				char buf[1025];
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
+						ERR_error_string(ERR_get_error(), buf), SSL_get_error(
+								ssl, rc));
+				exit(-1);
+			}
+			};
+		}
+	} while (1);
+
+	if (clnet_verbose && SSL_get_peer_certificate(ssl)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"------TLS---------------------------------------------------\n");
+		X509_NAME_print_ex_fp(stdout, X509_get_subject_name(
+				SSL_get_peer_certificate(ssl)), 1, XN_FLAG_MULTILINE);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s\n",
+				SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"\n------------------------------------------------------------\n\n");
+	}
+
+	return ssl;
+}
 
 static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		const unsigned char* ifname, const char *local_address, int verbose,
@@ -118,15 +170,24 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		exit(-1);
 	}
 
-	usleep(50000);
-
-	addr_debug_print(verbose, &remote_addr, "Connected to");
-
 	if (clnet_info) {
 		addr_cpy(&(clnet_info->remote_addr), &remote_addr);
 		addr_cpy(&(clnet_info->local_addr), &local_addr);
 		clnet_info->fd = clnet_fd;
 	}
+
+	if(use_tcp && use_secure) {
+		clnet_info->ssl = tls_connect(clnet_info->fd);
+		if(!clnet_info->ssl) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: cannot SSL connect to remote addr\n", __FUNCTION__);
+			exit(-1);
+		}
+	}
+
+	addr_debug_print(verbose, &remote_addr, "Connected to");
+
+	usleep(50000);
 
 	return 0;
 }
@@ -136,7 +197,6 @@ static int clnet_allocate(int verbose,
 		ioa_addr *relay_addr,
 		int af) {
 
-	int fd = clnet_info->fd;
 	int af_cycle = 0;
 
 	int allocate_finished;
@@ -177,7 +237,7 @@ static int clnet_allocate(int verbose,
 
 		while (!allocate_sent) {
 
-			int len = send_buffer(fd, &message);
+			int len = send_buffer(clnet_info, &message);
 
 			if (len > 0) {
 				if (verbose) {
@@ -185,8 +245,6 @@ static int clnet_allocate(int verbose,
 				}
 				allocate_sent = 1;
 			} else {
-				if (handle_socket_error())
-					continue;
 				perror("send");
 				exit(1);
 			}
@@ -200,7 +258,7 @@ static int clnet_allocate(int verbose,
 			stun_buffer message;
 			while (!allocate_received) {
 
-				int len = recv_buffer(fd, &message);
+				int len = recv_buffer(clnet_info, &message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -262,8 +320,6 @@ static int clnet_allocate(int verbose,
 						/* Try again ? */
 					}
 				} else {
-					if (handle_socket_error())
-						continue;
 					perror("recv");
 					exit(-1);
 					break;
@@ -301,7 +357,7 @@ static int clnet_allocate(int verbose,
 
 			while (!refresh_sent) {
 
-				int len = send_buffer(fd, &message);
+				int len = send_buffer(clnet_info, &message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -309,8 +365,6 @@ static int clnet_allocate(int verbose,
 					}
 					refresh_sent = 1;
 				} else {
-					if (handle_socket_error())
-						continue;
 					perror("send");
 					exit(1);
 				}
@@ -323,7 +377,7 @@ static int clnet_allocate(int verbose,
 			stun_buffer message;
 			while (!refresh_received) {
 
-				int len = recv_buffer(fd, &message);
+				int len = recv_buffer(clnet_info, &message);
 
 				if (len > 0) {
 					if (verbose) {
@@ -352,8 +406,6 @@ static int clnet_allocate(int verbose,
 						/* Try again ? */
 					}
 				} else {
-					if (handle_socket_error())
-						continue;
 					perror("recv");
 					exit(-1);
 					break;
@@ -367,8 +419,6 @@ static int clnet_allocate(int verbose,
 
 static int turn_channel_bind(int verbose, uint16_t *chn,
 		app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
-
-	int fd = clnet_info->fd;
 
 	beg_bind:
 
@@ -391,15 +441,13 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		while (!cb_sent) {
 
-			int len = send_buffer(fd, &message);
+			int len = send_buffer(clnet_info, &message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cb sent\n");
 				}
 				cb_sent = 1;
 			} else {
-				if (handle_socket_error())
-					continue;
 				perror("send");
 				exit(1);
 			}
@@ -415,7 +463,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		stun_buffer message;
 		while (!cb_received) {
 
-			int len = recv_buffer(fd, &message);
+			int len = recv_buffer(clnet_info, &message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -443,8 +491,6 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					/* Try again ? */
 				}
 			} else {
-				if (handle_socket_error())
-					continue;
 				perror("recv");
 				exit(-1);
 				break;
@@ -457,8 +503,6 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		ioa_addr *peer_addr) {
-
-	int fd = clnet_info->fd;
 
 	beg_cp:
 
@@ -482,7 +526,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 		while (!cp_sent) {
 
-			int len = send_buffer(fd, &message);
+			int len = send_buffer(clnet_info, &message);
 
 			if (len > 0) {
 				if (verbose) {
@@ -490,8 +534,6 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 				}
 				cp_sent = 1;
 			} else {
-				if (handle_socket_error())
-					continue;
 				perror("send");
 				exit(1);
 			}
@@ -507,7 +549,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		stun_buffer message;
 		while (!cp_received) {
 
-			int len = recv_buffer(fd, &message);
+			int len = recv_buffer(clnet_info, &message);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -534,8 +576,6 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 					/* Try again ? */
 				}
 			} else {
-				if (handle_socket_error())
-					continue;
 				perror("recv");
 				exit(-1);
 			}

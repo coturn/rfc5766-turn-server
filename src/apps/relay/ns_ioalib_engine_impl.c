@@ -39,6 +39,8 @@
 
 #include <pthread.h>
 
+#include <event2/bufferevent_ssl.h>
+
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
@@ -132,6 +134,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			e->deallocate_eb = 0;
 		} else {
 			e->event_base = event_base_new();
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (engine own thread): %s\n",event_base_get_method(e->event_base));
 			e->deallocate_eb = 1;
 		}
 		if (relay_ifname)
@@ -146,6 +149,11 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		e->relay_addr_counter = (size_t) random() % relays_number;
 		return e;
 	}
+}
+
+void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *ctx)
+{
+	e->tls_ctx = ctx;
 }
 
 void close_ioa_engine(ioa_engine_handle e)
@@ -599,6 +607,39 @@ void delete_ioa_socket_channel(void *socket_channel)
 	IOA_CLOSE_SOCKET(cs);
 }
 
+static void close_socket_net_data(ioa_socket_handle s)
+{
+	if(s) {
+		if(s->bev) {
+			if (!s->broken) {
+				SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+				if (!(SSL_get_shutdown(ctx) & SSL_SENT_SHUTDOWN)) {
+					/*
+					 * SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
+					 * received a close notify from the other end.  SSL_shutdown will then
+					 * send the final close notify in reply.  The other end will receive the
+					 * close notify and send theirs.  By this time, we will have already
+					 * closed the socket and the other end's real close notify will never be
+					 * received.  In effect, both sides will think that they have completed a
+					 * clean shutdown and keep their sessions valid.  This strategy will fail
+					 * if the socket is not ready for writing, in which case this hack will
+					 * lead to an unclean shutdown and lost session on the other end.
+					 */
+					SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
+					SSL_shutdown(ctx);
+				}
+			}
+			bufferevent_free(s->bev);
+			s->bev=NULL;
+			s->fd=-1;
+		}
+		if (s->fd >= 0) {
+			evutil_closesocket(s->fd);
+			s->fd = -1;
+		}
+	}
+}
+
 void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
@@ -607,19 +648,16 @@ void close_ioa_socket(ioa_socket_handle s)
 			return;
 		}
 		s->done = 1;
+
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
+
 		EVENT_DEL(s->read_event);
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,&(s->local_addr));
 		}
-		if(s->bev) {
-			bufferevent_free(s->bev);
-			s->bev=NULL;
-			s->fd = -1;
-		} else if (s->fd >= 0) {
-			evutil_closesocket(s->fd);
-			s->fd = -1;
-		}
+
+		close_socket_net_data(s);
+
 		free(s);
 	}
 }
@@ -795,29 +833,22 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 {
-    if (events & BEV_EVENT_CONNECTED) {
-         // Connect okay
-    } else if (events & (BEV_EVENT_ERROR|BEV_EVENT_EOF)) {
-	    struct bufferevent *sbev = 0;
-	    if(arg) {
-		    ioa_socket_handle s = arg;
-		    ts_ur_super_session *ss = s->session;
-		    sbev = s->bev;
-		    if(sbev) {
-			    bufferevent_free(s->bev);
-			    s->bev=NULL;
-			    s->fd=-1;
-			    s->tobeclosed=1;
-		    }
-		    if (ss) {
-		    	turn_turnserver *server = ss->server;
-		    	if (server)
-		    		shutdown_client_connection(server, ss);
-		    }
-	    }
-	    if(bev!=sbev)
-		    bufferevent_free(bev);
-    }
+	UNUSED_ARG(bev);
+
+	if (events & BEV_EVENT_CONNECTED) {
+		// Connect okay
+	} else if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
+		if (arg) {
+			ioa_socket_handle s = arg;
+			s->broken = 1;
+			ts_ur_super_session *ss = s->session;
+			if (ss) {
+				turn_turnserver *server = ss->server;
+				if (server)
+					shutdown_client_connection(server, ss);
+			}
+		}
+	}
 }
 
 static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
@@ -892,18 +923,22 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 				s->e = e;
 
 			if(s->e) {
-				if(s->st == UDP_SOCKET) {
+				switch(s->st) {
+				case UDP_SOCKET:
 					if(s->read_event) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 								"%s: software error: buffer preset 1\n", __FUNCTION__);
+						return -1;
 					} else {
 						s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
 						event_add(s->read_event,NULL);
 					}
-				} else {
+					break;
+				case TCP_SOCKET:
 					if(s->bev) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 								"%s: software error: buffer preset 2\n", __FUNCTION__);
+						return -1;
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
@@ -911,8 +946,31 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
-						bufferevent_enable(s->bev, EV_READ | EV_WRITE); /* Start reading. */
+						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 					}
+					break;
+				case TLS_SOCKET:
+					if(s->bev) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"%s: software error: buffer preset 2\n", __FUNCTION__);
+						return -1;
+					} else {
+						SSL *tls_ssl = SSL_new(e->tls_ctx);
+						s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+											s->fd,
+											tls_ssl,
+											BUFFEREVENT_SSL_ACCEPTING,
+											BEV_OPT_CLOSE_ON_FREE);
+						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+							eventcb_bev, s);
+						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+					}
+					break;
+				default:
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: software error: unknown socket type: %d\n", __FUNCTION__,(int)(s->st));
+					return -1;
 				}
 			}
 

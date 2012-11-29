@@ -40,6 +40,8 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
 
+#include <openssl/ssl.h>
+
 #include "ns_turn_ioalib.h"
 #include "turn_ports.h"
 #include "ns_turn_maps_rtcp.h"
@@ -69,6 +71,7 @@ struct _ioa_engine
   turnipports* tp;
   rtcp_map *rtcp_map;
   stun_buffer_list_elem *bufs;
+  SSL_CTX *tls_ctx;
 };
 
 struct _ioa_socket
@@ -93,6 +96,7 @@ struct _ioa_socket
 	/* RFC6156: if IPv6 is involved, do not use DF: */
 	int do_not_use_df;
 	int tobeclosed;
+	int broken;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -112,6 +116,8 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp,
 				    size_t relays_number, s08bits **relay_addrs,
 				    int verbose);
 void close_ioa_engine(ioa_engine_handle e);
+
+void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *ctx);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 

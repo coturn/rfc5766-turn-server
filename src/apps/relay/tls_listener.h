@@ -28,78 +28,27 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __SESSION__
-#define __SESSION__
-
-#include <stdint.h>
+#ifndef __TLS_LISTENER__
+#define __TLS_LISTENER__
 
 #include <event2/event.h>
 
-#include "ns_turn_ioaddr.h"
 #include "ns_turn_utils.h"
 
-#include "stun_buffer.h"
-#include "apputils.h"
+#include "ns_turn_ioalib.h"
 
-#include <openssl/ssl.h>
+///////////////////////////////////////////
 
-///////// types ////////////
+struct tls_listener_relay_server_info;
+typedef struct tls_listener_relay_server_info tls_listener_relay_server_type;
 
-enum _UR_STATE {
-  UR_STATE_UNKNOWN=0,
-  UR_STATE_READY,
-  UR_STATE_DONE
-};
+///////////////////////////////////////////
 
-typedef enum _UR_STATE UR_STATE;
+tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
+				const char *local_address, int port, int verbose,
+				ioa_engine_handle e, uint32_t *stats);
+void delete_tls_listener_server(tls_listener_relay_server_type* server, int delete_engine);
 
-//////////////// session info //////////////////////
+///////////////////////////////////////////
 
-typedef struct {
-  ioa_addr local_addr;
-  ioa_addr remote_addr;
-  ioa_addr peer_addr;
-  ioa_socket_raw fd;
-  SSL *ssl;
-  int broken;
-  u08bits nonce[STUN_MAX_NONCE_SIZE+1];
-  u08bits realm[STUN_MAX_REALM_SIZE+1];
-} app_ur_conn_info;
-
-typedef struct {
-  UR_STATE state;
-  app_ur_conn_info pinfo;
-  unsigned int ctime;
-  uint16_t chnum;
-  int wait_cycles;
-  int clnum;
-  int timer_cycle;
-  int known_mtu;
-  struct event *input_ev; 
-  stun_buffer in_buffer;
-  stun_buffer out_buffer;
-  u32bits refresh_time;
-  u32bits finished_time;
-  //Msg counters:
-  int tot_msgnum;
-  int wmsgnum;
-  int rmsgnum;
-  int recvmsgnum;
-  u32bits recvtimems;
-  u32bits to_send_timems;
-  //Statistics:
-  size_t loss;
-  u64bits latency;
-  u64bits jitter;
-} app_ur_session;
-
-///////////////////////////////////////////////////////
-
-typedef struct _message_info {
-	int msgnum;
-	u32bits mstime;
-} message_info;
-
-///////////////////////////////////////////////////////////////////////////////
-
-#endif //__SESSION__
+#endif //__TLS_LISTENER__

@@ -33,11 +33,17 @@
 
 #include "ns_turn_utils.h"
 #include "stun_buffer.h"
+#include "session.h"
+
+#include <openssl/ssl.h>
 
 extern int clmessage_length;
 extern int use_send_method;
 extern int clnet_verbose;
 extern int use_tcp;
+extern int use_secure;
+extern char cert_file[1025];
+extern char pkey_file[1025];
 extern int hang_on;
 extern int c2c;
 extern ioa_addr peer_addr;
@@ -47,13 +53,14 @@ extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 extern int use_fingerprints;
+extern SSL_CTX *root_tls_ctx;
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address,
 		   int messagenumber, int mclient);
 
-int send_buffer(int fd, stun_buffer* message);
-int recv_buffer(int fd, stun_buffer* message);
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
 
 #endif //__UCLIENT_ECHO__
 

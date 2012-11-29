@@ -65,7 +65,8 @@ int turn_mutex_destroy(turn_mutex* mutex);
 
 enum _SOCKET_TYPE {
 	UDP_SOCKET,
-	TCP_SOCKET
+	TCP_SOCKET,
+	TLS_SOCKET
 };
 
 #define IOA_EV_TIMEOUT	0x01

@@ -37,6 +37,8 @@
 #include <unistd.h>
 #include <time.h>
 
+#include <openssl/err.h>
+
 static const int verbose_packets=0;
 
 static size_t current_clients_number = 0;
@@ -69,6 +71,12 @@ static inline s32bits time_minus(u32bits t1, u32bits t2) {
 static u64bits total_loss = 0;
 static u64bits total_jitter = 0;
 static u64bits total_latency = 0;
+
+static u64bits min_latency = 0xFFFFFFFF;
+static u64bits max_latency = 0;
+static u64bits min_jitter = 0xFFFFFFFF;
+static u64bits max_jitter = 0;
+
 
 static int show_statistics = 0;
 
@@ -106,10 +114,20 @@ static app_ur_session* create_new_ss(void)
 static void uc_delete_session_elem_data(app_ur_session* cdi) {
   if(cdi) {
     EVENT_DEL(cdi->input_ev);
+    if(cdi->pinfo.ssl && !(cdi->pinfo.broken)) {
+	    if(!(SSL_get_shutdown(cdi->pinfo.ssl) & SSL_SENT_SHUTDOWN)) {
+		    SSL_set_shutdown(cdi->pinfo.ssl, SSL_RECEIVED_SHUTDOWN);
+		    SSL_shutdown(cdi->pinfo.ssl);
+	    }
+    }
     if(cdi->pinfo.fd>=0) {
       evutil_closesocket(cdi->pinfo.fd);
     }
     cdi->pinfo.fd=-1;
+    if(cdi->pinfo.ssl) {
+	    SSL_free(cdi->pinfo.ssl);
+	    cdi->pinfo.ssl = NULL;
+    }
   }
 }
 
@@ -127,39 +145,105 @@ static int remove_all_from_ss(app_ur_session* ss)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int send_buffer(int fd, stun_buffer* message)
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message)
 {
 
 	int rc = 0;
+	int ret = -1;
 
-	char *buffer = (char*)(message->buf);
-	size_t left = (size_t)(message->len);
+	char *buffer = (char*) (message->buf);
 
-	while(left > 0) {
-		do {
-			rc = send(fd, buffer, left, 0);
-		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
-		if(rc>0) {
-			left -=(size_t)rc;
-			buffer += rc;
-		} else {
-			break;
+	if (clnet_info->ssl) {
+
+		int message_sent = 0;
+		while (!message_sent) {
+
+			if (SSL_get_shutdown(clnet_info->ssl)) {
+				return -1;
+			}
+
+			int len = 0;
+			do {
+				len = SSL_write(clnet_info->ssl, buffer, message->len);
+			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+
+			switch (SSL_get_error(clnet_info->ssl, len)){
+			case SSL_ERROR_NONE:
+				if (len > 0) {
+					if (clnet_verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"buffer sent: size=%d\n",len);
+					}
+
+					message_sent = 1;
+					ret = len;
+
+				} else {
+					/* Try again ? */
+				}
+				break;
+			case SSL_ERROR_WANT_WRITE:
+				/* Just try again later */
+				break;
+			case SSL_ERROR_WANT_READ:
+				/* continue with reading */
+				break;
+			case SSL_ERROR_SYSCALL:
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Socket write error 111.666: \n");
+				if (handle_socket_error())
+					break;
+			case SSL_ERROR_SSL:
+			{
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
+				char buf[1024];
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+						"%s (%d)\n",
+						ERR_error_string(ERR_get_error(),buf),
+						SSL_get_error(clnet_info->ssl, len));
+			}
+			default:
+				clnet_info->broken = 1;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error while writing!\n");
+				return -1;
+			}
 		}
+
+	} else if (clnet_info->fd >= 0) {
+
+		size_t left = (size_t) (message->len);
+
+		while (left > 0) {
+			do {
+				rc = send(clnet_info->fd, buffer, left, 0);
+			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno
+							== EAGAIN)));
+			if (rc > 0) {
+				left -= (size_t) rc;
+				buffer += rc;
+			} else {
+				break;
+			}
+		}
+
+		if (left > 0)
+			return -1;
+
+		ret = (int) message->len;
 	}
 
-	if (left>0)
-		return -1;
-
-	return (int)message->len;
+	return ret;
 }
 
-int recv_buffer(int fd, stun_buffer* message) {
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message) {
 
 	int rc = 0;
 
-	if(!use_tcp) {
+	if(!use_secure && !use_tcp && clnet_info->fd>=0) {
+
+		/* Plain UDP */
+
 		do {
-			rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
+			rc = recv(clnet_info->fd, message->buf, sizeof(message->buf) - 1, 0);
 		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
 		if (rc < 0)
@@ -167,15 +251,77 @@ int recv_buffer(int fd, stun_buffer* message) {
 
 		message->len = rc;
 
-	} else {
+	} else if(use_secure && clnet_info->ssl && !(clnet_info->broken)) {
+
+		/* TLS */
+
+		int message_received = 0;
+		while (!message_received) {
+
+			if(SSL_get_shutdown(clnet_info->ssl))
+				return -1;
+
+			rc = 0;
+			do {
+				rc = SSL_read(clnet_info->ssl, message->buf, sizeof(message->buf) - 1);
+			} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+
+			switch (SSL_get_error(clnet_info->ssl, rc)){
+			case SSL_ERROR_NONE:
+				if (rc > 0) {
+					if (clnet_verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"response received: size=%d\n",rc);
+					}
+					message->len = rc;
+					message_received=1;
+				} else {
+					/* Try again ? */
+				}
+				break;
+			case SSL_ERROR_WANT_WRITE:
+				/* Just try again later */
+				break;
+			case SSL_ERROR_WANT_READ:
+				/* continue with reading */
+				break;
+			case SSL_ERROR_SYSCALL:
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"Socket read error 111.999: \n");
+				if (handle_socket_error())
+					break;
+			case SSL_ERROR_SSL:
+			{
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
+				char buf[1024];
+				TURN_LOG_FUNC(
+								TURN_LOG_LEVEL_INFO,
+								"%s (%d)\n",
+								ERR_error_string(
+												ERR_get_error(),
+												buf),
+								SSL_get_error(clnet_info->ssl, rc));
+			}
+			default:
+				clnet_info->broken = 1;
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"Unexpected error while reading!\n");
+				return -1;
+			}
+		}
+
+	} else if(!use_secure && use_tcp && clnet_info->fd>=0){
+
+		/* Plain TCP */
+
 		do {
-			rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
+			rc = recv(clnet_info->fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
 		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 		if(rc>0) {
 			int mlen = stun_get_message_len_str(message->buf, rc);
 			if(mlen>0 && mlen<=rc) {
 				do {
-					rc = recv(fd, message->buf, (size_t)mlen, 0);
+					rc = recv(clnet_info->fd, message->buf, (size_t)mlen, 0);
 				} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
 				if (rc < 0)
@@ -201,7 +347,6 @@ static int client_read(app_ur_session *elem) {
 
 	elem->ctime = current_time;
 
-	int fd = elem->pinfo.fd;
 	app_ur_conn_info *clnet_info = &(elem->pinfo);
 	int err_code = 0;
 	u08bits err_msg[129];
@@ -211,7 +356,7 @@ static int client_read(app_ur_session *elem) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
 	}
 
-	rc = recv_buffer(fd, &(elem->in_buffer));
+	rc = recv_buffer(clnet_info, &(elem->in_buffer));
 
 	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "read %d bytes\n", (int) rc);
@@ -299,9 +444,21 @@ static int client_read(app_ur_session *elem) {
 			if(mi->msgnum != elem->recvmsgnum+1)
 				++(elem->loss);
 			else {
-				elem->latency += time_minus(current_mstime,mi->mstime);
+				u64bits clatency = time_minus(current_mstime,mi->mstime);
+				if(clatency>max_latency)
+					max_latency = clatency;
+				if(clatency<min_latency)
+					min_latency = clatency;
+				elem->latency += clatency;
 				if(elem->rmsgnum>0) {
-					elem->jitter += abs((int)(current_mstime-elem->recvtimems)-RTP_PACKET_INTERVAL);
+					u64bits cjitter = abs((int)(current_mstime-elem->recvtimems)-RTP_PACKET_INTERVAL);
+
+					if(cjitter>max_jitter)
+						max_jitter = cjitter;
+					if(cjitter<min_jitter)
+						min_jitter = cjitter;
+
+					elem->jitter += cjitter;
 				}
 			}
 
@@ -314,14 +471,8 @@ static int client_read(app_ur_session *elem) {
 		tot_recv_messages++;
 
 	} else if(rc == 0) {
-
 		return 0;
-
 	} else {
-
-		if (handle_socket_error())
-			return 0;
-
 		return -1;
 	}
 
@@ -371,16 +522,12 @@ static int client_write(app_ur_session *elem) {
   }
 
   if (elem->out_buffer.len > 0) {
-
-    int fd=elem->pinfo.fd;
     
     if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before write ...\n");
-	}
+    }
 
-    int rc=send_buffer(fd,&(elem->out_buffer));
-
-    if(rc<0 && handle_socket_error()) return 0;
+    int rc=send_buffer(&(elem->pinfo),&(elem->out_buffer));
 
     ++elem->wmsgnum;
     elem->to_send_timems += RTP_PACKET_INTERVAL;
@@ -654,7 +801,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		}
 		if(use_fingerprints)
 			    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
-		send_buffer(elem->pinfo.fd, &message);
+		send_buffer(clnet_info, &message);
 	}
 
 	if (!addr_any(&(elem->pinfo.peer_addr))) {
@@ -671,7 +818,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 			}
 			if(use_fingerprints)
 				    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
-			send_buffer(elem->pinfo.fd, &message);
+			send_buffer(&(elem->pinfo), &message);
 		}
 
 		if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {
@@ -688,7 +835,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 				}
 				if(use_fingerprints)
 					    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
-				send_buffer(elem->pinfo.fd, &message);
+				send_buffer(&(elem->pinfo), &message);
 			}
 		}
 	}
@@ -869,10 +1016,14 @@ void start_mclient(const char *remote_address, int port,
 			((unsigned int)(current_time - stime)));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
 				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%');
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f ms\n",
-				((double)total_latency/(double)tot_recv_messages));
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms\n",
-				((double)total_jitter/(double)tot_recv_messages));
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f ms; min = %lu ms, max = %lu ms\n",
+				((double)total_latency/(double)tot_recv_messages),
+				(unsigned long)min_latency,
+				(unsigned long)max_latency);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms; min = %lu ms, max = %lu ms\n",
+				((double)total_jitter/(double)tot_recv_messages),
+				(unsigned long)min_jitter,
+				(unsigned long)max_jitter);
 }
 
 

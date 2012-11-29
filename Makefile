@@ -1,7 +1,7 @@
 AR = ar -r
 
 LIBEVENT_INCLUDE = /usr/local/include/
-LIBEVENT_LIB = -L/usr/local/lib/event2/ -L/usr/local/lib/ -levent -levent_pthreads 
+LIBEVENT_LIB = -L/usr/local/lib/event2/ -L/usr/local/lib/ -levent -levent_pthreads -levent_openssl
 
 INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client -I${LIBEVENT_INCLUDE} 
 LIBFLAGS = ${LIBEVENT_LIB} -lpthread -lssl -lcrypto -Llib
@@ -39,10 +39,10 @@ testapps/bin/stunclient	:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient
 	mkdir -p testapps/bin
 	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LINKFLAGS} -lturnclient  
 
-bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c  src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c
+bin/turnserver	:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c
 	mkdir -p bin
 	rm -rf bin/turnadmin
-	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}
+	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LINKFLAGS}
 	cd bin; ln -s turnserver turnadmin  
 
 testapps/bin/peer	:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c

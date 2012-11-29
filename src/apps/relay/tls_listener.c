@@ -32,7 +32,7 @@
 
 #include "ns_turn_utils.h"
 
-#include "tcp_listener.h"
+#include "tls_listener.h"
 #include "ns_ioalib_impl.h"
 
 #include <event2/listener.h>
@@ -50,14 +50,15 @@ typedef struct {
 #define FUNCSTART if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
 #define FUNCEND if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
 
-struct tcp_listener_relay_server_info {
-  char ifname[1025];
-  ioa_addr addr;
-  ioa_addr relay_addr;
-  ioa_engine_handle e;
-  int verbose;
-  struct evconnlistener *l;
-  uint32_t *stats;
+struct tls_listener_relay_server_info
+{
+	char ifname[1025];
+	ioa_addr addr;
+	ioa_addr relay_addr;
+	ioa_engine_handle e;
+	int verbose;
+	struct evconnlistener *l;
+	uint32_t *stats;
 };
 
 /////////////// io handlers ///////////////////
@@ -68,7 +69,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	UNUSED_ARG(l);
 
-	tcp_listener_relay_server_type * server = (tcp_listener_relay_server_type*) arg;
+	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
 
 	if(!(server->e->connect_cb)) {
 		close(fd);
@@ -88,13 +89,13 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
 
-	addr_debug_print(server->verbose, &client_addr,"tcp connected to");
+	addr_debug_print(server->verbose, &client_addr,"tls connected to");
 
 	ioa_socket_handle ioas =
 				create_ioa_socket_from_fd(
 							server->e,
 							fd,
-							TCP_SOCKET,
+							TLS_SOCKET,
 							&client_addr,
 							&(server->addr));
 
@@ -104,7 +105,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"Cannot create tcp session\n");
+					"Cannot create tls session\n");
 			close_ioa_socket(ioas);
 		}
 	} else {
@@ -118,42 +119,42 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 ///////////////////// operations //////////////////////////
 
-static int create_server_listener(tcp_listener_relay_server_type* server) {
+static int create_server_listener(tls_listener_relay_server_type* server) {
 
   FUNCSTART;
 
   if(!server) return -1;
 
-  evutil_socket_t tcp_listen_fd = -1;
+  evutil_socket_t tls_listen_fd = -1;
 
-  tcp_listen_fd = socket(server->addr.ss.ss_family, SOCK_STREAM, 0);
-  if (tcp_listen_fd < 0) {
+  tls_listen_fd = socket(server->addr.ss.ss_family, SOCK_STREAM, 0);
+  if (tls_listen_fd < 0) {
       perror("socket");
       return -1;
   }
 
-  socket_set_reusable(tcp_listen_fd);
+  socket_set_reusable(tls_listen_fd);
 
-  if(sock_bind_to_device(tcp_listen_fd, (unsigned char*)server->ifname)<0) {
+  if(sock_bind_to_device(tls_listen_fd, (unsigned char*)server->ifname)<0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  addr_bind(tcp_listen_fd,&server->addr);
+  addr_bind(tls_listen_fd,&server->addr);
 
-  evutil_make_socket_nonblocking(tcp_listen_fd);
+  evutil_make_socket_nonblocking(tls_listen_fd);
 
   server->l = evconnlistener_new(server->e->event_base,
 		  server_input_handler, server,
 		  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-		  1024, tcp_listen_fd);
+		  1024, tls_listen_fd);
 
   if(!(server->l)) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create TCP listener\n");
-	  evutil_closesocket(tcp_listen_fd);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create TLS listener\n");
+	  evutil_closesocket(tls_listen_fd);
 	  return -1;
   }
 
-  if(addr_get_from_sock(tcp_listen_fd, &(server->addr))) {
+  if(addr_get_from_sock(tls_listen_fd, &(server->addr))) {
     perror("Cannot get local socket addr");
     return -1;
   }
@@ -165,7 +166,7 @@ static int create_server_listener(tcp_listener_relay_server_type* server) {
   return 0;
 }
 
-static int init_server(tcp_listener_relay_server_type* server,
+static int init_server(tls_listener_relay_server_type* server,
 		       const char* ifname,
 		       const char *local_address, 
 		       int port, 
@@ -190,7 +191,7 @@ static int init_server(tcp_listener_relay_server_type* server,
   return create_server_listener(server);
 }
 
-static int clean_server(tcp_listener_relay_server_type* server) {
+static int clean_server(tls_listener_relay_server_type* server) {
   if(server) {
 	  if(server->l) {
 		  evconnlistener_free(server->l);
@@ -203,30 +204,24 @@ static int clean_server(tcp_listener_relay_server_type* server) {
 ///////////////////////////////////////////////////////////
 
 
-tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
-							     const char *local_address, 
-							     int port, 
-							     int verbose,
-							     ioa_engine_handle e,
-							     uint32_t *stats) {
-  
-  tcp_listener_relay_server_type* server=malloc(sizeof(tcp_listener_relay_server_type));
+tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
+				const char *local_address, int port, int verbose,
+				ioa_engine_handle e, uint32_t *stats)
+{
 
-  memset(server,0,sizeof(tcp_listener_relay_server_type));
+	tls_listener_relay_server_type* server = malloc(sizeof(tls_listener_relay_server_type));
 
-  if(init_server(server,
-		 ifname, local_address, port,
-		 verbose,
-		 e,
-		 stats)<0) {
-    free(server);
-    return NULL;
-  } else {
-    return server;
-  }
+	memset(server, 0, sizeof(tls_listener_relay_server_type));
+
+	if (init_server(server, ifname, local_address, port, verbose, e, stats) < 0) {
+		free(server);
+		return NULL;
+	} else {
+		return server;
+	}
 }
 
-void delete_tcp_listener_server(tcp_listener_relay_server_type* server, int delete_engine) {
+void delete_tls_listener_server(tls_listener_relay_server_type* server, int delete_engine) {
   if(server) {
     clean_server(server);
     if(delete_engine && (server->e))

@@ -46,6 +46,9 @@ int use_send_method=0;
 int c2c=0;
 int clnet_verbose=0;
 int use_tcp=0;
+int use_secure=0;
+char cert_file[1025]="\0";
+char pkey_file[1025]="\0";
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
@@ -54,35 +57,41 @@ int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 int use_fingerprints = 1;
+SSL_CTX *root_tls_ctx = NULL;
 
 //////////////// local definitions /////////////////
 
 static char Usage[] =
   "Usage: uclient [options] address\n"
   "Options:\n"
-  "        -l      message length (Default: 100 Bytes)\n"
-  "        -t	   TCP (default - clnet)\n"
-  "        -p      remote port (Default: 3478)\n"
-  "        -n      number of messages to send (Default: 5)\n"
-  "        -L      local address\n"
-  "        -v      verbose\n"
-  "        -m      number of clients (default is 1)\n"
-  "        -s      use send method\n"
-  "        -y      use client-to-client connections\n"
-  "        -h      hang on indefinitely after the last sent packet\n"
-  "        -e      peer address\n"
-  "        -r      peer port (default 3479)\n"
-  "        -c      no rtcp connections\n"
-  "        -x      IPv6 relayed address requested\n"
-  "        -g      include DONT_FRAGMENT option\n"
-  "        -u	   STUN/TURN user name\n"
-  "        -w	   STUN/TURN user password\n";
+  "        -l      Message length (Default: 100 Bytes).\n"
+  "        -t	   TCP (default - clnet).\n"
+  "	   -S	   Secure connection: TLS for TCP, DTLS for UDP.\n"
+  "		   NOTE: DTLS is not supported now.\n"
+  "	   -i	   Certificate file (for secure connections only).\n"
+  "	   -k	   Private key file (for secure connections only).\n"
+  "        -p      TURN server port (Default: 3478 unsecure, 5349 secure).\n"
+  "        -n      Number of messages to send (Default: 5).\n"
+  "	   -d      Local interface device (optional).\n"
+  "        -L      Local address.\n"
+  "        -v      Verbose.\n"
+  "        -m      Number of clients (default is 1).\n"
+  "        -s      Use send method.\n"
+  "        -y      Use client-to-client connections.\n"
+  "        -h      Hang on indefinitely after the last sent packet.\n"
+  "        -e      Peer address.\n"
+  "        -r      Peer port (default 3479).\n"
+  "        -c      No rtcp connections.\n"
+  "        -x      IPv6 relayed address requested.\n"
+  "        -g      Include DONT_FRAGMENT option\n."
+  "        -u	   STUN/TURN user name.\n"
+  "        -w	   STUN/TURN user password.\n";
 
 //////////////////////////////////////////////////
 
 int main(int argc, char **argv)
 {
-	int port = DEFAULT_STUN_PORT;
+	int port = 0;
 	int messagenumber = 5;
 	char local_addr[256];
 	char c;
@@ -95,7 +104,7 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:vsyhcxgt")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:vsyhcxgtS")) != -1) {
 		switch (c){
 		case 'u':
 			strcpy((char*) g_uname, optarg);
@@ -152,11 +161,26 @@ int main(int argc, char **argv)
 		case 't':
 			use_tcp = 1;
 			break;
-
+		case 'S':
+			use_secure = 1;
+			break;
+		case 'i':
+			strcpy(cert_file,optarg);
+			break;
+		case 'k':
+			strcpy(pkey_file,optarg);
+			break;
 		default:
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
 		}
+	}
+
+	if(port == 0) {
+		if(use_secure)
+			port = DEFAULT_STUN_TLS_PORT;
+		else
+			port = DEFAULT_STUN_PORT;
 	}
 
 	if (clmessage_length < (int) sizeof(message_info))
@@ -170,6 +194,42 @@ int main(int argc, char **argv)
 	if (!c2c) {
 		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0)
 			return -1;
+	}
+
+	/* SSL Init ==>> */
+
+	if(!use_tcp && use_secure) {
+		fprintf(stderr,"DTLS is not supported, for now. \n");
+		exit(-1);
+	}
+
+	if(use_tcp && use_secure) {
+
+		SSL_load_error_strings();
+		OpenSSL_add_ssl_algorithms();
+
+		root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
+		SSL_CTX_set_cipher_list(root_tls_ctx, "DEFAULT");
+
+		if (!SSL_CTX_use_certificate_file(root_tls_ctx, cert_file,
+				SSL_FILETYPE_PEM)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
+			exit(-1);
+		}
+
+		if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx, pkey_file,
+				SSL_FILETYPE_PEM)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found!\n");
+			exit(-1);
+		}
+
+		if (!SSL_CTX_check_private_key(root_tls_ctx)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
+			exit(-1);
+		}
+
+		SSL_CTX_set_verify_depth(root_tls_ctx, 2);
+		SSL_CTX_set_read_ahead(root_tls_ctx, 1);
 	}
 
 	start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);

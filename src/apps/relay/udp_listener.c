@@ -262,8 +262,6 @@ static int init_server(udp_listener_relay_server_type* server,
   
   server->e = e;
   
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
-  
   return create_server_socket(server);
 }
 
