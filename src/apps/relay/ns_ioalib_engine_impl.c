@@ -730,18 +730,29 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 				int mlen = stun_get_message_len_str(elem->buf.buf, blen);
 				if(mlen>0 && mlen<=(int)blen) {
 					len = (int)bufferevent_read(s->bev, elem->buf.buf, mlen);
+					if(len < 0) {
+						s->tobeclosed = 1;
+						s->broken = 1;
+					}
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
 					s->tobeclosed = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bad TCP message, session to be closed.\n",
 							__FUNCTION__);
 				}
+			} else if(blen<0) {
+				s->tobeclosed = 1;
+				s->broken = 1;
 			}
+		} else {
+			s->tobeclosed = 1;
+			s->broken = 1;
 		}
 	} else if(s->fd>=0){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf));
 	} else {
 		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
+		s->broken = 1;
 		goto do_flush;
 	}
 
@@ -774,7 +785,7 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 	return len;
 
 	do_flush:
-	if(fd>=0 && !(s->bev)) {
+	if(fd>=0 && !(s->bev) && !(s->broken)) {
 		char buffer[1024];
 		recv(fd, buffer, sizeof(buffer),0);
 	}
@@ -885,6 +896,8 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 					if (bufferevent_write(s->bev,ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh))< 0) {
 						ret = -1;
 						perror("bufev send");
+						s->tobeclosed = 1;
+						s->broken = 1;
 					} else {
 						bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
 						ret = (int) ioa_network_buffer_get_size(nbh);
@@ -980,6 +993,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s) {
+		if(s->broken)
+			return 1;
 		if(s->tobeclosed)
 			return 1;
 		if(s->done) {

@@ -968,8 +968,12 @@ void start_mclient(const char *remote_address, int port,
 
 	total_clients = tot_clients;
 
-	for(i=0;i<total_clients;i++) 
-	  elems[i]->to_send_timems = current_mstime + ((u32bits)random())%500;
+	for(i=0;i<total_clients;i++) {
+		__turn_getMSTime();
+		elems[i]->to_send_timems = current_mstime + ((u32bits)random())%500;
+	}
+
+	__turn_getMSTime();
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total connect time is %u\n",
 			((unsigned int) (current_time - stime)));
