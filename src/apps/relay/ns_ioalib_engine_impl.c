@@ -297,8 +297,6 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 /************** SOCKETS HELPERS ***********************/
 
-////////////// Reservation search ==>>/////////////////////
-
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
 {
   if (e && in_reservation_token && s) {
@@ -310,8 +308,6 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   }
   return -1;
 }
-
-////////////// <<== Reservation search /////////////////////
 
 static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st)
 {
@@ -358,8 +354,6 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 	}
 	return -1;
 }
-
-/************************ Sockets *********************************/
 
 int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_port, ioa_socket_handle *rtp_s,
 				ioa_socket_handle *rtcp_s, uint64_t *out_reservation_token, int *err_code,

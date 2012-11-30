@@ -200,13 +200,13 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	while ((n = evbuffer_remove(input, &sm, sizeof(sm))) > 0) {
-		if(n != sizeof(sm)) {
+		if (n != sizeof(sm)) {
 			perror("Weird buffer error\n");
 			exit(-1);
 		}
 		struct relay_server *rs = ptr;
-		if(sm.s->defer_nbh) {
-			if(!sm.nbh) {
+		if (sm.s->defer_nbh) {
+			if (!sm.nbh) {
 				sm.nbh = sm.s->defer_nbh;
 				sm.s->defer_nbh = NULL;
 			} else {
@@ -217,10 +217,12 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 
 		ioa_socket_handle s = sm.s;
 
-		if(s->read_event || s->bev) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: socket wrongly preset: 0x%lx : 0x%lx\n", __FUNCTION__,
-					(long)s->read_event, (long)s->bev);
+		if (s->read_event || s->bev) {
+			TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
+				__FUNCTION__, (long) s->read_event,
+				(long) s->bev);
 			close_ioa_socket(s);
 			return;
 		}
@@ -229,9 +231,17 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 
 		open_client_connection_session(rs->server, &sm);
 		ioa_network_buffer_delete(rs->ioa_eng, sm.nbh);
+
+		if (ioa_socket_tobeclosed(s)) {
+			ts_ur_super_session *ss = s->session;
+			if (ss) {
+				turn_turnserver *server = ss->server;
+				if (server)
+					shutdown_client_connection(server, ss);
+			}
+		}
 	}
 }
-
 
 static void setup_listener_servers(void)
 {
