@@ -64,6 +64,7 @@ int turn_mutex_destroy(turn_mutex* mutex);
 /////// Sockets //////////////////////////////
 
 enum _SOCKET_TYPE {
+	UNKNOWN_SOCKET,
 	UDP_SOCKET,
 	TCP_SOCKET,
 	TLS_SOCKET
@@ -158,7 +159,7 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 
 void* create_ioa_socket_channel(ioa_socket_handle s, void *channel_info);
 void refresh_ioa_socket_channel(void *socket_channel);
-void delete_ioa_socket_channel(void *socket_channel);
+void delete_ioa_socket_channel(void **socket_channel);
 
 /* Log */
 void rtpprintf(const char *format, ...);

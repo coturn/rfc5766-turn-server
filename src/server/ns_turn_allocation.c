@@ -220,8 +220,7 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 		if(tinfo) {
 			allocation* a = (allocation*)tinfo->owner;
 			if(a) {
-				delete_ioa_socket_channel(chn->socket_channel);
-				chn->socket_channel = NULL;
+				delete_ioa_socket_channel(&(chn->socket_channel));
 				ur_map_del(a->channel_to_ch_info, chn->chnum, ch_info_clean);
 			}
 		}

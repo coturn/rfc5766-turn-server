@@ -38,6 +38,7 @@
 #include <getopt.h>
 #include <locale.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -223,7 +224,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 				"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 				__FUNCTION__, (long) s->read_event,
 				(long) s->bev);
-			close_ioa_socket(s);
+			IOA_CLOSE_SOCKET(sm.s);
 			return;
 		}
 
@@ -1172,6 +1173,9 @@ int main(int argc, char **argv)
 
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
+
+	/* Ignore SIGPIPE from TCP sockets */
+	signal(SIGPIPE, SIG_IGN);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);

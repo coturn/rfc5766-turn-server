@@ -95,6 +95,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 							server->e,
 							fd,
 							TCP_SOCKET,
+							CLIENT_SOCKET,
 							&client_addr,
 							&(server->addr));
 
@@ -105,7 +106,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"Cannot create tcp session\n");
-			close_ioa_socket(ioas);
+			IOA_CLOSE_SOCKET(ioas);
 		}
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

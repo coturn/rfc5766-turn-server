@@ -74,6 +74,16 @@ struct _ioa_engine
   SSL_CTX *tls_ctx;
 };
 
+enum _SOCKET_APP_TYPE {
+	UNKNOWN_APP_SOCKET,
+	CLIENT_SOCKET,
+	RELAY_SOCKET,
+	RELAY_RTCP_SOCKET,
+	CHANNEL_SOCKET
+};
+
+typedef enum _SOCKET_APP_TYPE SOCKET_APP_TYPE;
+
 struct _ioa_socket
 {
 	evutil_socket_t fd;
@@ -81,6 +91,7 @@ struct _ioa_socket
 	ioa_network_buffer_handle defer_nbh;
 	int family;
 	SOCKET_TYPE st;
+	SOCKET_APP_TYPE sat;
 	int bound;
 	int local_addr_known;
 	ioa_addr local_addr;
@@ -121,7 +132,7 @@ void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *ctx);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
-ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 

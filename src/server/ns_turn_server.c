@@ -747,7 +747,8 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				    *err_code = 500;
 				    *reason = (const u08bits *)"Wrong turn permission info";
 				  }
-				  chn->socket_channel = create_ioa_socket_channel(get_relay_socket(a), chn);
+				  if(!(chn->socket_channel))
+				  	chn->socket_channel = create_ioa_socket_channel(get_relay_socket(a), chn);
 				}
 
 			}
@@ -1131,7 +1132,7 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
-static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int *to_close)
+static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed)
 {
 
 	stun_tid tid;
@@ -1193,11 +1194,6 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					*resp_constructed = 1;
 				}
 				ioa_network_buffer_set_size(nbh, len);
-
-				allocation* a = get_allocation_ss(ss);
-
-				if (!is_allocation_valid(a))
-					*to_close = 1;
 			}
 				break;
 
@@ -1609,9 +1605,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
-		int to_close = 0;
 
-		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed,&to_close);
+		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed);
 
 		if(resp_constructed) {
 
@@ -1627,15 +1622,9 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 			int ret = write_client_connection(server, ss, nbh);
 
-			if(to_close)
-				set_ioa_socket_tobeclosed(ss->client_session.s);
-
 			FUNCEND;
 			return ret;
 		} else {
-			if(to_close)
-				set_ioa_socket_tobeclosed(ss->client_session.s);
-
 			ioa_network_buffer_delete(server->e, nbh);
 		}
 

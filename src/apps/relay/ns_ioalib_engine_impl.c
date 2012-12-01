@@ -309,7 +309,7 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   return -1;
 }
 
-static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st)
+static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
@@ -337,6 +337,7 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 	ret->fd = fd;
 	ret->family = family;
 	ret->st = st;
+	ret->sat = sat;
 	ret->e = e;
 
 	return ret;
@@ -383,7 +384,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 
 		int rtcp_port = -1;
 
-		*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET);
+		*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_SOCKET);
 		if (*rtp_s == NULL) {
 			perror("socket");
 			return -1;
@@ -395,7 +396,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 		addr_cpy(&rtcp_local_addr, &relay_addr);
 
 		if (even_port > 0) {
-			*rtcp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET);
+			*rtcp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
 			if (*rtcp_s == NULL) {
 				perror("socket");
 				IOA_CLOSE_SOCKET(*rtp_s);
@@ -473,7 +474,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 }
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
-				ioa_socket_raw fd, SOCKET_TYPE st,
+				ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat,
 				const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
 	ioa_socket_handle ret = NULL;
@@ -490,6 +491,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->fd = fd;
 	ret->family = local_addr->ss.ss_family;
 	ret->st = st;
+	ret->sat = sat;
 	ret->e = e;
 
 	if (local_addr) {
@@ -562,7 +564,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 {
 	ch_info *chn = channel_info;
 
-	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET);
+	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
 	if (cs == NULL) {
 		perror("socket");
 		return NULL;
@@ -595,19 +597,24 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	return cs;
 }
 
-void delete_ioa_socket_channel(void *socket_channel)
+void delete_ioa_socket_channel(void **socket_channel)
 {
-	ioa_socket_handle cs = socket_channel;
-	IOA_CLOSE_SOCKET(cs);
+	if(socket_channel) {
+		ioa_socket_handle cs = *socket_channel;
+		IOA_CLOSE_SOCKET(cs);
+		*socket_channel = NULL;
+	}
 }
 
 static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
+		EVENT_DEL(s->read_event);
 		if(s->bev) {
 			if (!s->broken) {
-				SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-				if (!(SSL_get_shutdown(ctx) & SSL_SENT_SHUTDOWN)) {
+				if(s->st == TLS_SOCKET) {
+					SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+					if (!(SSL_get_shutdown(ctx) & SSL_SENT_SHUTDOWN)) {
 					/*
 					 * SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
 					 * received a close notify from the other end.  SSL_shutdown will then
@@ -619,8 +626,9 @@ static void close_socket_net_data(ioa_socket_handle s)
 					 * if the socket is not ready for writing, in which case this hack will
 					 * lead to an unclean shutdown and lost session on the other end.
 					 */
-					SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
-					SSL_shutdown(ctx);
+						SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
+						SSL_shutdown(ctx);
+					}
 				}
 			}
 			bufferevent_free(s->bev);
@@ -638,14 +646,13 @@ void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
 		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!double free on socket: 0x%lx\n", (long)s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
 		}
 		s->done = 1;
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		EVENT_DEL(s->read_event);
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,&(s->local_addr));
 		}
@@ -716,8 +723,18 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 	int len;
 	ioa_addr remote_addr;
 
-	if(s->done)
-		goto do_flush;
+	if(s->done) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		return -1;
+	}
+
+	if(s->st == TLS_SOCKET) {
+		SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+		if(!ctx || SSL_get_shutdown(ctx)) {
+			s->tobeclosed = 1;
+			return 0;
+		}
+	}
 
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
 	len = -1;
@@ -733,6 +750,11 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 					if(len < 0) {
 						s->tobeclosed = 1;
 						s->broken = 1;
+					} else if(s->st == TLS_SOCKET) {
+						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+						if(!ctx || SSL_get_shutdown(ctx)) {
+							s->tobeclosed = 1;
+						}
 					}
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
 					s->tobeclosed = 1;
@@ -747,13 +769,13 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
-	} else if(s->fd>=0){
+	} else if(s->fd>=0 && (fd==s->fd)){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf));
 	} else {
 		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
 		s->broken = 1;
-		goto do_flush;
+		return -1;
 	}
 
 	if (len >= 0) {
@@ -783,13 +805,6 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 	}
 
 	return len;
-
-	do_flush:
-	if(fd>=0 && !(s->bev) && !(s->broken)) {
-		char buffer[1024];
-		recv(fd, buffer, sizeof(buffer),0);
-	}
-	return 0;
 }
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
@@ -800,8 +815,18 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_socket_handle s = arg;
 
+	if(s->done) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
+		return;
+	}
+
 	if (!ioa_socket_tobeclosed(s))
 		socket_input_worker(fd, s);
+
+	if(s->done) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
+		return;
+	}
 
 	if (ioa_socket_tobeclosed(s)) {
 		ts_ur_super_session *ss = s->session;
@@ -817,11 +842,22 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 {
 
 	if (bev && arg) {
+
 		ioa_socket_handle s = arg;
+
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return;
+		}
 
 		while (!ioa_socket_tobeclosed(s)) {
 			if(socket_input_worker(s->fd, s)<=0)
 				break;
+		}
+
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return;
 		}
 
 		if (ioa_socket_tobeclosed(s)) {
@@ -845,7 +881,15 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 	} else if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
 		if (arg) {
 			ioa_socket_handle s = arg;
-			s->broken = 1;
+
+			if(s->done) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->broken, s->st, s->sat, s->tobeclosed);
+				return;
+			}
+
+			if(events == BEV_EVENT_ERROR)
+				s->broken = 1;
+
 			ts_ur_super_session *ss = s->session;
 			if (ss) {
 				turn_turnserver *server = ss->server;
@@ -880,9 +924,14 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d\n",(long) s, (int)s->done, (int)s->fd);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->st, s->sat);
 
 	} else if (nbh) {
+
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return ret;
+		}
 
 		if (!ioa_socket_tobeclosed(s) && s->e) {
 
@@ -890,17 +939,28 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				s = socket_channel; //Use dedicated socket
 
 			if (s->done || (s->fd == -1)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! Trying to send data from closed socket: 0x%lx (2): done=%d, fd=%d\n",(long) s, (int)s->done, (int)s->fd);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: (2) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->st, s->sat);
 			} else {
 				if (s->connected && s->bev) {
-					if (bufferevent_write(s->bev,ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh))< 0) {
-						ret = -1;
-						perror("bufev send");
-						s->tobeclosed = 1;
-						s->broken = 1;
-					} else {
-						bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
-						ret = (int) ioa_network_buffer_get_size(nbh);
+
+					if(s->st == TLS_SOCKET) {
+						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+						if(!ctx || SSL_get_shutdown(ctx)) {
+							s->tobeclosed = 1;
+							ret = 0;
+						}
+					}
+
+					if(!(s->tobeclosed)) {
+						if (bufferevent_write(s->bev,ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh))< 0) {
+							ret = -1;
+							perror("bufev send");
+							s->tobeclosed = 1;
+							s->broken = 1;
+						} else {
+							bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
+							ret = (int) ioa_network_buffer_get_size(nbh);
+						}
 					}
 				} else if (s->fd >= 0) {
 					if (s->connected)
@@ -908,8 +968,10 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 					else if (!dest_addr)
 						dest_addr = &(s->remote_addr);
 					ret = udp_send(s->fd, dest_addr, (s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
-					if (ret < 0)
+					if (ret < 0) {
+						s->tobeclosed = 1;
 						perror("udp send");
+					}
 				}
 			}
 		}
@@ -949,7 +1011,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
-										BEV_OPT_CLOSE_ON_FREE);
+										BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -967,7 +1029,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 											s->fd,
 											tls_ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
-											BEV_OPT_CLOSE_ON_FREE);
+											BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -993,14 +1055,14 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s) {
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
+			return 1;
+		}
 		if(s->broken)
 			return 1;
 		if(s->tobeclosed)
 			return 1;
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx\n",__FUNCTION__,(long)s);
-			return 1;
-		}
 		if(s->fd < 0) {
 			return 1;
 		}

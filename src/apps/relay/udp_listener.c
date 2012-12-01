@@ -115,7 +115,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			if (open_client_connection_socket(server, &info) >= 0) {
 
 				ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e,
-								info.fd, UDP_SOCKET,
+								info.fd, UDP_SOCKET, CLIENT_SOCKET,
 								&info.remote_addr, &info.local_addr);
 
 				if (ioas) {
@@ -124,7 +124,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 					if(rc < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
-						close_ioa_socket(ioas);
+						IOA_CLOSE_SOCKET(ioas);
 					}
 				} else {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from FD\n");
