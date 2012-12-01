@@ -41,7 +41,9 @@
 #include <signal.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -762,7 +764,11 @@ static void set_option(int c, const char *value)
 		strcpy(relay_ifname, value);
 		break;
 	case 'm':
+#ifdef OPENSSL_THREADS
 		relay_servers_number = atoi(value);
+#else
+		fprintf(stderr,"Warning: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
+#endif
 		break;
 	case 'd':
 		strcpy(listener_ifname, value);
@@ -1167,15 +1173,32 @@ static int adminmain(int argc, char **argv)
 	return 0;
 }
 
-int main(int argc, char **argv)
+static void set_system_parameters(void)
 {
-	int c = 0;
-
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
 
 	/* Ignore SIGPIPE from TCP sockets */
 	signal(SIGPIPE, SIG_IGN);
+
+	{
+		struct rlimit rlim;
+		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
+			perror("Cannot get system limit");
+		} else {
+			rlim.rlim_cur = rlim.rlim_max;
+			if(setrlimit(RLIMIT_NOFILE, &rlim)<0) {
+				perror("Cannot set system limit");
+			}
+		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int c = 0;
+
+	set_system_parameters();
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
@@ -1241,6 +1264,8 @@ int main(int argc, char **argv)
 
 ////////// OpenSSL locking ////////////////////////////////////////
 
+#ifdef OPENSSL_THREADS
+
 static pthread_mutex_t* mutex_buf = NULL;
 
 static void locking_function(int mode, int n, const char *file, int line) {
@@ -1262,6 +1287,8 @@ static unsigned long id_function(void)
 {
     return (unsigned long)pthread_self();
 }
+#endif
+
 #endif
 
 static int THREAD_setup(void) {
