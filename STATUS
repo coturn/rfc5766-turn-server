@@ -1,0 +1,25 @@
+Currently implemented functionality:
+
+1) RFC5389 (new STUN protocol) full server and client 
+implementations. We do not maintain strict compatibility 
+with the obsolete RFC 3489 "old STUN" protocol.
+
+2) RFC5766 TURN protocol full server and client 
+implementations. We support file-based long term 
+user credentials, for now.
+
+3) RFC6156 TURN IPv6 extension.
+
+4) We support the following client-to-server 
+network transports for TURN messages:
+	a) UDP
+	b) TCP
+	c) TLS
+	
+5) Performance tested and fixed.
+
+6) Stability tested and fixed.
+
+7) Multiple *NIX platforms tested and supported.
+ 
+Things to be implemented in future are described in TODO file.
