@@ -1,5 +1,25 @@
+I. BUILD
 
-I. PLATFORMS
+If you are sure that you system is ready for the build (see the section 
+"Extra libraries and Utilities" below) then you can build the system.
+Run the script build.sh:
+
+	$ ./build.sh
+
+build.sh script will create bin sub-directory and put the TURN server there. 
+The test applications will be located in testapps/bin/ 
+sub-directory.
+
+The programs can be either called directly, or a shell scripts can be used. 
+The script examples are located in scripts.examples directory.
+
+"make clean" command will clean all results of the build process.
+
+NOTE: On most modern systems, the build will produce dynamically linked 
+executables. If you want statically linked executables, you have to modify, 
+accordingly, the Makefile.
+
+II. PLATFORMS
 
 The TURN Server is using generic *NIX system APIs and is supposed to be usable 
 on wide range of *NIX systems. 
@@ -17,7 +37,7 @@ Makefile may need adjustments for other *NIXes not mentioned above.
 
 The code of the client messaging library can be used on Windows, too.
 
-II. COMPILERS
+III. COMPILERS
 
 The TURN Server is written in C programming language, for portability 
 and for the performance reasons. 
@@ -30,7 +50,7 @@ The tested C compilers are:
 
 It may be compiled with others compilers, too.
 
-III. EXTRA LIBRARIES AND UTILITIES
+IV. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better is recommended) and libevent2 (version 2.0.5 
@@ -81,28 +101,7 @@ NOTE: OpenSSL version 1.0.0a or newer is recommended.
 
 NOTE: The build system must have usual pthread library and headers available.
 
-IV. BUILD
-
-build.sh script will create bin sub-directory and put the TURN server there. 
-The test applications will be located in testapps/bin/ 
-sub-directory.
-
-For most platforms, just simple "make" would suffice.
-
-The supplied Makefile creates dynamically linked binaries.
-If statically linked binaries are desired, then the Makefile
-has to be changed, accordingly. 
- 
-The programs can be either called directly, or a shell scripts can be used. 
-The script examples are located in scripts.examples directory.
-
-"make clean" command will clean all results of the build process.
-
-NOTE: On most modern systems, the build will produce dynamically linked 
-executables. If you want statically linked executables, you have to modify, 
-accordingly, the Makefile.
-
-IV. TEST
+V. TEST
 
 If everything compiled properly, then the following programs must run 
 together successfully, simulating TURN network routing in local networking 
@@ -134,7 +133,7 @@ the jitter, loss and latency statistics, then everything runs fine.
 Check the README file se scripts relay.sh and secure_relay.sh as a guidance 
 how to run the TURN server.
 
-V. CLIENT API LIBRARY.
+VI. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.

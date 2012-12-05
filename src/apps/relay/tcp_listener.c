@@ -88,6 +88,17 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
 
+	{
+		int flag = 1;
+		int result = setsockopt(fd, /* socket affected */
+					IPPROTO_TCP, /* set option at TCP level */
+					TCP_NODELAY, /* name of option */
+					(char*)&flag, /* value */
+					sizeof(int)); /* length of option value */
+		if (result < 0)
+			perror("TCP_NODELAY");
+	}
+
 	addr_debug_print(server->verbose, &client_addr,"tcp connected to");
 
 	ioa_socket_handle ioas =
@@ -100,7 +111,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 							&(server->addr));
 
 	if (ioas) {
-		ioa_net_data nd = { &client_addr, NULL, 0 };
+		ioa_net_data nd = { &client_addr, NULL, 0, TTL_IGNORE };
 		int rc = server->e->connect_cb(server->e, ioas, &nd);
 
 		if (rc < 0) {

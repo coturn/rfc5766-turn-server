@@ -309,6 +309,104 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   return -1;
 }
 
+/* TTL helpers ==>> */
+
+#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>254) ttl=TTL_DEFAULT; } while(0)
+
+static int get_raw_socket_ttl(evutil_socket_t fd, int family)
+{
+	int ttl = -1;
+	socklen_t slen = (socklen_t)sizeof(ttl);
+
+	if(family == AF_INET6) {
+		if(getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,&slen)<0) {
+			perror("get HOPLIMIT on socket");
+			return -1;
+		}
+	} else {
+		if(getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,&slen)<0) {
+			perror("get TTL on socket");
+			return -1;
+		}
+	}
+
+	CORRECT_RAW_TTL(ttl);
+
+	return ttl;
+}
+
+static int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+{
+	CORRECT_RAW_TTL(ttl);
+
+	if(family == AF_INET6) {
+		if(setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,sizeof(ttl))<0) {
+			perror("set HOPLIMIT on socket");
+			return -1;
+		}
+	} else {
+		if(setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,sizeof(ttl))<0) {
+			perror("set TTL on socket");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int set_socket_ttl(ioa_socket_handle s, int ttl)
+{
+	if(s->default_ttl < 0) //Unsupported
+		return -1;
+
+	if(ttl < 0)
+		ttl = s->default_ttl;
+
+	CORRECT_RAW_TTL(ttl);
+
+	if(ttl < s->default_ttl)
+		ttl=s->default_ttl;
+
+	if(s->current_ttl != ttl) {
+		int ret = set_raw_socket_ttl(s->fd, s->family, ttl);
+		s->current_ttl = ttl;
+		return ret;
+	}
+
+	return 0;
+}
+
+static int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
+{
+	int recv_ttl_on = 1;
+	if (family == AF_INET6) {
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &recv_ttl_on,
+						sizeof(recv_ttl_on)) < 0) {
+			perror("cannot set recvhoplimit\n");
+		}
+	} else {
+		if (setsockopt(fd, IPPROTO_IP, IP_RECVTTL, &recv_ttl_on,
+						sizeof(recv_ttl_on)) < 0) {
+			perror("cannot set recvttl\n");
+		}
+	}
+
+	return 0;
+}
+
+static int set_socket_ttl_options(ioa_socket_handle s)
+{
+	if (s->st == UDP_SOCKET)
+		set_raw_socket_ttl_options(s->fd, s->family);
+
+	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
+	s->current_ttl = s->default_ttl;
+
+	return 0;
+}
+
+/* <<== TTL helpers */
+
 static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
@@ -339,6 +437,8 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
+
+	set_socket_ttl_options(ret);
 
 	return ret;
 }
@@ -494,6 +594,8 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->sat = sat;
 	ret->e = e;
 
+	set_socket_ttl_options(ret);
+
 	if (local_addr) {
 		ret->bound = 1;
 		addr_cpy(&(ret->local_addr), local_addr);
@@ -550,7 +652,7 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 						(int) (chnum));
 			}
 
-			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL);
+			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL, in_buffer->recv_ttl-1);
 		}
 	}
 }
@@ -702,7 +804,9 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 	return NULL;
 }
 
-static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size)
+typedef unsigned char recv_ttl_t;
+
+static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl)
 {
 
 	if (fd < 0 || !orig_addr || !like_addr || !buffer)
@@ -711,22 +815,64 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	int len = 0;
 	int slen = get_ioa_addr_len(like_addr);
 
+	struct msghdr msg;
+	struct iovec iov;
+	recv_ttl_t recv_ttl = TTL_DEFAULT;
+
+	char cmsg[CMSG_SPACE(sizeof(recv_ttl))];
+
+	msg.msg_control = cmsg;
+	msg.msg_controllen = sizeof(cmsg);
+
+	msg.msg_name = orig_addr;
+	msg.msg_namelen = (socklen_t)slen;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_iov->iov_base = buffer;
+	msg.msg_iov->iov_len = (size_t)buf_size;
+	msg.msg_flags = 0;
+
 	do {
-		len = recvfrom(fd, buffer, buf_size, 0, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
+		len = recvmsg(fd,&msg,0);
 	} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+
+	if (len >= 0) {
+
+		struct cmsghdr *cmsgh;
+
+		// Receive auxiliary data in msg
+		for (cmsgh = CMSG_FIRSTHDR(&msg); cmsgh != NULL; cmsgh
+						= CMSG_NXTHDR(&msg,cmsgh)) {
+			int l = cmsgh->cmsg_level;
+			int t = cmsgh->cmsg_type;
+			if ((l == IPPROTO_IP && ((t == IP_RECVTTL) || (t == IP_TTL))) ||
+			    (l == IPPROTO_IPV6 && ((t == IPV6_RECVHOPLIMIT) || (t == IPV6_HOPLIMIT)))) {
+				recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
+				break;
+			}
+		}
+	}
+
+	*ttl = recv_ttl;
+
+	CORRECT_RAW_TTL(*ttl);
 
 	return len;
 }
 
 static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 {
-	int len;
+	int len = 0;
+	int ttl = TTL_IGNORE;
 	ioa_addr remote_addr;
 
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 		return -1;
 	}
+
+	if(s->connected)
+		addr_cpy(&remote_addr,&(s->remote_addr));
 
 	if(s->st == TLS_SOCKET) {
 		SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
@@ -770,7 +916,7 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			s->broken = 1;
 		}
 	} else if(s->fd>=0 && (fd==s->fd)){
-		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf));
+		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl);
 	} else {
 		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
@@ -781,11 +927,9 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 	if (len >= 0) {
 		elem->buf.len = len;
 		if(s->read_cb) {
-			ioa_net_data event_data = {&remote_addr, elem, 0 };
-			ioa_net_event_handler cb = s->read_cb;
-			void* ctx = s->read_ctx;
+			ioa_net_data event_data = {&remote_addr, elem, 0, ttl };
 
-			cb(s, IOA_EV_READ, &event_data, ctx);
+			s->read_cb(s, IOA_EV_READ, &event_data, s->read_ctx);
 
 			if(event_data.nbh)
 				free_blist_elem(s->e,elem);
@@ -900,7 +1044,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 	}
 }
 
-static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
+static int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
 {
 	int rc = 0;
 	if (dest_addr) {
@@ -919,7 +1063,7 @@ static inline int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const 
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh, int to_peer,
-				void *socket_channel)
+				void *socket_channel, int ttl)
 {
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
@@ -941,6 +1085,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 			if (s->done || (s->fd == -1)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: (2) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->st, s->sat);
 			} else {
+
+				set_socket_ttl(s,ttl);
+
 				if (s->connected && s->bev) {
 
 					if(s->st == TLS_SOCKET) {

@@ -108,6 +108,8 @@ struct _ioa_socket
 	int do_not_use_df;
 	int tobeclosed;
 	int broken;
+	int default_ttl;
+	int current_ttl;
 	TURN_MUTEX_DECLARE(mutex)
 };
 

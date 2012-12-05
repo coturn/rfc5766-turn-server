@@ -86,6 +86,10 @@ static inline u64bits _ioa_ntoh64(u64bits v)
 	return v;
 }
 
+/* TTL */
+#define TTL_IGNORE ((int)(-1))
+#define TTL_DEFAULT (64)
+
 #define ioa_ntoh64 _ioa_ntoh64
 #define ioa_hton64 _ioa_ntoh64
 
