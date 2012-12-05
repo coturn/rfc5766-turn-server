@@ -364,7 +364,7 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl)
 
 	CORRECT_RAW_TTL(ttl);
 
-	if(ttl < s->default_ttl)
+	if(ttl > s->default_ttl)
 		ttl=s->default_ttl;
 
 	if(s->current_ttl != ttl) {
