@@ -29,8 +29,9 @@ The following platforms have been used in the development:
 	- Linux Ubuntu 11.x and 12.x, 32 and 64 bits 
 	- FreeBSD 6.x 32 bits
 	- FreeBSD 8.x 32 bits
-	- PC-BSD 9.x 64 bits (a FreeBSD offspring)
+	- PC-BSD 9.x 64 bits 
 	- Solaris 11 x86 64 bits
+	- CentOS 6.3 64 bits
 
 It must work on many other *NIXes, as well. The build.sh script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.

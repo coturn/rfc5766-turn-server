@@ -124,10 +124,10 @@ static const double __ac_HASH_UPPER = 0.77;
 		khkey_t *keys; u32bits keys_size;			\
 		khval_t *vals; u32bits vals_size; 			\
 	} kh_##name##_t;													\
-	static inline kh_##name##_t *kh_init_##name(void) {					\
+	static kh_##name##_t *kh_init_##name(void) {					\
 		return (kh_##name##_t*)turn_calloc(1, sizeof(kh_##name##_t));		\
 	}																	\
-	static inline void kh_destroy_##name(kh_##name##_t *h)				\
+	static void kh_destroy_##name(kh_##name##_t *h)				\
 	{																	\
 		if (h) {														\
 		  turn_free(h->keys,h->keys_size); turn_free(h->flags,h->flags_size); \
@@ -142,7 +142,7 @@ static const double __ac_HASH_UPPER = 0.77;
 			h->size = h->n_occupied = 0;								\
 		}																\
 	}																	\
-	static inline khint_t kh_get_##name(kh_##name##_t *h, khkey_t key)	\
+	static khint_t kh_get_##name(kh_##name##_t *h, khkey_t key)	\
 	{																	\
 		if (h->n_buckets) {												\
 			khint_t inc, k, i, last;									\
@@ -156,7 +156,7 @@ static const double __ac_HASH_UPPER = 0.77;
 			return __ac_iseither(h->flags, i)? h->n_buckets : i;			\
 		} else return 0;												\
 	}																	\
-	static inline void kh_resize_##name(kh_##name##_t *h, khint_t new_n_buckets) \
+	static void kh_resize_##name(kh_##name##_t *h, khint_t new_n_buckets) \
 	{																	\
 		u32bits *new_flags = 0;		\
 		u32bits new_flags_size = 0;	\
@@ -225,7 +225,7 @@ static const double __ac_HASH_UPPER = 0.77;
 			h->upper_bound = (khint_t)(h->n_buckets * __ac_HASH_UPPER + 0.5); \
 		}																\
 	}																	\
-	static inline khint_t kh_put_##name(kh_##name##_t *h, khkey_t key, int *ret) \
+	static khint_t kh_put_##name(kh_##name##_t *h, khkey_t key, int *ret) \
 	{																	\
 		khint_t x;														\
 		if (h->n_occupied >= h->upper_bound) {							\
@@ -263,7 +263,7 @@ static const double __ac_HASH_UPPER = 0.77;
 		} else *ret = 0;												\
 		return x;														\
 	}																	\
-	static inline void kh_del_##name(kh_##name##_t *h, khint_t x)		\
+	static void kh_del_##name(kh_##name##_t *h, khint_t x)		\
 	{																	\
 		if (x != h->n_buckets && !__ac_iseither(h->flags, x)) {			\
 			__ac_set_isdel_true(h->flags, x);							\
