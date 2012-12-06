@@ -2,9 +2,9 @@
 
 SYSTEM=`uname`
 
-GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual -Wredundant-decls"
+GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual -Wredundant-decls"
 
-#GNUOSCFLAGS="-Werror ${GNUOSCFLAGS}"
+#GNUOSCFLAGS="-Werror -Winline ${GNUOSCFLAGS}"
 
 OSCFLAGS=
 
