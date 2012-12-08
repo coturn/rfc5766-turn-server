@@ -5,12 +5,11 @@ Things to be added:
 1) DTLS support (?).
 2) RFC 6062 support (?).
 3) Locale support (?).
-4) Apply smarter rules on routed packets (like TTL etc).
-5) Limit bandwidth per user. 
-6) Man pages.
-7) User manual.
-8) Developer manual.
-9) MySQL user database support.
+4) Limit bandwidth per user. 
+5) Man pages.
+6) User manual.
+7) Developer manual.
+8) MySQL user database support.
 
 
 

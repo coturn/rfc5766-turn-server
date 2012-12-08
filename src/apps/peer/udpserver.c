@@ -89,7 +89,6 @@ static int udp_create_server_socket(server_type* server,
 
   set_sock_buf_size(server->udp_fd,UR_SERVER_SOCK_BUF_SIZE);
   
-  socket_set_reusable(server->udp_fd);
   if(addr_bind(server->udp_fd,&server->addr)<0) return -1;
   
   evutil_make_socket_nonblocking(server->udp_fd);

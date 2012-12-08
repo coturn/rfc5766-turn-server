@@ -41,6 +41,21 @@
 
 #include <event2/bufferevent_ssl.h>
 
+/* Compilation test:
+#if defined(IP_RECVTTL)
+#undef IP_RECVTTL
+#endif
+#if defined(IPV6_RECVHOPLIMIT)
+#undef IPV6_RECVHOPLIMIT
+#endif
+#if defined(IP_RECVTOS)
+#undef IP_RECVTOS
+#endif
+#if defined(IPV6_RECVTCLASS)
+#undef IPV6_RECVTCLASS
+#endif
+*/
+
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
@@ -120,6 +135,23 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
 				size_t relays_number, s08bits **relay_addrs, int verbose)
 {
+	static int capabilities_checked = 0;
+
+	if(!capabilities_checked) {
+		capabilities_checked = 1;
+#if !defined(IP_RECVTTL)
+		fprintf(stderr,"WARNING: IPv4: cannot support TTL IP field relaying on this platform !\n");
+#endif
+#if !defined(IPV6_RECVHOPLIMIT)
+		fprintf(stderr,"WARNING: IPv6: cannot support TTL (HOPLIMIT) IP field relaying on this platform !\n");
+#endif
+#if !defined(IP_RECVTOS)
+		fprintf(stderr,"WARNING: IPv4: cannot support TOS (DiffServ, ECN) IP field relaying on this platform !\n");
+#endif
+#if !defined(IPV6_RECVTCLASS)
+		fprintf(stderr,"WARNING: IPv6: cannot support TRAFFIC CLASS (DiffServ, ECN) IP field relaying on this platform !\n");
+#endif
+	}
 
 	if (!relays_number || !relay_addrs || !tp) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
@@ -309,25 +341,37 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   return -1;
 }
 
-/* TTL helpers ==>> */
+/* Socket options helpers ==>> */
 
-#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>254) ttl=TTL_DEFAULT; } while(0)
+#define CORRECT_RAW_TTL(ttl) do { if(ttl<0 || ttl>255) ttl=TTL_DEFAULT; } while(0)
+#define CORRECT_RAW_TOS(tos) do { if(tos<0 || tos>255) tos=TOS_DEFAULT; } while(0)
 
 static int get_raw_socket_ttl(evutil_socket_t fd, int family)
 {
-	int ttl = -1;
-	socklen_t slen = (socklen_t)sizeof(ttl);
+	int ttl = 0;
 
 	if(family == AF_INET6) {
+#if !defined(IPV6_RECVHOPLIMIT)
+		UNUSED_ARG(fd);
+		do { return TTL_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(ttl);
 		if(getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,&slen)<0) {
 			perror("get HOPLIMIT on socket");
-			return -1;
+			return TTL_IGNORE;
 		}
+#endif
 	} else {
+#if !defined(IP_RECVTTL)
+		UNUSED_ARG(fd);
+		do { return TTL_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(ttl);
 		if(getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,&slen)<0) {
 			perror("get TTL on socket");
-			return -1;
+			return TTL_IGNORE;
 		}
+#endif
 	}
 
 	CORRECT_RAW_TTL(ttl);
@@ -335,20 +379,93 @@ static int get_raw_socket_ttl(evutil_socket_t fd, int family)
 	return ttl;
 }
 
-static int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+static int get_raw_socket_tos(evutil_socket_t fd, int family)
 {
-	CORRECT_RAW_TTL(ttl);
+	int tos = 0;
 
 	if(family == AF_INET6) {
+#if !defined(IPV6_RECVTCLASS)
+		UNUSED_ARG(fd);
+		do { return TOS_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(tos);
+		if(getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,&slen)<0) {
+			perror("get TCLASS on socket");
+			return -1;
+		}
+#endif
+	} else {
+#if !defined(IP_RECVTOS)
+		UNUSED_ARG(fd);
+		do { return TOS_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(tos);
+		if(getsockopt(fd, IPPROTO_IP, IP_TOS, &tos,&slen)<0) {
+			perror("get TOS on socket");
+			return -1;
+		}
+#endif
+	}
+
+	CORRECT_RAW_TOS(tos);
+
+	return tos;
+}
+
+static int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+{
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_RECVHOPLIMIT)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(ttl);
+#else
+		CORRECT_RAW_TTL(ttl);
 		if(setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,sizeof(ttl))<0) {
 			perror("set HOPLIMIT on socket");
 			return -1;
 		}
+#endif
 	} else {
+#if !defined(IP_RECVTTL)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(ttl);
+#else
+		CORRECT_RAW_TTL(ttl);
 		if(setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,sizeof(ttl))<0) {
 			perror("set TTL on socket");
 			return -1;
 		}
+#endif
+	}
+
+	return 0;
+}
+
+static int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
+{
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_RECVTCLASS)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(tos);
+#else
+		CORRECT_RAW_TOS(tos);
+		if(setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,sizeof(tos))<0) {
+			perror("set TCLASS on socket");
+			return -1;
+		}
+#endif
+	} else {
+#if !defined(IPV6_RECVTOS)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(tos);
+#else
+		if(setsockopt(fd, IPPROTO_IP, IP_TOS, &tos,sizeof(tos))<0) {
+			perror("set TOS on socket");
+			return -1;
+		}
+#endif
 	}
 
 	return 0;
@@ -376,36 +493,111 @@ static int set_socket_ttl(ioa_socket_handle s, int ttl)
 	return 0;
 }
 
-static int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
+static int set_socket_tos(ioa_socket_handle s, int tos)
 {
-	int recv_ttl_on = 1;
-	if (family == AF_INET6) {
-		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &recv_ttl_on,
-						sizeof(recv_ttl_on)) < 0) {
-			perror("cannot set recvhoplimit\n");
-		}
-	} else {
-		if (setsockopt(fd, IPPROTO_IP, IP_RECVTTL, &recv_ttl_on,
-						sizeof(recv_ttl_on)) < 0) {
-			perror("cannot set recvttl\n");
-		}
+	if(s->default_tos < 0) //Unsupported
+		return -1;
+
+	if(tos < 0)
+		tos = s->default_tos;
+
+	CORRECT_RAW_TOS(tos);
+
+	if(s->current_tos != tos) {
+		int ret = set_raw_socket_tos(s->fd, s->family, tos);
+		s->current_tos = tos;
+		return ret;
 	}
 
 	return 0;
 }
 
-static int set_socket_ttl_options(ioa_socket_handle s)
+static int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
 {
-	if (s->st == UDP_SOCKET)
-		set_raw_socket_ttl_options(s->fd, s->family);
-
-	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
-	s->current_ttl = s->default_ttl;
+	if (family == AF_INET6) {
+#if !defined(IPV6_RECVHOPLIMIT)
+		UNUSED_ARG(fd);
+#else
+		int recv_ttl_on = 1;
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &recv_ttl_on,
+						sizeof(recv_ttl_on)) < 0) {
+			perror("cannot set recvhoplimit\n");
+		}
+#endif
+	} else {
+#if !defined(IP_RECVTTL)
+		UNUSED_ARG(fd);
+#else
+		int recv_ttl_on = 1;
+		if (setsockopt(fd, IPPROTO_IP, IP_RECVTTL, &recv_ttl_on,
+						sizeof(recv_ttl_on)) < 0) {
+			perror("cannot set recvttl\n");
+		}
+#endif
+	}
 
 	return 0;
 }
 
-/* <<== TTL helpers */
+static int set_raw_socket_tos_options(evutil_socket_t fd, int family)
+{
+	if (family == AF_INET6) {
+#if !defined(IPV6_RECVTCLASS)
+		UNUSED_ARG(fd);
+#else
+		int recv_tos_on = 1;
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &recv_tos_on,
+						sizeof(recv_tos_on)) < 0) {
+			perror("cannot set recvtclass\n");
+		}
+#endif
+	} else {
+#if !defined(IP_RECVTOS)
+		UNUSED_ARG(fd);
+#else
+		int recv_tos_on = 1;
+		if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &recv_tos_on,
+						sizeof(recv_tos_on)) < 0) {
+			perror("cannot set recvtos\n");
+		}
+#endif
+	}
+
+	return 0;
+}
+
+static int set_socket_options(ioa_socket_handle s)
+{
+
+	set_sock_buf_size(s->fd,UR_CLIENT_SOCK_BUF_SIZE);
+
+	evutil_make_socket_nonblocking(s->fd);
+
+	if (s->st == UDP_SOCKET) {
+		socket_set_reusable(s->fd);
+		set_raw_socket_ttl_options(s->fd, s->family);
+		set_raw_socket_tos_options(s->fd, s->family);
+	} else {
+		int flag = 1;
+		int result = setsockopt(s->fd, /* socket affected */
+					IPPROTO_TCP, /* set option at TCP level */
+					TCP_NODELAY, /* name of option */
+					(char*)&flag, /* value */
+					sizeof(int)); /* length of option value */
+		if (result < 0)
+			perror("TCP_NODELAY");
+	}
+
+	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
+	s->current_ttl = s->default_ttl;
+
+	s->default_tos = get_raw_socket_tos(s->fd, s->family);
+	s->current_tos = s->default_tos;
+
+	return 0;
+}
+
+/* <<== Socket options helpers */
 
 static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
@@ -426,9 +618,6 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 		return NULL;
 	}
 
-	socket_set_reusable(fd);
-	evutil_make_socket_nonblocking(fd);
-
 	ret = malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
@@ -438,7 +627,7 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 	ret->sat = sat;
 	ret->e = e;
 
-	set_socket_ttl_options(ret);
+	set_socket_options(ret);
 
 	return ret;
 }
@@ -446,6 +635,7 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 {
 	if (s && s->fd >= 0 && s->e && local_addr) {
+
 		int res = addr_bind(s->fd, local_addr);
 		if (res >= 0) {
 			s->bound = 1;
@@ -586,15 +776,13 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret = malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
-	evutil_make_socket_nonblocking(fd);
-
 	ret->fd = fd;
 	ret->family = local_addr->ss.ss_family;
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
 
-	set_socket_ttl_options(ret);
+	set_socket_options(ret);
 
 	if (local_addr) {
 		ret->bound = 1;
@@ -652,7 +840,7 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 						(int) (chnum));
 			}
 
-			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL, in_buffer->recv_ttl-1);
+			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 		}
 	}
 }
@@ -805,8 +993,9 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 }
 
 typedef unsigned char recv_ttl_t;
+typedef unsigned char recv_tos_t;
 
-static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl)
+static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos)
 {
 
 	if (fd < 0 || !orig_addr || !like_addr || !buffer)
@@ -818,8 +1007,9 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	struct msghdr msg;
 	struct iovec iov;
 	recv_ttl_t recv_ttl = TTL_DEFAULT;
+	recv_tos_t recv_tos = TOS_DEFAULT;
 
-	char cmsg[CMSG_SPACE(sizeof(recv_ttl))];
+	char cmsg[CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos))];
 
 	msg.msg_control = cmsg;
 	msg.msg_controllen = sizeof(cmsg);
@@ -845,17 +1035,55 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 						= CMSG_NXTHDR(&msg,cmsgh)) {
 			int l = cmsgh->cmsg_level;
 			int t = cmsgh->cmsg_type;
-			if ((l == IPPROTO_IP && ((t == IP_RECVTTL) || (t == IP_TTL))) ||
-			    (l == IPPROTO_IPV6 && ((t == IPV6_RECVHOPLIMIT) || (t == IPV6_HOPLIMIT)))) {
-				recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
-				break;
-			}
+
+			switch(l) {
+			case IPPROTO_IP:
+				switch(t) {
+#if defined(IP_RECVTTL)
+				case IP_RECVTTL:
+				case IP_TTL:
+					recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
+					break;
+#endif
+#if defined(IP_RECVTOS)
+				case IP_RECVTOS:
+				case IP_TOS:
+					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
+					break;
+#endif
+				default:
+					;
+				};
+			case IPPROTO_IPV6:
+				switch(t) {
+#if defined(IPV6_RECVHOPLIMIT)
+				case IPV6_RECVHOPLIMIT:
+				case IPV6_HOPLIMIT:
+					recv_ttl = *((recv_ttl_t *) CMSG_DATA(cmsgh));
+					break;
+#endif
+#if defined(IPV6_RECVTCLASS)
+				case IPV6_RECVTCLASS:
+				case IPV6_TCLASS:
+					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
+					break;
+#endif
+				default:
+					;
+				};
+			default:
+				;
+			};
 		}
 	}
 
 	*ttl = recv_ttl;
 
 	CORRECT_RAW_TTL(*ttl);
+
+	*tos = recv_tos;
+
+	CORRECT_RAW_TOS(*tos);
 
 	return len;
 }
@@ -864,6 +1092,7 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 {
 	int len = 0;
 	int ttl = TTL_IGNORE;
+	int tos = TOS_IGNORE;
 	ioa_addr remote_addr;
 
 	if(s->done) {
@@ -916,7 +1145,7 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			s->broken = 1;
 		}
 	} else if(s->fd>=0 && (fd==s->fd)){
-		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl);
+		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos);
 	} else {
 		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
@@ -927,7 +1156,7 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 	if (len >= 0) {
 		elem->buf.len = len;
 		if(s->read_cb) {
-			ioa_net_data event_data = {&remote_addr, elem, 0, ttl };
+			ioa_net_data event_data = {&remote_addr, elem, 0, ttl, tos };
 
 			s->read_cb(s, IOA_EV_READ, &event_data, s->read_ctx);
 
@@ -1063,7 +1292,7 @@ static int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh, int to_peer,
-				void *socket_channel, int ttl)
+				void *socket_channel, int ttl, int tos)
 {
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
@@ -1087,6 +1316,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 			} else {
 
 				set_socket_ttl(s,ttl);
+				set_socket_tos(s,tos);
 
 				if (s->connected && s->bev) {
 

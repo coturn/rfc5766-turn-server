@@ -110,6 +110,8 @@ struct _ioa_socket
 	int broken;
 	int default_ttl;
 	int current_ttl;
+	int default_tos;
+	int current_tos;
 	TURN_MUTEX_DECLARE(mutex)
 };
 

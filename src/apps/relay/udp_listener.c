@@ -86,7 +86,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	ioa_addr client_addr;
 
 	ioa_network_buffer_handle *elem = ioa_network_buffer_allocate(server->e);
-	ioa_net_data nd = { &client_addr, elem, 0, TTL_IGNORE };
+	ioa_net_data nd = { &client_addr, elem, 0, TTL_IGNORE, TOS_IGNORE };
 	ioa_addr si_other;
 	int slen = get_ioa_addr_len(&(server->addr));
 	ssize_t bsize = 0;
@@ -130,6 +130,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from FD\n");
 					close(info.fd);
 				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open socket from FD\n");
 			}
 
 		}
@@ -167,10 +169,6 @@ static evutil_socket_t open_client_connection_socket(udp_listener_relay_server_t
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind client socket to device %s\n",server->ifname);
   }
 
-  set_sock_buf_size(pinfo->fd,UR_CLIENT_SOCK_BUF_SIZE);
-  
-  socket_set_reusable(pinfo->fd);
-
   if(server->verbose) {
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Binding socket %d to addr\n",pinfo->fd);
 	  addr_debug_print(server->verbose,&server->addr,"Bind to");
@@ -189,8 +187,6 @@ static evutil_socket_t open_client_connection_socket(udp_listener_relay_server_t
   }
 
   addr_debug_print(server->verbose, &pinfo->remote_addr,"UDP connected to");
-  
-  evutil_make_socket_nonblocking(pinfo->fd);
 
   FUNCEND;
 
@@ -212,8 +208,6 @@ static int create_server_socket(udp_listener_relay_server_type* server) {
   }
 
   set_sock_buf_size(server->udp_listen_fd,UR_SERVER_SOCK_BUF_SIZE);
-
-  socket_set_reusable(server->udp_listen_fd);
 
   if(sock_bind_to_device(server->udp_listen_fd, (unsigned char*)server->ifname)<0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);

@@ -16,10 +16,17 @@ network transports for TURN messages:
 	b) TCP
 	c) TLS
 	
-5) Performance tested and fixed.
+5) Performance tested.
 
-6) Stability tested and fixed.
+6) Torture and stability tests.
 
 7) Multiple *NIX platforms tested and supported.
+
+8) TTL field handling implemented for all platforms, preferred behavior. 
+
+9) TOS (DiffServ and ECN) field handling (preferred behavior) implemented,
+for Linux. Other platforms support the alternative behavior.
+
+10) DF field alternative behavior implemented.
  
 Things to be implemented in future are described in TODO file.

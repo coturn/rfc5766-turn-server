@@ -53,14 +53,7 @@ fi
 if [ "${SYSTEM}" = "SunOS" ] ; then
 # Solaris
     OSLIBS="-lsocket -lnsl -ldl"
-    if [ -z "${OSCFLAGS}" ] ; then
-	#SolStudio compiler
-        OSCFLAGS=${OSCFLAGS}" -xc99"
-    else
-	#GCC/CLANG compilers
-	OSCFLAGS=${OSCFLAGS}" --std=c99"
-    fi
-    OSCFLAGS=${OSCFLAGS}" -D__EXTENSIONS__ -D_XOPEN_SOURCE=600"
+    OSCFLAGS=${OSCFLAGS}" -D__EXTENSIONS__ -D_XOPEN_SOURCE=500"
 fi
 
 ISLINUX=`echo ${SYSTEM} | grep -i linux | cut -b 1`

@@ -850,7 +850,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				ns_bcopy(value,ioa_network_buffer_data(nbh),len);
 				ioa_network_buffer_header_init(nbh);
 				ioa_network_buffer_set_size(nbh,len);
-				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, 1, NULL, in_buffer->recv_ttl-1);
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, 1, NULL, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;
 			}
 
@@ -1302,7 +1302,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 				  ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
 			ioa_network_buffer_header_init(nbh);
 			ioa_network_buffer_set_size(nbh,ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
-			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, 1, chn->socket_channel, in_buffer->recv_ttl-1);
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, 1, chn->socket_channel, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 			in_buffer->nbh = NULL;
 		}
 	}
@@ -1388,7 +1388,7 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 	FUNCEND;
 }
 
-static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl) {
+static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl, int tos) {
 
 	FUNCSTART;
 
@@ -1406,7 +1406,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 				(long) (elem->s));
 		}
 
-		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, 0, NULL, ttl);
+		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, 0, NULL, ttl, tos);
 
 		FUNCEND;
 		return ret;
@@ -1620,7 +1620,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				ioa_network_buffer_set_size(nbh,len);
 			}
 
-			int ret = write_client_connection(server, ss, nbh, TTL_IGNORE);
+			int ret = write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
 			FUNCEND;
 			return ret;
@@ -1670,7 +1670,7 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nbh) {
-		ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum, TTL_IGNORE };
+		ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum, TTL_IGNORE, TOS_IGNORE };
 		sm->nbh=NULL;
 		client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
 		ioa_network_buffer_delete(server->e, nd.nbh);
@@ -1764,7 +1764,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						(int) (nswap16(t[0])));
 			}
 
-			int ret = write_client_connection(server, ss, nbh, in_buffer->recv_ttl-1);
+			int ret = write_client_connection(server, ss, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 			if (ret < 0)
 				set_ioa_socket_tobeclosed(s);
 		}

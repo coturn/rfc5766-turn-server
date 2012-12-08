@@ -102,6 +102,8 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {
 
 	if (fd >= 0 && ifname && ifname[0]) {
 
+		socket_set_reusable(fd);
+
 #if defined(SO_BINDTODEVICE)
 
 		struct ifreq ifr;
@@ -154,6 +156,9 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr)
 		return -1;
 	else {
 		int ret = -1;
+
+		socket_set_reusable(fd);
+
 		if (addr->ss.ss_family == AF_INET) {
 			do {
 				ret = bind(fd, (const struct sockaddr *) addr, sizeof(struct sockaddr_in));
