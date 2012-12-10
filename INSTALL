@@ -2,7 +2,11 @@ I. BUILD
 
 If you are sure that you system is ready for the build (see the section 
 "Extra libraries and Utilities" below) then you can build the system.
-Run the script build.sh:
+Just run the make command:
+
+	$ make
+
+	or the build script:
 
 	$ ./build.sh
 
