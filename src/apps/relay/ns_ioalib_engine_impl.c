@@ -37,9 +37,9 @@
 
 #include "ns_ioalib_impl.h"
 
-#include <pthread.h>
-
+#if !defined(TURN_NO_TLS)
 #include <event2/bufferevent_ssl.h>
+#endif
 
 /* Compilation test:
 #if defined(IP_RECVTTL)
@@ -903,6 +903,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 		if(s->bev) {
 			if (!s->broken) {
 				if(s->st == TLS_SOCKET) {
+#if !defined(TURN_NO_TLS)
 					SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 					if (!(SSL_get_shutdown(ctx) & SSL_SENT_SHUTDOWN)) {
 					/*
@@ -919,6 +920,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 						SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
 						SSL_shutdown(ctx);
 					}
+#endif
 				}
 			}
 			bufferevent_free(s->bev);
@@ -1104,11 +1106,13 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
 	if(s->st == TLS_SOCKET) {
+#if !defined(TURN_NO_TLS)
 		SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 		if(!ctx || SSL_get_shutdown(ctx)) {
 			s->tobeclosed = 1;
 			return 0;
 		}
+#endif
 	}
 
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
@@ -1126,10 +1130,12 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 						s->tobeclosed = 1;
 						s->broken = 1;
 					} else if(s->st == TLS_SOCKET) {
+#if !defined(TURN_NO_TLS)
 						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 						if(!ctx || SSL_get_shutdown(ctx)) {
 							s->tobeclosed = 1;
 						}
+#endif
 					}
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
 					s->tobeclosed = 1;
@@ -1321,11 +1327,13 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				if (s->connected && s->bev) {
 
 					if(s->st == TLS_SOCKET) {
+#if !defined(TURN_NO_TLS)
 						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 						if(!ctx || SSL_get_shutdown(ctx)) {
 							s->tobeclosed = 1;
 							ret = 0;
 						}
+#endif
 					}
 
 					if(!(s->tobeclosed)) {
@@ -1401,6 +1409,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 								"%s: software error: buffer preset 2\n", __FUNCTION__);
 						return -1;
 					} else {
+#if !defined(TURN_NO_TLS)
 						SSL *tls_ssl = SSL_new(e->tls_ctx);
 						s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
@@ -1411,6 +1420,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
 						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+#endif
 					}
 					break;
 				default:

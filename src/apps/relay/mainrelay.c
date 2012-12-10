@@ -37,7 +37,11 @@
 #include <ifaddrs.h>
 #include <getopt.h>
 #include <locale.h>
+
+#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
+#endif
+
 #include <signal.h>
 
 #include <sys/types.h>
@@ -140,7 +144,9 @@ struct relay_server {
 	struct bufferevent *out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
+#if !defined(TURN_NO_THREADS)
 	pthread_t thr;
+#endif
 };
 static struct relay_server **relay_servers = NULL;
 
@@ -316,6 +322,7 @@ static void run_listener_server(struct event_base *eb)
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 {
 	struct bufferevent *pair[2];
+	int opts = 0;
 
 	if(e) {
 		rs->event_base = e->event_base;
@@ -328,7 +335,11 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 		ioa_engine_set_rtcp_map(rs->ioa_eng, listener.rtcpmap);
 	}
 
-	bufferevent_pair_new(rs->event_base, BEV_OPT_THREADSAFE, pair);
+#if !defined(TURN_NO_THREADS)
+	opts = BEV_OPT_THREADSAFE;
+#endif
+
+	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->in_buf = pair[0];
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
@@ -336,6 +347,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
 }
 
+#if !defined(TURN_NO_THREADS)
 static void *run_relay_thread(void *arg)
 {
   static int always_true = 1;
@@ -348,10 +360,15 @@ static void *run_relay_thread(void *arg)
   
   return arg;
 }
+#endif
 
 static void setup_relay_servers(void)
 {
 	size_t i = 0;
+
+#if defined(TURN_NO_THREADS)
+	relay_servers_number = 0;
+#endif
 
 	relay_servers = malloc(sizeof(struct relay_server *)*get_real_relay_servers_number());
 
@@ -359,6 +376,9 @@ static void setup_relay_servers(void)
 
 		relay_servers[i] = malloc(sizeof(struct relay_server));
 
+#if defined(TURN_NO_THREADS)
+		setup_relay_server(relay_servers[i], listener.ioa_eng);
+#else
 		if(relay_servers_number == 0) {
 			setup_relay_server(relay_servers[i], listener.ioa_eng);
 			relay_servers[i]->thr = pthread_self();
@@ -369,12 +389,15 @@ static void setup_relay_servers(void)
 			}
 			pthread_detach(relay_servers[i]->thr);
 		}
+#endif
 	}
 }
 
 static void setup_server(void)
 {
+#if !defined(TURN_NO_THREADS)
 	evthread_use_pthreads();
+#endif
 
 	setup_listener_servers();
 
@@ -764,10 +787,12 @@ static void set_option(int c, const char *value)
 		strcpy(relay_ifname, value);
 		break;
 	case 'm':
-#ifdef OPENSSL_THREADS
+#if defined(TURN_NO_THREADS)
+		fprintf(stderr,"WARNING: threading is not supported,\n I am using single thread.\n");
+#elif defined(OPENSSL_THREADS)
 		relay_servers_number = atoi(value);
 #else
-		fprintf(stderr,"Warning: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
+		fprintf(stderr,"WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
 #endif
 		break;
 	case 'd':
@@ -820,7 +845,12 @@ static void set_option(int c, const char *value)
 		no_tcp = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
+#if defined(TURN_NO_TLS)
+		no_tls = 1;
+		fprintf(stderr,"WARNING: TLS is not supported\n");
+#else
 		no_tls = get_bool_value(value);
+#endif
 		break;
 	case CERT_FILE_OPT:
 		strcpy(cert_file,optarg);
@@ -1264,7 +1294,7 @@ int main(int argc, char **argv)
 
 ////////// OpenSSL locking ////////////////////////////////////////
 
-#ifdef OPENSSL_THREADS
+#if defined(OPENSSL_THREADS) && !defined(TURN_NO_THREADS)
 
 static pthread_mutex_t* mutex_buf = NULL;
 
@@ -1293,7 +1323,7 @@ static unsigned long id_function(void)
 
 static int THREAD_setup(void) {
 
-#ifdef OPENSSL_THREADS
+#if defined(OPENSSL_THREADS) && !defined(TURN_NO_THREADS)
 
 	int i;
 
@@ -1318,7 +1348,7 @@ static int THREAD_setup(void) {
 
 static int THREAD_cleanup(void) {
 
-#ifdef OPENSSL_THREADS
+#if defined(OPENSSL_THREADS) && !defined(TURN_NO_THREADS)
 
   int i;
 
@@ -1405,6 +1435,13 @@ static void openssl_setup(void)
 	THREAD_setup();
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
+
+#if defined(TURN_NO_TLS)
+	if(!no_tls) {
+		fprintf(stderr,"WARNING: TLS is not supported\n");
+		no_tls = 1;
+	}
+#endif
 
 	if(!no_tls && !cert_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS services.\n");

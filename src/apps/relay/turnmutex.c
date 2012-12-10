@@ -28,7 +28,10 @@
  * SUCH DAMAGE.
  */
 
+#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,7 +44,10 @@
 
 int turn_mutex_lock(const turn_mutex *mutex) {
   if(mutex && mutex->mutex && (mutex->data == MAGIC_CODE)) {
-    int ret = pthread_mutex_lock((pthread_mutex_t*)mutex->mutex);
+    int ret = 0;
+#if !defined(TURN_NO_THREADS)
+    ret = pthread_mutex_lock((pthread_mutex_t*)mutex->mutex);
+#endif
     if(ret<0) {
       perror("Mutex lock");
     }
@@ -54,7 +60,10 @@ int turn_mutex_lock(const turn_mutex *mutex) {
 
 int turn_mutex_unlock(const turn_mutex *mutex) {
   if(mutex && mutex->mutex && (mutex->data == MAGIC_CODE)) {
-    int ret = pthread_mutex_unlock((pthread_mutex_t*)mutex->mutex);
+    int ret = 0;
+#if !defined(TURN_NO_THREADS)
+    ret = pthread_mutex_unlock((pthread_mutex_t*)mutex->mutex);
+#endif
     if(ret<0) {
       perror("Mutex unlock");
     }
@@ -69,7 +78,10 @@ int turn_mutex_init(turn_mutex* mutex) {
   if(mutex) {
     mutex->mutex=malloc(sizeof(pthread_mutex_t));
     mutex->data=MAGIC_CODE;
-    int ret = pthread_mutex_init((pthread_mutex_t*)mutex->mutex,NULL);
+    int ret = 0;
+#if !defined(TURN_NO_THREADS)
+    pthread_mutex_init((pthread_mutex_t*)mutex->mutex,NULL);
+#endif
     if(ret<0) {
       perror("Mutex init");
       mutex->data=0;
@@ -85,6 +97,7 @@ int turn_mutex_init(turn_mutex* mutex) {
 int turn_mutex_init_recursive(turn_mutex* mutex) {
   int ret=-1;
   if(mutex) {
+#if !defined(TURN_NO_THREADS)
     pthread_mutexattr_t attr;
     if(pthread_mutexattr_init(&attr)<0) {
       perror("Cannot init mutex attr");
@@ -103,16 +116,24 @@ int turn_mutex_init_recursive(turn_mutex* mutex) {
       }
       pthread_mutexattr_destroy(&attr);
     }
+#else
+    mutex->mutex=malloc(1);
+    mutex->data=MAGIC_CODE;
+    ret = 0;
+#endif
   }
   return ret;
 }
 
 int turn_mutex_destroy(turn_mutex* mutex) {
   if(mutex && mutex->mutex && mutex->data == MAGIC_CODE) {
-    int ret = pthread_mutex_destroy((pthread_mutex_t*)(mutex->mutex));
-    mutex->data=0;
+    int ret = 0;
+#if !defined(TURN_NO_THREADS)
+    ret = pthread_mutex_destroy((pthread_mutex_t*)(mutex->mutex));
+#endif
     free(mutex->mutex);
     mutex->mutex=NULL;
+    mutex->data=0;
     return ret;
   } else {
     return 0;
