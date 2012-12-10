@@ -92,7 +92,7 @@ NOTE: OpenSSL to be installed before libevent2. When libevent2 is building, it
 is checking whether OpenSSL has been already installed, and which version of 
 OpenSSL. If the OpenSSL is missed, or too old, then libevent_openssl library is 
 not being created during the build, and you will not be able to compile the 
-TURN Server.
+TURN Server with TLS support.
 
 NOTE: An older libevent version, version 1.x.x, is often included in some *NIX 
 distributions. That version has its deficiencies and is inferior to the newer 
@@ -103,8 +103,6 @@ libevent2 from their web site. It was tested on older *NIXes and it works
 just fine. 
 
 NOTE: OpenSSL version 1.0.0a or newer is recommended.
-
-NOTE: The build system must have usual pthread library and headers available.
 
 V. TEST
 
@@ -128,7 +126,7 @@ or
 
  $ scripts.examples/secure_tcp_client.sh
 
-or
+If TLS is supported, then this command must work:
 
  $ scripts.examples/secure_tls_client.sh
 
