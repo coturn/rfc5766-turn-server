@@ -97,7 +97,7 @@ typedef struct {
 
 typedef struct _message_info {
 	int msgnum;
-	u32bits mstime;
+	u64bits mstime;
 } message_info;
 
 ///////////////////////////////////////////////////////////////////////////////

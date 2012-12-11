@@ -139,6 +139,9 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 
 	if(!capabilities_checked) {
 		capabilities_checked = 1;
+#if !defined(CMSG_SPACE)
+		fprintf(stderr,"WARNING: cannot support TOS and TTL IP fields relaying on this platform\n");
+#endif
 #if !defined(IP_RECVTTL)
 		fprintf(stderr,"WARNING: IPv4: cannot support TTL IP field relaying on this platform !\n");
 #endif
@@ -1005,11 +1008,17 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 
 	int len = 0;
 	int slen = get_ioa_addr_len(like_addr);
-
-	struct msghdr msg;
-	struct iovec iov;
 	recv_ttl_t recv_ttl = TTL_DEFAULT;
 	recv_tos_t recv_tos = TOS_DEFAULT;
+
+#if !defined(CMSG_SPACE)
+	do {
+	  len = recvfrom(fd, buffer, buf_size, 0, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
+	} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+
+#else
+	struct msghdr msg;
+	struct iovec iov;
 
 	char cmsg[CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos))];
 
@@ -1078,6 +1087,7 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 			};
 		}
 	}
+#endif
 
 	*ttl = recv_ttl;
 

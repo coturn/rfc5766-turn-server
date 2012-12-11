@@ -144,7 +144,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Crypto SSL lib installed."
 else
-    echo "ERROR: OpenSSL development libraries are not installed properly in /usr/local."
+    echo "ERROR: OpenSSL Crypto development libraries are not installed properly in /usr/local."
     echo "Abort."
     exit
 fi
@@ -193,7 +193,7 @@ fi
 SYSTEM=`uname`
 
 if [ "${SYSTEM}" = "SunOS" ] ; then
-# Solaris
+# Solaris ? is this you ?!
     OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500"
 fi
 

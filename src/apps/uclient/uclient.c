@@ -51,8 +51,8 @@ static struct event_base* client_event_base=NULL;
 static int client_write(app_ur_session *elem);
 static int client_shutdown(app_ur_session *elem);
 
-static u32bits current_time = 0;
-static u32bits current_mstime = 0;
+static u64bits current_time = 0;
+static u64bits current_mstime = 0;
 
 static char buffer_to_send[65536]="\0";
 
@@ -64,8 +64,8 @@ static app_ur_session* elems[MAX_CLIENTS];
 #define SLEEP_INTERVAL (2345)
 #define RTP_PACKET_INTERVAL (20)
 
-static inline s32bits time_minus(u32bits t1, u32bits t2) {
-	return ( (s32bits)t1 - (s32bits)t2 );
+static inline s64bits time_minus(u64bits t1, u64bits t2) {
+	return ( (s64bits)t1 - (s64bits)t2 );
 }
 
 static u64bits total_loss = 0;
@@ -83,12 +83,15 @@ static int show_statistics = 0;
 ///////////////////////////////////////////////////////////////////////////////
 
 static void __turn_getMSTime(void) {
-	struct timespec tp={0,0};
-	clock_gettime(CLOCK_REALTIME, &tp);
-	if(current_time != (u32bits)(tp.tv_sec))
-		show_statistics = 1;
-	current_time = (u32bits)(tp.tv_sec);
-	current_mstime = (u32bits)((tp.tv_sec * 1000) + (tp.tv_nsec/1000000));
+  static u64bits start_sec = 0;
+  struct timespec tp={0,0};
+  clock_gettime(CLOCK_REALTIME, &tp);
+  if(!start_sec)
+    start_sec = tp.tv_sec;
+  if(current_time != (u64bits)((u64bits)(tp.tv_sec)-start_sec))
+    show_statistics = 1;
+  current_time = (u64bits)((u64bits)(tp.tv_sec)-start_sec);
+  current_mstime = (u64bits)((current_time * 1000) + (tp.tv_nsec/1000000));
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -444,22 +447,22 @@ static int client_read(app_ur_session *elem) {
 			if(mi->msgnum != elem->recvmsgnum+1)
 				++(elem->loss);
 			else {
-				u64bits clatency = time_minus(current_mstime,mi->mstime);
-				if(clatency>max_latency)
-					max_latency = clatency;
-				if(clatency<min_latency)
-					min_latency = clatency;
-				elem->latency += clatency;
-				if(elem->rmsgnum>0) {
-					u64bits cjitter = abs((int)(current_mstime-elem->recvtimems)-RTP_PACKET_INTERVAL);
-
-					if(cjitter>max_jitter)
-						max_jitter = cjitter;
-					if(cjitter<min_jitter)
-						min_jitter = cjitter;
-
-					elem->jitter += cjitter;
-				}
+			  u64bits clatency = (u64bits)time_minus(current_mstime,mi->mstime);
+			  if(clatency>max_latency)
+			    max_latency = clatency;
+			  if(clatency<min_latency)
+			    min_latency = clatency;
+			  elem->latency += clatency;
+			  if(elem->rmsgnum>0) {
+			    u64bits cjitter = abs((int)(current_mstime-elem->recvtimems)-RTP_PACKET_INTERVAL);
+			    
+			    if(cjitter>max_jitter)
+			      max_jitter = cjitter;
+			    if(cjitter<min_jitter)
+			      min_jitter = cjitter;
+			    
+			    elem->jitter += cjitter;
+			  }
 			}
 
 			elem->recvmsgnum = mi->msgnum;
