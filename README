@@ -1,6 +1,11 @@
 I. GENERAL INFORMATION
 
-This directory contains the source code of five TURN-related programs:
+This directory contains the source code of a TURN server and TURN client messaging 
+library. Also, four extra programs provided, for testing-only purposes. 
+
+Current version is 1.0.
+
+After the build (see INSTALL file), you will have the following binary images:
 
 1) turnserver: TURN server relay. 
 The compiled binary image of this program is located in bin/ sub-directory.

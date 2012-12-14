@@ -1,3 +1,5 @@
+Current version is 1.0.
+
 Currently implemented functionality:
 
 1) RFC5389 (new STUN protocol) full server and client 
@@ -29,4 +31,5 @@ for Linux. Other platforms support the alternative behavior.
 
 10) DF field alternative behavior implemented.
  
-Things to be implemented in future are described in TODO file.
+Things to be implemented in future (the development roadmap) 
+are described in TODO file.
