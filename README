@@ -31,6 +31,9 @@ The compiled binary image of this program is located in testapps/bin/ subdirecto
 The compiled binary image of this program is located in testapps/bin/ subdirectory.
 
 See INSTALL for the compilation instructions.
+
+In the "scripts" subdirectory, you will find the examples of command lines to be used 
+to run the programs.
   
 II. RUN
 
@@ -42,7 +45,7 @@ The command line parameters are:
                                         Linux only).
 	-p, --listening-port            TURN listener port for UDP and TCP 
                                         listeners (Default: 3478).
-	    --tls-listening-port        TURN listener port for TLS listeners 
+	    --tls-listening-port        TURN listener port for TLS and DTLS listeners 
 					(Default: 5349).
 	-L, --listening-ip		Listener IP address of relay server. 
 					Multiple listeners can be specified.
@@ -87,15 +90,18 @@ The command line parameters are:
 	-n				Do not use configuration file.
 	    --cert			Certificate file, PEM format. Same file 
                                         search rules applied as for the configuration 
-                                        file. If --no-tls option is specified, 
+                                        file. If both --no-tls and --no-dtls options 
+					are specified, 
                                         then this parameter is not needed.
 	    --pkey			Private key file, PEM format. Same file 
                                         search rules applied as for the configuration 
-                                        file. If --no-tls option is specified, 
+                                        file. If both --no-tls and --no-dtls options 
+					are specified, 
                                         then this parameter is not needed.
 	    --no-udp			Do not start UDP listeners.
 	    --no-tcp			Do not start TCP listeners.
 	    --no-tls			Do not start TLS listeners.
+	    --no-dtls			Do not start DTLS listeners.
 	-h				help.
 	
 2) turnadmin application is a TURN relay administration tool. 
@@ -136,11 +142,10 @@ The number of the messages to send is configurable.
 The command-line parameters are:
 
 	-l      Message length (Default: 100 Bytes);
-	-t	Use TCP (default is UDP).
-        -S	Secure connection: TLS for TCP, DTLS for UDP.
-    		NOTE: DTLS is not supported now.
-	-i	Certificate file (for secure connections only).
-	-k	Private key file (for secure connections only).
+	-t      Use TCP (default is UDP).
+	-S      Secure connection: TLS for TCP, DTLS for UDP.
+	-i      Certificate file (for secure connections only).
+	-k      Private key file (for secure connections only).
 	-p      TURN server port (Default: 3478 unsecure, 5349 secure);
 	-n      Number of messages to send (Default: 5);
 	-d      Local interface device (optional);

@@ -8,7 +8,8 @@ with the obsolete RFC 3489 "old STUN" protocol.
 
 2) RFC5766 TURN protocol full server and client 
 implementations. We support file-based long term 
-user credentials, for now.
+user credentials, for now. We added experimental DTLS 
+protocol, too. 
 
 3) RFC6156 TURN IPv6 extension.
 
@@ -17,6 +18,7 @@ network transports for TURN messages:
 	a) UDP
 	b) TCP
 	c) TLS
+	d) DTLS
 	
 5) Performance tested.
 

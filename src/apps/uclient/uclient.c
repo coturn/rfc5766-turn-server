@@ -1023,7 +1023,7 @@ void start_mclient(const char *remote_address, int port,
 			((unsigned int)(current_time - stime)));
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
 				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%');
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average latency %f ms; min = %lu ms, max = %lu ms\n",
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",
 				((double)total_latency/(double)tot_recv_messages),
 				(unsigned long)min_latency,
 				(unsigned long)max_latency);

@@ -41,6 +41,8 @@
 #include <event2/bufferevent_ssl.h>
 #endif
 
+#include <openssl/err.h>
+
 /* Compilation test:
 #if defined(IP_RECVTTL)
 #undef IP_RECVTTL
@@ -61,6 +63,8 @@
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
+
+static int send_backlog_buffers(ioa_socket_handle s);
 
 /************** Utils **************************/
 
@@ -90,40 +94,96 @@ void set_do_not_use_df(ioa_socket_handle s)
 
 /************** Buffer List ********************/
 
-static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
+static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 {
 	stun_buffer_list_elem *ret = NULL;
 
-	if(e && e->bufs) {
-		ret=e->bufs;
-		e->bufs=ret->next;
-	} else {
-		ret = malloc(sizeof(stun_buffer_list_elem));
+	if(bufs && bufs->head) {
+
+		ret=bufs->head;
+		bufs->head=ret->next;
+		if(bufs->head)
+			bufs->head->prev = NULL;
+		if(ret == bufs->tail)
+			bufs->tail = NULL;
+		--bufs->tsz;
+
+		ret->next=NULL;
+		ret->prev = NULL;
+		ret->buf.len = 0;
 	}
 
-	ret->next=NULL;
-	ret->tsz=0;
+	return ret;
+}
+
+static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
+{
+	if(bufs && bufs->head) {
+
+		if(bufs->head == bufs->tail) {
+			free(bufs->head);
+			bufs->head = NULL;
+			bufs->tail = NULL;
+			bufs->tsz = 0;
+		} else {
+			stun_buffer_list_elem *ret = bufs->head;
+			bufs->head=ret->next;
+			if(bufs->head)
+				bufs->head->prev = NULL;
+			--bufs->tsz;
+			free(ret);
+		}
+	}
+}
+
+static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
+{
+	stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
+
+	if(!ret) {
+		ret = malloc(sizeof(stun_buffer_list_elem));
+		ns_bzero(ret,sizeof(stun_buffer_list_elem));
+	}
 
 	return ret;
+}
+
+static void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *elem)
+{
+	if (bufs && elem) {
+		if (bufs->tail) {
+			elem->next = NULL;
+			elem->prev = bufs->tail;
+			bufs->tail->next = elem;
+			bufs->tail = elem;
+			++bufs->tsz;
+		} else {
+			bufs->head = elem;
+			bufs->tail = elem;
+			bufs->tsz = 1;
+			elem->next = NULL;
+			elem->prev = NULL;
+		}
+	}
+}
+
+static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size_t len)
+{
+	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
+		stun_buffer_list_elem *elem = malloc(sizeof(stun_buffer_list_elem));
+		elem->next = NULL;
+		elem->prev = NULL;
+		ns_bcopy(buf,elem->buf.buf,len);
+		elem->buf.len = (ssize_t)len;
+		add_elem_to_buffer_list(bufs,elem);
+	}
 }
 
 static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 {
 	if(elem) {
-		if(e) {
-			if(e->bufs) {
-				if(e->bufs->tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE) {
-					elem->next = e->bufs;
-					e->bufs = elem;
-					elem->tsz = elem->next->tsz + 1;
-				} else {
-					free(elem);
-				}
-			} else {
-				e->bufs=elem;
-				elem->tsz = 0;
-				elem->next= NULL;
-			}
+		if(e && (e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)) {
+			add_elem_to_buffer_list(&(e->bufs), elem);
 		} else {
 			free(elem);
 		}
@@ -186,9 +246,10 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	}
 }
 
-void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *ctx)
+void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx)
 {
-	e->tls_ctx = ctx;
+	e->tls_ctx = tls_ctx;
+	e->dtls_ctx = dtls_ctx;
 }
 
 void close_ioa_engine(ioa_engine_handle e)
@@ -197,7 +258,7 @@ void close_ioa_engine(ioa_engine_handle e)
 	  if (e->deallocate_eb && e->event_base)
 	    event_base_free(e->event_base);
 
-	  stun_buffer_list_elem *elem=e->bufs;
+	  stun_buffer_list_elem *elem=e->bufs.head;
 	  while(elem) {
 		  stun_buffer_list_elem *next=elem->next;
 		  free(elem);
@@ -576,7 +637,7 @@ static int set_socket_options(ioa_socket_handle s)
 
 	evutil_make_socket_nonblocking(s->fd);
 
-	if (s->st == UDP_SOCKET) {
+	if ((s->st == UDP_SOCKET) || (s->st == DTLS_SOCKET)) {
 		socket_set_reusable(s->fd);
 		set_raw_socket_ttl_options(s->fd, s->family);
 		set_raw_socket_tos_options(s->fd, s->family);
@@ -617,7 +678,7 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
 	default:
-		/* we do not support TCP sockets in the relay position */
+		/* we do not support non-UDP sockets in the relay position */
 		return NULL;
 	}
 
@@ -800,6 +861,17 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	return ret;
 }
 
+/* Only must be called for DTLS_SOCKET */
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
+{
+	ioa_socket_handle ret = create_ioa_socket_from_fd(e, fd, st, sat, remote_addr, local_addr);
+
+	if(ret)
+		ret->ssl = ssl;
+
+	return ret;
+}
+
 static void channel_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg) {
 
@@ -929,8 +1001,17 @@ static void close_socket_net_data(ioa_socket_handle s)
 			bufferevent_free(s->bev);
 			s->bev=NULL;
 			s->fd=-1;
+			s->ssl=NULL;
 		}
-		if (s->fd >= 0) {
+		if (s->ssl) {
+			if(!(SSL_get_shutdown(s->ssl) & SSL_SENT_SHUTDOWN)) {
+				SSL_set_shutdown(s->ssl, SSL_RECEIVED_SHUTDOWN);
+				SSL_shutdown(s->ssl);
+			}
+			SSL_free(s->ssl);
+			s->ssl = NULL;
+			s->fd = -1;
+		} else if (s->fd >= 0) {
 			evutil_closesocket(s->fd);
 			s->fd = -1;
 		}
@@ -995,6 +1076,77 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 		}
 	}
 	return NULL;
+}
+
+static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose)
+{
+
+	if (!ssl || !buffer)
+		return -1;
+
+	int len = 0;
+
+	if (verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before read...\n", __FUNCTION__);
+	}
+
+	do {
+		len = SSL_read(ssl, buffer, buf_size);
+	} while (len < 0 && (errno == EINTR));
+
+	if (verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__,len);
+	}
+
+	if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+		if (verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
+		}
+		return 0;
+	}
+
+	if (verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: read %d bytes\n", __FUNCTION__,(int) len);
+	}
+
+	if (len >= 0) {
+		return len;
+	} else {
+		switch (SSL_get_error(ssl, len)){
+		case SSL_ERROR_NONE:
+			//???
+			return 0;
+		case SSL_ERROR_WANT_READ:
+			return 0;
+		case SSL_ERROR_WANT_WRITE:
+			return 0;
+		case SSL_ERROR_ZERO_RETURN:
+			return 0;
+		case SSL_ERROR_SYSCALL:
+		{
+			int err = errno;
+			if (handle_socket_error())
+				return 0;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket read error: %d\n", err);
+			return -1;
+		}
+		case SSL_ERROR_SSL:
+			if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL read error: ");
+				s08bits buf[65536];
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf),
+								SSL_get_error(ssl, len));
+			}
+			if (verbose)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL connection closed.\n");
+			return -1;
+		default:
+			if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading!\n");
+			}
+			return -1;
+		}
+	}
 }
 
 typedef unsigned char recv_ttl_t;
@@ -1100,7 +1252,7 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	return len;
 }
 
-static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
+static int socket_input_worker(ioa_socket_handle s)
 {
 	int len = 0;
 	int ttl = TTL_IGNORE;
@@ -1123,6 +1275,11 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			return 0;
 		}
 #endif
+	} else if(s->st == DTLS_SOCKET) {
+		if(!(s->ssl) || SSL_get_shutdown(s->ssl)) {
+			s->tobeclosed = 1;
+			return 0;
+		}
 	}
 
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
@@ -1160,7 +1317,15 @@ static int socket_input_worker(evutil_socket_t fd, ioa_socket_handle s)
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
-	} else if(s->fd>=0 && (fd==s->fd)){
+	} else if(s->ssl) { /* DTLS */
+		send_backlog_buffers(s);
+		len = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), s->e->verbose);
+		addr_cpy(&remote_addr,&(s->remote_addr));
+		if(len < 0) {
+			s->tobeclosed = 1;
+			s->broken = 1;
+		}
+	} else if(s->fd>=0){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos);
 	} else {
 		free_blist_elem(s->e,elem);
@@ -1209,8 +1374,11 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		return;
 	}
 
+	if(fd != s->fd)
+		return;
+
 	if (!ioa_socket_tobeclosed(s))
-		socket_input_worker(fd, s);
+		socket_input_worker(s);
 
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
@@ -1240,7 +1408,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 		}
 
 		while (!ioa_socket_tobeclosed(s)) {
-			if(socket_input_worker(s->fd, s)<=0)
+			if(socket_input_worker(s)<=0)
 				break;
 		}
 
@@ -1287,6 +1455,113 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			}
 		}
 	}
+}
+
+static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
+{
+
+	if (!ssl || !buffer)
+		return -1;
+
+	if (verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before write: buffer=0x%lx, len=%d\n", __FUNCTION__,(long)buffer,len);
+	}
+
+	int rc = 0;
+	do {
+		rc = SSL_write(ssl, buffer, len);
+	} while (rc < 0 && errno == EINTR);
+
+	if (verbose) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after write: %d\n", __FUNCTION__,rc);
+	}
+
+	if (rc < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+		if (verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
+		}
+		return 0;
+	}
+
+	if (rc >= 0) {
+
+		if (verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote %d bytes\n", __FUNCTION__, (int) rc);
+		}
+
+		return rc;
+
+	} else {
+
+		if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure: rc=%d, err=%d\n", __FUNCTION__, (int)rc,(int)SSL_get_error(ssl, rc));
+		}
+
+		switch (SSL_get_error(ssl, rc)){
+		case SSL_ERROR_NONE:
+			//???
+			if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int) rc);
+			}
+			return 0;
+		case SSL_ERROR_WANT_WRITE:
+			return 0;
+		case SSL_ERROR_WANT_READ:
+			return 0;
+		case SSL_ERROR_SYSCALL:
+		{
+			int err = errno;
+			if (!handle_socket_error()) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer, (int)len, (long)ssl);
+				BIO* rbio = SSL_get_rbio(ssl);
+				int rfd = -1;
+				if(rbio)
+					BIO_get_fd(rbio,&rfd);
+				BIO* wbio = SSL_get_rbio(ssl);
+				int wfd = -1;
+				if(wbio)
+					BIO_get_fd(wbio,&wfd);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL Socket : ssl=0x%lx, rbio=0x%lx, rfd=%d, wbio=0x%lx, wfd=%d\n",
+						(long)ssl,(long)rbio,rfd,(long)wbio,wfd);
+				return -1;
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket write error recoverable: %d\n", err);
+				return 0;
+			}
+		}
+		case SSL_ERROR_SSL:
+			if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: ");
+				s08bits buf[65536];
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf),
+								SSL_get_error(ssl, rc));
+			}
+			return -1;
+		default:
+			if (verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while writing!\n");
+			}
+			return -1;
+		}
+	}
+}
+
+static int send_backlog_buffers(ioa_socket_handle s)
+{
+	int ret = 0;
+	if(s) {
+		stun_buffer_list_elem *elem = s->bufs.head;
+		while(elem) {
+			int rc = ssl_send(s->ssl, (s08bits*)elem->buf.buf, (size_t)elem->buf.len, s->e->verbose);
+			if(rc<1)
+				break;
+			++ret;
+			pop_elem_from_buffer_list(&(s->bufs));
+			elem = s->bufs.head;
+		}
+	}
+
+	return ret;
 }
 
 static int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
@@ -1357,6 +1632,13 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							ret = (int) ioa_network_buffer_get_size(nbh);
 						}
 					}
+				} else if (s->ssl) {
+					send_backlog_buffers(s);
+					ret = ssl_send(s->ssl, (s08bits*) ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), s->e->verbose);
+					if (ret < 0)
+						s->tobeclosed = 1;
+					else if(ret == 0)
+						add_buffer_to_buffer_list(&(s->bufs), (s08bits*) ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
 				} else if (s->fd >= 0) {
 					if (s->connected)
 						dest_addr = NULL; /* ignore dest_addr */
@@ -1388,6 +1670,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 
 			if(s->e) {
 				switch(s->st) {
+				case DTLS_SOCKET:
 				case UDP_SOCKET:
 					if(s->read_event) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -1462,6 +1745,10 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 			return 1;
 		if(s->fd < 0) {
 			return 1;
+		}
+		if(s->ssl) {
+			if(SSL_get_shutdown(s->ssl))
+				return 1;
 		}
 	}
 	return 0;

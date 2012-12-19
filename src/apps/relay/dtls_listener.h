@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2012 Citrix Systems
  *
  * All rights reserved.
  *
@@ -28,57 +28,30 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __APP_LIB__
-#define __APP_LIB__
+#ifndef __DTLS_LISTENER__
+#define __DTLS_LISTENER__
+
+#include "ns_turn_utils.h"
+
+#include "ns_turn_ioalib.h"
 
 #include <event2/event.h>
 
-#include <openssl/ssl.h>
+///////////////////////////////////////////
 
-#include "ns_turn_ioaddr.h"
+struct dtls_listener_relay_server_info;
+typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
-//////////// Common defines ///////////////////////////
+///////////////////////////////////////////
 
-#define PEER_DEFAULT_PORT (DEFAULT_STUN_PORT+1)
+dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
+							     const char *local_address, 
+							     int port,
+							     int verbose,
+							     ioa_engine_handle e,
+							     uint32_t *stats);
+void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int delete_engine);
 
-#define DTLS_MAX_RECV_TIMEOUT (5)
-#define DTLS_MAX_CONNECT_TIMEOUT (5)
+///////////////////////////////////////////
 
-#define UR_CLIENT_SOCK_BUF_SIZE (65536)
-#define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE*2)
-
-//////////////////////////////////////////
-
-#define EVENT_DEL(ev) if(ev) { event_del(ev); event_free(ev); ev=NULL; }
-
-//////////////////////////////////////////
-
-#define ioa_socket_raw int
-
-///////////////////////// Sockets ///////////////////////////////
-
-int set_sock_buf_size(evutil_socket_t fd, int sz);
-int socket_set_reusable(evutil_socket_t fd);
-int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
-
-int addr_connect(evutil_socket_t fd, const ioa_addr* addr);
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr);
-int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
-
-int handle_socket_error(void);
-
-///////////////////////// MTU //////////////////////////
-
-#define MAX_MTU (1500 - 20 - 8)
-#define MIN_MTU (576 - 20 - 8)
-#define SOSO_MTU (1300)
-
-#define MTU_STEP (68)
-
-int set_socket_df(evutil_socket_t fd, int family, int value);
-int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose);
-int decrease_mtu(SSL* ssl, int mtu, int verbose);
-
-///////////////////////////////////////////////////////
-
-#endif //__APP_LIB__
+#endif //__DTLS_LISTENER__

@@ -63,6 +63,7 @@
 #include "udp_listener.h"
 #include "tcp_listener.h"
 #include "tls_listener.h"
+#include "dtls_listener.h"
 
 #include "ns_turn_server.h"
 #include "ns_turn_maps.h"
@@ -91,8 +92,10 @@ static int tls_listener_port = DEFAULT_STUN_TLS_PORT;
 static int no_udp = 0;
 static int no_tcp = 0;
 static int no_tls = 0;
+static int no_dtls = 0;
 
 static SSL_CTX *tls_ctx = NULL;
+static SSL_CTX *dtls_ctx = NULL;
 
 static char listener_ifname[1025]="\0";
 
@@ -115,9 +118,10 @@ struct listener_server {
 	udp_listener_relay_server_type **udp_services;
 	tcp_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
+	dtls_listener_relay_server_type **dtls_services;
 };
 
-struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 static uint32_t stats=0;
 
@@ -170,6 +174,8 @@ static void add_listener_addr(const char* addr) {
 	listener.tcp_services[listener.number-1] = NULL;
 	listener.tls_services = realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.number);
 	listener.tls_services[listener.number-1] = NULL;
+	listener.dtls_services = realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.number);
+	listener.dtls_services[listener.number-1] = NULL;
 }
 
 static void add_relay_addr(const char* addr) {
@@ -267,7 +273,7 @@ static void setup_listener_servers(void)
 	if(!listener.ioa_eng)
 		exit(-1);
 
-	set_ssl_ctx(listener.ioa_eng, tls_ctx);
+	set_ssl_ctx(listener.ioa_eng, tls_ctx, dtls_ctx);
 
 	register_callback_on_ioa_engine_new_connection(listener.ioa_eng, send_socket);
 
@@ -282,6 +288,8 @@ static void setup_listener_servers(void)
 			listener.tcp_services[i] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
 		if(!no_tls)
 			listener.tls_services[i] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+		if(!no_dtls)
+			listener.dtls_services[i] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
 	}
 }
 
@@ -331,7 +339,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 		rs->event_base = event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
-		set_ssl_ctx(rs->ioa_eng, tls_ctx);
+		set_ssl_ctx(rs->ioa_eng, tls_ctx, dtls_ctx);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, listener.rtcpmap);
 	}
 
@@ -462,6 +470,17 @@ static void clean_server(void)
 		listener.tls_services = NULL;
 	}
 
+	if(listener.dtls_services) {
+		for(i=0;i<listener.number; i++) {
+			if (listener.dtls_services[i]) {
+				delete_dtls_listener_server(listener.dtls_services[i],0);
+				listener.dtls_services[i] = NULL;
+			}
+		}
+		free(listener.dtls_services);
+		listener.dtls_services = NULL;
+	}
+
 	if (listener.ioa_eng) {
 		close_ioa_engine(listener.ioa_eng);
 		listener.ioa_eng = NULL;
@@ -589,7 +608,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"Options:\n"
 	"	-d, --listening-device		Listener interface device (optional, Linux only).\n"
 	"	-p, --listening-port		TURN listener port (Default: 3478).\n"
-	"	    --tls-listening-port	TURN listener port for TLS listeners\n"
+	"	    --tls-listening-port	TURN listener port for TLS and DTLS listeners\n"
 	"					(Default: 5349).\n"
 	"	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.\n"
 	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
@@ -610,15 +629,16 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
-	"					If --no-tls option\n"
-	"					is specified, then this parameter is not needed.\n"
+	"					If both --no-tls and --no_dtls options\n"
+	"					are specified, then this parameter is not needed.\n"
 	"	    --pkey			Private key file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
-	"					If --no-tls option\n"
-	"					is specified, then this parameter is not needed.\n"
+	"					If both --no-tls and --no-dtls options\n"
+	"					are specified, then this parameter is not needed.\n"
 	"	    --no-udp			Do not start UDP listeners.\n"
 	"	    --no-tcp			Do not start TCP listeners.\n"
 	"	    --no-tls			Do not start TLS listeners.\n"
+	"	    --no-dtls			Do not start DTLS listeners.\n"
 	"	-h				Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -640,6 +660,7 @@ enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
 	NO_TCP_OPT,
 	NO_TLS_OPT,
+	NO_DTLS_OPT,
 	TLS_PORT_OPT,
 	CERT_FILE_OPT,
 	PKEY_FILE_OPT
@@ -665,6 +686,7 @@ static struct option long_options[] = {
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
 				{ "no-tls", optional_argument, NULL, NO_TLS_OPT },
+				{ "no-dtls", optional_argument, NULL, NO_DTLS_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
@@ -850,6 +872,14 @@ static void set_option(int c, const char *value)
 		fprintf(stderr,"WARNING: TLS is not supported\n");
 #else
 		no_tls = get_bool_value(value);
+#endif
+		break;
+	case NO_DTLS_OPT:
+#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+		no_dtls = get_bool_value(value);
+#else
+		no_dtls = 1;
+		fprintf(stderr,"WARNING: DTLS is not supported\n");
 #endif
 		break;
 	case CERT_FILE_OPT:
@@ -1228,6 +1258,16 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
+#if defined(TURN_NO_TLS)
+	no_tls = 1;
+	fprintf(stderr,"WARNING: TLS is not supported\n");
+#endif
+
+#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+	no_dtls = 1;
+	fprintf(stderr,"WARNING: OpenSSL version is too old, DTLS is not supported\n");
+#endif
+
 	set_system_parameters();
 
 	if(strstr(argv[0],"turnadmin"))
@@ -1443,29 +1483,46 @@ static void openssl_setup(void)
 	}
 #endif
 
-	if(!no_tls && !cert_file[0]) {
+	if(!(no_tls && no_dtls) && !cert_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS services.\n");
 		no_tls = 1;
 	}
 
-	if(!no_tls && !pkey_file[0]) {
+	if(!(no_tls && no_dtls) && !pkey_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS services.\n");
 		no_tls = 1;
 	}
 
-	if(!no_tls) {
+	if(!(no_tls && no_dtls)) {
 		adjust_key_file_names();
+	}
 
+	if(!no_tls) {
 		tls_ctx = SSL_CTX_new(TLSv1_server_method());
-
 		set_ctx(tls_ctx);
+	}
+
+	if(!no_dtls) {
+#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
+#else
+		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
+		set_ctx(dtls_ctx);
+#endif
 	}
 }
 
 static void openssl_cleanup(void)
 {
-	if(tls_ctx)
+	if(tls_ctx) {
 		SSL_CTX_free(tls_ctx);
+		tls_ctx = NULL;
+	}
+
+	if(dtls_ctx) {
+		SSL_CTX_free(dtls_ctx);
+		dtls_ctx = NULL;
+	}
 
 	THREAD_cleanup();
 }

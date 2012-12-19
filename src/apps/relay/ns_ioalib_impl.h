@@ -54,12 +54,19 @@
 
 #define TOO_BIG_BAD_TCP_MESSAGE (40000)
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (16)
+#define MAX_SOCKET_BUFFER_BACKLOG (16)
 
 typedef struct _stun_buffer_list_elem {
 	struct _stun_buffer_list_elem *next;
+	struct _stun_buffer_list_elem *prev;
 	stun_buffer buf;
-	size_t tsz;
 } stun_buffer_list_elem;
+
+typedef struct _stun_buffer_list {
+	stun_buffer_list_elem *head;
+	stun_buffer_list_elem *tail;
+	size_t tsz;
+} stun_buffer_list;
 
 struct _ioa_engine
 {
@@ -73,8 +80,9 @@ struct _ioa_engine
   int verbose;
   turnipports* tp;
   rtcp_map *rtcp_map;
-  stun_buffer_list_elem *bufs;
+  stun_buffer_list bufs;
   SSL_CTX *tls_ctx;
+  SSL_CTX *dtls_ctx;
 };
 
 enum _SOCKET_APP_TYPE {
@@ -95,6 +103,8 @@ struct _ioa_socket
 	int family;
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
+	SSL* ssl; /* for DTLS sockets only;
+			TLS sockets have it 'hidden' in bufferevent */
 	int bound;
 	int local_addr_known;
 	ioa_addr local_addr;
@@ -115,6 +125,7 @@ struct _ioa_socket
 	int current_ttl;
 	int default_tos;
 	int current_tos;
+	stun_buffer_list bufs;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -135,11 +146,12 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp,
 				    int verbose);
 void close_ioa_engine(ioa_engine_handle e);
 
-void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *ctx);
+void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 

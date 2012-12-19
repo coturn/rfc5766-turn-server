@@ -67,7 +67,6 @@ static char Usage[] =
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-t	TCP (default - UDP).\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
-  "		NOTE: DTLS is not supported, yet.\n"
   "	-i	Certificate file (for secure connections only).\n"
   "	-k	Private key file (for secure connections only).\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
@@ -198,27 +197,31 @@ int main(int argc, char **argv)
 
 	/* SSL Init ==>> */
 
-	if(!use_tcp && use_secure) {
-		fprintf(stderr,"DTLS is not supported, for now. \n");
-		exit(-1);
-	}
-
-	if(use_tcp && use_secure) {
+	if(use_secure) {
 
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
+		if(use_tcp) {
+			root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
+		} else {
+#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
+		  exit(-1);
+#else
+		  root_tls_ctx = SSL_CTX_new(DTLSv1_client_method());
+#endif
+		}
 		SSL_CTX_set_cipher_list(root_tls_ctx, "DEFAULT");
 
 		if (!SSL_CTX_use_certificate_file(root_tls_ctx, cert_file,
-				SSL_FILETYPE_PEM)) {
+			SSL_FILETYPE_PEM)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
 			exit(-1);
 		}
 
 		if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx, pkey_file,
-				SSL_FILETYPE_PEM)) {
+						SSL_FILETYPE_PEM)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found!\n");
 			exit(-1);
 		}

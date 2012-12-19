@@ -25,7 +25,8 @@ The test applications will be located in testapps/bin/
 sub-directory.
 
 The programs can be either called directly, or a shell scripts can be used. 
-The script examples are located in scripts.examples directory.
+The script examples are located in scripts directory. These scripts are just 
+examples; you will have to change the script parameters for your environment.
 
 "make clean" command will clean all results of the build process.
 
@@ -123,27 +124,31 @@ environment:
 Open three shell screens or consoles:
 
 In shell number 1, run peer application: 
- $ scripts.examples/peer.sh
+ $ scripts/peer.sh
 
 In shell number 2, run local TURN server application:
- $ scripts.examples/secure_relay.sh
+ $ scripts/secure_relay.sh
 
 In shell number 3, run test client application:
 
- $ scripts.examples/secure_uclient.sh
+ $ scripts/secure_udp_client.sh
 
 or
 
- $ scripts.examples/secure_tcp_client.sh
+ $ scripts/secure_tcp_client.sh
 
 If TLS is supported, then this command must work:
 
- $ scripts.examples/secure_tls_client.sh
+ $ scripts/secure_tls_client.sh
+ 
+If DTLS is supported, then this command must work:
 
-If the client application produces output and in 22 seconds prints 
-the jitter, loss and latency statistics, then everything runs fine.
+ $ scripts/secure_dtls_client.sh
 
-Check the README file se scripts relay.sh and secure_relay.sh as a guidance 
+If the client application produces output and in approximately 22 seconds prints 
+the jitter, loss and round-trip-delay statistics, then everything runs fine.
+
+Check the README file and the scripts relay.sh and secure_relay.sh as a guidance 
 how to run the TURN server.
 
 VII. CLIENT API LIBRARY.

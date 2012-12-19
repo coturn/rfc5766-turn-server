@@ -254,6 +254,73 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
   return ret;
 }
 
+static int get_mtu_from_ssl(SSL* ssl) {
+  int ret = SOSO_MTU;
+#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+  ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+#else
+  UNUSED_ARG(ssl);
+#endif
+  return ret;
+}
+
+static void set_query_mtu(SSL* ssl) {
+  if(ssl) {
+#if defined(SSL_OP_NO_QUERY_MTU)
+    SSL_set_options(ssl, SSL_OP_NO_QUERY_MTU);
+#else
+    ;
+#endif
+  }
+}
+
+int decrease_mtu(SSL* ssl, int mtu, int verbose) {
+
+  int new_mtu=get_mtu_from_ssl(ssl);
+
+  if(new_mtu<1) new_mtu=mtu;
+
+  if(new_mtu>MAX_MTU) mtu=MAX_MTU;
+  if(new_mtu>0 && new_mtu<MIN_MTU) mtu=MIN_MTU;
+  else if(new_mtu<mtu) mtu=new_mtu;
+  else mtu-=MTU_STEP;
+
+  if(mtu<MIN_MTU) mtu=MIN_MTU;
+
+  set_query_mtu(ssl);
+  if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"1. mtu to use: %d\n",mtu);
+
+#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+  SSL_set_mtu(ssl,mtu);
+  BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
+#endif
+
+  return mtu;
+}
+
+int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose) {
+
+  if(fd<0) return 0;
+
+  int ret=set_socket_df(fd, family, 1);
+
+  if(!mtu) mtu=SOSO_MTU;
+  else if(mtu<MIN_MTU) mtu=MIN_MTU;
+  else if(mtu>MAX_MTU) mtu=MAX_MTU;
+
+  set_query_mtu(ssl);
+  if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"3. mtu to use: %d\n",mtu);
+
+#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+  SSL_set_mtu(ssl,mtu);
+  BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
+#endif
+
+  if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"4. new mtu: %d\n",get_mtu_from_ssl(ssl));
+
+  return ret;
+}
+
 //////////////////// socket error handle ////////////////////
 
 int handle_socket_error() {

@@ -60,10 +60,38 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 /////////////////////////////////////////
 
-static SSL* tls_connect(ioa_socket_raw fd)
+static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 {
 	SSL *ssl = SSL_new(root_tls_ctx);
-	SSL_set_fd(ssl, fd);
+
+	if(use_tcp) {
+		SSL_set_fd(ssl, fd);
+	} else {
+#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+	  UNUSED_ARG(remote_addr);
+	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
+	  exit(-1);
+#else
+		/* Create BIO, connect and set to already connected */
+		BIO *bio = BIO_new_dgram(fd, BIO_CLOSE);
+		//bio = BIO_new_socket(fd, BIO_CLOSE);
+
+		BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &remote_addr->ss);
+
+		SSL_set_bio(ssl, bio, bio);
+
+		{
+			struct timeval timeout;
+			/* Set and activate timeouts */
+			timeout.tv_sec = DTLS_MAX_CONNECT_TIMEOUT;
+			timeout.tv_usec = 0;
+			BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+		}
+
+		set_mtu_df(ssl, fd, remote_addr->ss.ss_family, SOSO_MTU, clnet_verbose);
+#endif
+	}
+
 	SSL_set_max_cert_list(ssl, 655350);
 
 	if (clnet_verbose)
@@ -97,8 +125,13 @@ static SSL* tls_connect(ioa_socket_raw fd)
 	} while (1);
 
 	if (clnet_verbose && SSL_get_peer_certificate(ssl)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+		if(use_tcp) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"------TLS---------------------------------------------------\n");
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"------DTLS---------------------------------------------------\n");
+		}
 		X509_NAME_print_ex_fp(stdout, X509_get_subject_name(
 				SSL_get_peer_certificate(ssl)), 1, XN_FLAG_MULTILINE);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s\n",
@@ -176,8 +209,8 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		clnet_info->fd = clnet_fd;
 	}
 
-	if(use_tcp && use_secure) {
-		clnet_info->ssl = tls_connect(clnet_info->fd);
+	if(use_secure) {
+		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr);
 		if(!clnet_info->ssl) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					"%s: cannot SSL connect to remote addr\n", __FUNCTION__);

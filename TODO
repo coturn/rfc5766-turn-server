@@ -2,14 +2,13 @@ Current implementation supports UDP, TCP and TLS functionality of RFC 5389, 5766
 
 Things to be added:
 
-1) DTLS support (?).
-2) RFC 6062 support (?).
-3) Locale support (?).
-4) Limit bandwidth per user. 
-5) Man pages.
-6) User manual.
-7) Developer manual.
-8) MySQL user database support.
-
+1) RFC 6062 support (?).
+2) Locale support (?).
+3) Limit bandwidth per user. 
+4) Man pages.
+5) User manual.
+6) Developer manual.
+7) MySQL user database support.
+8) Windows support.
 
 
