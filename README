@@ -85,8 +85,13 @@ The command line parameters are:
                                         Long names of the options are used as 
 					the configuration items names in the file.  
 					If not absolute path is supplied, then the file is 
-					searched first in the current directory, then 
-					in ./etc, then in /etc, then in /usr/local/etc.
+					searched in the following directories: 
+						./etc/
+						../etc/
+						/etc/turn/
+						/etc/local/etc/turn/
+						/etc/ 
+						/usr/local/etc/
 	-n				Do not use configuration file.
 	    --cert			Certificate file, PEM format. Same file 
                                         search rules applied as for the configuration 

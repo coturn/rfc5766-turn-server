@@ -1,8 +1,8 @@
 I. DOWNLOAD
 
-You have to download the archive file turn.tgz and unpack it:
+You have to download the archive file turnserver-*.tar.gz and unpack it:
 
-$ tar xfz turn.tgz
+$ tar xfz turnserver-*.tgz
 
 it will create the directory 'turn-server' with all sources, build files, 
 examples and documentation.
@@ -13,7 +13,7 @@ If you are sure that you system is ready for the build (see the section
 "Extra libraries and Utilities" below) then you can build the system.
 Just run the make command:
 
-	$ cd turn-server
+	$ cd turnserver-*
 	$ make
 
 	or the build script:

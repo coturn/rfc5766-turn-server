@@ -82,7 +82,6 @@ static void openssl_cleanup(void);
 static int verbose=0;
 
 #define DEFAULT_CONFIG_FILE "turn.conf"
-const char* config_file_search_dirs[] = {"", "etc/", "/etc/", "/usr/local/etc/", NULL };
 
 ////////////////  Listener server /////////////////
 
@@ -712,38 +711,6 @@ static char *skip_blanks(char* s)
 	return s;
 }
 
-static FILE *find_config_file(const char *config_file, int print_file_name, char **full_path_to_config_file)
-{
-	if (config_file && config_file[0]) {
-		if (config_file[0] == '/') {
-			*full_path_to_config_file = strdup(config_file);
-			FILE *f = fopen(config_file, "r");
-			if (f)
-				return f;
-		} else {
-			int i = 0;
-			size_t cflen = strlen(config_file);
-
-			while (config_file_search_dirs[i]) {
-				size_t dirlen = strlen(config_file_search_dirs[i]);
-				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
-				strcpy(fn, config_file_search_dirs[i]);
-				strcpy(fn + dirlen, config_file);
-				FILE *f = fopen(fn, "r");
-				if (f) {
-					if (print_file_name)
-						fprintf(stdout, "File found: %s\n", fn);
-					*full_path_to_config_file = fn;
-					return f;
-				}
-				free(fn);
-				++i;
-			}
-		}
-	}
-	return NULL;
-}
-
 static int get_bool_value(const char* s)
 {
 	if(!s || !(s[0])) return 1;
@@ -970,7 +937,9 @@ static int read_config_file(int argc, char **argv, int users_only)
 			}
 		}
 
-		f = find_config_file(config_file, !users_only, &full_path_to_config_file);
+		full_path_to_config_file = find_config_file(config_file, !users_only);
+		if(full_path_to_config_file)
+			f = fopen(full_path_to_config_file,"r");
 	}
 
 	if (f && full_path_to_config_file) {
@@ -1018,8 +987,8 @@ static int read_config_file(int argc, char **argv, int users_only)
 		return 1;
 
 	} else if (!users_only) {
-		fprintf(stderr, "Cannot find config file: %s\n", config_file);
-		exit(-1);
+		fprintf(stderr, "Cannot find config file: %s. Guessing default values.\n", config_file);
+		return 0;
 	} else
 		return 0;
 }
@@ -1112,8 +1081,8 @@ static int adminmain(int argc, char **argv)
 		printf("\n");
 	} else {
 
-		char *full_path_to_config_file = NULL;
-		FILE *f = find_config_file(config_file, 1, &full_path_to_config_file);
+		char *full_path_to_config_file = find_config_file(config_file, 1);
+		FILE *f = full_path_to_config_file ? fopen(full_path_to_config_file,"r") : NULL;
 		if(!f || !full_path_to_config_file) {
 			fprintf(stderr,"Cannot file %s file.\n",config_file);
 			exit(-1);
@@ -1448,7 +1417,8 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 		exit(-1);
 	}
 
-	FILE *f = find_config_file(fn, 1, &full_path_to_file);
+	full_path_to_file = find_config_file(fn, 1);
+	FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
 	if(!f) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
 		exit(-1);

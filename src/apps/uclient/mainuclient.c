@@ -164,11 +164,27 @@ int main(int argc, char **argv)
 			use_secure = 1;
 			break;
 		case 'i':
-			strcpy(cert_file,optarg);
+		{
+			char* fn = find_config_file(optarg,1);
+			if(!fn) {
+				fprintf(stderr,"ERROR: file %s not found\n",optarg);
+				exit(-1);
+			}
+			strcpy(cert_file,fn);
+			free(fn);
 			break;
+		}
 		case 'k':
-			strcpy(pkey_file,optarg);
+		{
+			char* fn = find_config_file(optarg,1);
+			if(!fn) {
+				fprintf(stderr,"ERROR: file %s not found\n",optarg);
+				exit(-1);
+			}
+			strcpy(pkey_file,fn);
+			free(fn);
 			break;
+		}
 		default:
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);

@@ -26,12 +26,12 @@ network transports for TURN messages:
 
 7) Multiple *NIX platforms tested and supported.
 
-8) TTL field handling implemented for all platforms, preferred behavior. 
+8) TTL field handling implemented for all platforms, preferred behavior in RFC5766. 
 
-9) TOS (DiffServ and ECN) field handling (preferred behavior) implemented,
-for Linux. Other platforms support the alternative behavior.
+9) TOS (DiffServ and ECN) field handling (preferred behavior of RFC 5766) implemented,
+for Linux. Other platforms support the alternative behavior of RFC 5766.
 
-10) DF field alternative behavior implemented.
+10) DF field alternative behavior of RFC 5766 implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

@@ -49,7 +49,7 @@ echo Use TMP dir ${TMPDIR}
 # Basic C test programs
 #########################
 
-TMPCPROG=test
+TMPCPROG=__test__ccomp__$$
 TMPCPROGC=${TMPDIR}/${TMPCPROG}.c
 TMPCPROGB=${TMPDIR}/${TMPCPROG}
 
@@ -59,7 +59,7 @@ int main() {
 }
 !
 
-TH_TMPCPROG=testpthread
+TH_TMPCPROG=__test__ccomp__pthread__$$
 TH_TMPCPROGC=${TMPDIR}/${TH_TMPCPROG}.c
 TH_TMPCPROGB=${TMPDIR}/${TH_TMPCPROG}
 

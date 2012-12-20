@@ -79,6 +79,10 @@ int set_socket_df(evutil_socket_t fd, int family, int value);
 int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose);
 int decrease_mtu(SSL* ssl, int mtu, int verbose);
 
+////////////////// File search ////////////////////////
+
+char* find_config_file(const char *config_file, int print_file_name);
+
 ///////////////////////////////////////////////////////
 
 #endif //__APP_LIB__

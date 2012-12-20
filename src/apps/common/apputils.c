@@ -377,4 +377,51 @@ int handle_socket_error() {
   }
 }
 
+//////////////////// Config file search //////////////////////
+
+static const char* config_file_search_dirs[] = {"./", "etc/", "../etc/", "/etc/turn", "/usr/local/etc/turn/", "/etc/", "/usr/local/etc/", NULL };
+
+char* find_config_file(const char *config_file, int print_file_name)
+{
+	char *full_path_to_config_file = NULL;
+
+	if (config_file && config_file[0]) {
+		if (config_file[0] == '/') {
+			FILE *f = fopen(config_file, "r");
+			if (f) {
+				fclose(f);
+				full_path_to_config_file = strdup(config_file);
+			}
+		} else {
+			int i = 0;
+			size_t cflen = strlen(config_file);
+
+			while (config_file_search_dirs[i]) {
+				size_t dirlen = strlen(config_file_search_dirs[i]);
+				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
+				strcpy(fn, config_file_search_dirs[i]);
+				strcpy(fn + dirlen, config_file);
+				FILE *f = fopen(fn, "r");
+				if (f) {
+					fclose(f);
+					if (print_file_name)
+						fprintf(stdout, "File found: %s\n", fn);
+					full_path_to_config_file = fn;
+					break;
+				}
+				free(fn);
+				++i;
+			}
+		}
+
+		if(!full_path_to_config_file) {
+			if(strstr(config_file,"etc/")==config_file) {
+				return find_config_file(config_file+4, print_file_name);
+			}
+		}
+	}
+
+	return full_path_to_config_file;
+}
+
 //////////////////////////////////////////////////////////////
