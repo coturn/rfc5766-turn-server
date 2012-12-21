@@ -1,7 +1,8 @@
 I. GENERAL INFORMATION
 
-This directory contains the source code of a TURN server and TURN client messaging 
-library. Also, four extra programs provided, for testing-only purposes. 
+This directory contains the source code of a B9 TURN server and TURN client 
+messaging library. Also, four extra programs provided, for testing-only 
+purposes. 
 
 Current version is 1.0.
 

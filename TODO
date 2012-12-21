@@ -1,5 +1,3 @@
-Current implementation supports UDP, TCP and TLS functionality of RFC 5389, 5766 and RFC 6156. 
-
 Things to be added:
 
 1) RFC 6062 support (?).

@@ -1227,8 +1227,6 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
-	printf("RFC 5766 ext TURN Server, version %s\n",TURN_SERVER_VERSION);
-
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
 	fprintf(stderr,"WARNING: TLS is not supported\n");
@@ -1243,6 +1241,8 @@ int main(int argc, char **argv)
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
+
+	printf("RFC 5766 ext TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
 
 	users = malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
