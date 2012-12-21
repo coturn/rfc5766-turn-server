@@ -137,6 +137,7 @@ static char **relay_addrs = NULL;
 static int fingerprint = 0;
 
 static turn_user_db *users = NULL;
+static s08bits global_realm[1025];
 
 static size_t relay_servers_number = 0;
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
@@ -740,23 +741,27 @@ static int add_user_account(const char *user)
 				return -1;
 			}
 			s = skip_blanks(s+1);
-			if(strstr(s,"0x")==s)
-				s+=2;
-			if(strlen(s)!=32) {
-				fprintf(stderr,"Wrong key: %s\n",s);
-				free(uname);
-				return -1;
-			}
 			unsigned char *key = malloc(16);
-			char is[3];
-			int i;
-			unsigned int v;
-			is[2]=0;
-			for(i=0;i<16;i++) {
-				is[0]=s[i*2];
-				is[1]=s[i*2+1];
-				sscanf(is,"%02x",&v);
-				key[i]=(unsigned char)v;
+			if(strstr(s,"0x")==s) {
+				char *keysource = s + 2;
+				if(strlen(keysource)!=32) {
+					fprintf(stderr,"Wrong key: %s\n",s);
+					free(uname);
+					free(key);
+					return -1;
+				}
+				char is[3];
+				int i;
+				unsigned int v;
+				is[2]=0;
+				for(i=0;i<16;i++) {
+					is[0]=keysource[i*2];
+					is[1]=keysource[i*2+1];
+					sscanf(is,"%02x",&v);
+					key[i]=(unsigned char)v;
+				}
+			} else {
+				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, key);
 			}
 			ur_string_map_lock(users->accounts);
 			ur_string_map_put(users->accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
@@ -819,6 +824,7 @@ static void set_option(int c, const char *value)
 		add_user_account(value);
 		break;
 	case 'e':
+		strcpy(global_realm,value);
 		strcpy((s08bits*) users->realm, value);
 		break;
 	case 'q':
@@ -998,6 +1004,10 @@ static void reread_users(void)
 	int c = 0;
 	if(read_config_file(0,NULL,1)) {
 		optind=0;
+		while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
+			if(c == 'e')
+				set_option(c,optarg);
+		}
 		while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
 			if(c == 'u')
 				set_option(c,optarg);
@@ -1257,7 +1267,15 @@ int main(int argc, char **argv)
 	orig_argv = argv;
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
-		set_option(c,optarg);
+		if(c != 'u')
+			set_option(c,optarg);
+	}
+
+	optind = 0;
+
+	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+		if(c == 'u')
+			set_option(c,optarg);
 	}
 
 	argc -= optind;
@@ -1456,13 +1474,15 @@ static void openssl_setup(void)
 #endif
 
 	if(!(no_tls && no_dtls) && !cert_file[0]) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS services.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS/DTLS services.\n");
 		no_tls = 1;
+		no_dtls = 1;
 	}
 
 	if(!(no_tls && no_dtls) && !pkey_file[0]) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS services.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS/DTLS services.\n");
 		no_tls = 1;
+		no_dtls = 1;
 	}
 
 	if(!(no_tls && no_dtls)) {
