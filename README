@@ -4,8 +4,6 @@ The TURN Server project contains the source code of a TURN server and TURN clien
 messaging library. Also, four extra programs provided, for testing-only 
 purposes. 
 
-Current version is 1.2.
-
 See the INSTALL file for the building instructions.
 
 After the build, you will have the following binary images:

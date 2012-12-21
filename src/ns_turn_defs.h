@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.2")
-#define TURN_SERVER_VERSION_NAME ("Euz")
+#define TURN_SERVER_VERSION ("1.2.1")
+#define TURN_SERVER_VERSION_NAME ("Juvens")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
