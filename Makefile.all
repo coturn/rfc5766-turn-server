@@ -5,7 +5,7 @@ LIBEVENT_INCLUDE = /usr/local/include/
 INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client -I${LIBEVENT_INCLUDE} 
 LINKFLAGS = ${OSLIBS}
 
-CFLAGS = -O2 -g ${OSCFLAGS} ${INCFLAGS}
+CFLAGS += ${OSCFLAGS} ${INCFLAGS}
 
 MAKE_DEPS = Makefile build.sh
 

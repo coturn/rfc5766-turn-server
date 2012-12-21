@@ -1,18 +1,29 @@
 #!/bin/sh
 
-testlib() {
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSLIBS} -l${1} 2>/dev/null
+testlibraw() {
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSLIBS} -${1} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "Do not use -l${1}"
+	echo "Do not use -${1}"
 	return 0
     else
-	OSLIBS="${OSLIBS} -l${1}"
+	OSLIBS="${OSLIBS} -${1}"
 	return 1
     fi
 }
 
+testlib() {
+    testlibraw l${1}
+}
+
 pthread_testlib() {
+
+    testlibraw pthread
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+    	testlib pthread
+    fi
+
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -76,6 +87,21 @@ int main() {
 
 if [ -z "${CC}" ] ; then
     CC=cc
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		CC=gcc
+	fi
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		CC=clang
+	fi
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		CC=unknown
+	fi
 fi
 
 echo "Compiler: ${CC}"
@@ -114,8 +140,6 @@ testlib dl
 ###########################
 # Can we use multi-threading ?
 ###########################
-
-testlib pthread
 
 pthread_testlib
 ER=$?

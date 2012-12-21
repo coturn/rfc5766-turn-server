@@ -31,9 +31,14 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
+#define TURN_SERVER_VERSION ("1.1")
+
+#if (defined(__unix__) || defined(unix)) && !defined(USG)
+#include <sys/param.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/param.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -44,7 +49,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>

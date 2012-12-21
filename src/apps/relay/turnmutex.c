@@ -32,7 +32,6 @@
 #include <pthread.h>
 #endif
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 

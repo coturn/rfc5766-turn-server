@@ -1227,6 +1227,8 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
+	printf("RFC 5766 ext TURN Server, version %s\n",TURN_SERVER_VERSION);
+
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
 	fprintf(stderr,"WARNING: TLS is not supported\n");

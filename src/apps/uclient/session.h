@@ -31,8 +31,6 @@
 #ifndef __SESSION__
 #define __SESSION__
 
-#include <stdint.h>
-
 #include <event2/event.h>
 
 #include "ns_turn_ioaddr.h"
