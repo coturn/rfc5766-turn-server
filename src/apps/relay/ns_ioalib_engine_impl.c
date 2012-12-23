@@ -200,19 +200,19 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	if(!capabilities_checked) {
 		capabilities_checked = 1;
 #if !defined(CMSG_SPACE)
-		fprintf(stderr,"WARNING: cannot support TOS and TTL IP fields relaying on this platform\n");
+		fprintf(stderr,"WARNING: cannot support TOS and TTL IP fields relaying on this platform. As a fall back, I am using alternative behavior of RFC 5766.\n");
 #endif
 #if !defined(IP_RECVTTL)
-		fprintf(stderr,"WARNING: IPv4: cannot support TTL IP field relaying on this platform !\n");
+		fprintf(stderr,"WARNING: IPv4: cannot support TTL IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
 #endif
 #if !defined(IPV6_RECVHOPLIMIT)
-		fprintf(stderr,"WARNING: IPv6: cannot support TTL (HOPLIMIT) IP field relaying on this platform !\n");
+		fprintf(stderr,"WARNING: IPv6: cannot support TTL (HOPLIMIT) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
 #endif
 #if !defined(IP_RECVTOS)
-		fprintf(stderr,"WARNING: IPv4: cannot support TOS (DiffServ, ECN) IP field relaying on this platform !\n");
+		fprintf(stderr,"WARNING: IPv4: cannot support TOS (DiffServ, ECN) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
 #endif
 #if !defined(IPV6_RECVTCLASS)
-		fprintf(stderr,"WARNING: IPv6: cannot support TRAFFIC CLASS (DiffServ, ECN) IP field relaying on this platform !\n");
+		fprintf(stderr,"WARNING: IPv6: cannot support TRAFFIC CLASS (DiffServ, ECN) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
 #endif
 	}
 

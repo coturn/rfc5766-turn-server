@@ -61,7 +61,9 @@ Flags:
 
 -f, --fingerprint		Use fingerprints in the TURN messages.
 
--a, --lt-cred-mech		Use long-term credential mechanism.
+-a, --lt-cred-mech		Use long-term credential mechanism. 
+						By default, no credential mechanism is used -
+						any user is allowed.
   
 Config file setting:  
 
@@ -107,11 +109,11 @@ Options:
 				By default, everything in handled in single thread 
 				(the default number of extra threads is 0).
 
--l, --min-port			Lower bound of the UDP port range for relay 
+--min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.
 				Default value is 49152, according to RFC 5766.
 
--r, --max-port			Upper bound of the UDP port range for relay 
+--max-port			Upper bound of the UDP port range for relay 
 				endpoints allocation.
 				Default value is 65535, according to RFC 5766.
 
@@ -124,7 +126,7 @@ Options:
 				The key is calculated over the user name, 
 				the realm, and the user password.
 
--e, --realm			Realm.
+-r, --realm			Realm to be used for all users.
 
 -q, --user-quota		Per-user allocation quota.
 

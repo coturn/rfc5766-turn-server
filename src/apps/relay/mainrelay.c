@@ -614,15 +614,15 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
 	"	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
 	"	-m, --relay-threads		Number of extra threads to handle established connections (default is 0).\n"
-	"	-l, --min-port			Lower bound of the UDP port range for relay endpoints allocation.\n"
+	"	    --min-port			Lower bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 49152, according to RFC 5766.\n"
-	"	-r, --max-port			Upper bound of the UDP port range for relay endpoints allocation.\n"
+	"	    --max-port			Upper bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 65535, according to RFC 5766.\n"
 	"	-v, --verbose			Verbose.\n"
 	"	-f, --fingerprint		Use fingerprints in the TURN messages.\n"
-	"	-a, --lt-cred-mech		Use long-term credential mechanism.\n"
+	"	-a, --lt-cred-mech		Use long-term credential mechanism. Default - no authentication.\n"
 	"	-u, --user			User account, in form 'username:password'.\n"
-	"	-e, --realm			Realm.\n"
+	"	-r, --realm			Realm.\n"
 	"	-q, --user-quota		per-user allocation quota.\n"
 	"	-Q, --total-quota		total allocation quota.\n"
 	"	-c				Configuration file name (default - turn.conf).\n"
@@ -664,7 +664,9 @@ enum EXTRA_OPTS {
 	NO_DTLS_OPT,
 	TLS_PORT_OPT,
 	CERT_FILE_OPT,
-	PKEY_FILE_OPT
+	PKEY_FILE_OPT,
+	MIN_PORT_OPT,
+	MAX_PORT_OPT
 };
 
 static struct option long_options[] = {
@@ -675,11 +677,11 @@ static struct option long_options[] = {
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
 				{ "relay-threads", required_argument, NULL, 'm' },
-				{ "min-port", required_argument, NULL, 'l' },
-				{ "max-port", required_argument, NULL, 'r' },
+				{ "min-port", required_argument, NULL, MIN_PORT_OPT },
+				{ "max-port", required_argument, NULL, MAX_PORT_OPT },
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
 				{ "user", required_argument, NULL, 'u' },
-				{ "realm", required_argument, NULL, 'e' },
+				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "verbose", optional_argument, NULL, 'v' },
@@ -799,10 +801,10 @@ static void set_option(int c, const char *value)
 	case TLS_PORT_OPT:
 		tls_listener_port = atoi(value);
 		break;
-	case 'l':
+	case MIN_PORT_OPT:
 		min_port = atoi(value);
 		break;
-	case 'r':
+	case MAX_PORT_OPT:
 		max_port = atoi(value);
 		break;
 	case 'L':
@@ -824,7 +826,7 @@ static void set_option(int c, const char *value)
 	case 'u':
 		add_user_account(value);
 		break;
-	case 'e':
+	case 'r':
 		strcpy(global_realm,value);
 		strcpy((s08bits*) users->realm, value);
 		break;

@@ -146,7 +146,9 @@ If DTLS is supported, then this command must work:
  $ scripts/secure_dtls_client.sh
 
 If the client application produces output and in approximately 22 seconds prints 
-the jitter, loss and round-trip-delay statistics, then everything runs fine.
+the jitter, loss and round-trip-delay statistics, then everything is fine.
+
+Try wireshark to check the communications between client, turnserver and the peer. 
 
 Check the README file and the scripts relay.sh and secure_relay.sh as a guidance 
 how to run the TURN server.
