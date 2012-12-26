@@ -33,43 +33,6 @@
 
 #include "apputils.h"
 
-#include <openssl/md5.h>
-#include <openssl/hmac.h>
-#include <openssl/ssl.h>
-
-///////////// Security functions implementation from ns_turn_msg.h ///////////
-
-int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac)
-{
-	if (!HMAC(EVP_sha1(), key, 16, buf, len, hmac, NULL)) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key)
-{
-	MD5_CTX ctx;
-	size_t ulen = strlen((s08bits*)uname);
-	size_t rlen = strlen((s08bits*)realm);
-	size_t plen = strlen((s08bits*)upwd);
-	u08bits *str = malloc(ulen+1+rlen+1+plen+1);
-
-	strcpy((s08bits*)str,(s08bits*)uname);
-	str[ulen]=':';
-	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
-	str[ulen+1+rlen]=':';
-	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
-
-	MD5_Init(&ctx);
-	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);
-	MD5_Final(key,&ctx);
-	free(str);
-
-	return 0;
-}
-
 /*********************** Sockets *********************************/
 
 int set_sock_buf_size(evutil_socket_t fd, int sz) {
@@ -379,7 +342,7 @@ int handle_socket_error() {
 
 //////////////////// Config file search //////////////////////
 
-static const char* config_file_search_dirs[] = {"./", "etc/", "../etc/", "/etc/turn", "/usr/local/etc/turn/", "/etc/", "/usr/local/etc/", NULL };
+static const char* config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", NULL };
 
 char* find_config_file(const char *config_file, int print_file_name)
 {

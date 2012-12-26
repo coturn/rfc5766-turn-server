@@ -21,7 +21,7 @@ Just run the make command:
 	$ ./build.sh
 
 build.sh script will create bin sub-directory and put the TURN server there. 
-The test applications will be located in testapps/bin/ 
+The test applications will be located in turn.apps.examples/bin/ 
 sub-directory.
 
 The programs can be either called directly, or a shell scripts can be used. 
@@ -34,7 +34,16 @@ NOTE: On most modern systems, the build will produce dynamically linked
 executables. If you want statically linked executables, you have to modify, 
 accordingly, the Makefile.
 
-III. PLATFORMS
+III. INSTALL
+
+run command:
+
+$ make install
+
+It will install turnserver in /usr/local/ directory. You will have to change 
+/usr/local/turnserver.conf file to adjust your runtime configuration.
+
+IV. PLATFORMS
 
 The TURN Server is using generic *NIX system APIs and is supposed to be usable 
 on wide range of *NIX systems. 
@@ -53,7 +62,7 @@ Makefile may need adjustments for other *NIXes not mentioned above.
 
 The code of the client messaging library can be used on Windows, too.
 
-IV. COMPILERS
+V. COMPILERS
 
 The TURN Server is written in C programming language, for portability 
 and for the performance reasons. 
@@ -66,7 +75,7 @@ The tested C compilers are:
 
 It may be compiled with others compilers, too.
 
-V. EXTRA LIBRARIES AND UTILITIES
+VI. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better is recommended) and libevent2 (version 2.0.5 
@@ -115,7 +124,7 @@ just fine.
 
 NOTE: OpenSSL version 1.0.0a or newer is recommended.
 
-VI. TEST
+VII. TEST
 
 If everything compiled properly, then the following programs must run 
 together successfully, simulating TURN network routing in local networking 
@@ -123,7 +132,7 @@ environment:
 
 Open three shell screens or consoles:
 
-In shell number 1, run peer application: 
+In shell number 1, run peer application (from build directory): 
  $ scripts/peer.sh
 
 In shell number 2, run local TURN server application:
@@ -153,7 +162,7 @@ Try wireshark to check the communications between client, turnserver and the pee
 Check the README file and the scripts relay.sh and secure_relay.sh as a guidance 
 how to run the TURN server.
 
-VII. CLIENT API LIBRARY.
+VIII. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.

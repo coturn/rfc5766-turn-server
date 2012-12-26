@@ -156,7 +156,7 @@ fi
 testlib ssl
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "SSL lib installed."
+    echo "SSL lib found."
 else
     echo "ERROR: OpenSSL development libraries are not installed properly in /usr/local."
     echo "Abort."
@@ -166,7 +166,7 @@ fi
 testlib crypto
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Crypto SSL lib installed."
+    echo "Crypto SSL lib found."
 else
     echo "ERROR: OpenSSL Crypto development libraries are not installed properly in /usr/local."
     echo "Abort."
@@ -180,7 +180,7 @@ fi
 testlib event
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2 installed."
+    echo "Libevent2 found."
 else
     echo "ERROR: Libevent2 development libraries are not installed properly in /usr/local."
     echo "See the INSTALL file."
@@ -191,7 +191,7 @@ fi
 testlib event_openssl
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2-openssl installed."
+    echo "Libevent2-openssl found."
 else
     echo "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
     echo "TLS will be disabled."
@@ -202,7 +202,7 @@ if [ -z "${TURN_NO_THREADS}" ] ; then
 	testlib event_pthreads
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-    	echo "Libevent2 pthreads installed."
+    	echo "Libevent2 pthreads found."
 	else
     	echo "WARNING: Libevent2 development libraries are not compiled with threads support."
     	echo "Using single-thread mode."
@@ -225,7 +225,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} -D__USE_OPENSSL__"
 
 echo make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
 
@@ -233,5 +233,5 @@ echo make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
 # Run make:
 ###############################
 
-make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@ -f Makefile.all
+make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" -f Makefile.all $@
 

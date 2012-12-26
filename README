@@ -20,7 +20,7 @@ functions.
   
 3.	uclient: emulates multiple UDP,TCP,TLS or DTLS clients. 
 (this program is provided for the testing purposes only !)
-The compiled binary image of this program is located in testapps/bin/ 
+The compiled binary image of this program is located in turn.apps.examples/bin/ 
 sub-directory.
 
 WARNING: the uclient program is a primitive client application. 
@@ -37,10 +37,10 @@ the correct Networking IO processing in the client program code.
 	When the test clients are communicating in the client-to-client manner, 
 	this component is not needed.
 	
-The compiled binary image of this program is located in testapps/bin/ subdirectory.
+The compiled binary image of this program is located in turn.apps.examples/bin/ subdirectory.
    
 5.	stunclient: a simple STUN client example.
-The compiled binary image of this program is located in testapps/bin/ subdirectory.
+The compiled binary image of this program is located in turn.apps.examples/bin/ subdirectory.
 
 In the "scripts" subdirectory, you will find the examples of command lines to be used 
 to run the programs.
@@ -69,16 +69,15 @@ Config file setting:
 
 -n				Do not use configuration file, use only command line parameters.
 
--c				Configuration file name (default - turn.conf).
+-c				Configuration file name (default - turnserver.conf).
 				The format of config file can be seen in
-				the supplied etc/turn.conf example file. Long 
+				the supplied etc/turnserver.conf example file. Long 
 				names of the options are used as the configuration 
-				items names in the file. If not absolute path is supplied, 
+				items names in the file. If not an absolute path is supplied, 
 				then the file is searched in the following directories: 
-				  * etc/
+				  * current directory
+				  * current directory etc/ subdirectory
 				  * upper directory level etc/
-				  * /etc/turn/
-				  * /etc/local/etc/turn/
 				  * /etc/ 
 				  * /usr/local/etc/
     

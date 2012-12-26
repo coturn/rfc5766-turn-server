@@ -81,7 +81,7 @@ static void openssl_cleanup(void);
 
 static int verbose=0;
 
-#define DEFAULT_CONFIG_FILE "turn.conf"
+#define DEFAULT_CONFIG_FILE "turnserver.conf"
 
 ////////////////  Listener server /////////////////
 
@@ -625,7 +625,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-r, --realm			Realm.\n"
 	"	-q, --user-quota		per-user allocation quota.\n"
 	"	-Q, --total-quota		total allocation quota.\n"
-	"	-c				Configuration file name (default - turn.conf).\n"
+	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
