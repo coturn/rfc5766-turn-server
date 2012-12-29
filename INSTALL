@@ -56,6 +56,7 @@ The following platforms have been used in the development:
 	- PC-BSD 9.x, x86_64
 	- Solaris 11, x86_64
 	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64
+	- Linux Debian 'squeeze', i386
 
 It must work on many other *NIXes, as well. The build.sh script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -166,4 +167,9 @@ VIII. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.
+
+IX. DOCS
+
+After installation, the man page turnserver(1) must be available.
+
 

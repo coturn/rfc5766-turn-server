@@ -1,15 +1,16 @@
-all	:	build
+all	:	
+	./build.sh
 
-build	:	
+build	:
 	./build.sh
 
 clean	:
 	make -f Makefile.all clean
 
-install	:	build
+install	:
 	./build.sh install
-	
+
 deinstall	:
 	make -f Makefile.all deinstall
-	
+
 uninstall	:	deinstall

@@ -27,8 +27,16 @@ pthread_testlib() {
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "Do not use pthreads"
-	return 0
+	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+	    echo "Do not use pthreads"
+	    return 0
+	else 
+	    echo "Older GNU pthread library found"
+	    OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
+	    return 1
+	fi
     else
 	return 1
     fi
@@ -77,6 +85,7 @@ TH_TMPCPROGB=${TMPDIR}/${TH_TMPCPROG}
 cat > ${TH_TMPCPROGC} <<!
 #include <pthread.h>
 int main() {
+    pthread_mutexattr_settype(NULL,PTHREAD_MUTEX_RECURSIVE);
     return (int)pthread_create(NULL,NULL,NULL,NULL);
 }
 !

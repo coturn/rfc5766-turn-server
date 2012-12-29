@@ -1,3 +1,11 @@
+12/29/2012 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.3.0.2 'Ferro':
+	- Debian 'squeeze' compilation fix
+
+12/26/2012 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.3.0.1 'Ferro':
+	- install procedure minor improvements
+
 12/24/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.3 'Ferro':
 	- default conf file renamed to turnserver.conf
@@ -13,18 +21,18 @@ Version 1.2.3 'Luthar':
 12/22/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.2.2:
 	- Man page fix
-	
+
 12/21/2012 Oleg Moskalenko <mom040267@gmail.com>
-Version 1.2.1 'Juvens': 
+Version 1.2.1 'Juvens':
 	- Man page
-	
+
 12/21/2012 Oleg Moskalenko <mom040267@gmail.com>
-Version 1.2 'Euz': 
+Version 1.2 'Euz':
 	- Project cleaning
-	
+
 12/20/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.1 'no name':
-	- DTLS extension	
+	- DTLS extension
 
 12/17/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.0 'no name':

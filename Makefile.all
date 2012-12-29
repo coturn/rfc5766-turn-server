@@ -100,7 +100,7 @@ clean	:
 ### Install all:
 
 install	:	build ${MAKE_DEPS}
-	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -r bin ${INSTALL_PREFIX}; cp -r man ${INSTALL_PREFIX}; cp -r lib ${INSTALL_PREFIX}; cp -r turn.apps.examples ${INSTALL_PREFIX}; cp -r etc/turnserver.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
+	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -r bin ${INSTALL_PREFIX}; cp -r man ${INSTALL_PREFIX}; cp -r lib ${INSTALL_PREFIX}; cp -r turn.apps.examples ${INSTALL_PREFIX}; cp -r scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -r etc/turnserver.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
 
 deinstall	:	${MAKE_DEPS}
 	echo "rm -rf ${INSTALL_PREFIX}/bin/turnserver;	rm -rf ${INSTALL_PREFIX}/bin/turnadmin; rm -rf ${INSTALL_PREFIX}/man/man1/turnserver.1; rm -rf ${INSTALL_PREFIX}/lib/libturnclient.a; rm -rf ${INSTALL_PREFIX}/turn.apps.examples; rm -rf ${INSTALL_PREFIX}/etc/turnserver.conf" | sudo /bin/sh
