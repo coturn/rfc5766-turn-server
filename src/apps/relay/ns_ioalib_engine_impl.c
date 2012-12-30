@@ -1814,8 +1814,18 @@ void rtpprintf(const char *format, ...)
 {
 	if(!_rtpfile) {
 		char fn[129];
-		sprintf(fn,"/var/rtp_%d.log",(int)getpid());
+		sprintf(fn,"/var/tmp/turn_%d.log",(int)getpid());
 		_rtpfile = fopen(fn,"w");
+		if(!_rtpfile) {
+			sprintf(fn,"/tmp/turn_%d.log",(int)getpid());
+			_rtpfile = fopen(fn,"w");
+			if(!_rtpfile) {
+				sprintf(fn,"turn_%d.log",(int)getpid());
+				_rtpfile = fopen(fn,"w");
+				if(!_rtpfile)
+					_rtpfile = stdout;
+			}
+		}
 	}
 	va_list args;
 	va_start (args, format);

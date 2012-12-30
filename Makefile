@@ -1,7 +1,4 @@
-all	:	
-	./build.sh
-
-build	:
+__build__	:	
 	./build.sh
 
 clean	:

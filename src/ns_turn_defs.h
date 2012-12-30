@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.3.0.2")
-#define TURN_SERVER_VERSION_NAME ("Ferro")
+#define TURN_SERVER_VERSION ("pre-1.4")
+#define TURN_SERVER_VERSION_NAME ("Scale")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
@@ -133,4 +133,5 @@ typedef u32bits turn_time_t;
 #error WRONG BYTE_ORDER SETTING
 #endif
 
-#endif //__IODEFS__
+#endif 
+/* __IODEFS__ */

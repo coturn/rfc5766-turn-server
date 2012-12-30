@@ -1,7 +1,7 @@
 #!/bin/sh
 
 testlibraw() {
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSLIBS} -${1} 2>/dev/null
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 	echo "Do not use -${1}"
@@ -24,10 +24,10 @@ pthread_testlib() {
     	testlib pthread
     fi
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSLIBS} 2>/dev/null
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
+	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 	    echo "Do not use pthreads"
@@ -49,6 +49,17 @@ OSCFLAGS=
 OSLIBS="-L/usr/local/lib/event2/ -L/usr/local/lib/ -Llib"
 TURN_NO_THREADS=
 TURN_NO_TLS=
+
+#############################
+# Adjustments for Solaris
+#############################
+
+SYSTEM=`uname`
+
+if [ "${SYSTEM}" = "SunOS" ] ; then
+# Solaris ? is this you ?!
+    OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500"
+fi
 
 #########################
 # Temporary DIR location:
@@ -85,37 +96,37 @@ TH_TMPCPROGB=${TMPDIR}/${TH_TMPCPROG}
 cat > ${TH_TMPCPROGC} <<!
 #include <pthread.h>
 int main() {
-    pthread_mutexattr_settype(NULL,PTHREAD_MUTEX_RECURSIVE);
-    return (int)pthread_create(NULL,NULL,NULL,NULL);
+    pthread_mutexattr_settype(0,PTHREAD_MUTEX_RECURSIVE);
+    return (int)pthread_create(0,0,0,0);
 }
 !
 
 ##########################
-# What is out compiler ?
+# What is our compiler ?
 ##########################
 
 if [ -z "${CC}" ] ; then
     CC=cc
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
+    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 		CC=gcc
-	fi
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		CC=clang
-	fi
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB}
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-		CC=unknown
+    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+		ER=$?
+		if ! [ ${ER} -eq 0 ] ; then
+			CC=clang
+    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+			ER=$?
+			if ! [ ${ER} -eq 0 ] ; then
+				CC=unknown
+			fi
+		fi
 	fi
 fi
 
 echo "Compiler: ${CC}"
 
-${CC} ${TMPCPROGC} -o ${TMPCPROGB}
+${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "ERROR: cannot use compiler ${CC} properly"
@@ -129,7 +140,7 @@ fi
 
 GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual -Wredundant-decls"
 
-${CC} ${GNUOSCFLAGS} ${TMPCPROGC} -o ${TMPCPROGB} 2>/dev/null
+${CC} ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Not an ordinary GNU or Clang compiler"
@@ -217,17 +228,6 @@ if [ -z "${TURN_NO_THREADS}" ] ; then
     	echo "Using single-thread mode."
 		TURN_NO_THREADS="-DTURN_NO_THREADS"
 	fi
-fi
-
-#############################
-# Adjustments for Solaris
-#############################
-
-SYSTEM=`uname`
-
-if [ "${SYSTEM}" = "SunOS" ] ; then
-# Solaris ? is this you ?!
-    OSCFLAGS="${OSCFLAGS} -D__EXTENSIONS__ -D_XOPEN_SOURCE=500"
 fi
 
 ###############################
