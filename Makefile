@@ -1,4 +1,4 @@
-__build__	:	
+all	:
 	./build.sh
 
 clean	:

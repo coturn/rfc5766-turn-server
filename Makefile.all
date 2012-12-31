@@ -25,9 +25,7 @@ COMMON_MODS = src/apps/common/apputils.c src/apps/common/stun_buffer.c
 IMPL_DEPS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.h src/apps/relay/turn_ports.c
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/turnmutex.c 
 
-all	:	__build__
-
-__build__	:	turn.apps.examples/bin/stunclient turn.apps.examples/bin/uclient bin/turnserver turn.apps.examples/bin/peer lib/libturnclient.a
+all	:	turn.apps.examples/bin/stunclient turn.apps.examples/bin/uclient bin/turnserver turn.apps.examples/bin/peer lib/libturnclient.a
 	rm -rf include
 	mkdir -p include/turn/client
 	cp -rf src/client/*.h include/turn/client/
