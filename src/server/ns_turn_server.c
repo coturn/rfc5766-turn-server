@@ -1105,15 +1105,21 @@ static int check_stun_auth(turn_turnserver *server,
 	/* Password */
 	if(ss->hmackey[0] == 0) {
 		ur_string_map_value_type ukey;
-		ur_string_map_lock(server->users->accounts);
-		if(!ur_string_map_get(server->users->accounts, (ur_string_map_key_type)uname, &ukey)) {
-			ur_string_map_unlock(server->users->accounts);
-			*err_code = 401;
-			*reason = (u08bits*)"Unauthorised";
-			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+		ur_string_map_lock(server->users->static_accounts);
+		if(!ur_string_map_get(server->users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
+			ur_string_map_unlock(server->users->static_accounts);
+			ur_string_map_lock(server->users->dynamic_accounts);
+			if(!ur_string_map_get(server->users->dynamic_accounts, (ur_string_map_key_type)uname, &ukey)) {
+				ur_string_map_unlock(server->users->dynamic_accounts);
+				*err_code = 401;
+				*reason = (u08bits*)"Unauthorised";
+				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+			}
+			ur_string_map_unlock(server->users->dynamic_accounts);
+		} else {
+			ur_string_map_unlock(server->users->static_accounts);
 		}
 		ns_bcopy(ukey,ss->hmackey,16);
-		ur_string_map_unlock(server->users->accounts);
 	}
 
 	/* Check integrity */

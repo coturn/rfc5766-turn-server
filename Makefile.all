@@ -25,13 +25,14 @@ COMMON_MODS = src/apps/common/apputils.c src/apps/common/stun_buffer.c
 IMPL_DEPS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.h src/apps/relay/turn_ports.c
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/turnmutex.c 
 
-all	:	build
+all	:	__build__
 
-build	:	turn.apps.examples/bin/stunclient turn.apps.examples/bin/uclient bin/turnserver turn.apps.examples/bin/peer lib/libturnclient.a
+__build__	:	turn.apps.examples/bin/stunclient turn.apps.examples/bin/uclient bin/turnserver turn.apps.examples/bin/peer lib/libturnclient.a
 	rm -rf include
 	mkdir -p include/turn/client
-	cp -r src/client/*.h include/turn/client/
-	cp src/ns_turn_defs.h include/turn/ 
+	cp -rf src/client/*.h include/turn/client/
+	cp -f src/ns_turn_defs.h include/turn/
+	cp -rf scripts turn.apps.examples
 
 turn.apps.examples/bin/uclient	:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
 	mkdir -p turn.apps.examples/bin
@@ -100,9 +101,9 @@ clean	:
 ### Install all:
 
 install	:	build ${MAKE_DEPS}
-	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -r bin ${INSTALL_PREFIX}; cp -r man ${INSTALL_PREFIX}; cp -r lib ${INSTALL_PREFIX}; cp -r turn.apps.examples ${INSTALL_PREFIX}; cp -r scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -r etc/turnserver.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
+	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -rf bin/* ${INSTALL_PREFIX}/bin/; mkdir -p ${INSTALL_PREFIX}/man/; cp -rf man/* ${INSTALL_PREFIX}/man/; cp -rf lib/* ${INSTALL_PREFIX}/lib/; cp -rf turn.apps.examples ${INSTALL_PREFIX}; cp -fr scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -rf etc/turnserver.conf ${INSTALL_PREFIX}/etc; cp -rf etc/turnuserdb.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
 
 deinstall	:	${MAKE_DEPS}
-	echo "rm -rf ${INSTALL_PREFIX}/bin/turnserver;	rm -rf ${INSTALL_PREFIX}/bin/turnadmin; rm -rf ${INSTALL_PREFIX}/man/man1/turnserver.1; rm -rf ${INSTALL_PREFIX}/lib/libturnclient.a; rm -rf ${INSTALL_PREFIX}/turn.apps.examples; rm -rf ${INSTALL_PREFIX}/etc/turnserver.conf" | sudo /bin/sh
+	echo "rm -rf ${INSTALL_PREFIX}/bin/turnserver;	rm -rf ${INSTALL_PREFIX}/bin/turnadmin; rm -rf ${INSTALL_PREFIX}/man/man1/turnserver.1; rm -rf ${INSTALL_PREFIX}/lib/libturnclient.a; rm -rf ${INSTALL_PREFIX}/turn.apps.examples; rm -rf ${INSTALL_PREFIX}/etc/turnserver.conf; rm -rf ${INSTALL_PREFIX}/etc/turnuserdb.conf" | sudo /bin/sh
 	
 uninstall	:	deinstall

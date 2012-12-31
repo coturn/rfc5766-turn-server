@@ -66,7 +66,8 @@ struct _turn_user_db {
 	size_t total_quota;
 	size_t user_quota;
 	size_t total_current_allocs;
-	ur_string_map *accounts;
+	ur_string_map *static_accounts;
+	ur_string_map *dynamic_accounts;
 	ur_string_map *alloc_counters;
 };
 typedef struct _turn_user_db turn_user_db;

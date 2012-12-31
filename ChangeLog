@@ -1,5 +1,6 @@
 12/31/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4 'Scale':
+	- Separate file for the dynamic user database
 	- Build fixes
 	- Script fixes
 	- Logging fixes

@@ -82,6 +82,7 @@ static void openssl_cleanup(void);
 static int verbose=0;
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
+#define DEFAULT_USERDB_FILE "turnuserdb.conf"
 
 ////////////////  Listener server /////////////////
 
@@ -136,6 +137,7 @@ static char **relay_addrs = NULL;
 
 static int fingerprint = 0;
 
+static char userdb_file[1025]="\0";
 static turn_user_db *users = NULL;
 static s08bits global_realm[1025];
 
@@ -156,11 +158,8 @@ static struct relay_server **relay_servers = NULL;
 
 ////////////// Configuration functionality ////////////////////////////////
 
-static int read_config_file(int argc, char **argv, int users_only);
-static void reread_users(void) ;
-
-static int orig_argc = 0;
-static char **orig_argv = NULL;
+static void read_config_file(int argc, char **argv);
+static void read_userdb_file(void);
 
 //////////////////////////////////////////////////
 
@@ -323,7 +322,7 @@ static void run_listener_server(struct event_base *eb)
 
 		run_events(eb);
 
-		reread_users();
+		read_userdb_file();
 	}
 }
 
@@ -523,7 +522,8 @@ static void clean_server(void)
 	listener.number = 0;
 
 	if(users) {
-		ur_string_map_free(&(users->accounts));
+		ur_string_map_free(&(users->static_accounts));
+		ur_string_map_free(&(users->dynamic_accounts));
 		ur_string_map_free(&(users->alloc_counters));
 		free(users);
 	}
@@ -626,6 +626,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-q, --user-quota		per-user allocation quota.\n"
 	"	-Q, --total-quota		total allocation quota.\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
+	"	-b, --userdb			'Dynamic' user database file name (default - turnuserdb.conf).\n"
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
@@ -647,15 +648,15 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-a, --add		add/update a user\n"
 	"	-d, --delete		delete a user\n"
 	"Options:\n"
-	"	-c, --config-file	configuration file\n"
+	"	-b, --user-db-file	Dynamic user database file\n"
 	"	-u, --user		Username\n"
 	"	-r, --realm		Realm\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "d:p:L:E:i:m:l:r:u:e:q:Q:vfha"
+#define OPTIONS "c:d:p:L:E:i:m:l:r:u:b:q:Q:vfha"
 
-#define ADMIN_OPTIONS "kadc:u:r:p:h"
+#define ADMIN_OPTIONS "kadb:u:r:p:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -699,7 +700,7 @@ static struct option admin_long_options[] = {
 				{ "key", no_argument, NULL, 'k' },
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
-				{ "config-file", required_argument, NULL, 'c' },
+				{ "userdb", required_argument, NULL, 'b' },
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
@@ -727,7 +728,7 @@ static int get_bool_value(const char* s)
 	exit(-1);
 }
 
-static int add_user_account(const char *user)
+static int add_user_account(const char *user, int dynamic)
 {
 	if(user) {
 		char *s = strstr(user,":");
@@ -766,9 +767,15 @@ static int add_user_account(const char *user)
 			} else {
 				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, key);
 			}
-			ur_string_map_lock(users->accounts);
-			ur_string_map_put(users->accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
-			ur_string_map_unlock(users->accounts);
+			if(dynamic) {
+				ur_string_map_lock(users->dynamic_accounts);
+				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
+				ur_string_map_unlock(users->dynamic_accounts);
+			} else {
+				ur_string_map_lock(users->static_accounts);
+				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
+				ur_string_map_unlock(users->static_accounts);
+			}
 			free(uname);
 			return 0;
 		}
@@ -824,7 +831,10 @@ static void set_option(int c, const char *value)
 		fingerprint = get_bool_value(value);
 		break;
 	case 'u':
-		add_user_account(value);
+		add_user_account(value,0);
+		break;
+	case 'b':
+		strcpy(userdb_file, optarg);
 		break;
 	case 'r':
 		strcpy(global_realm,value);
@@ -904,67 +914,39 @@ static int parse_arg_string(char *sarg, int *c, char **value)
 	return -1;
 }
 
-static int read_config_file(int argc, char **argv, int users_only)
+static void read_userdb_file(void)
 {
-	static char config_file[1025] = DEFAULT_CONFIG_FILE;
-	static char *full_path_to_config_file = NULL;
+	static char *full_path_to_userdb_file = NULL;
+	static int first_read = 1;
 	static turn_time_t mtime = 0;
 
-	int i = 0;
 	FILE *f = NULL;
 
-	if(users_only && full_path_to_config_file) {
+	if(full_path_to_userdb_file) {
 		struct stat sb;
-		if(stat(full_path_to_config_file,&sb)<0) {
+		if(stat(full_path_to_userdb_file,&sb)<0) {
 			perror("File statistics");
 		} else {
 			turn_time_t newmtime = (turn_time_t)(sb.st_mtime);
 			if(mtime == newmtime)
-				return 0;
+				return;
+			mtime = newmtime;
 
 		}
 	}
 
-	if (full_path_to_config_file)
-		f = fopen(full_path_to_config_file, "r");
-	else {
-		if (argv) {
+	if (!full_path_to_userdb_file)
+		full_path_to_userdb_file = find_config_file(userdb_file, first_read);
 
-			for (i = 0; i < argc; i++) {
-				if (!strcmp(argv[i], "-c")) {
-					if (i < argc - 1) {
-						strncpy(config_file, argv[i + 1], sizeof(config_file) - 1);
-					} else {
-						fprintf(stderr, "Wrong usage of -c option\n");
-					}
-				} else if (!strcmp(argv[i], "-n")) {
-					config_file[0] = 0;
-				} else if (!strcmp(argv[i], "-h")) {
-					fprintf(stdout, "%s\n", Usage);
-					exit(0);
-				}
-			}
-		}
+	if (full_path_to_userdb_file)
+		f = fopen(full_path_to_userdb_file, "r");
 
-		full_path_to_config_file = find_config_file(config_file, !users_only);
-		if(full_path_to_config_file)
-			f = fopen(full_path_to_config_file,"r");
-	}
-
-	if (f && full_path_to_config_file) {
+	if (f) {
 
 		char sbuf[1025];
-		char sarg[1035];
 
-		struct stat sb;
-		if(stat(full_path_to_config_file,&sb)<0)
-			perror("File statistics");
-		else
-			mtime = (turn_time_t)(sb.st_mtime);
-
-
-		ur_string_map_lock(users->accounts);
-		ur_string_map_clean(users->accounts);
+		ur_string_map_lock(users->dynamic_accounts);
+		ur_string_map_clean(users->dynamic_accounts);
 
 		for (;;) {
 			char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
@@ -978,44 +960,92 @@ static int read_config_file(int argc, char **argv, int users_only)
 			size_t slen = strlen(s);
 			while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
 				s[--slen] = 0;
-			if (slen) {
-				strcpy(sarg, s);
-				int c = 0;
-				char *value = NULL;
-				if (parse_arg_string(sarg, &c, &value) < 0) {
-					fprintf(stderr, "Bad configuration format: %s\n", sarg);
-				} else {
-					if (c == 'u' || (users_only == 0))
-						set_option(c, value);
-				}
-			}
+			if (slen)
+				add_user_account(s,1);
 		}
+
+		ur_string_map_unlock(users->dynamic_accounts);
 
 		fclose(f);
 
-		return 1;
+	} else if (first_read)
+		fprintf(stderr, "Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
 
-	} else if (!users_only) {
-		fprintf(stderr, "Cannot find config file: %s. Guessing default values.\n", config_file);
-		return 0;
-	} else
-		return 0;
+	first_read = 0;
 }
 
-static void reread_users(void)
+static void read_config_file(int argc, char **argv)
 {
-	int c = 0;
-	if(read_config_file(0,NULL,1)) {
-		optind=0;
-		while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
-			if(c == 'e')
-				set_option(c,optarg);
+	char config_file[1025] = DEFAULT_CONFIG_FILE;
+
+	strcpy(userdb_file,DEFAULT_USERDB_FILE);
+
+	if (argv) {
+		int i = 0;
+		for (i = 0; i < argc; i++) {
+			if (!strcmp(argv[i], "-c")) {
+				if (i < argc - 1) {
+					strncpy(config_file, argv[i + 1], sizeof(config_file)
+									- 1);
+				} else {
+					fprintf(stderr, "Wrong usage of -c option\n");
+				}
+			} else if (!strcmp(argv[i], "-n")) {
+				return;
+			} else if (!strcmp(argv[i], "-h")) {
+				fprintf(stdout, "%s\n", Usage);
+				exit(0);
+			}
 		}
-		while (((c = getopt_long(orig_argc, orig_argv, OPTIONS, long_options, NULL)) != -1)) {
-			if(c == 'u')
-				set_option(c,optarg);
-		}
-		ur_string_map_unlock(users->accounts);
+	}
+
+	if (config_file[0]) {
+
+		FILE *f = NULL;
+		char *full_path_to_config_file = NULL;
+
+		full_path_to_config_file = find_config_file(config_file, 1);
+		if (full_path_to_config_file)
+			f = fopen(full_path_to_config_file, "r");
+
+		if (f && full_path_to_config_file) {
+
+			char sbuf[1025];
+			char sarg[1035];
+
+			for (;;) {
+				char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
+				if (!s)
+					break;
+				s = skip_blanks(s);
+				if (s[0] == '#')
+					continue;
+				if (!s[0])
+					continue;
+				size_t slen = strlen(s);
+				while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
+					s[--slen] = 0;
+				if (slen) {
+					int c = 0;
+					char *value = NULL;
+					strcpy(sarg, s);
+					if (parse_arg_string(sarg, &c, &value) < 0) {
+						fprintf(
+							stderr,
+							"Bad configuration format: %s\n",
+							sarg);
+					} else
+						set_option(c, value);
+				}
+			}
+
+			fclose(f);
+
+		} else
+			fprintf(
+				stderr,
+				"Cannot find config file: %s. Guessing default values.\n",
+				config_file);
 	}
 }
 
@@ -1031,7 +1061,7 @@ static int adminmain(int argc, char **argv)
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
 
-	char config_file[1025] = DEFAULT_CONFIG_FILE;
+	strcpy(userdb_file,DEFAULT_USERDB_FILE);
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
@@ -1044,8 +1074,8 @@ static int adminmain(int argc, char **argv)
 		case 'd':
 			dcommand = 1;
 			break;
-		case 'c':
-			strcpy(config_file,optarg);
+		case 'b':
+			strcpy(userdb_file,optarg);
 			break;
 		case 'u':
 			strcpy((char*)user,optarg);
@@ -1094,85 +1124,71 @@ static int adminmain(int argc, char **argv)
 		printf("\n");
 	} else {
 
-		char *full_path_to_config_file = find_config_file(config_file, 1);
-		FILE *f = full_path_to_config_file ? fopen(full_path_to_config_file,"r") : NULL;
-		if(!f || !full_path_to_config_file) {
-			fprintf(stderr,"Cannot file %s file.\n",config_file);
-			exit(-1);
-		}
-
-		char **content = NULL;
-		size_t csz = 0;
-		char sarg[1025];
-		char sbuf[1025];
-		char us[1025];
+		char *full_path_to_userdb_file = find_config_file(userdb_file, 1);
+		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
 		int found = 0;
-		int realm_found = 0;
+		char us[1025];
 		size_t i = 0;
 		u08bits key[16];
+		char **content = NULL;
+		size_t csz = 0;
 
 		stun_produce_integrity_key_str(user, realm, pwd, key);
 
-		strcpy(us,(char*)user);
-		strcpy(us+strlen(us),":");
+		strcpy(us, (char*) user);
+		strcpy(us + strlen(us), ":");
 
-		for (;;) {
-			char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
-			if (!s0)
-				break;
+		if (f) {
 
-			size_t slen = strlen(s0);
-			while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
-				s0[--slen] = 0;
+			char sarg[1025];
+			char sbuf[1025];
 
-			char *s = skip_blanks(s0);
+			for (;;) {
+				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
+				if (!s0)
+					break;
 
-			if (s[0] == '#')
-				goto add_and_cont;
-			if (!s[0])
-				goto add_and_cont;
+				size_t slen = strlen(s0);
+				while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
+					s0[--slen] = 0;
 
-			strcpy(sarg, s);
-			int c = 0;
-			char *value = NULL;
-			if (parse_arg_string(sarg, &c, &value) >= 0) {
-				if (c == 'u') {
-					if(strstr(value,us)==value) {
-						if(dcommand)
-							continue;
+				char *s = skip_blanks(s0);
 
-						if(found)
-							continue;
-						found = 1;
-						strcpy(us,"user=");
-						strcpy(us+strlen(us),(char*)user);
-						strcpy(us+strlen(us),":0x");
-						for(i=0;i<sizeof(key);i++) {
-							sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
-						}
-						s0 = us;
-					}
-				} else if(c == 'e') {
-					if(!realm_found) {
-						realm_found = 1;
-						strcpy(us,"realm=");
-						strcpy(us+strlen(us),(char*)realm);
-						s0 = us;
-					} else
+				if (s[0] == '#')
+					goto add_and_cont;
+				if (!s[0])
+					goto add_and_cont;
+
+				strcpy(sarg, s);
+				if (strstr(sarg, us) == sarg) {
+					if (dcommand)
 						continue;
+
+					if (found)
+						continue;
+					found = 1;
+					strcpy(us, (char*) user);
+					strcpy(us + strlen(us), ":0x");
+					for (i = 0; i < sizeof(key); i++) {
+						sprintf(
+										us + strlen(us),
+										"%02x",
+										(unsigned int) key[i]);
+					}
+
+					s0 = us;
 				}
+
+				add_and_cont: content = realloc(content, sizeof(char*)
+									* (++csz));
+				content[csz - 1] = strdup(s0);
 			}
 
-			add_and_cont:
-			content = realloc(content,sizeof(char*)*(++csz));
-			content[csz-1]=strdup(s0);
+			fclose(f);
 		}
 
-		fclose(f);
-
 		if(!found && acommand) {
-			strcpy(us,"user=");
-			strcpy(us+strlen(us),(char*)user);
+			strcpy(us,(char*)user);
 			strcpy(us+strlen(us),":0x");
 			for(i=0;i<sizeof(key);i++) {
 				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
@@ -1181,22 +1197,18 @@ static int adminmain(int argc, char **argv)
 			content[csz-1]=strdup(us);
 		}
 
-		if(!realm_found && acommand) {
-			strcpy(us,"realm=");
-			strcpy(us+strlen(us),(char*)realm);
-			content = realloc(content,sizeof(char*)*(++csz));
-			content[csz-1]=strdup(us);
-		}
+		if(!full_path_to_userdb_file)
+			full_path_to_userdb_file=strdup(userdb_file);
 
-		char *dir = malloc(strlen(full_path_to_config_file)+21);
-		strcpy(dir,full_path_to_config_file);
+		char *dir = malloc(strlen(full_path_to_userdb_file)+21);
+		strcpy(dir,full_path_to_userdb_file);
 		size_t dlen = strlen(dir);
 		while(dlen) {
 			if(dir[dlen-1]=='/')
 				break;
 			dir[--dlen]=0;
 		}
-		strcpy(dir+strlen(dir),".tmp_config");
+		strcpy(dir+strlen(dir),".tmp_userdb");
 
 		f = fopen(dir,"w");
 		if(!f) {
@@ -1209,7 +1221,7 @@ static int adminmain(int argc, char **argv)
 
 		fclose(f);
 
-		rename(dir,full_path_to_config_file);
+		rename(dir,full_path_to_userdb_file);
 	}
 
 	return 0;
@@ -1255,19 +1267,16 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	printf("RFC 5766 ext TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
+	printf("RFC 5389/5766/6156 STUN/TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
 
 	users = malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
-	users->accounts = ur_string_map_create(free);
+	users->static_accounts = ur_string_map_create(free);
+	users->dynamic_accounts = ur_string_map_create(free);
 	users->alloc_counters = ur_string_map_create(NULL);
 
-	if(read_config_file(argc,argv,0))
-		ur_string_map_unlock(users->accounts);
-
-	orig_argc = argc;
-	orig_argv = argv;
+	read_config_file(argc,argv);
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
 		if(c != 'u')
@@ -1280,6 +1289,8 @@ int main(int argc, char **argv)
 		if(c == 'u')
 			set_option(c,optarg);
 	}
+
+	read_userdb_file();
 
 	argc -= optind;
 	argv += optind;

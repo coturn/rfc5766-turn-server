@@ -51,7 +51,7 @@ RUN
   
 Usage:
   
-$ turnserver [-vfa] [-n | -c <config-file> ] [options]
+$ turnserver [-vfa] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [options]
 
 $ turnserver -h
   
@@ -80,6 +80,11 @@ Config file setting:
 				  * upper directory level etc/
 				  * /etc/ 
 				  * /usr/local/etc/
+				  
+-b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
+				This user database is being dynamically checked while the turnserver 
+				is working, and the user accounts can be changed dynamically by
+				editing the file.
     
 Options:  
 
@@ -163,28 +168,28 @@ $ turnadmin [ -h | --help]
 Commands:  
 
 -k, --key		Generate key for a user.
--a, --add       	Add or update a user.
--d, --delete		Delete a user.
+-a, --add       Add or update a user.
+-d, --delete	Delete a user.
   
 Options:  
 
--c, --config-file 	Configuration file.
+-b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
 -u, --user		User name.
 -r, --realm		Realm.
--p, --password		Password.
+-p, --password	Password.
 -h, --help		Help.
   
 Generate a key:  
 
 $ turnadmin -k -u <username> -r <realm> -p <password>
   
-Add/update a user (and realm) in the config file:  
+Add/update a user (and realm) in the userdb file:  
 
-$ turnadmin -a [-c <config-file>] -u <username> -r <realm> -p <password>
+$ turnadmin -a [-b <user-db-file>] -u <username> -r <realm> -p <password>
   
-Delete a user from the config file:  
+Delete a user from the userdb file:  
 
-$ turnadmin -d [-c <config-file>] -u <username>
+$ turnadmin -d [-c <user-db-file>] -u <username>
   
 Help:  
 
@@ -262,3 +267,10 @@ LIBRARIES
 In the lib/ sub-directory the build process will create TURN client messaging library.
 In the include/ sub-directory, the necessary include files will be placed.
  
+DOCS
+
+After installation, run the command:
+
+$ man turnserver
+
+to see the man page.
