@@ -98,8 +98,8 @@ clean	:
 
 ### Install all:
 
-install	:	build ${MAKE_DEPS}
-	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -rf bin/* ${INSTALL_PREFIX}/bin/; mkdir -p ${INSTALL_PREFIX}/man/; cp -rf man/* ${INSTALL_PREFIX}/man/; cp -rf lib/* ${INSTALL_PREFIX}/lib/; cp -rf turn.apps.examples ${INSTALL_PREFIX}; cp -fr scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -rf etc/turnserver.conf ${INSTALL_PREFIX}/etc; cp -rf etc/turnuserdb.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
+install	:	all ${MAKE_DEPS}
+	echo "mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -rf bin/* ${INSTALL_PREFIX}/bin/; mkdir -p ${INSTALL_PREFIX}/man/; cp -rf man/* ${INSTALL_PREFIX}/man/; cp -rf lib/libturnclient.a ${INSTALL_PREFIX}/lib/; cp -rf turn.apps.examples ${INSTALL_PREFIX}; cp -fr scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -rf etc/turnserver.conf ${INSTALL_PREFIX}/etc; cp -rf etc/turnuserdb.conf ${INSTALL_PREFIX}/etc" | sudo /bin/sh
 
 deinstall	:	${MAKE_DEPS}
 	echo "rm -rf ${INSTALL_PREFIX}/bin/turnserver;	rm -rf ${INSTALL_PREFIX}/bin/turnadmin; rm -rf ${INSTALL_PREFIX}/man/man1/turnserver.1; rm -rf ${INSTALL_PREFIX}/lib/libturnclient.a; rm -rf ${INSTALL_PREFIX}/turn.apps.examples; rm -rf ${INSTALL_PREFIX}/etc/turnserver.conf; rm -rf ${INSTALL_PREFIX}/etc/turnuserdb.conf" | sudo /bin/sh
