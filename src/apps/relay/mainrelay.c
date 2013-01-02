@@ -834,17 +834,17 @@ static void set_option(int c, const char *value)
 		add_user_account(value,0);
 		break;
 	case 'b':
-		strcpy(userdb_file, optarg);
+		strcpy(userdb_file, value);
 		break;
 	case 'r':
 		strcpy(global_realm,value);
 		strcpy((s08bits*) users->realm, value);
 		break;
 	case 'q':
-		users->user_quota = atoi(optarg);
+		users->user_quota = atoi(value);
 		break;
 	case 'Q':
-		users->total_quota = atoi(optarg);
+		users->total_quota = atoi(value);
 		break;
 	case NO_UDP_OPT:
 		no_udp = get_bool_value(value);
@@ -869,10 +869,10 @@ static void set_option(int c, const char *value)
 #endif
 		break;
 	case CERT_FILE_OPT:
-		strcpy(cert_file,optarg);
+		strcpy(cert_file,value);
 		break;
 	case PKEY_FILE_OPT:
-		strcpy(pkey_file,optarg);
+		strcpy(pkey_file,value);
 		break;
 	/* these options have been already taken care of before: */
 	case 'c':
