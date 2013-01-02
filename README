@@ -1,7 +1,7 @@
 GENERAL INFORMATION
 
 The TURN Server project contains the source code of a TURN server and TURN client 
-messaging library. Also, four extra programs provided, for testing-only 
+messaging library. Also, some extra programs provided, for testing-only 
 purposes. 
 
 See the INSTALL file for the building instructions.
