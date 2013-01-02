@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.4.0.1")
+#define TURN_SERVER_VERSION ("1.4.1")
 #define TURN_SERVER_VERSION_NAME ("Scale")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
