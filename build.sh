@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ -z "${PREFIX}" ] ; then
+	PREFIX=/usr/local
+fi
+
 testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>/dev/null
     ER=$?
@@ -46,7 +50,7 @@ pthread_testlib() {
 # To be set:
 #########################
 OSCFLAGS=
-OSLIBS="-L/usr/local/lib/event2/ -L/usr/local/lib/ -Llib"
+OSLIBS="-L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -Llib"
 TURN_NO_THREADS=
 TURN_NO_TLS=
 
@@ -178,7 +182,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "SSL lib found."
 else
-    echo "ERROR: OpenSSL development libraries are not installed properly in /usr/local."
+    echo "ERROR: OpenSSL development libraries are not installed properly in ${PREFIX}."
     echo "Abort."
     exit
 fi
@@ -188,7 +192,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Crypto SSL lib found."
 else
-    echo "ERROR: OpenSSL Crypto development libraries are not installed properly in /usr/local."
+    echo "ERROR: OpenSSL Crypto development libraries are not installed properly in ${PREFIX}."
     echo "Abort."
     exit
 fi
@@ -202,7 +206,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Libevent2 found."
 else
-    echo "ERROR: Libevent2 development libraries are not installed properly in /usr/local."
+    echo "ERROR: Libevent2 development libraries are not installed properly in ${PREFIX}."
     echo "See the INSTALL file."
     echo "Abort."
     exit
@@ -236,11 +240,11 @@ fi
 
 OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} -D__USE_OPENSSL__"
 
-echo make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
+echo make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
 
 ###############################
 # Run make:
 ###############################
 
-make OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" -f Makefile.all $@
+make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" -f Makefile.all $@
 

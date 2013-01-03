@@ -1415,31 +1415,27 @@ static int THREAD_cleanup(void) {
   return 1;
 }
 
-static void set_ctx(SSL_CTX* ctx) {
+static void set_ctx(SSL_CTX* ctx)
+{
 
-  SSL_CTX_set_cipher_list(ctx, "DEFAULT");
-  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+	SSL_CTX_set_cipher_list(ctx, "DEFAULT");
+	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-  if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
-    if (verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: no certificate found!");
-      exit(-1);
-    }
-  }
+	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found\n");
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCertificate file %s found\n",cert_file);
+	}
 
-  if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-    if (verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: no private key found!");
-      exit(-1);
-    }
-  }
+	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found\n");
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nPrivate file %s found\n",pkey_file);
+	}
 
-  if (!SSL_CTX_check_private_key (ctx)) {
-    if (verbose) {
-      TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: invalid private key!");
-      exit(-1);
-    }
-  }
+	if (!SSL_CTX_check_private_key(ctx)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key\n");
+	}
 }
 
 static void adjust_key_file_name(char *fn, const char* file_title)
@@ -1455,12 +1451,12 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
 	if(!f) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
-		exit(-1);
+		return;
 	}
 
 	if(!full_path_to_file) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (2)\n",file_title,fn);
-		exit(-1);
+		return;
 	}
 
 	strcpy(fn,full_path_to_file);

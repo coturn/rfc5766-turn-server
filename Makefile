@@ -7,7 +7,7 @@ clean	:
 install	:
 	./build.sh install
 
-deinstall	:
-	make -f Makefile.all deinstall
+deinstall	:	install
+	./build.sh deinstall
 
 uninstall	:	deinstall

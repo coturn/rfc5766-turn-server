@@ -1,10 +1,8 @@
-INSTALL_PREFIX = /usr/local
-
 AR = ar -r
 
-LIBEVENT_INCLUDE = /usr/local/include/
+LIBEVENT_INCLUDE = -I${PREFIX}/include/ -I/usr/local/include/
 
-INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client -I${LIBEVENT_INCLUDE} 
+INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client ${LIBEVENT_INCLUDE} 
 LINKFLAGS = ${OSLIBS}
 
 CFLAGS += ${OSCFLAGS} ${INCFLAGS}
@@ -99,9 +97,9 @@ clean	:
 ### Install all:
 
 install	:	all ${MAKE_DEPS}
-	echo "mkdir -p ${INSTALL_PREFIX}; mkdir -p ${INSTALL_PREFIX}/bin; mkdir -p ${INSTALL_PREFIX}/man; mkdir -p ${INSTALL_PREFIX}/etc; mkdir -p ${INSTALL_PREFIX}/lib; cp -rf bin/* ${INSTALL_PREFIX}/bin/; mkdir -p ${INSTALL_PREFIX}/man/; cp -rf man/* ${INSTALL_PREFIX}/man/; cp -rf lib/libturnclient.a ${INSTALL_PREFIX}/lib/; cp -rf turn.apps.examples ${INSTALL_PREFIX}; cp -fr scripts ${INSTALL_PREFIX}/turn.apps.examples/; cp -rf etc/turnserver.conf ${INSTALL_PREFIX}/etc; cp -rf etc/turnuserdb.conf ${INSTALL_PREFIX}/etc; cp -rf etc/example_turn_server_cert.pem  ${INSTALL_PREFIX}/etc; cp -rf etc/example_turn_server_pkey.pem  ${INSTALL_PREFIX}/etc; cp -rf etc/example_turn_client_cert.pem  ${INSTALL_PREFIX}/etc; cp -rf etc/example_turn_client_pkey.pem  ${INSTALL_PREFIX}/etc" | sudo /bin/sh
+	echo "mkdir -p ${PREFIX}; mkdir -p ${PREFIX}/bin; mkdir -p ${PREFIX}/man; mkdir -p ${PREFIX}/etc; mkdir -p ${PREFIX}/lib; mkdir -p ${PREFIX}/share/turn/examples/etc; mkdir -p ${PREFIX}/share/turn/examples/bin; mkdir -p ${PREFIX}/share/turn/examples/scripts/; cp -rf bin/* ${PREFIX}/bin/; cp -rf man/* ${PREFIX}/man/; cp -rf lib/libturnclient.a ${PREFIX}/lib/; cp -rf turn.apps.examples ${PREFIX}/share/turn/examples/; cp -fr scripts ${PREFIX}/share/turn/examples/; cp -rf etc/turnserver.conf ${PREFIX}/etc; cp -rf etc/turnuserdb.conf ${PREFIX}/etc; cp -rf etc/  ${PREFIX}/share/turn/examples/" | sudo /bin/sh
 
 deinstall	:	${MAKE_DEPS}
-	echo "rm -rf ${INSTALL_PREFIX}/bin/turnserver;	rm -rf ${INSTALL_PREFIX}/bin/turnadmin; rm -rf ${INSTALL_PREFIX}/man/man1/turnserver.1; rm -rf ${INSTALL_PREFIX}/lib/libturnclient.a; rm -rf ${INSTALL_PREFIX}/turn.apps.examples; rm -rf ${INSTALL_PREFIX}/etc/turnserver.conf; rm -rf ${INSTALL_PREFIX}/etc/turnuserdb.conf; rm -rf ${INSTALL_PREFIX}/etc/example_turn_server_pkey.pem; rm -rf ${INSTALL_PREFIX}/etc/example_turn_server_cert.pem; rm -rf ${INSTALL_PREFIX}/etc/example_turn_client_pkey.pem; rm -rf ${INSTALL_PREFIX}/etc/example_turn_client_cert.pem" | sudo /bin/sh
+	echo "rm -rf ${PREFIX}/bin/turnserver;	rm -rf ${PREFIX}/bin/turnadmin; rm -rf ${PREFIX}/man/man1/turnserver.1; rm -rf ${PREFIX}/lib/libturnclient.a; rm -rf ${PREFIX}/share/turn/; rm -rf ${PREFIX}/etc/turnserver.conf; rm -rf ${PREFIX}/etc/turnuserdb.conf" | sudo /bin/sh
 	
 uninstall	:	deinstall
