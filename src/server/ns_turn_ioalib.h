@@ -164,7 +164,4 @@ void* create_ioa_socket_channel(ioa_socket_handle s, void *channel_info);
 void refresh_ioa_socket_channel(void *socket_channel);
 void delete_ioa_socket_channel(void **socket_channel);
 
-/* Log */
-void rtpprintf(const char *format, ...);
-
 #endif /* __IOA_LIB__ */

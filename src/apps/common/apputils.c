@@ -342,7 +342,13 @@ int handle_socket_error() {
 
 //////////////////// Config file search //////////////////////
 
-static const char* config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", NULL };
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+
+#define ETCDIR INSTALL_PREFIX/etc/
+#define QETCDIR QUOTE(ETCDIR)
+
+static const char* config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", QETCDIR, NULL };
 
 char* find_config_file(const char *config_file, int print_file_name)
 {
@@ -368,7 +374,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 				if (f) {
 					fclose(f);
 					if (print_file_name)
-						fprintf(stdout, "File found: %s\n", fn);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
 					full_path_to_config_file = fn;
 					break;
 				}

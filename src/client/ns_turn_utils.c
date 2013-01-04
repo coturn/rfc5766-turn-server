@@ -36,16 +36,29 @@
 extern void TURN_LOG_FUNC_IMPL(TURN_LOG_LEVEL level, const s08bits* format, va_list args);
 #endif
 
-void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...) {
-  va_list args;
-  va_start(args,format);
+void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
+{
+	{
+		va_list args;
+		va_start(args,format);
 #if defined(TURN_LOG_FUNC_IMPL)
-  TURN_LOG_FUNC_IMPL(level,format,args);
+		TURN_LOG_FUNC_IMPL(level,format,args);
 #else
-  printf("<%d>: ",(int)level);
-  vprintf(format,args);
+		if (level == TURN_LOG_LEVEL_ERROR)
+			vfprintf(stderr, format, args);
+		else
+			vprintf(format, args);
 #endif
-  va_end(args);
+		va_end(args);
+	}
+#if !defined(TURN_LOG_FUNC_IMPL)
+	{
+		va_list args;
+		va_start(args,format);
+		vrtpprintf(format, args);
+		va_end(args);
+	}
+#endif
 }
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
@@ -123,5 +136,50 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 }
 
 #endif
+
+/******* Log ************/
+
+static FILE* _rtpfile = NULL;
+
+static void set_rtpfile(void)
+{
+	if (!_rtpfile) {
+		char fn[129];
+		sprintf(fn, "/var/log/turn_%d.log", (int) getpid());
+		_rtpfile = fopen(fn, "w");
+		if (!_rtpfile) {
+			sprintf(fn, "/var/tmp/turn_%d.log", (int) getpid());
+			_rtpfile = fopen(fn, "w");
+			if (!_rtpfile) {
+				sprintf(fn, "/tmp/turn_%d.log", (int) getpid());
+				_rtpfile = fopen(fn, "w");
+				if (!_rtpfile) {
+					sprintf(fn, "turn_%d.log", (int) getpid());
+					_rtpfile = fopen(fn, "w");
+					if (!_rtpfile)
+						_rtpfile = stdout;
+				}
+			}
+		}
+	}
+}
+
+void rtpprintf(const char *format, ...)
+{
+	set_rtpfile();
+	va_list args;
+	va_start (args, format);
+	vfprintf(_rtpfile,format, args);
+	fflush(_rtpfile);
+	va_end (args);
+}
+
+int vrtpprintf(const char *format, va_list args)
+{
+	set_rtpfile();
+	vfprintf(_rtpfile,format, args);
+	fflush(_rtpfile);
+	return 0;
+}
 
 //////////////////////////////////////////////////////////////////

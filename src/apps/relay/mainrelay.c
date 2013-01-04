@@ -80,6 +80,7 @@ static void openssl_cleanup(void);
 //////////////// Common params ////////////////////
 
 static int verbose=0;
+static int turn_daemon = 0;
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 #define DEFAULT_USERDB_FILE "turnuserdb.conf"
@@ -557,7 +558,7 @@ static int make_local_listeners_list(void)
 				continue;
 
 			add_listener_addr(saddr);
-			printf("Added listener address %s (%s)\n",saddr,ifa->ifa_name);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (%s)\n",saddr,ifa->ifa_name);
 		}
 		freeifaddrs(ifs);
 	}
@@ -594,7 +595,7 @@ static int make_local_relays_list(int allow_local)
 				continue;
 
 			add_relay_addr(saddr);
-			printf("Added relay address %s (%s)\n",saddr,ifa->ifa_name);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added relay address %s (%s)\n",saddr,ifa->ifa_name);
 		}
 		freeifaddrs(ifs);
 	}
@@ -619,6 +620,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	    --max-port			Upper bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 65535, according to RFC 5766.\n"
 	"	-v, --verbose			Verbose.\n"
+	"	-o, --daemon			Start process as daemon (detach from current shell).\n"
 	"	-f, --fingerprint		Use fingerprints in the TURN messages.\n"
 	"	-a, --lt-cred-mech		Use long-term credential mechanism. Default - no authentication.\n"
 	"	-u, --user			User account, in form 'username:password'.\n"
@@ -654,7 +656,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "c:d:p:L:E:i:m:l:r:u:b:q:Q:vfha"
+#define OPTIONS "c:d:p:L:E:i:m:l:r:u:b:q:Q:vofha"
 
 #define ADMIN_OPTIONS "kadb:u:r:p:h"
 
@@ -686,6 +688,7 @@ static struct option long_options[] = {
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "verbose", optional_argument, NULL, 'v' },
+				{ "daemon", optional_argument, NULL, 'o' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
@@ -724,7 +727,7 @@ static int get_bool_value(const char* s)
 	if(s[0]>'0' && s[0]<='9') return 1;
 	if(!strcmp(s,"off") || !strcmp(s,"OFF") || !strcmp(s,"Off")) return 0;
 	if(!strcmp(s,"on") || !strcmp(s,"ON") || !strcmp(s,"On")) return 1;
-	fprintf(stderr,"Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n",s);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n",s);
 	exit(-1);
 }
 
@@ -733,14 +736,14 @@ static int add_user_account(const char *user, int dynamic)
 	if(user) {
 		char *s = strstr(user,":");
 		if(!s || (s==user) || (strlen(s)<2)) {
-			fprintf(stderr,"Wrong user account: %s\n",user);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
 			size_t ulen = s-user;
 			char *uname = malloc(sizeof(char)*(ulen+1));
 			strncpy(uname,user,ulen);
 			uname[ulen]=0;
 			if(SASLprep((u08bits*)uname)<0) {
-				fprintf(stderr,"Wrong user name: %s\n",user);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
 				free(uname);
 				return -1;
 			}
@@ -749,7 +752,7 @@ static int add_user_account(const char *user, int dynamic)
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
 				if(strlen(keysource)!=32) {
-					fprintf(stderr,"Wrong key: %s\n",s);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
 					free(uname);
 					free(key);
 					return -1;
@@ -792,11 +795,11 @@ static void set_option(int c, const char *value)
 		break;
 	case 'm':
 #if defined(TURN_NO_THREADS)
-		fprintf(stderr,"WARNING: threading is not supported,\n I am using single thread.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported,\n I am using single thread.\n");
 #elif defined(OPENSSL_THREADS)
 		relay_servers_number = atoi(value);
 #else
-		fprintf(stderr,"WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
 #endif
 		break;
 	case 'd':
@@ -822,6 +825,9 @@ static void set_option(int c, const char *value)
 		break;
 	case 'v':
 		verbose = get_bool_value(value);
+		break;
+	case 'o':
+		turn_daemon = get_bool_value(value);
 		break;
 	case 'a':
 		if (get_bool_value(value))
@@ -855,7 +861,7 @@ static void set_option(int c, const char *value)
 	case NO_TLS_OPT:
 #if defined(TURN_NO_TLS)
 		no_tls = 1;
-		fprintf(stderr,"WARNING: TLS is not supported\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TLS is not supported\n");
 #else
 		no_tls = get_bool_value(value);
 #endif
@@ -865,7 +871,7 @@ static void set_option(int c, const char *value)
 		no_dtls = get_bool_value(value);
 #else
 		no_dtls = 1;
-		fprintf(stderr,"WARNING: DTLS is not supported\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: DTLS is not supported\n");
 #endif
 		break;
 	case CERT_FILE_OPT:
@@ -880,7 +886,7 @@ static void set_option(int c, const char *value)
 	case 'h':
 		break;
 	default:
-		fprintf(stderr, "%s\n", Usage);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", Usage);
 		exit(-1);
 	}
 }
@@ -969,7 +975,7 @@ static void read_userdb_file(void)
 		fclose(f);
 
 	} else if (first_read)
-		fprintf(stderr, "Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
 
 	first_read = 0;
 }
@@ -988,12 +994,12 @@ static void read_config_file(int argc, char **argv)
 					strncpy(config_file, argv[i + 1], sizeof(config_file)
 									- 1);
 				} else {
-					fprintf(stderr, "Wrong usage of -c option\n");
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
 				}
 			} else if (!strcmp(argv[i], "-n")) {
 				return;
 			} else if (!strcmp(argv[i], "-h")) {
-				fprintf(stdout, "%s\n", Usage);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", Usage);
 				exit(0);
 			}
 		}
@@ -1030,9 +1036,7 @@ static void read_config_file(int argc, char **argv)
 					char *value = NULL;
 					strcpy(sarg, s);
 					if (parse_arg_string(sarg, &c, &value) < 0) {
-						fprintf(
-							stderr,
-							"Bad configuration format: %s\n",
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
 							sarg);
 					} else
 						set_option(c, value);
@@ -1042,9 +1046,7 @@ static void read_config_file(int argc, char **argv)
 			fclose(f);
 
 		} else
-			fprintf(
-				stderr,
-				"Cannot find config file: %s. Guessing default values.\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find config file: %s. Guessing default values.\n",
 				config_file);
 	}
 }
@@ -1080,36 +1082,36 @@ static int adminmain(int argc, char **argv)
 		case 'u':
 			strcpy((char*)user,optarg);
 			if(SASLprep((u08bits*)user)<0) {
-				fprintf(stderr,"Wrong user name: %s\n",user);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
 				exit(-1);
 			}
 			break;
 		case 'r':
 			strcpy((char*)realm,optarg);
 			if(SASLprep((u08bits*)realm)<0) {
-				fprintf(stderr,"Wrong realm: %s\n",realm);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
 				exit(-1);
 			}
 			break;
 		case 'p':
 			strcpy((char*)pwd,optarg);
 			if(SASLprep((u08bits*)pwd)<0) {
-				fprintf(stderr,"Wrong password: %s\n",pwd);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
 				exit(-1);
 			}
 			break;
 		case 'h':
-			fprintf(stdout, "%s\n", AdminUsage);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", AdminUsage);
 			exit(0);
 			break;
 		default:
-			fprintf(stderr, "%s\n", AdminUsage);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
 			exit(-1);
 		}
 	}
 
 	if(!user[0] || (kcommand + acommand + dcommand != 1)) {
-		fprintf(stderr, "%s\n", AdminUsage);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
 		exit(-1);
 	}
 
@@ -1254,12 +1256,12 @@ int main(int argc, char **argv)
 
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
-	fprintf(stderr,"WARNING: TLS is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
 #endif
 
 #if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
 	no_dtls = 1;
-	fprintf(stderr,"WARNING: OpenSSL version is too old, DTLS is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: OpenSSL version is too old, DTLS is not supported\n");
 #endif
 
 	set_system_parameters();
@@ -1267,7 +1269,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	printf("RFC 5389/5766/6156 STUN/TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6156 STUN/TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
 
 	users = malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
@@ -1296,7 +1298,7 @@ int main(int argc, char **argv)
 	argv += optind;
 
 	if(argc>0) {
-		fprintf(stderr,"Unknown argument: %s\n",argv[argc-1]);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown argument: %s\n",argv[argc-1]);
 		exit(-1);
 	}
 
@@ -1306,7 +1308,7 @@ int main(int argc, char **argv)
 		make_local_listeners_list();
 		if (!listener.number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
-			fprintf(stderr, "%s\n", Usage);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
 			exit(-1);
 		}
 	}
@@ -1318,10 +1320,27 @@ int main(int argc, char **argv)
 			if (!relays_number) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
 								__FUNCTION__);
-				fprintf(stderr, "%s\n", Usage);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
 				exit(-1);
 			}
 		}
+	}
+
+	if(turn_daemon) {
+#if !defined(HAS_DAEMON)
+		pid_t pid = fork();
+		if(pid>0)
+			exit(0);
+		if(pid<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+			exit(-1);
+		}
+#else
+		if(daemon(1,1)<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+			exit(-1);
+		}
+#endif
 	}
 
 	setup_server();
@@ -1430,7 +1449,7 @@ static void set_ctx(SSL_CTX* ctx)
 	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found\n");
 	} else {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nPrivate file %s found\n",pkey_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nPrivate key file %s found\n",pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {
@@ -1444,24 +1463,34 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 
 	if(!fn[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: you must set the %s file parameter\n",file_title);
-		exit(-1);
+		goto keyerr;
 	}
 
 	full_path_to_file = find_config_file(fn, 1);
 	FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
 	if(!f) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
-		return;
+		goto keyerr;
 	}
 
 	if(!full_path_to_file) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (2)\n",file_title,fn);
-		return;
+		goto keyerr;
 	}
 
 	strcpy(fn,full_path_to_file);
 
-	free(full_path_to_file);
+	if(full_path_to_file)
+		free(full_path_to_file);
+	return;
+
+	keyerr:
+	no_tls = 1;
+	no_dtls = 1;
+	if(full_path_to_file)
+		free(full_path_to_file);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
+	return;
 }
 
 static void adjust_key_file_names(void)
@@ -1478,7 +1507,7 @@ static void openssl_setup(void)
 
 #if defined(TURN_NO_TLS)
 	if(!no_tls) {
-		fprintf(stderr,"WARNING: TLS is not supported\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
 		no_tls = 1;
 	}
 #endif
@@ -1506,7 +1535,7 @@ static void openssl_setup(void)
 
 	if(!no_dtls) {
 #if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
-	  fprintf(stderr,"ERROR: DTLS is not supported.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(dtls_ctx);

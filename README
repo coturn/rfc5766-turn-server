@@ -20,7 +20,7 @@ functions.
   
 3.	uclient: emulates multiple UDP,TCP,TLS or DTLS clients. 
 (this program is provided for the testing purposes only !)
-The compiled binary image of this program is located in turn.apps.examples/bin/ 
+The compiled binary image of this program is located in turn.examples/bin/ 
 sub-directory.
 
 WARNING: the uclient program is a primitive client application. 
@@ -37,10 +37,10 @@ the correct Networking IO processing in the client program code.
 	When the test clients are communicating in the client-to-client manner, 
 	this component is not needed.
 	
-The compiled binary image of this program is located in turn.apps.examples/bin/ subdirectory.
+The compiled binary image of this program is located in turn.examples/bin/ subdirectory.
    
 5.	stunclient: a simple STUN client example.
-The compiled binary image of this program is located in turn.apps.examples/bin/ subdirectory.
+The compiled binary image of this program is located in turn.examples/bin/ subdirectory.
 
 In the "scripts" subdirectory, you will find the examples of command lines to be used 
 to run the programs.
@@ -51,13 +51,15 @@ RUN
   
 Usage:
   
-$ turnserver [-vfa] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [options]
+$ turnserver [-vfao] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [options]
 
 $ turnserver -h
   
 Flags:   
 
 -v, --verbose			Verbose.
+
+-o, --daemon			Run server as daemon.
 
 -f, --fingerprint		Use fingerprints in the TURN messages.
 
@@ -80,6 +82,7 @@ Config file setting:
 				  * upper directory level etc/
 				  * /etc/ 
 				  * /usr/local/etc/
+				  * installation directory /etc
 				  
 -b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
 				This user database is being dynamically checked while the turnserver 
@@ -274,3 +277,18 @@ After installation, run the command:
 $ man turnserver
 
 to see the man page.
+
+LOGS
+
+The TURN Server makes efforts to create a log file turn_<pid>.log 
+in the following directories:
+
+	* /var/log
+	* /log/
+	* /var/tmp
+	* /tmp
+	* current directory
+
+If all efforts failed (due to the system permission settings) then all 
+log messages are sent only to the standard output of the process.
+ 

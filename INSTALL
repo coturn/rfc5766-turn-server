@@ -4,31 +4,55 @@ You have to download the archive file turnserver-*.tar.gz and unpack it:
 
 $ tar xfz turnserver-*.tgz
 
-it will create the directory 'turn-server' with all sources, build files, 
+it will create the directory 'turnserver-*' with all sources, build files, 
 examples and documentation.
 
 II. BUILD
 
 If you are sure that you system is ready for the build (see the section 
 "Extra libraries and Utilities" below) then you can build the system.
-Just run the make command:
+First, you have to run the configure script:
 
 	$ cd turnserver-*
+	$ ./configure
+	
+It will create a Makefile customized for your system. 
+
+By default, the generated Makefile will be set to install everything
+in /usr/local directory. You can change that and some other settings my 
+setting PREFIX variable in the command line. Compilation and linking options
+can be customized, too. For example:
+
+	$ PREFIX=/opt CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure   
+
+The script configure is a proprietary script. It will create a Makefile 
+that you can use to build the project:
+
 	$ make
 
-	or the build script:
-
-	$ ./build.sh
-
-build.sh script will create bin sub-directory and put the TURN server there. 
-The test applications will be located in turn.apps.examples/bin/ 
+The make command will create bin sub-directory and put the TURN server there. 
+The test applications will be located in turn.examples/bin/ 
 sub-directory.
 
 The programs can be either called directly, or a shell scripts can be used. 
 The script examples are located in scripts directory. These scripts are just 
 examples; you will have to change the script parameters for your environment.
 
-"make clean" command will clean all results of the build process.
+The command:
+
+	$ make deinstall
+	
+will remove all installed TURN Server files from your system.
+
+The command:
+
+	$ make clean 
+	
+will clean all results of the build and configuration actions.
+
+Do not run "make clean" before "make deinstall". The 'clean" command will
+remove the Makefile and you will not be able to "deinstall" it then. If that 
+happened, then run configure and make again, then deinstall and then clean.
 
 NOTE: On most modern systems, the build will produce dynamically linked 
 executables. If you want statically linked executables, you have to modify, 
@@ -40,8 +64,9 @@ run command:
 
 $ make install
 
-It will install turnserver in /usr/local/ directory. You will have to change 
-/usr/local/turnserver.conf file to adjust your runtime configuration.
+It will install turnserver in /usr/local/ directory (or to whatever directory
+was set in the PREFIX variable). You will have to change 
+/usr/local/etc/turnserver.conf file to adjust your runtime configuration.
 
 IV. PLATFORMS
 
@@ -61,7 +86,8 @@ The following platforms have been used in the development:
 It must work on many other *NIXes, as well. The build.sh script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
 
-The code of the client messaging library can be used on Windows, too.
+The code of the client messaging library can be compiled and used on 
+Windows, too, but it is not supported for now.
 
 V. COMPILERS
 
@@ -95,14 +121,14 @@ If not, then you will have to modify those.
 FreeBSD, PC-BSD and Linux Ubuntu 11.10+ have even simpler way of the
 third party tools installation:      
 
-	*) PC-BSD or FreeBSD (the ports DB is assumed to be installed):
+	*) PC-BSD or FreeBSD (the ports database is assumed to be installed):
 
 		$ cd /usr/ports/security/openssl/
 		$ sudo make install
 		$ cd /usr/ports/devel/libevent2/
 		$ sudo make install
 
-	**) Linux Ubuntu 11.10+:
+	**) Linux Ubuntu 11.10 or later:
 		
 		$ sudo apt-get install libssl-dev
 		$ sudo apt-get install libevent-dev
