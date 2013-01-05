@@ -191,7 +191,7 @@ It sends a STUN request and shows the	reply information.
 
 == LOGS ==
 
-The *TURN Server* makes efforts to create a log file turnserver_<pid>.log 
+The *TURN Server* makes efforts to create a log file {{{turnserver_<pid>.log}}} 
 in the following directories:
 
 	* /var/log

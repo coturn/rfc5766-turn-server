@@ -53,6 +53,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
 /* Log */
 void rtpprintf(const char *format, ...);
 int vrtpprintf(const char *format, va_list args);
+void reset_rtpprintf(void);
 
 ///////////////////////////////////////////////////////
 

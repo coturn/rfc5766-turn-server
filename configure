@@ -89,7 +89,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 OSCFLAGS="${CFLAGS}"
-OSLIBS="${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -Llib -L/usr/local/lib/event2/ -L/usr/local/lib/"
+OSLIBS="${LDFLAGS} -Llib -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
 TURN_NO_THREADS=
 TURN_NO_TLS=
 
@@ -97,7 +97,8 @@ MKDIR="mkdir -p"
 INSTALL_PROGRAM="cp -f"
 INSTALL_MAN="cp -f"
 INSTALL_SCRIPT="cp -f"
-INSTALL_LIB="cp -f"
+INSTALL_SHARED_LIB="cp -f"
+INSTALL_STATIC_LIB="cp -f"
 INSTALL_DATA="cp -f"
 INSTALL_DIR="cp -rf"
 RMCMD="rm -rf"
@@ -328,7 +329,8 @@ echo "MKDIR = ${MKDIR}" >> Makefile
 echo "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
 echo "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile
 echo "INSTALL_SCRIPT = ${INSTALL_SCRIPT}" >> Makefile
-echo "INSTALL_LIB = ${INSTALL_LIB}" >> Makefile
+echo "INSTALL_SHARED_LIB = ${INSTALL_SHARED_LIB}" >> Makefile
+echo "INSTALL_STATIC_LIB = ${INSTALL_STATIC_LIB}" >> Makefile
 echo "INSTALL_DATA = ${INSTALL_DATA}" >> Makefile
 echo "INSTALL_DIR = ${INSTALL_DIR}" >> Makefile
 echo "RMCMD = ${RMCMD}" >> Makefile

@@ -254,7 +254,9 @@ Options:
 -L  Listening address of peer server
 -v  Verbose
 
-5.	stunclient is a basic STUN client. It sends a STUN request and shows the reply information.
+5.	stunclient is a basic STUN client. It sends a STUN request (over UDP) 
+and shows the reply information. This stunclient can work only with "unsecure"
+TURN Server - it cannot answer the authentication challenge.  
   
 Usage:  
 

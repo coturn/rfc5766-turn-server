@@ -123,7 +123,14 @@ static int run_stunclient(const char* rip, int rport, const char* lip) {
 	    printf("Wrong type of response\n");
 	  }
 	} else {
-	  printf("The response is an error\n");
+		int err_code=0;
+		u08bits err_msg[1025]="\0";
+		size_t err_msg_size=sizeof(err_msg);
+		if(stun_is_error_response(&buf, &err_code, err_msg, err_msg_size)) {
+			printf("The response is an error %d (%s)\n",err_code,(char*)err_msg);
+		} else {
+			printf("The response is an unrecognized error\n");
+		}
 	}
       } else {
 	printf("The response is not a reponse message\n");

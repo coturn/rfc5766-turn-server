@@ -1,4 +1,10 @@
-01/01/2013 Oleg Moskalenko <mom040267@gmail.com>
+01/05/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.4.2 'Scale':
+	- Daemon execution improved
+	- Installation fixes
+	- Added comments to the scripts
+	
+01/04/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.1.2 'Scale':
 	- Configure script introduced
 	- Installation fixes

@@ -1336,10 +1336,11 @@ int main(int argc, char **argv)
 			exit(-1);
 		}
 #else
-		if(daemon(1,1)<0) {
+		if(daemon(1,0)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
 			exit(-1);
 		}
+		reset_rtpprintf();
 #endif
 	}
 

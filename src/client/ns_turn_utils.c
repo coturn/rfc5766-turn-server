@@ -141,6 +141,14 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 
 static FILE* _rtpfile = NULL;
 
+void reset_rtpprintf(void)
+{
+	if(_rtpfile) {
+		fclose(_rtpfile);
+		_rtpfile = NULL;
+	}
+}
+
 static void set_rtpfile(void)
 {
 	if (!_rtpfile) {

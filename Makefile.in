@@ -98,7 +98,7 @@ clean	:
 ### Install all:
 
 install	:	all ${MAKE_DEPS}
-	echo "${MKDIR} ${PREFIX}; ${MKDIR} ${PREFIX}/bin; ${MKDIR} ${MANPREFIX}/man/man1; ${MKDIR} ${PREFIX}/etc; ${MKDIR} ${PREFIX}/lib; ${INSTALL_PROGRAM} bin/turnserver ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnadmin ${PREFIX}/bin/; ${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/; ${INSTALL_LIB} lib/libturnclient.a ${PREFIX}/lib/; ${INSTALL_DIR} turn.examples ${PREFIX}/; ${INSTALL_DATA} etc/turnserver.conf ${PREFIX}/etc; ${INSTALL_DATA} etc/turnuserdb.conf ${PREFIX}/etc; ${INSTALL_DIR} include/* ${PREFIX}/include/" | sudo /bin/sh
+	echo "${MKDIR} ${PREFIX}; ${MKDIR} ${PREFIX}/bin; ${MKDIR} ${MANPREFIX}/man/man1; ${MKDIR} ${PREFIX}/etc; ${MKDIR} ${PREFIX}/lib; ${INSTALL_PROGRAM} bin/turnserver ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnadmin ${PREFIX}/bin/; ${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/; ${INSTALL_STATIC_LIB} lib/libturnclient.a ${PREFIX}/lib/; ${INSTALL_DIR} turn.examples ${PREFIX}/; ${INSTALL_DATA} etc/turnserver.conf ${PREFIX}/etc; ${INSTALL_DATA} etc/turnuserdb.conf ${PREFIX}/etc; ${INSTALL_DIR} include/* ${PREFIX}/include/" | sudo /bin/sh
 
 deinstall	:	${MAKE_DEPS}
 	echo "${RMCMD} ${PREFIX}/bin/turnserver;	${RMCMD} ${PREFIX}/bin/turnadmin; ${RMCMD} ${MANPREFIX}/man/man1/turnserver.1; ${RMCMD} ${PREFIX}/lib/libturnclient.a; ${RMCMD} ${PREFIX}/turn.examples/; ${RMCMD} ${PREFIX}/etc/turnserver.conf; ${RMCMD} ${PREFIX}/etc/turnuserdb.conf; ${RMCMD} ${PREFIX}/include/turn/" | sudo /bin/sh

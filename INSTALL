@@ -163,31 +163,25 @@ In shell number 1, run peer application (from build directory):
  $ scripts/peer.sh
 
 In shell number 2, run local TURN server application:
- $ scripts/secure_relay.sh
+ $ scripts/relay.sh
 
 In shell number 3, run test client application:
 
- $ scripts/secure_udp_client.sh
+ $ scripts/udp_client.sh
 
 or
 
- $ scripts/secure_tcp_client.sh
-
-If TLS is supported, then this command must work:
-
- $ scripts/secure_tls_client.sh
- 
-If DTLS is supported, then this command must work:
-
- $ scripts/secure_dtls_client.sh
+ $ scripts/tcp_client.sh
 
 If the client application produces output and in approximately 22 seconds prints 
 the jitter, loss and round-trip-delay statistics, then everything is fine.
 
+There is a similar set of secure* scripts for TURN environment with authnetication.
+
 Try wireshark to check the communications between client, turnserver and the peer. 
 
-Check the README file and the scripts relay.sh and secure_relay.sh as a guidance 
-how to run the TURN server.
+Check the README file and the comments in the scripts relay.sh and secure_relay.sh 
+as a guidance how to run the TURN server.
 
 VIII. CLIENT API LIBRARY.
 

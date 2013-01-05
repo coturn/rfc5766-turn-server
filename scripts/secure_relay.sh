@@ -1,5 +1,23 @@
 #!/bin/sh
+#
+# This is an example how to start a TURN Server in
+# secure mode (when authentication is used) - see option -a
+# that means "use long-term credential mechanism".
+# We start here a TURN Server listening on IPv4 address
+# 127.0.0.1 and on IPv6 address ::1. We use 127.0.0.1 as
+# IPv4 relay address, and we use ::1 as IPv6 relay address.
+# Other options:
+# 1) use fingerprints (-f)
+# 2) use 3 relay threads (-m 3)
+# 3) use min UDP relay port 32355 and max UDP relay port 65535
+# 4) "-r north.gov" means "use authentication realm north.gov"
+# 5) "--user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee" means 
+# "allow user 'ninefinger' with generated key '0xbc807ee29df3c9ffa736523fb2c4e8ee' ".
+# 6) "--user=gorst:hero" means "allow user 'gorst' with password 'hero' ".
+# 7) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
+# 8) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
+# Other parameters (config file name, etc) are default.
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="bin:../bin:${PATH}" turnserver -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 -f -m 3 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -a -r north.gov --cert=example_turn_server_cert.pem --pkey=example_turn_server_pkey.pem 
+PATH="bin:../bin:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 -f -m 3 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=example_turn_server_cert.pem --pkey=example_turn_server_pkey.pem 
