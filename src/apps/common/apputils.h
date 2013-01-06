@@ -82,6 +82,7 @@ int decrease_mtu(SSL* ssl, int mtu, int verbose);
 ////////////////// File search ////////////////////////
 
 char* find_config_file(const char *config_file, int print_file_name);
+void set_execdir(const char *dir);
 
 ///////////////////////////////////////////////////////
 

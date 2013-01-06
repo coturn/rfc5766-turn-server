@@ -31,12 +31,12 @@ that you can use to build the project:
 	$ make
 
 The make command will create bin sub-directory and put the TURN server there. 
-The test applications will be located in turn.examples/bin/ 
-sub-directory.
+The test applications will be located in examples/ sub-directory.
 
 The programs can be either called directly, or a shell scripts can be used. 
-The script examples are located in scripts directory. These scripts are just 
-examples; you will have to change the script parameters for your environment.
+The script examples are located in examples/scripts directory. These scripts are just 
+examples: you can run them successfully for the tests, but
+you will have to change the script parameters for your real environment.
 
 The command:
 
@@ -50,9 +50,9 @@ The command:
 	
 will clean all results of the build and configuration actions.
 
-Do not run "make clean" before "make deinstall". The 'clean" command will
+Do not run "make clean" before "make deinstall". The "clean" command will
 remove the Makefile and you will not be able to "deinstall" it then. If that 
-happened, then run configure and make again, then deinstall and then clean.
+has happened, then run ./configure and make again, then deinstall and then clean.
 
 NOTE: On most modern systems, the build will produce dynamically linked 
 executables. If you want statically linked executables, you have to modify, 
@@ -67,6 +67,9 @@ $ make install
 It will install turnserver in /usr/local/ directory (or to whatever directory
 was set in the PREFIX variable). You will have to change 
 /usr/local/etc/turnserver.conf file to adjust your runtime configuration.
+
+This command will also copy the content of examples subdirectory into 
+PREFIX/examples/turn/ directory.
 
 IV. PLATFORMS
 
@@ -149,34 +152,42 @@ If you have a system with older libevent, then you have to install the new
 libevent2 from their web site. It was tested on older *NIXes and it works 
 just fine. 
 
-NOTE: OpenSSL version 1.0.0a or newer is recommended.
+NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not 
+support DTLS, reliably.
 
 VII. TEST
 
 If everything compiled properly, then the following programs must run 
-together successfully, simulating TURN network routing in local networking 
-environment:
+together successfully, simulating TURN network routing in local loopback
+networking environment:
 
 Open three shell screens or consoles:
 
 In shell number 1, run peer application (from build directory): 
- $ scripts/peer.sh
+ $ cd examples
+ $ ./scripts/peer.sh
 
 In shell number 2, run local TURN server application:
- $ scripts/relay.sh
+ $ cd examples
+ $ ./scripts/relay.sh
 
 In shell number 3, run test client application:
 
- $ scripts/udp_client.sh
+ $ cd examples
+ $ ./scripts/udp_client.sh
 
 or
 
- $ scripts/tcp_client.sh
+ $ cd examples
+ $ ./scripts/tcp_client.sh
 
 If the client application produces output and in approximately 22 seconds prints 
 the jitter, loss and round-trip-delay statistics, then everything is fine.
 
-There is a similar set of secure* scripts for TURN environment with authnetication.
+There is a similar set of secure* scripts for TURN environment with authentication.
+
+The provided scripts are for the local loopback communications, as an example and 
+as a test environment. Real networking IPs must be used in real scripts.
 
 Try wireshark to check the communications between client, turnserver and the peer. 
 
@@ -190,6 +201,8 @@ The header files for this library are located in include/turn/client/ sub-direct
 
 IX. DOCS
 
-After installation, the man page turnserver(1) must be available.
+After installation, the man page turnserver(1) must be available. The man page is 
+located in man/man1 subdirectory. If you want to see the man page without 
+installation, run the command:
 
-
+	$	man -M man turnserver

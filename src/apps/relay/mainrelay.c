@@ -37,6 +37,7 @@
 #include <ifaddrs.h>
 #include <getopt.h>
 #include <locale.h>
+#include <libgen.h>
 
 #if !defined(TURN_NO_THREADS)
 #include <pthread.h>
@@ -57,6 +58,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
+#include <openssl/opensslv.h>
 
 #include "ns_turn_utils.h"
 
@@ -1046,7 +1048,7 @@ static void read_config_file(int argc, char **argv)
 			fclose(f);
 
 		} else
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find config file: %s. Guessing default values.\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find config file: %s. Default settings will be used.\n",
 				config_file);
 	}
 }
@@ -1254,6 +1256,13 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
+	{
+	  /* On some systems, it may give us the execution path */
+		char *_var = getenv("_");
+		if(_var && *_var)
+			set_execdir(dirname(_var));
+	}
+
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
@@ -1435,26 +1444,26 @@ static int THREAD_cleanup(void) {
   return 1;
 }
 
-static void set_ctx(SSL_CTX* ctx)
+static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
 
 	SSL_CTX_set_cipher_list(ctx, "DEFAULT");
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
 	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n",protocol);
 	} else {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCertificate file %s found\n",cert_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Certificate file %s found\n",protocol,cert_file);
 	}
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n",protocol);
 	} else {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nPrivate key file %s found\n",pkey_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Private key file %s found\n",protocol,pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n",protocol);
 	}
 }
 
@@ -1514,13 +1523,13 @@ static void openssl_setup(void)
 #endif
 
 	if(!(no_tls && no_dtls) && !cert_file[0]) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS/DTLS services.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS/DTLS services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
 		no_tls = 1;
 		no_dtls = 1;
 	}
 
 	if(!(no_tls && no_dtls) && !pkey_file[0]) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS/DTLS services.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS/DTLS services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
 		no_tls = 1;
 		no_dtls = 1;
 	}
@@ -1531,15 +1540,18 @@ static void openssl_setup(void)
 
 	if(!no_tls) {
 		tls_ctx = SSL_CTX_new(TLSv1_server_method());
-		set_ctx(tls_ctx);
+		set_ctx(tls_ctx,"TLS");
 	}
 
 	if(!no_dtls) {
 #if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
+		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
+		}
 		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
-		set_ctx(dtls_ctx);
+		set_ctx(dtls_ctx,"DTLS");
 #endif
 	}
 }

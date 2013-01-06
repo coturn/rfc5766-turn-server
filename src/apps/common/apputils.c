@@ -348,7 +348,15 @@ int handle_socket_error() {
 #define ETCDIR INSTALL_PREFIX/etc/
 #define QETCDIR QUOTE(ETCDIR)
 
-static const char* config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", QETCDIR, NULL };
+static const char *config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", QETCDIR, NULL };
+static char *c_execdir=NULL;
+
+void set_execdir(const char *dir)
+{
+	if(c_execdir)
+		free(c_execdir);
+	c_execdir = strdup(dir);
+}
 
 char* find_config_file(const char *config_file, int print_file_name)
 {
@@ -367,7 +375,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
-				char *fn = malloc(sizeof(char) * (dirlen + cflen + 1));
+				char *fn = malloc(sizeof(char) * (dirlen + cflen + 10));
 				strcpy(fn, config_file_search_dirs[i]);
 				strcpy(fn + dirlen, config_file);
 				FILE *f = fopen(fn, "r");
@@ -379,6 +387,23 @@ char* find_config_file(const char *config_file, int print_file_name)
 					break;
 				}
 				free(fn);
+				if(config_file_search_dirs[i][0]!='/' && c_execdir && c_execdir[0]) {
+					size_t celen = strlen(c_execdir);
+					fn = malloc(sizeof(char) * (dirlen + cflen + celen + 10));
+					strcpy(fn,c_execdir);
+					strcpy(fn+strlen(fn),"/");
+					strcpy(fn+strlen(fn), config_file_search_dirs[i]);
+					strcpy(fn+strlen(fn), config_file);
+					f = fopen(fn, "r");
+					if (f) {
+						fclose(f);
+						if (print_file_name)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
+						full_path_to_config_file = fn;
+						break;
+					}
+					free(fn);
+				}
 				++i;
 			}
 		}

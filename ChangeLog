@@ -1,3 +1,9 @@
+01/06/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.4.2.1 'Scale':
+	- Examples directory structure fixed
+	- Installation fixes
+	- Output messages fixed
+	
 01/05/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2 'Scale':
 	- Daemon execution improved

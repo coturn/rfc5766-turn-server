@@ -38,6 +38,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <libgen.h>
+
+#include <openssl/ssl.h>
+#include <openssl/opensslv.h>
 
 /////////////// extern definitions /////////////////////
 
@@ -98,6 +102,12 @@ int main(int argc, char **argv)
 	unsigned char ifname[1025] = "\0";
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;
+
+	{
+		char *_var = getenv("_");
+		if(_var && *_var)
+			set_execdir(dirname(_var));
+	}
 
 	srandom((unsigned int) time(NULL));
 
@@ -225,6 +235,9 @@ int main(int argc, char **argv)
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 		  exit(-1);
 #else
+		  if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
+		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
+		  }
 		  root_tls_ctx = SSL_CTX_new(DTLSv1_client_method());
 #endif
 		}

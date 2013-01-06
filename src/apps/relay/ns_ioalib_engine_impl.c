@@ -200,19 +200,19 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	if(!capabilities_checked) {
 		capabilities_checked = 1;
 #if !defined(CMSG_SPACE)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: cannot support full TOS and TTL IP fields relaying on this platform. As a fall back, I am using alternative behavior of RFC 5766.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "On this platform, I am using alternative behavior of TTL/TOS according to RFC 5766.\n");
 #endif
 #if !defined(IP_RECVTTL)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: IPv4: cannot support full TTL IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv4: On this platform, I am using alternative behavior of TTL according to RFC 5766.\n");
 #endif
 #if !defined(IPV6_RECVHOPLIMIT)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: IPv6: cannot support full TTL (HOPLIMIT) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv6: On this platform, I am using alternative behavior of TTL (HOPLIMIT) according to RFC 6156.\n");
 #endif
 #if !defined(IP_RECVTOS)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: IPv4: cannot support full TOS (DiffServ, ECN) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv4: On this platform, I am using alternative behavior of TOS according to RFC 5766.\n");
 #endif
 #if !defined(IPV6_RECVTCLASS)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: IPv6: cannot support full TRAFFIC CLASS (DiffServ, ECN) IP field relaying on this platform ! As a fall back, I am using alternative behavior of RFC 5766.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "IPv6: On this platform, I am using alternative behavior of TRAFFIC CLASS according to RFC 6156.\n");
 #endif
 	}
 

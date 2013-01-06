@@ -20,7 +20,7 @@ functions.
   
 3.	uclient: emulates multiple UDP,TCP,TLS or DTLS clients. 
 (this program is provided for the testing purposes only !)
-The compiled binary image of this program is located in turn.examples/bin/ 
+The compiled binary image of this program is located in examples/bin/ 
 sub-directory.
 
 WARNING: the uclient program is a primitive client application. 
@@ -37,13 +37,16 @@ the correct Networking IO processing in the client program code.
 	When the test clients are communicating in the client-to-client manner, 
 	this component is not needed.
 	
-The compiled binary image of this program is located in turn.examples/bin/ subdirectory.
+The compiled binary image of this program is located in examples/bin/ subdirectory.
    
 5.	stunclient: a simple STUN client example.
-The compiled binary image of this program is located in turn.examples/bin/ subdirectory.
+The compiled binary image of this program is located in examples/bin/ subdirectory.
 
-In the "scripts" subdirectory, you will find the examples of command lines to be used 
-to run the programs.
+In the "examples/scripts" subdirectory, you will find the examples of command lines to be used 
+to run the programs. The scripts are meant to be run from examples/ subdirectory:
+
+$ cd examples
+$ ./scripts/secure_relay.sh
   
 RUN
 
@@ -73,7 +76,7 @@ Config file setting:
 
 -c				Configuration file name (default - turnserver.conf).
 				The format of config file can be seen in
-				the supplied etc/turnserver.conf example file. Long 
+				the supplied examples/etc/turnserver.conf example file. Long 
 				names of the options are used as the configuration 
 				items names in the file. If not an absolute path is supplied, 
 				then the file is searched in the following directories: 
@@ -238,7 +241,7 @@ Options:
 -e      Peer address.
 -r      Peer port (default 3479).
 
-See the examples in the "scripts" directory.
+See the examples in the "examples/scripts" directory.
     
 4.	peer application is a simple UDP-only echo backend server. This application
 is used for the test purposes only, as a 'peer' for the uclient application. 
@@ -282,7 +285,7 @@ to see the man page.
 
 LOGS
 
-The TURN Server makes efforts to create a log file turn_<pid>.log 
+When the TURN Server starts, it makes efforts to create a log file turn_<pid>.log 
 in the following directories:
 
 	* /var/log
