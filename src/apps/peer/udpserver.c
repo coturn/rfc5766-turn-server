@@ -38,12 +38,10 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
 
   if(!(what&EV_READ)) return;
 
-  server_type *server=(server_type*)arg;
-
-  FUNCSTART;
+  ioa_addr *addr = arg;
 
   int len = 0;
-  int slen = get_ioa_addr_len(&(server->addr));
+  int slen = get_ioa_addr_len(addr);
   stun_buffer buffer;
   ioa_addr remote_addr;
 
@@ -58,8 +56,6 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
       len = sendto(fd, buffer.buf, len, 0, (const struct sockaddr*) &remote_addr, (socklen_t) slen);
     } while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
   }
-
-  FUNCEND;
 }
 
 ///////////////////// operations //////////////////////////
@@ -71,39 +67,40 @@ static int udp_create_server_socket(server_type* server,
 
   if(!server) return -1;
 
-  server->udp_fd = -1;
+  evutil_socket_t udp_fd = -1;
+  ioa_addr *server_addr = malloc(sizeof(ioa_addr));
 
   strncpy(server->ifname,ifname,sizeof(server->ifname)-1);
 
-  if(make_ioa_addr((const u08bits*)local_address, port, &server->addr)<0) return -1;
+  if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
   
-  server->udp_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
-  if (server->udp_fd < 0) {
+  udp_fd = socket(server_addr->ss.ss_family, SOCK_DGRAM, 0);
+  if (udp_fd < 0) {
     perror("socket");
     return -1;
   }
 
-  if(sock_bind_to_device(server->udp_fd, (unsigned char*)server->ifname)<0) {
+  if(sock_bind_to_device(udp_fd, (unsigned char*)server->ifname)<0) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind udp server socket to device %s\n",server->ifname);
   }
 
-  set_sock_buf_size(server->udp_fd,UR_SERVER_SOCK_BUF_SIZE);
+  set_sock_buf_size(udp_fd,UR_SERVER_SOCK_BUF_SIZE);
   
-  if(addr_bind(server->udp_fd,&server->addr)<0) return -1;
+  if(addr_bind(udp_fd,server_addr)<0) return -1;
   
-  evutil_make_socket_nonblocking(server->udp_fd);
+  evutil_make_socket_nonblocking(udp_fd);
 
-  server->udp_ev = event_new(server->event_base,server->udp_fd,EV_READ|EV_PERSIST,
-			     udp_server_input_handler,server);
+  struct event *udp_ev = event_new(server->event_base,udp_fd,EV_READ|EV_PERSIST,
+			     udp_server_input_handler,server_addr);
   
-  event_add(server->udp_ev,NULL);
+  event_add(udp_ev,NULL);
   
   FUNCEND;
   
   return 0;
 }
 
-static server_type* init_server(int verbose, const char* ifname, const char *local_address, int port) {
+static server_type* init_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port) {
 
   server_type* server=(server_type*)malloc(sizeof(server_type));
 
@@ -115,21 +112,15 @@ static server_type* init_server(int verbose, const char* ifname, const char *loc
 
   server->event_base = event_base_new();
 
-  server->udp_fd=-1;
-
-  udp_create_server_socket(server, ifname, local_address, port);
+  while(las)
+    udp_create_server_socket(server, ifname, local_addresses[--las], port);
 
   return server;
 }
 
 static int clean_server(server_type* server) {
   if(server) {
-    EVENT_DEL(server->udp_ev);
     if(server->event_base) event_base_free(server->event_base);
-    if(server->udp_fd>=0) {
-      evutil_closesocket(server->udp_fd);
-      server->udp_fd=-1;
-    }
     free(server);
   }
   return 0;
@@ -153,8 +144,8 @@ static void run_events(server_type* server) {
 /////////////////////////////////////////////////////////////
 
 
-server_type* start_udp_server(int verbose, const char* ifname, const char *local_address, int port) {
-  return init_server(verbose, ifname, local_address, port);
+server_type* start_udp_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port) {
+  return init_server(verbose, ifname, local_addresses, las, port);
 }
 
 void run_udp_server(server_type* server) {

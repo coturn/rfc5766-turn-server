@@ -103,7 +103,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 		do {
 			rc = SSL_connect(ssl);
 		} while (rc < 0 && errno == EINTR);
-		if (rc >= 0) {
+		if (rc > 0) {
 			break;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect\n",

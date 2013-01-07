@@ -1,3 +1,9 @@
+01/07/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.4.2.2 'Scale':
+	- Output messages fixed.
+	- Peer test application accepts multiple listening addresses.
+	- config search directories improved.
+	
 01/06/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.1 'Scale':
 	- Examples directory structure fixed

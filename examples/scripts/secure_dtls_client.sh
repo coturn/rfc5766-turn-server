@@ -11,17 +11,18 @@
 # 6) -m 10 means that 10 clients are emulated.
 # 7) -l 170 means that the payload size of the packets is 170 bytes 
 # (like average audio RTP packet).
-# 8) -e 127.0.0.1 means that the clients will use peer address 127.0.0.1.
+# 8) -e ::1 means that the clients will use peer IPv6 address ::1.
 # 9) -g means "set DONT_FRAGMENT parameter in TURN requests".
 # 10) -u ninefingers means that if the server challenges the client with 
 # authentication challenge, then we use account "ninefingers".
 # 11) -w youhavetoberealistic sets the password for the account.
 # 12) -s option means that the client will be using "send" mechanism for data.
-# 13) ::1 (the last parameter) is the TURN Server IP address. We use IPv6 here
-# to illustrate how the TURN Server convert the traffic from IPv6 to IPv4 and back.
+# 13) 127.0.0.1 (the last parameter) is the TURN Server IP address. 
+# We use IPv6 - to - IPv4 here to illustrate how the TURN Server 
+# converts the traffic from IPv6 to IPv4 and back.
 #
      
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} uclient -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -s ::1
+PATH=examples/bin/:../bin:./bin/:${PATH} uclient -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s 127.0.0.1
 

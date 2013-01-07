@@ -38,7 +38,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <libgen.h>
 
 #include <openssl/ssl.h>
 #include <openssl/opensslv.h>
@@ -103,11 +102,7 @@ int main(int argc, char **argv)
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;
 
-	{
-		char *_var = getenv("_");
-		if(_var && *_var)
-			set_execdir(dirname(_var));
-	}
+	set_execdir();
 
 	srandom((unsigned int) time(NULL));
 

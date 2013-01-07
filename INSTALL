@@ -153,7 +153,8 @@ libevent2 from their web site. It was tested on older *NIXes and it works
 just fine. 
 
 NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not 
-support DTLS, reliably.
+support DTLS, reliably. For example, the Debian 'squeeze' Linux with 
+supplied 0.9.8 version of OpenSSL, does not work correctly with DTLS over IPv6. 
 
 VII. TEST
 

@@ -254,7 +254,7 @@ Options:
 
 -p  Listening UDP port (Default: 3479). 
 -d  Listening interface device (optional)
--L  Listening address of peer server
+-L  Listening address of peer server. Multiple listening addresses can be used, IPv4 and IPv6.
 -v  Verbose
 
 5.	stunclient is a basic STUN client. It sends a STUN request (over UDP) 

@@ -9,11 +9,13 @@
 # use fingerprints (-f)
 # use 3 relay threads (-m 3)
 # use min UDP relay port 32355 and max UDP relay port 65535
+# --no-tls and --no-dtls mean that we are not trying to 
+# start TLS and DTLS services.
 # Other parameters (config file name, etc) are default.
   
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="bin:../bin:../../bin:${PATH}" turnserver -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 -f -m 3 --min-port=32355 --max-port=65535	
+PATH="bin:../bin:../../bin:${PATH}" turnserver -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls 	
 
 
 

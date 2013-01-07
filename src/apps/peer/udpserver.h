@@ -51,16 +51,13 @@ typedef struct server_info server_type;
 
 struct server_info {
   char ifname[1025];
-  ioa_addr addr;
   struct event_base* event_base;
-  struct event *udp_ev;
-  evutil_socket_t udp_fd;
   int verbose;
 };
 
 //////////////////////////////
 
-server_type* start_udp_server(int verbose, const char* ifname, const char *local_address, int port);
+server_type* start_udp_server(int verbose, const char* ifname, char **local_addresses, size_t las, int port);
 
 void run_udp_server(server_type* server);
 

@@ -54,14 +54,13 @@ static char Usage[] =
 int main(int argc, char **argv)
 {
 	int port = PEER_DEFAULT_PORT;
-	char local_addr[256];
+	char **local_addr_list=NULL;
+	size_t las = 0;
 	int verbose = 0;
 	char c;
 	char ifname[1025] = "\0";
 
 	srandom((unsigned int) time(NULL));
-
-	local_addr[0] = 0;
 
 	while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
 		switch (c){
@@ -72,8 +71,9 @@ int main(int argc, char **argv)
 			port = atoi(optarg);
 			break;
 		case 'L':
-			strncpy(local_addr, optarg, sizeof(local_addr) - 1);
-			break;
+		  local_addr_list = realloc(local_addr_list,++las*sizeof(char*));
+		  local_addr_list[las-1]=strdup(optarg);
+		  break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -82,13 +82,13 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-	if(!local_addr[0]) {
+	if(las<1) {
 		fprintf(stderr, "%s\n", Usage);
 		exit(1);
 	}
 
 
-	server_type* server = start_udp_server(verbose, ifname, local_addr, port);
+	server_type* server = start_udp_server(verbose, ifname, local_addr_list, las, port);
 	run_udp_server(server);
 	clean_udp_server(server);
 

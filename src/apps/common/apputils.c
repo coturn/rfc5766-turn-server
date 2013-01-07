@@ -33,6 +33,8 @@
 
 #include "apputils.h"
 
+#include <libgen.h>
+
 /*********************** Sockets *********************************/
 
 int set_sock_buf_size(evutil_socket_t fd, int sz) {
@@ -351,11 +353,24 @@ int handle_socket_error() {
 static const char *config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", QETCDIR, NULL };
 static char *c_execdir=NULL;
 
-void set_execdir(const char *dir)
+void set_execdir(void)
 {
-	if(c_execdir)
-		free(c_execdir);
-	c_execdir = strdup(dir);
+  /* On some systems, this may give us the execution path */
+  char *_var = getenv("_");
+  if(_var && *_var) {
+    _var = strdup(_var);
+    char *edir=_var;
+    if(edir[0]!='.') 
+      edir = strstr(edir,"/");
+    if(edir && *edir)
+      edir = dirname(edir);
+    else
+      edir = dirname(_var);
+    if(c_execdir)
+      free(c_execdir);
+    c_execdir = strdup(edir);
+    free(_var);
+  }
 }
 
 char* find_config_file(const char *config_file, int print_file_name)

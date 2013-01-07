@@ -171,7 +171,7 @@ Peer a simple UDP-only echo backend server. This application is used for the tes
 
  *      *-p*     Listening	UDP port (Default: 3479).
  *      *-d*     Listening	interface device (optional)
- *      *-L*     Listening	address	of _peer_	server
+ *      *-L*     Listening	address	of _peer_	server. Multiple listening addresses can be used, IPv4 and IPv6.
  *      *-v*     Verbose
 
 === stunclient is a basic STUN client ===

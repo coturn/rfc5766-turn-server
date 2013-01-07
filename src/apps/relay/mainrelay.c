@@ -1256,12 +1256,7 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
-	{
-	  /* On some systems, it may give us the execution path */
-		char *_var = getenv("_");
-		if(_var && *_var)
-			set_execdir(dirname(_var));
-	}
+	set_execdir();
 
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
