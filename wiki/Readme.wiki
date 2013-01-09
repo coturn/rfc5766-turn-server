@@ -1,5 +1,5 @@
 
-TURN(3 Jan 2013)	
+TURN(8 Jan 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -68,7 +68,7 @@ TURN(3 Jan 2013)
 
 ====Options:====
 
-    *   *-d,* *--listening-device* Listener interface device (optional functionality, Linux only).
+    *   *-d,* *--listening-device* Listener interface device (optional functionality, Linux only). The turnserver process must have root privileges to bind the	listening endpoint to a device. If turnserver must run as a	process without root privileges, then just do not use this setting.
     *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478).
     *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349).
     *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
@@ -81,7 +81,7 @@ TURN(3 Jan 2013)
     *   *-r,* *--realm* Realm to be used for all users.
     *   *-q,* *--user-quota* Per-user allocation quota.
     *   *-Q,* *--total-quota* total allocation quota.
-	*	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
+    *	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
     *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
     *   *--no-udp* Do not start 'plain' UDP listeners.
@@ -207,7 +207,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(3 Jan 2013)
+							TURN(8 Jan 2013)
 
 
 

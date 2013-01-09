@@ -1,4 +1,9 @@
 01/08/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.4.2.4 'Scale':
+	- Bogus "Bind to device" error message removed (Linux).
+	- Docs improvements.
+	
+01/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.3 'Scale':
 	- Bandwidth limitation implemented (--max-bps option).
 	- DTLS communications improved.

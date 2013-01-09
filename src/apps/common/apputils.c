@@ -81,9 +81,11 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {
 				perror("You must obtain superuser privileges to bind a socket to device");
 			else
 				perror("Cannot bind socket to device");
+
+			return -1;
 		}
 
-		return -1;
+		return 0;
 
 #endif
 
