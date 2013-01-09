@@ -49,6 +49,7 @@ TURN(3 Jan 2013)
    * *-o,* *--daemon* Run server process as daemon.
    * *-f,* *--fingerprint* Use fingerprints in the TURN messages.
    * *-a,* *--lt-cred-mech* Use long-term credential mechanism. By default, no credential mechanism is used - any user is allowed.
+   * *-h*  Help.
 
 ====Config file setting:====
 
@@ -80,13 +81,13 @@ TURN(3 Jan 2013)
     *   *-r,* *--realm* Realm to be used for all users.
     *   *-q,* *--user-quota* Per-user allocation quota.
     *   *-Q,* *--total-quota* total allocation quota.
+	*	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
     *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
     *   *--no-udp* Do not start 'plain' UDP listeners.
     *   *--no-tcp* Do not start 'plain'TCP listeners.
     *   *--no-tls* Do not start TLS listeners.
     *   *--no-dtls* Do not start DTLS	listeners.
-    *   *-h*     Help.
 
 === turnadmin application: a TURN relay administration tool===
 

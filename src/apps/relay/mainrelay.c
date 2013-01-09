@@ -130,6 +130,8 @@ static uint32_t stats=0;
 
 //////////////// Relay servers //////////////////////////////////
 
+static band_limit_t max_bps = 0;
+
 static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
 static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
 
@@ -270,7 +272,7 @@ static void setup_listener_servers(void)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (listener thread): %s\n",event_base_get_method(listener.event_base));
 
-	listener.ioa_eng = create_ioa_engine(listener.event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
+	listener.ioa_eng = create_ioa_engine(listener.event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
 
 	if(!listener.ioa_eng)
 		exit(-1);
@@ -340,7 +342,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	} else {
 		rs->event_base = event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (relay thread): %s\n",event_base_get_method(rs->event_base));
-		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose);
+		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
 		set_ssl_ctx(rs->ioa_eng, tls_ctx, dtls_ctx);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, listener.rtcpmap);
 	}
@@ -629,6 +631,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-r, --realm			Realm.\n"
 	"	-q, --user-quota		per-user allocation quota.\n"
 	"	-Q, --total-quota		total allocation quota.\n"
+	"	-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle\n"
+	"					(input and output network streams combined).\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-b, --userdb			'Dynamic' user database file name (default - turnuserdb.conf).\n"
 	"	-n				Do not use configuration file.\n"
@@ -689,6 +693,7 @@ static struct option long_options[] = {
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
+				{ "max-bps", required_argument, NULL, 's' },
 				{ "verbose", optional_argument, NULL, 'v' },
 				{ "daemon", optional_argument, NULL, 'o' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
@@ -853,6 +858,10 @@ static void set_option(int c, const char *value)
 		break;
 	case 'Q':
 		users->total_quota = atoi(value);
+		break;
+	case 's':
+		max_bps = (band_limit_t)atol(value);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second is allowed per session\n",(unsigned long)max_bps);
 		break;
 	case NO_UDP_OPT:
 		no_udp = get_bool_value(value);
@@ -1543,7 +1552,7 @@ static void openssl_setup(void)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 		}
 		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(dtls_ctx,"DTLS");

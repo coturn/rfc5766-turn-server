@@ -141,6 +141,9 @@ Options:
 -q, --user-quota		Per-user allocation quota.
 
 -Q, --total-quota		total allocation quota.
+-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle
+						(input and output network streams combined). Anything above that limit
+						will be dropped.
 
 --cert				Certificate file, PEM format. Same file 
 				search rules applied as for the configuration 

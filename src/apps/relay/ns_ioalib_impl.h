@@ -68,6 +68,9 @@ typedef struct _stun_buffer_list {
 	size_t tsz;
 } stun_buffer_list;
 
+typedef unsigned long band_limit_t;
+#define SECS_PER_JIFFIE (1)
+
 struct _ioa_engine
 {
   struct event_base *event_base;
@@ -83,6 +86,9 @@ struct _ioa_engine
   stun_buffer_list bufs;
   SSL_CTX *tls_ctx;
   SSL_CTX *dtls_ctx;
+  turn_time_t jiffie;
+  band_limit_t max_bpj;
+  ioa_timer_handle timer_ev;
 };
 
 enum _SOCKET_APP_TYPE {
@@ -126,6 +132,8 @@ struct _ioa_socket
 	int default_tos;
 	int current_tos;
 	stun_buffer_list bufs;
+	turn_time_t jiffie;
+	band_limit_t jiffie_bytes;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -143,7 +151,7 @@ typedef struct _timer_event
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp, 
 				    const s08bits* relay_if,
 				    size_t relays_number, s08bits **relay_addrs,
-				    int verbose);
+				    int verbose, band_limit_t max_bps);
 void close_ioa_engine(ioa_engine_handle e);
 
 void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx);

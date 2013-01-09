@@ -192,8 +192,15 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 
 /************** ENGINE *************************/
 
+static void timer_handler(ioa_engine_handle e, void* arg) {
+
+  UNUSED_ARG(arg);
+
+  e->jiffie = turn_time();
+}
+
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
-				size_t relays_number, s08bits **relay_addrs, int verbose)
+				size_t relays_number, s08bits **relay_addrs, int verbose, band_limit_t max_bps)
 {
 	static int capabilities_checked = 0;
 
@@ -222,6 +229,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	} else {
 		ioa_engine_handle e = malloc(sizeof(ioa_engine));
 		ns_bzero(e,sizeof(ioa_engine));
+		e->max_bpj = max_bps * SECS_PER_JIFFIE;
 		e->verbose = verbose;
 		e->tp = tp;
 		if (eb) {
@@ -242,6 +250,8 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			e->relays_number = relays_number;
 		}
 		e->relay_addr_counter = (size_t) random() % relays_number;
+		timer_handler(e,e);
+		e->timer_ev = set_ioa_timer(e, SECS_PER_JIFFIE, 0, timer_handler, e, 1, "timer_handler");
 		return e;
 	}
 }
@@ -255,20 +265,21 @@ void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx)
 void close_ioa_engine(ioa_engine_handle e)
 {
 	if (e) {
-	  if (e->deallocate_eb && e->event_base)
-	    event_base_free(e->event_base);
+		IOA_EVENT_DEL(e->timer_ev);
+		if (e->deallocate_eb && e->event_base)
+			event_base_free(e->event_base);
 
-	  stun_buffer_list_elem *elem=e->bufs.head;
-	  while(elem) {
-		  stun_buffer_list_elem *next=elem->next;
-		  free(elem);
-		  elem=next;
-	  }
+		stun_buffer_list_elem *elem = e->bufs.head;
+		while (elem) {
+			stun_buffer_list_elem *next = elem->next;
+			free(elem);
+			elem = next;
+		}
 
-	  if(e->relay_addrs)
-		  free(e->relay_addrs);
+		if (e->relay_addrs)
+			free(e->relay_addrs);
 
-	  free(e);
+		free(e);
 	}
 }
 
@@ -392,6 +403,33 @@ void delete_ioa_timer(ioa_timer_handle th)
 }
 
 /************** SOCKETS HELPERS ***********************/
+
+static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz)
+{
+	if((s->e->max_bpj == 0) || (s->sat != CLIENT_SOCKET)) {
+		return 1;
+	} else {
+		band_limit_t bsz = (band_limit_t)sz;
+		if(s->jiffie != s->e->jiffie) {
+			s->jiffie = s->e->jiffie;
+			if(bsz > s->e->max_bpj) {
+				s->jiffie_bytes = 0;
+				return 0;
+			} else {
+				s->jiffie_bytes = bsz;
+				return 1;
+			}
+		} else {
+			band_limit_t nsz = s->jiffie_bytes + bsz;
+			if(nsz > s->e->max_bpj)
+				return 0;
+			else {
+				s->jiffie_bytes = nsz;
+				return 1;
+			}
+		}
+	}
+}
 
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s)
 {
@@ -1328,28 +1366,28 @@ static int socket_input_worker(ioa_socket_handle s)
 	} else if(s->fd>=0){
 		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos);
 	} else {
-		free_blist_elem(s->e,elem);
 		s->tobeclosed = 1;
 		s->broken = 1;
-		return -1;
 	}
 
 	if (len >= 0) {
-		elem->buf.len = len;
-		if(s->read_cb) {
-			ioa_net_data event_data = {&remote_addr, elem, 0, ttl, tos };
+		if(ioa_socket_check_bandwidth(s,(size_t)len)) {
+			elem->buf.len = len;
+			if(s->read_cb) {
+				ioa_net_data event_data = {&remote_addr, elem, 0, ttl, tos };
 
-			s->read_cb(s, IOA_EV_READ, &event_data, s->read_ctx);
+				s->read_cb(s, IOA_EV_READ, &event_data, s->read_ctx);
 
-			if(event_data.nbh)
-				free_blist_elem(s->e,elem);
+				if(event_data.nbh)
+					free_blist_elem(s->e,elem);
 
-			elem = NULL;
+				elem = NULL;
 
-		} else {
-			ioa_network_buffer_delete(s->e, s->defer_nbh);
-			s->defer_nbh = elem;
-			elem = NULL;
+			} else {
+				ioa_network_buffer_delete(s->e, s->defer_nbh);
+				s->defer_nbh = elem;
+				elem = NULL;
+			}
 		}
 	}
 
@@ -1588,66 +1626,85 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->st, s->sat);
+		TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_INFO,
+				"!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
+				__FUNCTION__, (long) s, (int) s->done,
+				(int) s->fd, s->st, s->sat);
 
 	} else if (nbh) {
 
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
-			return ret;
-		}
+		if(!ioa_socket_check_bandwidth(s,ioa_network_buffer_get_size(nbh))) {
+			/* Bandwidth exhausted, we pretend everything is fine: */
+			ret = (int)(ioa_network_buffer_get_size(nbh));
+		} else {
+			if (!ioa_socket_tobeclosed(s) && s->e) {
 
-		if (!ioa_socket_tobeclosed(s) && s->e) {
+				if (to_peer && socket_channel)
+					s = socket_channel; //Use dedicated socket
 
-			if (to_peer && socket_channel)
-				s = socket_channel; //Use dedicated socket
+				if (!(s->done || (s->fd == -1))) {
 
-			if (s->done || (s->fd == -1)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: (2) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->st, s->sat);
-			} else {
+					set_socket_ttl(s, ttl);
+					set_socket_tos(s, tos);
 
-				set_socket_ttl(s,ttl);
-				set_socket_tos(s,tos);
+					if (s->connected && s->bev) {
 
-				if (s->connected && s->bev) {
-
-					if(s->st == TLS_SOCKET) {
+						if (s->st == TLS_SOCKET) {
 #if !defined(TURN_NO_TLS)
-						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-						if(!ctx || SSL_get_shutdown(ctx)) {
-							s->tobeclosed = 1;
-							ret = 0;
-						}
+							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
+							if (!ctx || SSL_get_shutdown(ctx)) {
+								s->tobeclosed = 1;
+								ret = 0;
+							}
 #endif
-					}
-
-					if(!(s->tobeclosed)) {
-						if (bufferevent_write(s->bev,ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh))< 0) {
-							ret = -1;
-							perror("bufev send");
-							s->tobeclosed = 1;
-							s->broken = 1;
-						} else {
-							bufferevent_flush(s->bev, EV_WRITE, BEV_FLUSH);
-							ret = (int) ioa_network_buffer_get_size(nbh);
 						}
-					}
-				} else if (s->ssl) {
-					send_backlog_buffers(s);
-					ret = ssl_send(s->ssl, (s08bits*) ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh), s->e->verbose);
-					if (ret < 0)
-						s->tobeclosed = 1;
-					else if(ret == 0)
-						add_buffer_to_buffer_list(&(s->bufs), (s08bits*) ioa_network_buffer_data(nbh), ioa_network_buffer_get_size(nbh));
-				} else if (s->fd >= 0) {
-					if (s->connected)
-						dest_addr = NULL; /* ignore dest_addr */
-					else if (!dest_addr)
-						dest_addr = &(s->remote_addr);
-					ret = udp_send(s->fd, dest_addr, (s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
-					if (ret < 0) {
-						s->tobeclosed = 1;
-						perror("udp send");
+
+						if (!(s->tobeclosed)) {
+							if (bufferevent_write(
+										s->bev,
+										ioa_network_buffer_data(nbh),
+										ioa_network_buffer_get_size(nbh))
+											< 0) {
+								ret = -1;
+								perror("bufev send");
+								s->tobeclosed = 1;
+								s->broken = 1;
+							} else {
+								bufferevent_flush(
+										s->bev,
+										EV_WRITE,
+										BEV_FLUSH);
+								ret = (int) ioa_network_buffer_get_size(
+																nbh);
+							}
+						}
+					} else if (s->ssl) {
+						send_backlog_buffers(s);
+						ret = ssl_send(
+								s->ssl,
+								(s08bits*) ioa_network_buffer_data(nbh),
+								ioa_network_buffer_get_size(nbh),
+								s->e->verbose);
+						if (ret < 0)
+							s->tobeclosed = 1;
+						else if (ret == 0)
+							add_buffer_to_buffer_list(
+									&(s->bufs),
+									(s08bits*) ioa_network_buffer_data(nbh),
+									ioa_network_buffer_get_size(nbh));
+					} else if (s->fd >= 0) {
+						if (s->connected)
+							dest_addr = NULL; /* ignore dest_addr */
+						else if (!dest_addr)
+							dest_addr = &(s->remote_addr);
+						ret = udp_send(s->fd,
+								dest_addr,
+								(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
+						if (ret < 0) {
+							s->tobeclosed = 1;
+							perror("udp send");
+						}
 					}
 				}
 			}

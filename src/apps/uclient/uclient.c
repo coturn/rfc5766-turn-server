@@ -170,44 +170,46 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message)
 				len = SSL_write(clnet_info->ssl, buffer, message->len);
 			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
 
-			switch (SSL_get_error(clnet_info->ssl, len)){
-			case SSL_ERROR_NONE:
-				if (len > 0) {
-					if (clnet_verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-										"buffer sent: size=%d\n",len);
-					}
-
-					message_sent = 1;
-					ret = len;
-
-				} else {
-					/* Try again ? */
+			if(len == message->len) {
+				if (clnet_verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"buffer sent: size=%d\n",len);
 				}
-				break;
-			case SSL_ERROR_WANT_WRITE:
-				/* Just try again later */
-				break;
-			case SSL_ERROR_WANT_READ:
-				/* continue with reading */
-				break;
-			case SSL_ERROR_SYSCALL:
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Socket write error 111.666: \n");
-				if (handle_socket_error())
+
+				message_sent = 1;
+				ret = len;
+			} else {
+				switch (SSL_get_error(clnet_info->ssl, len)){
+				case SSL_ERROR_NONE:
+					/* Try again ? */
 					break;
-			case SSL_ERROR_SSL:
-			{
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
-				char buf[1024];
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				case SSL_ERROR_WANT_WRITE:
+					/* Just try again later */
+					break;
+				case SSL_ERROR_WANT_READ:
+					/* continue with reading */
+					break;
+				case SSL_ERROR_ZERO_RETURN:
+					/* Try again */
+					break;
+				case SSL_ERROR_SYSCALL:
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Socket write error 111.666: \n");
+					if (handle_socket_error())
+						break;
+				case SSL_ERROR_SSL:
+				{
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
+					char buf[1024];
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"%s (%d)\n",
 						ERR_error_string(ERR_get_error(),buf),
 						SSL_get_error(clnet_info->ssl, len));
-			}
-			default:
-				clnet_info->broken = 1;
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error while writing!\n");
-				return -1;
+				}
+				default:
+					clnet_info->broken = 1;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Unexpected error while writing!\n");
+					return -1;
+				}
 			}
 		}
 
@@ -256,60 +258,74 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message) {
 
 	} else if(use_secure && clnet_info->ssl && !(clnet_info->broken)) {
 
-		/* TLS */
+		/* TLS/DTLS */
 
 		int message_received = 0;
 		while (!message_received) {
 
-			if(SSL_get_shutdown(clnet_info->ssl))
+			if (SSL_get_shutdown(clnet_info->ssl))
 				return -1;
 
 			rc = 0;
 			do {
-				rc = SSL_read(clnet_info->ssl, message->buf, sizeof(message->buf) - 1);
+				rc = SSL_read(clnet_info->ssl, message->buf,
+								sizeof(message->buf) - 1);
 			} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
-			switch (SSL_get_error(clnet_info->ssl, rc)){
-			case SSL_ERROR_NONE:
-				if (rc > 0) {
-					if (clnet_verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-										"response received: size=%d\n",rc);
-					}
-					message->len = rc;
-					message_received=1;
-				} else {
-					/* Try again ? */
+			if (rc > 0) {
+
+				if (clnet_verbose) {
+					TURN_LOG_FUNC(
+									TURN_LOG_LEVEL_INFO,
+									"response received: size=%d\n",
+									rc);
 				}
-				break;
-			case SSL_ERROR_WANT_WRITE:
-				/* Just try again later */
-				break;
-			case SSL_ERROR_WANT_READ:
-				/* continue with reading */
-				break;
-			case SSL_ERROR_SYSCALL:
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-								"Socket read error 111.999: \n");
-				if (handle_socket_error())
+				message->len = rc;
+				message_received = 1;
+
+			} else {
+
+				int sslerr = SSL_get_error(clnet_info->ssl, rc);
+
+				switch (sslerr){
+				case SSL_ERROR_NONE:
+					/* Try again ? */
 					break;
-			case SSL_ERROR_SSL:
-			{
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
-				char buf[1024];
-				TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_INFO,
-								"%s (%d)\n",
-								ERR_error_string(
-												ERR_get_error(),
-												buf),
-								SSL_get_error(clnet_info->ssl, rc));
-			}
-			default:
-				clnet_info->broken = 1;
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-								"Unexpected error while reading!\n");
-				return -1;
+				case SSL_ERROR_WANT_WRITE:
+					/* Just try again later */
+					break;
+				case SSL_ERROR_WANT_READ:
+					/* continue with reading */
+					break;
+				case SSL_ERROR_ZERO_RETURN:
+					/* Try again */
+					break;
+				case SSL_ERROR_SYSCALL:
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"Socket read error 111.999: \n");
+					if (handle_socket_error())
+						break;
+				case SSL_ERROR_SSL:
+				{
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"SSL write error: \n");
+					char buf[1024];
+					TURN_LOG_FUNC(
+									TURN_LOG_LEVEL_INFO,
+									"%s (%d)\n",
+									ERR_error_string(
+													ERR_get_error(),
+													buf),
+									SSL_get_error(
+													clnet_info->ssl,
+													rc));
+				}
+				default:
+					clnet_info->broken = 1;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"Unexpected error while reading: rc=%d, sslerr=%d\n",rc,sslerr);
+					return -1;
+				}
 			}
 		}
 
@@ -541,7 +557,6 @@ static int client_write(app_ur_session *elem) {
 	  }
       tot_send_messages++;
     } else {
-    	perror("send");
     	return -1;
     }
   }
@@ -862,13 +877,15 @@ static inline void client_timer_handler(app_ur_session* elem)
 			if (elem->wmsgnum >= elem->tot_msgnum) {
 				if (!turn_time_before(current_mstime, elem->finished_time) ||
 					(elem->tot_msgnum - elem->rmsgnum) < 1) {
-					//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: c=%d, w=%d, r=%d\n",__FUNCTION__,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum);
 					/*
-					 TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: ly=%llu, ls=%llu, j=%llu\n",__FUNCTION__,
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: c=%d, w=%d, r=%d\n",__FUNCTION__,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum);
+					*/
+					/*
+					 TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.222: ly=%llu, ls=%llu, j=%llu\n",__FUNCTION__,
 					 (unsigned long long)elem->latency,
 					 (unsigned long long)elem->loss,
 					 (unsigned long long)elem->jitter);
-					 */
+					*/
 					total_loss += elem->loss;
 					elem->loss=0;
 					total_latency += elem->latency;

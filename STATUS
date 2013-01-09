@@ -30,6 +30,8 @@ network transports for TURN messages:
 for Linux. Other platforms support the alternative behavior of RFC 5766.
 
 10) DF field alternative behavior of RFC 5766 implemented.
+
+11) Bandwidth limitation per session implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.
