@@ -543,10 +543,12 @@ static int make_local_listeners_list(void)
 
 	char saddr[INET6_ADDRSTRLEN] = "\0";
 
-	getifaddrs(&ifs);
+	if((getifaddrs(&ifs) == 0) && ifs) {
 
-	if (ifs) {
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
+
+			if(!(ifa->ifa_addr))
+				continue;
 
 			if (ifa ->ifa_addr->sa_family == AF_INET) {
 				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
@@ -562,7 +564,10 @@ static int make_local_listeners_list(void)
 				continue;
 
 			add_listener_addr(saddr);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (%s)\n",saddr,ifa->ifa_name);
+			if(ifa->ifa_name)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (%s)\n",saddr,ifa->ifa_name);
+			else
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (NULL)\n",saddr);
 		}
 		freeifaddrs(ifs);
 	}

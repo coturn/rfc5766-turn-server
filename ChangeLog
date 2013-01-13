@@ -1,3 +1,7 @@
+01/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.4.2.5 'Scale':
+	- Issue 2 fixed.
+
 01/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.4 'Scale':
 	- Bogus "Bind to device" error message removed (Linux).
