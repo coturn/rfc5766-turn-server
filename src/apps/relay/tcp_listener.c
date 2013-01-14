@@ -155,7 +155,7 @@ static int create_server_listener(tcp_listener_relay_server_type* server) {
     return -1;
   }
 
-  addr_debug_print(server->verbose, &server->addr,"Listener opened on ");
+  addr_debug_print(server->verbose, &server->addr,"TCP listener opened on ");
 
   FUNCEND;
   

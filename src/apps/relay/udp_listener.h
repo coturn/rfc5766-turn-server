@@ -52,6 +52,8 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
 							     uint32_t *stats);
 void delete_udp_listener_server(udp_listener_relay_server_type* server, int delete_engine);
 
+void udp_send_message(udp_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
+
 ///////////////////////////////////////////
 
 #endif //__UDP_LISTENER__

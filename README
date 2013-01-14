@@ -41,9 +41,11 @@ The compiled binary image of this program is located in examples/bin/ subdirecto
    
 5.	stunclient: a simple STUN client example.
 The compiled binary image of this program is located in examples/bin/ subdirectory.
+  
+6.	rfc5769check: a utility that checks the correctness of the STUN/TURN protocol implementation.
 
 In the "examples/scripts" subdirectory, you will find the examples of command lines to be used 
-to run the programs. The scripts are meant to be run from examples/ subdirectory:
+to run the programs. The scripts are meant to be run from examples/ subdirectory, for example:
 
 $ cd examples
 $ ./scripts/secure_relay.sh
@@ -95,18 +97,27 @@ Config file setting:
 Options:  
 
 -d, --listening-device		Listener interface device (optional functionality, Linux only). 
-							The turnserver process must have root privileges to bind the 
-							listening endpoint to a device. If turnserver must run as a 
-							process without root privileges, then just do not use this setting.
-
--p, --listening-port		TURN listener port for UDP and TCP listeners (Default: 3478).
-
---tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
+				The turnserver process must have root privileges to bind the 
+				listening endpoint to a device. If turnserver must run as a 
+				process without root privileges, then just do not use this setting.
 
 -L, --listening-ip		Listener IP address of relay server. 
 				Multiple listeners can be specified.
 				If no IP(s) specified, then all IPv4 and 
 				IPv6 system IPs will be used for listening.
+
+-p, --listening-port		TURN listener port for UDP and TCP listeners (Default: 3478).
+
+--tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
+
+--alt-listening-port		Alternative STUN listening port for UDP and TCP listeners.
+				Default value is 4378. This is needed for RFC 5780 support
+				(STUN extension specs, NAT behavior discovery). The TURN Server 
+				supports RFC 5780 only if it is started with more than one 
+				listening IP address of the same family (IPv4 or IPv6).
+							 
+--alt-tls-listening-port	Alternative STUN listening port for TLS and DTLS protocols.
+				Default value is 3549.
 
 -i, --relay-device		Relay interface device for relay sockets 
 				(optional, Linux only).
@@ -145,8 +156,8 @@ Options:
 
 -Q, --total-quota		total allocation quota.
 -s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle
-						(input and output network streams combined). Anything above that limit
-						will be dropped.
+				(input and output network streams combined). Anything above that limit
+				will be dropped.
 
 --cert				Certificate file, PEM format. Same file 
 				search rules applied as for the configuration 
@@ -275,6 +286,14 @@ Options:
 
 -p  STUN server port (Default: 3478). 
 -L  Local address to use (optional).
+
+6.	rfc5769check tests the correctness of STUN protocol implementation against 
+the test vectors predefined in RFC 5769 and prints the results of the tests on 
+the screen.   
+  
+Usage:  
+
+$ rfc5769check
 
 LIBRARIES
 

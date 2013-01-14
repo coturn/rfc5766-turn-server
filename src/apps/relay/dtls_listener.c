@@ -682,7 +682,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
     return -1;
   }
 
-  addr_debug_print(server->verbose, &server->addr,"Listener opened on ");
+  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on ");
 
   FUNCEND;
   

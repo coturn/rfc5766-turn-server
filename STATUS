@@ -32,6 +32,10 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 10) DF field alternative behavior of RFC 5766 implemented.
 
 11) Bandwidth limitation per session implemented.
+
+12) RFC 5769 test vectors implemented (where applicable).
+
+13) RFC 5780 STUN extension: NAT behavior discovery
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

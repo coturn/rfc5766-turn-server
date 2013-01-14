@@ -84,6 +84,13 @@ turn_turnserver* create_turn_server(int verbose,
 
 void delete_turn_server(turn_turnserver* server);
 
+////////// RFC 5780 ///////////////////////
+
+typedef int (*get_alt_addr_cb)(ioa_addr *addr, ioa_addr *alt_addr);
+typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination);
+
+void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb);
+
 ///////////////////////////////////////////
 
 int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);

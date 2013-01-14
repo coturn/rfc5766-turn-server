@@ -288,6 +288,41 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose) {
   return ret;
 }
 
+int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
+{
+
+	int ret = 0;
+
+	UNUSED_ARG(fd);
+	UNUSED_ARG(family);
+	UNUSED_ARG(verbose);
+
+#if defined(IP_MTU)
+	int val = 0;
+	socklen_t slen=sizeof(val);
+	if(family==AF_INET) {
+		ret = getsockopt(fd, IPPROTO_IP, IP_MTU, &val, &slen);
+	} else {
+#if defined(IPPROTO_IPV6) && defined(IPV6_MTU)
+		ret = getsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &val, &slen);
+#endif
+		;
+	}
+	if(ret<0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: get IP_MTU sockopt failed\n",__FUNCTION__);
+	} else {
+		if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: IP_MTU=%d\n",__FUNCTION__,val);
+	}
+
+	ret = val;
+#endif
+
+	if (verbose)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: final=%d\n", __FUNCTION__, ret);
+
+	return ret;
+}
+
 //////////////////// socket error handle ////////////////////
 
 int handle_socket_error() {

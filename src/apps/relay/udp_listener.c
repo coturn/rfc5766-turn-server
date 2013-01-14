@@ -227,7 +227,7 @@ static int create_server_socket(udp_listener_relay_server_type* server) {
     return -1;
   }
 
-  addr_debug_print(server->verbose, &server->addr,"Listener opened on ");
+  addr_debug_print(server->verbose, &server->addr,"UDP listener opened on ");
 
   FUNCEND;
   
@@ -294,6 +294,13 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
   } else {
     return server;
   }
+}
+
+void udp_send_message(udp_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest)
+{
+	if(server && dest && nbh && (server->udp_listen_fd > -1)) {
+		udp_send(server->udp_listen_fd, dest, (s08bits*)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
+	}
 }
 
 void delete_udp_listener_server(udp_listener_relay_server_type* server, int delete_engine) {

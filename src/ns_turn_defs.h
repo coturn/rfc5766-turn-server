@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.4.2.5")
-#define TURN_SERVER_VERSION_NAME ("Scale")
+#define TURN_SERVER_VERSION ("1.5.0.0")
+#define TURN_SERVER_VERSION_NAME ("Calder")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
@@ -123,7 +123,9 @@ typedef u32bits turn_time_t;
 #define NONCE_LENGTH_32BITS (2)
 
 #define DEFAULT_STUN_PORT (3478)
+#define DEFAULT_ALT_STUN_PORT (4378)
 #define DEFAULT_STUN_TLS_PORT (5349)
+#define DEFAULT_ALT_STUN_TLS_PORT (3549)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define DEFAULT_STUN_PORT_NBO (0x960D)

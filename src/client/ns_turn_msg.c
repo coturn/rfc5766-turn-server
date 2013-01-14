@@ -100,6 +100,8 @@ int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int 
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
 	if(!sar)
 		return !must_check_fingerprint;
+	if(stun_attr_get_len(sar) != 4)
+		return 0;
 	const u32bits* fingerprint = (const u32bits*)stun_attr_get_value(sar);
 	if(!fingerprint)
 		return !must_check_fingerprint;
@@ -499,6 +501,7 @@ int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid,
   if(!error_code) {
     stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid);
     if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,reflexive_addr)<0) return -1;
+    if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_MAPPED_ADDRESS,reflexive_addr)<0) return -1;
   } else {
     stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
   }
@@ -646,7 +649,7 @@ int stun_get_requested_address_family(stun_attr_ref attr)
 u16bits stun_attr_get_channel_number(stun_attr_ref attr) {
   if(attr) {
     const u08bits* value = stun_attr_get_value(attr);
-    if(value) {
+    if(value && (stun_attr_get_len(attr) >= 2)) {
       u16bits cn=nswap16(((const u16bits*)value)[0]);
       if(STUN_VALID_CHANNEL(cn)) return cn;
     }
@@ -657,7 +660,7 @@ u16bits stun_attr_get_channel_number(stun_attr_ref attr) {
 u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr)  {
   if(attr) {
     const u08bits* value = stun_attr_get_value(attr);
-    if(value) {
+    if(value && (stun_attr_get_len(attr) == 8)) {
       return nswap64(((const u64bits*)value)[0]);
     }
   }
@@ -673,9 +676,10 @@ int stun_attr_is_addr(stun_attr_ref attr) {
     case STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS:
     case STUN_ATTRIBUTE_MAPPED_ADDRESS:
     case STUN_ATTRIBUTE_RESPONSE_ADDRESS:
-    case STUN_ATTRIBUTE_CHANGE_ADDRESS:
     case STUN_ATTRIBUTE_SOURCE_ADDRESS:
     case STUN_ATTRIBUTE_CHANGED_ADDRESS:
+    case STUN_ATTRIBUTE_RESPONSE_ORIGIN:
+    case STUN_ATTRIBUTE_OTHER_ADDRESS:
       return 1;
       break;
     default:
@@ -1056,11 +1060,11 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 	if(stun_produce_integrity_key_str(uname, realm, upwd, key)<0)
 		return -1;
 
-	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((s08bits*)nonce))<0)
-		return -1;
-
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
 			return -1;
+
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_NONCE, nonce, strlen((s08bits*)nonce))<0)
+		return -1;
 
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
 			return -1;
@@ -1084,6 +1088,7 @@ int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *k
 	int orig_len = stun_get_command_message_len_str(buf, len);
 	if (orig_len < 0)
 		return -1;
+
 	int new_len = ((const u08bits*) sar - buf) + 4 + 20;
 	if (new_len > orig_len)
 		return -1;
@@ -1094,6 +1099,9 @@ int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *k
 	res = stun_calculate_hmac(buf, (size_t) new_len - 4 - 20, key, new_hmac);
 	stun_set_command_message_len_str(buf, orig_len);
 	if(res<0)
+		return -1;
+
+	if(stun_attr_get_len(sar) != 20)
 		return -1;
 
 	old_hmac = stun_attr_get_value(sar);
@@ -1117,6 +1125,73 @@ int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u
 		return -1;
 
 	return stun_check_message_integrity_by_key_str(buf, len, key);
+}
+
+/* RFC 5780 */
+
+int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port)
+{
+	if(stun_attr_get_len(attr) == 4) {
+		const u08bits* value = stun_attr_get_value(attr);
+		if(value) {
+			*change_ip = (value[3] & (u08bits)0x04);
+			*change_port = (value[3] & (u08bits)0x02);
+			return 0;
+		}
+	}
+	return -1;
+}
+
+int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, int change_port)
+{
+	u08bits avalue[4]={0,0,0,0};
+
+	if(change_ip) {
+		if(change_port) {
+			avalue[3] = 0x06;
+		} else {
+			avalue[3] = 0x04;
+		}
+	} else if(change_port) {
+		avalue[3]=0x02;
+	}
+
+	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_CHANGE_REQUEST, avalue, 4);
+}
+
+u16bits stun_attr_get_response_port_str(stun_attr_ref attr)
+{
+	if(stun_attr_get_len(attr) >= 2) {
+		const u08bits* value = stun_attr_get_value(attr);
+		if(value) {
+			return nswap16(((const u16bits*)value)[0]);
+		}
+	}
+	return 0;
+}
+
+int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port)
+{
+	u08bits avalue[4]={0,0,0,0};
+
+	((u16bits*)avalue)[0] = nswap16(port);
+
+	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT, avalue, 4);
+}
+
+u16bits stun_attr_get_padding_len_str(stun_attr_ref attr) {
+	int len = stun_attr_get_len(attr);
+	if(len<0)
+		return 0;
+	return (u16bits)len;
+}
+
+int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len)
+{
+	u08bits avalue[0xFFFF];
+	ns_bzero(avalue,padding_len);
+
+	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_PADDING, avalue, padding_len);
 }
 
 ///////////////////////////////////////////////////////////////

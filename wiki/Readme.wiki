@@ -1,5 +1,5 @@
 
-TURN(8 Jan 2013)	
+TURN(13 Jan 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -25,6 +25,7 @@ TURN(8 Jan 2013)
 }}}
  *	_*peer*_: a simple stateless UDP-only "echo" server, to be used as the final server in relay pattern ("_peer_"). For every incoming UDP packet, it simply echoes it back.  (this program is provided for the testing purposes only !)	When the test clients are communicating in the	client-to-client manner, this component	is not needed. The compiled binary image of this program is located in examples/bin/ subdirectory.
  *	_*stunclient*_: a simple STUN	client example.	 The  compiled	binary image of this program is located in examples/bin/ subdirectory.
+ *	_*rfc5769check*_: a utility that checks the correctness of the STUN/TURN protocol implementation. This program will perform several checks and print the result on the screen. It will exit with 0 status if everything is OK, and with (-1) if there was an error in the protocol implementation.  
 
        In the "examples/scripts"	subdirectory, you will find the	 examples  of  command
        lines to	be used	to run the programs. The scripts are meant to be run from examples/ subdirectory:
@@ -69,9 +70,11 @@ TURN(8 Jan 2013)
 ====Options:====
 
     *   *-d,* *--listening-device* Listener interface device (optional functionality, Linux only). The turnserver process must have root privileges to bind the	listening endpoint to a device. If turnserver must run as a	process without root privileges, then just do not use this setting.
+    *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
     *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478).
     *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349).
-    *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
+    *   *--alt-listening-port*   Alternative STUN listener port for UDP and TCP listeners. Default value is 4378. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
+    *   *--alt-tls-listening-port*   Alternative STUN listener port for TLS and DTLS listeners (Default: 3549).
     *   *-i,* *--relay-device* Relay interface device for relay sockets (optional, Linux	only).
     *   *-E,* *--relay-ip* Relay  address  (the local IP address that will be used to relay the packets to the _peer_).	Multiple relay addresses may be	 used. If  no  relay  *IP*(s) specified, then all non-loopback system IPs will be used.
     *   *-m,* *--relay-threads* Number of	extra threads to handle	the  established  connections. By  default, everything in handled in single thread (the default number of	extra threads is 0).
@@ -187,6 +190,14 @@ It sends a STUN request and shows the	reply information.
  *      *-p*     STUN server port (Default: 3478).
  *      *-L*     Local address to use (optional).
 
+=== rfc5769check tests the correctness of STUN protocol ===
+It tests the protocol implementation against the test vectors predefined in RFC 5769 and prints the results of the tests on the screen.   
+  
+====Usage:====  
+{{{
+$ rfc5769check
+}}}
+
 == LIBRARIES ==
 
        In the lib/ sub-directory the build process  will  create  TURN	client
@@ -207,7 +218,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(8 Jan 2013)
+							TURN(13 Jan 2013)
 
 
 

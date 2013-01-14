@@ -78,6 +78,7 @@ int handle_socket_error(void);
 int set_socket_df(evutil_socket_t fd, int family, int value);
 int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose);
 int decrease_mtu(SSL* ssl, int mtu, int verbose);
+int get_socket_mtu(evutil_socket_t fd, int family, int verbose);
 
 ////////////////// File search ////////////////////////
 

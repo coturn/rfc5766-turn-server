@@ -158,6 +158,17 @@ supplied 0.9.8 version of OpenSSL, does not work correctly with DTLS over IPv6.
 
 VII. TEST
 
+First of all, we can use test vectors from RFC 5769 to double-check that our STUN/TURN 
+message encoding algorithms work properly. Run the utility:
+
+ $ cd examples
+ $ ./scripts/rfc5769.sh
+ 
+It will perform several protocol checks and print the results on the output. If anything
+has compiled wrongly (TURN Server, or OpenSSL libraries) then you will see some errors.
+
+Now, the TURN functionality test:
+
 If everything compiled properly, then the following programs must run 
 together successfully, simulating TURN network routing in local loopback
 networking environment:

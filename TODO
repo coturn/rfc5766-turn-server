@@ -1,15 +1,14 @@
 Things to be added:
 
 1) RFC 6062 support (?).
-2) RFC 5780 support.
-3) Locale support (?).
-4) Improve the man pages.
-5) User manual.
-6) Developer manual.
-7) MySQL user database support.
-8) MS Windows support.
-9) ACL support.
-10) HTTP status monitor.
+2) Locale support (?).
+3) Improve the man pages.
+4) User manual.
+5) Developer manual.
+6) MySQL user database support.
+7) MS Windows support.
+8) ACL support.
+9) HTTP status monitor.
 
 
 

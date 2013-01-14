@@ -52,10 +52,15 @@ struct _turn_turnserver {
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
+	int rfc5780;
+	get_alt_addr_cb alt_addr_cb;
+	send_message_cb sm_cb;
 	dont_fragment_option_t dont_fragment;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
 	turn_user_db *users;
+	ioa_addr **encaddrs;
+	size_t addrs_number;
 };
 
 ///////////////////////////////////////////
@@ -69,6 +74,50 @@ static int refresh_relay_connection(turn_turnserver* server,
 		ts_ur_super_session *ss, u32bits lifetime, int even_port,
 		u64bits in_reservation_token, u64bits *out_reservation_token,
 		int *err_code);
+
+/////////////////// RFC 5780 ///////////////////////
+
+void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb)
+{
+	if(server) {
+		if(!cb || !smcb) {
+			server->rfc5780 = 0;
+			server->alt_addr_cb = NULL;
+			server->sm_cb = NULL;
+		} else {
+			server->rfc5780 = 1;
+			server->alt_addr_cb = cb;
+			server->sm_cb = smcb;
+		}
+	}
+}
+
+static int is_rfc5780(turn_turnserver *server)
+{
+	if(!server)
+		return 0;
+
+	return ((server->rfc5780) && (server->alt_addr_cb));
+}
+
+static int get_other_address(turn_turnserver *server, ts_ur_super_session *ss, ioa_addr *alt_addr)
+{
+	if(is_rfc5780(server) && ss) {
+		int ret = server->alt_addr_cb(get_local_addr_from_ioa_socket(ss->client_session.s), alt_addr);
+		return ret;
+	}
+
+	return -1;
+}
+
+static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_handle nbh, ioa_addr *response_origin, ioa_addr *response_destination)
+{
+	if(is_rfc5780(server) && nbh && response_origin && response_destination) {
+		return server->sm_cb(server->e, nbh, response_origin, response_destination);
+	}
+
+	return -1;
+}
 
 /////////////////// Allocation //////////////////////////////////
 
@@ -772,6 +821,145 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 	return 0;
 }
 
+static int handle_turn_binding(turn_turnserver *server,
+				    ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
+				    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
+				    ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
+				    int *origin_changed, ioa_addr *response_origin,
+				    int *dest_changed, ioa_addr *response_destination) {
+
+	FUNCSTART;
+	ts_ur_session* elem = &(ss->client_session);
+	int change_ip = 0;
+	int change_port = 0;
+	int padding = 0;
+	int response_port_present = 0;
+	u16bits response_port = 0;
+	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+
+	*origin_changed = 0;
+	*dest_changed = 0;
+
+	stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+						    ioa_network_buffer_get_size(in_buffer->nbh));
+	while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+		int attr_type = stun_attr_get_type(sar);
+		switch (attr_type) {
+		SKIP_AUTH_ATTRIBUTES;
+		case STUN_ATTRIBUTE_CHANGE_REQUEST:
+			if(!is_rfc5780(server)) {
+				*err_code = 420;
+				*reason = (const u08bits *)"Unknown attribute: TURN server was configured without RFC 5780 support";
+				break;
+			}
+			stun_attr_get_change_request_str(sar, &change_ip, &change_port);
+			if(change_ip || change_port) {
+				if(st != UDP_SOCKET) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Wrong request: applicable only to UDP protocol";
+				}
+			}
+			break;
+		case STUN_ATTRIBUTE_PADDING:
+			if(response_port_present) {
+				*err_code = 400;
+				*reason = (const u08bits *)"Wrong request format: you cannot use PADDING and RESPONSE_PORT together";
+			} else if((st != UDP_SOCKET) && (st != DTLS_SOCKET)) {
+				*err_code = 400;
+				*reason = (const u08bits *)"Wrong request: padding applicable only to UDP and DTLS protocols";
+			} else {
+				padding = 1;
+			}
+			break;
+		case STUN_ATTRIBUTE_RESPONSE_PORT:
+			if(padding) {
+				*err_code = 400;
+				*reason = (const u08bits *)"Wrong request format: you cannot use PADDING and RESPONSE_PORT together";
+			} else if(st != UDP_SOCKET) {
+				*err_code = 400;
+				*reason = (const u08bits *)"Wrong request: applicable only to UDP protocol";
+			} else {
+				response_port_present = 1;
+				response_port = stun_attr_get_response_port_str(sar);
+			}
+			break;
+		default:
+			if(attr_type>=0x0000 && attr_type<=0x7FFF)
+				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+		};
+		sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+					     ioa_network_buffer_get_size(in_buffer->nbh),
+					     sar);
+	}
+
+	if (*ua_num > 0) {
+
+		*err_code = 420;
+		*reason = (const u08bits *)"Unknown attribute";
+
+	} else if (*err_code) {
+
+		;
+
+	} else {
+
+		size_t len = ioa_network_buffer_get_size(nbh);
+		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
+					get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
+
+			*resp_constructed = 1;
+
+			if(is_rfc5780(server)) {
+
+				ioa_addr other_address;
+
+				if(get_other_address(server,ss,&other_address) == 0) {
+
+					addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_session.s));
+					addr_cpy(response_destination, get_remote_addr_from_ioa_socket(ss->client_session.s));
+
+					if(change_ip) {
+						*origin_changed = 1;
+						if(change_port) {
+							addr_cpy(response_origin,&other_address);
+						} else {
+							int old_port = addr_get_port(response_origin);
+							addr_cpy(response_origin,&other_address);
+							addr_set_port(response_origin,old_port);
+						}
+					} else if(change_port) {
+						*origin_changed = 1;
+						addr_set_port(response_origin,addr_get_port(&other_address));
+					}
+
+					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									STUN_ATTRIBUTE_OTHER_ADDRESS, &other_address);
+
+					if(response_port_present) {
+						*dest_changed = 1;
+						addr_set_port(response_destination, (int)response_port);
+					}
+
+					if(padding) {
+						int mtu = get_local_mtu_ioa_socket(ss->client_session.s);
+						if(mtu<68)
+							mtu=1500; /* must be more than enough to test fragmentation in real networks */
+
+						mtu = (mtu >> 2) << 2;
+						stun_attr_add_padding_str(ioa_network_buffer_data(nbh), &len, (u16bits)mtu);
+					}
+				}
+			}
+		}
+		ioa_network_buffer_set_size(nbh, len);
+	}
+
+	FUNCEND;
+	return 0;
+}
+
 static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 			    ioa_net_data *in_buffer) {
@@ -1147,7 +1335,6 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	int no_response = 0;
 	int message_integrity = 0;
 
-	ts_ur_session* elem = &(ss->client_session);
 	u16bits unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
 	u16bits ua_num = 0;
 	u16bits method = stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh), 
@@ -1193,16 +1380,31 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				break;
 
 			case STUN_METHOD_BINDING:
-			{
-				size_t len = ioa_network_buffer_get_size(nbh);
-				if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, &tid,
-								get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
-					*resp_constructed = 1;
-				}
-				ioa_network_buffer_set_size(nbh, len);
-			}
-				break;
 
+			{
+				int origin_changed=0;
+				ioa_addr response_origin;
+				int dest_changed=0;
+				ioa_addr response_destination;
+
+				handle_turn_binding(server, ss, &tid, resp_constructed, &err_code, &reason,
+							unknown_attrs, &ua_num, in_buffer, nbh,
+							&origin_changed, &response_origin,
+							&dest_changed, &response_destination);
+
+				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
+
+					if (server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
+					}
+
+					send_turn_message_to(server, nbh, &response_origin, &response_destination);
+
+					no_response = 1;
+				}
+
+				break;
+			}
 			default:
 				if (server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN request received\n");
@@ -1277,6 +1479,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			stun_attr_add_integrity_str(ioa_network_buffer_data(nbh),&len,ss->hmackey);
 			ioa_network_buffer_set_size(nbh,len);
 		}
+	} else {
+		*resp_constructed = 0;
 	}
 
 	return 0;
@@ -1841,7 +2045,6 @@ static int clean_server(turn_turnserver* server) {
 }
 
 ///////////////////////////////////////////////////////////
-
 
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,

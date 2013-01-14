@@ -1088,6 +1088,14 @@ void set_ioa_socket_session(ioa_socket_handle s, void *ss)
 		s->session = ss;
 }
 
+SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s)
+{
+	if(s)
+		return s->st;
+
+	return UNKNOWN_SOCKET;
+}
+
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
@@ -1114,6 +1122,14 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 		}
 	}
 	return NULL;
+}
+
+int get_local_mtu_ioa_socket(ioa_socket_handle s)
+{
+	if(s) {
+		return get_socket_mtu(s->fd, s->family, s->e->verbose);
+	}
+	return -1;
 }
 
 static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose)
@@ -1602,7 +1618,7 @@ static int send_backlog_buffers(ioa_socket_handle s)
 	return ret;
 }
 
-static int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
+int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
 {
 	int rc = 0;
 	if (dest_addr) {

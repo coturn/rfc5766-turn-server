@@ -21,7 +21,7 @@ COMMON_MODS = src/apps/common/apputils.c src/apps/common/stun_buffer.c
 IMPL_DEPS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.h src/apps/relay/turn_ports.c
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/turnmutex.c 
 
-all:	examples/bin/stunclient examples/bin/uclient bin/turnserver examples/bin/peer lib/libturnclient.a include/src/ns_turn_defs.h
+all:	examples/bin/stunclient examples/bin/rfc5769check examples/bin/uclient bin/turnserver examples/bin/peer lib/libturnclient.a include/src/ns_turn_defs.h
 
 include/src/ns_turn_defs.h:
 	${RMCMD} include
@@ -37,6 +37,11 @@ examples/bin/stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/
 	pwd
 	${MKDIR} examples/bin
 	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient  
+	
+examples/bin/rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
+	pwd
+	${MKDIR} examples/bin
+	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient
 
 bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
 	${MKDIR} bin

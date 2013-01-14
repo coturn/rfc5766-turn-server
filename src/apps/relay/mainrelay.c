@@ -91,6 +91,9 @@ static int turn_daemon = 0;
 
 static int listener_port = DEFAULT_STUN_PORT;
 static int tls_listener_port = DEFAULT_STUN_TLS_PORT;
+static int alt_listener_port = DEFAULT_ALT_STUN_PORT;
+static int alt_tls_listener_port = DEFAULT_ALT_STUN_TLS_PORT;
+static int rfc5780 = 1;
 
 static int no_udp = 0;
 static int no_tcp = 0;
@@ -111,20 +114,30 @@ static char listener_ifname[1025]="\0";
 static char cert_file[1025]="\0";
 static char pkey_file[1025]="\0";
 
+struct message_message {
+	ioa_addr origin;
+	ioa_addr destination;
+	ioa_network_buffer_handle nbh;
+};
+
 struct listener_server {
-	size_t number;
 	rtcp_map* rtcpmap;
 	turnipports* tp;
 	struct event_base* event_base;
 	ioa_engine_handle ioa_eng;
+	struct bufferevent *in_buf;
+	struct bufferevent *out_buf;
 	char **addrs;
+	ioa_addr **encaddrs;
+	size_t addrs_number;
+	size_t services_number;
 	udp_listener_relay_server_type **udp_services;
 	tcp_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
 	dtls_listener_relay_server_type **dtls_services;
 };
 
-struct listener_server listener = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL};
 
 static uint32_t stats=0;
 
@@ -169,17 +182,13 @@ static void read_userdb_file(void);
 //////////////////////////////////////////////////
 
 static void add_listener_addr(const char* addr) {
-	++listener.number;
-	listener.addrs = realloc(listener.addrs, sizeof(char*)*listener.number);
-	listener.addrs[listener.number-1]=strdup(addr);
-	listener.udp_services = realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.number);
-	listener.udp_services[listener.number-1] = NULL;
-	listener.tcp_services = realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.number);
-	listener.tcp_services[listener.number-1] = NULL;
-	listener.tls_services = realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.number);
-	listener.tls_services[listener.number-1] = NULL;
-	listener.dtls_services = realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.number);
-	listener.dtls_services[listener.number-1] = NULL;
+	++listener.addrs_number;
+	++listener.services_number;
+	listener.addrs = realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
+	listener.addrs[listener.addrs_number-1]=strdup(addr);
+	listener.encaddrs = realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
+	listener.encaddrs[listener.addrs_number-1]=malloc(sizeof(ioa_addr));
+	make_ioa_addr((const u08bits*)addr,0,listener.encaddrs[listener.addrs_number-1]);
 }
 
 static void add_relay_addr(const char* addr) {
@@ -189,6 +198,8 @@ static void add_relay_addr(const char* addr) {
 }
 
 //////////////////////////////////////////////////
+
+// communications between listener and relays ==>>
 
 static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
@@ -221,7 +232,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 	while ((n = evbuffer_remove(input, &sm, sizeof(sm))) > 0) {
 		if (n != sizeof(sm)) {
 			perror("Weird buffer error\n");
-			exit(-1);
+			continue;
 		}
 		struct relay_server *rs = ptr;
 		if (sm.s->defer_nbh) {
@@ -262,6 +273,84 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 	}
 }
 
+static int send_message(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination)
+{
+
+	struct message_message mm;
+	addr_cpy(&(mm.origin),origin);
+	addr_cpy(&(mm.destination),destination);
+	mm.nbh = ioa_network_buffer_allocate(e);
+	ioa_network_buffer_header_init(mm.nbh);
+	ns_bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.nbh),ioa_network_buffer_get_size(nbh));
+	ioa_network_buffer_set_size(mm.nbh,ioa_network_buffer_get_size(nbh));
+
+	struct evbuffer *output = bufferevent_get_output(listener.out_buf);
+	evbuffer_add(output,&mm,sizeof(mm));
+	bufferevent_flush(listener.out_buf, EV_WRITE, BEV_FLUSH);
+
+	return 0;
+}
+
+static void acceptmessage(struct bufferevent *bev, void *ptr)
+{
+	UNUSED_ARG(ptr);
+
+	struct message_message mm;
+	int n = 0;
+	struct evbuffer *input = bufferevent_get_input(bev);
+	while ((n = evbuffer_remove(input, &mm, sizeof(mm))) > 0) {
+		if (n != sizeof(mm)) {
+			perror("Weird buffer error\n");
+			continue;
+		}
+
+		size_t i;
+		int found = 0;
+		for(i=0;i<listener.addrs_number;i++) {
+			if(addr_eq_no_port(listener.encaddrs[i],&mm.origin)) {
+				int o_port = addr_get_port(&mm.origin);
+				if(listener.addrs_number == listener.services_number) {
+					if(o_port == listener_port) {
+						if(listener.udp_services && listener.udp_services[i]) {
+							found = 1;
+							udp_send_message(listener.udp_services[i], mm.nbh, &mm.destination);
+						}
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Wrong origin port(1): %d\n",__FUNCTION__,o_port);
+					}
+				} else if((listener.addrs_number * 2) == listener.services_number) {
+					if(o_port == listener_port) {
+						if(listener.udp_services && listener.udp_services[i*2]) {
+							found = 1;
+							udp_send_message(listener.udp_services[i*2], mm.nbh, &mm.destination);
+						}
+					} else if(o_port == alt_listener_port) {
+						if(listener.udp_services && listener.udp_services[i*2+1]) {
+							found = 1;
+							udp_send_message(listener.udp_services[i*2+1], mm.nbh, &mm.destination);
+						}
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Wrong origin port(2): %d\n",__FUNCTION__,o_port);
+					}
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Wrong listener setup\n",__FUNCTION__);
+				}
+				break;
+			}
+		}
+
+		if(!found) {
+			u08bits saddr[129];
+			addr_to_string(&mm.origin, saddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot find local source %s\n",__FUNCTION__,saddr);
+		}
+
+		ioa_network_buffer_delete(listener.ioa_eng, mm.nbh);
+	}
+}
+
+// <<== communications between listener and relays
+
 static void setup_listener_servers(void)
 {
 	size_t i = 0;
@@ -285,15 +374,118 @@ static void setup_listener_servers(void)
 
 	ioa_engine_set_rtcp_map(listener.ioa_eng, listener.rtcpmap);
 
-	for(i=0;i<listener.number;i++) {
-		if(!no_udp)
-			listener.udp_services[i] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
-		if(!no_tcp)
-			listener.tcp_services[i] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
-		if(!no_tls)
-			listener.tls_services[i] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
-		if(!no_dtls)
-			listener.dtls_services[i] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+	{
+		struct bufferevent *pair[2];
+		int opts = 0;
+
+#if !defined(TURN_NO_THREADS)
+		opts = BEV_OPT_THREADSAFE;
+#endif
+
+		bufferevent_pair_new(listener.event_base, opts, pair);
+		listener.in_buf = pair[0];
+		listener.out_buf = pair[1];
+		bufferevent_setcb(listener.in_buf, acceptmessage, NULL, NULL, &listener);
+		bufferevent_enable(listener.in_buf, EV_READ);
+	}
+
+	if(alt_listener_port>=0 || alt_tls_listener_port>=0) {
+		if(listener.addrs_number<2) {
+			rfc5780 = 0;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
+		} else {
+			listener.services_number = listener.services_number * 2;
+		}
+	}
+
+	listener.udp_services = realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.services_number);
+	listener.tcp_services = realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.services_number);
+	listener.tls_services = realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
+	listener.dtls_services = realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+
+	for(i=0; i<listener.addrs_number; i++) {
+		int index = rfc5780 ? i*2 : i;
+		if(!no_udp) {
+			listener.udp_services[index] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
+			if(rfc5780 && alt_listener_port>=0)
+				listener.udp_services[index+1] = create_udp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats);
+		} else {
+			listener.udp_services[index] = NULL;
+			if(rfc5780)
+				listener.udp_services[index+1] = NULL;
+		}
+		if(!no_tcp) {
+			listener.tcp_services[index] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
+			if(rfc5780 && alt_listener_port>=0)
+				listener.tcp_services[index+1] = create_tcp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats);
+		} else {
+			listener.tcp_services[index] = NULL;
+			if(rfc5780)
+				listener.tcp_services[index+1] = NULL;
+		}
+		if(!no_tls) {
+			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+			if(rfc5780 && alt_tls_listener_port>=0)
+				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats);
+		} else {
+			listener.tls_services[index] = NULL;
+			if(rfc5780)
+				listener.tls_services[index+1] = NULL;
+		}
+		if(!no_dtls) {
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+			if(rfc5780 && alt_tls_listener_port>=0)
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats);
+		} else {
+			listener.dtls_services[index] = NULL;
+			if(rfc5780)
+				listener.dtls_services[index+1] = NULL;
+		}
+	}
+}
+
+static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr)
+{
+	if(!addr || !rfc5780 || (listener.addrs_number<2))
+		return -1;
+	else {
+		size_t index = 0xffff;
+		size_t i = 0;
+		int alt_port = -1;
+		int port = addr_get_port(addr);
+
+		if(port == listener_port)
+			alt_port = alt_listener_port;
+		else if(port == alt_listener_port)
+			alt_port = listener_port;
+		else if(port == tls_listener_port)
+			alt_port = alt_tls_listener_port;
+		else if(port == alt_tls_listener_port)
+			alt_port = tls_listener_port;
+		else
+			return -1;
+
+		for(i=0;i<listener.addrs_number;i++) {
+			if(addr_eq_no_port(addr,listener.encaddrs[i])) {
+				index=i;
+				break;
+			}
+		}
+		if(index!=0xffff) {
+			for(i=0;i<listener.addrs_number;i++) {
+				size_t ind = (index+i) % listener.addrs_number;
+				ioa_addr *caddr = listener.encaddrs[ind];
+				if(caddr->ss.ss_family == addr->ss.ss_family) {
+					if(addr_eq_no_port(caddr,addr))
+						continue;
+					addr_cpy(alt_addr,caddr);
+					addr_set_port(alt_addr, alt_port);
+					return 0;
+				}
+			}
+		}
+
+		return -1;
 	}
 }
 
@@ -357,6 +549,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
 	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
+	if(rfc5780) {
+		set_rfc5780(rs->server, get_alt_addr, send_message);
+	}
 }
 
 #if !defined(TURN_NO_THREADS)
@@ -442,7 +637,7 @@ static void clean_server(void)
 	}
 
 	if(listener.udp_services) {
-		for(i=0;i<listener.number; i++) {
+		for(i=0;i<listener.services_number; i++) {
 			if (listener.udp_services[i]) {
 				delete_udp_listener_server(listener.udp_services[i],0);
 				listener.udp_services[i] = NULL;
@@ -453,7 +648,7 @@ static void clean_server(void)
 	}
 
 	if(listener.tcp_services) {
-		for(i=0;i<listener.number; i++) {
+		for(i=0;i<listener.services_number; i++) {
 			if (listener.tcp_services[i]) {
 				delete_tcp_listener_server(listener.tcp_services[i],0);
 				listener.tcp_services[i] = NULL;
@@ -464,7 +659,7 @@ static void clean_server(void)
 	}
 
 	if(listener.tls_services) {
-		for(i=0;i<listener.number; i++) {
+		for(i=0;i<listener.services_number; i++) {
 			if (listener.tls_services[i]) {
 				delete_tls_listener_server(listener.tls_services[i],0);
 				listener.tls_services[i] = NULL;
@@ -475,7 +670,7 @@ static void clean_server(void)
 	}
 
 	if(listener.dtls_services) {
-		for(i=0;i<listener.number; i++) {
+		for(i=0;i<listener.services_number; i++) {
 			if (listener.dtls_services[i]) {
 				delete_dtls_listener_server(listener.dtls_services[i],0);
 				listener.dtls_services[i] = NULL;
@@ -484,6 +679,8 @@ static void clean_server(void)
 		free(listener.dtls_services);
 		listener.dtls_services = NULL;
 	}
+
+	listener.services_number = 0;
 
 	if (listener.ioa_eng) {
 		close_ioa_engine(listener.ioa_eng);
@@ -514,7 +711,7 @@ static void clean_server(void)
 	}
 
 	if(listener.addrs) {
-		for(i=0;i<listener.number; i++) {
+		for(i=0;i<listener.addrs_number; i++) {
 			if (listener.addrs[i]) {
 				free(listener.addrs[i]);
 				listener.addrs[i] = NULL;
@@ -524,7 +721,18 @@ static void clean_server(void)
 		listener.addrs = NULL;
 	}
 
-	listener.number = 0;
+	if(listener.encaddrs) {
+		for(i=0;i<listener.addrs_number; i++) {
+			if (listener.encaddrs[i]) {
+				free(listener.encaddrs[i]);
+				listener.encaddrs[i] = NULL;
+			}
+		}
+		free(listener.encaddrs);
+		listener.encaddrs = NULL;
+	}
+
+	listener.addrs_number = 0;
 
 	if(users) {
 		ur_string_map_free(&(users->static_accounts));
@@ -620,6 +828,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-p, --listening-port		TURN listener port (Default: 3478).\n"
 	"	    --tls-listening-port	TURN listener port for TLS and DTLS listeners\n"
 	"					(Default: 5349).\n"
+	"	    --alt-listening-port	Alternative listening port (in RFC 5780 sense, default 4378)\n"
+	"	    --alt-tls-listening-port	Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 3549)\n"
 	"	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.\n"
 	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
 	"	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
@@ -677,6 +887,8 @@ enum EXTRA_OPTS {
 	NO_TLS_OPT,
 	NO_DTLS_OPT,
 	TLS_PORT_OPT,
+	ALT_PORT_OPT,
+	ALT_TLS_PORT_OPT,
 	CERT_FILE_OPT,
 	PKEY_FILE_OPT,
 	MIN_PORT_OPT,
@@ -687,6 +899,8 @@ static struct option long_options[] = {
 				{ "listening-device", required_argument, NULL, 'd' },
 				{ "listening-port", required_argument, NULL, 'p' },
 				{ "tls-listening-port", required_argument, NULL, TLS_PORT_OPT },
+				{ "alt-listening-port", required_argument, NULL, ALT_PORT_OPT },
+				{ "alt-tls-listening-port", required_argument, NULL, ALT_TLS_PORT_OPT },
 				{ "listening-ip", required_argument, NULL, 'L' },
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
@@ -822,6 +1036,12 @@ static void set_option(int c, const char *value)
 		break;
 	case TLS_PORT_OPT:
 		tls_listener_port = atoi(value);
+		break;
+	case ALT_PORT_OPT:
+		alt_listener_port = atoi(value);
+		break;
+	case ALT_TLS_PORT_OPT:
+		alt_tls_listener_port = atoi(value);
 		break;
 	case MIN_PORT_OPT:
 		min_port = atoi(value);
@@ -1322,9 +1542,9 @@ int main(int argc, char **argv)
 
 	openssl_setup();
 
-	if (!listener.number) {
+	if (!listener.addrs_number) {
 		make_local_listeners_list();
-		if (!listener.number) {
+		if (!listener.addrs_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
 			exit(-1);

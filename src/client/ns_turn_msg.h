@@ -69,7 +69,7 @@
 
 #define STUN_ATTRIBUTE_MAPPED_ADDRESS (0x0001)
 #define STUN_ATTRIBUTE_RESPONSE_ADDRESS (0x0002)
-#define STUN_ATTRIBUTE_CHANGE_ADDRESS (0x0003)
+#define STUN_ATTRIBUTE_CHANGE_REQUEST (0x0003)
 #define STUN_ATTRIBUTE_SOURCE_ADDRESS (0x0004)
 #define STUN_ATTRIBUTE_CHANGED_ADDRESS (0x0005)
 #define STUN_ATTRIBUTE_USERNAME (0x0006)
@@ -98,6 +98,12 @@
 #define STUN_ATTRIBUTE_DONT_FRAGMENT (0x001A)
 #define STUN_ATTRIBUTE_TIMER_VAL (0x0021)
 #define STUN_ATTRIBUTE_RESERVATION_TOKEN (0x0022)
+
+/* RFC 5780 */
+#define STUN_ATTRIBUTE_PADDING (0x0026)
+#define STUN_ATTRIBUTE_RESPONSE_PORT (0x0027)
+#define STUN_ATTRIBUTE_RESPONSE_ORIGIN (0xb02b)
+#define STUN_ATTRIBUTE_OTHER_ADDRESS (0xb02c)
 
 #define STUN_VALID_CHANNEL(chn) ((chn)>=0x4000 && (chn)<=0x7FFF)
 
@@ -166,7 +172,8 @@ int is_channel_msg_str(const u08bits* buf, size_t blen);
 
 void stun_set_binding_request_str(u08bits* buf, size_t *len);
 int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
-				  const ioa_addr *reflexive_addr, int error_code, const u08bits *reason);
+				  const ioa_addr *reflexive_addr, int error_code,
+				  const u08bits *reason);
 int stun_is_binding_request_str(const u08bits* buf, size_t len, size_t offset);
 int stun_is_binding_response_str(const u08bits* buf, size_t len);
 
@@ -230,6 +237,14 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 
 int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
 int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac);
+
+/* RFC 5780 */
+int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port);
+int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, int change_port);
+u16bits stun_attr_get_response_port_str(stun_attr_ref attr);
+int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port);
+u16bits stun_attr_get_padding_len_str(stun_attr_ref attr);
+int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 ///////////////////////////////////////////////////////////////
 
