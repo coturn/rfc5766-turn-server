@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.5.0.0")
+#define TURN_SERVER_VERSION ("1.5.1.0")
 #define TURN_SERVER_VERSION_NAME ("Calder")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
@@ -54,6 +54,12 @@
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+///////////////////////////////////////////
 
 /* NS types: */
 
@@ -133,6 +139,12 @@ typedef u32bits turn_time_t;
 #define DEFAULT_STUN_PORT_NBO (0x0D96)
 #else
 #error WRONG BYTE_ORDER SETTING
+#endif
+
+////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif 

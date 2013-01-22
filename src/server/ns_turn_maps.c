@@ -371,7 +371,7 @@ static int ur_addr_map_init(ur_addr_map* map, u32bits size) {
     else
 	    map->size = DEFAULT_ADDR_MAP_SIZE;
 
-    map->lists = turn_malloc(sizeof(addr_list_header) * map->size);
+    map->lists = (addr_list_header*)turn_malloc(sizeof(addr_list_header) * map->size);
     ns_bzero(map->lists,sizeof(addr_list_header) * map->size);
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
@@ -603,7 +603,7 @@ static string_list* string_list_add(string_list* sl, const ur_string_map_key_typ
   string_elem *elem=(string_elem*)turn_malloc(sizeof(string_elem));
   elem->list.next=sl;
   elem->key_size = strlen(key)+1;
-  elem->key=turn_malloc(elem->key_size);
+  elem->key=(s08bits*)turn_malloc(elem->key_size);
   ns_bcopy(key,elem->key,elem->key_size);
   elem->value=value;
   return &(elem->list);

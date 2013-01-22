@@ -427,7 +427,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
-				char *fn = malloc(sizeof(char) * (dirlen + cflen + 10));
+				char *fn = (char*)malloc(sizeof(char) * (dirlen + cflen + 10));
 				strcpy(fn, config_file_search_dirs[i]);
 				strcpy(fn + dirlen, config_file);
 				FILE *f = fopen(fn, "r");
@@ -441,7 +441,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 				free(fn);
 				if(config_file_search_dirs[i][0]!='/' && c_execdir && c_execdir[0]) {
 					size_t celen = strlen(c_execdir);
-					fn = malloc(sizeof(char) * (dirlen + cflen + celen + 10));
+					fn = (char*)malloc(sizeof(char) * (dirlen + cflen + celen + 10));
 					strcpy(fn,c_execdir);
 					strcpy(fn+strlen(fn),"/");
 					strcpy(fn+strlen(fn), config_file_search_dirs[i]);

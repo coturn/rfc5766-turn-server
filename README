@@ -299,6 +299,8 @@ LIBRARIES
 
 In the lib/ sub-directory the build process will create TURN client messaging library.
 In the include/ sub-directory, the necessary include files will be placed.
+The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
+An example of C++ code can be found in stunclient.c file. 
  
 DOCS
 

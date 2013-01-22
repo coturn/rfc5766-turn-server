@@ -207,7 +207,8 @@ tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
 							     ioa_engine_handle e,
 							     uint32_t *stats) {
   
-  tcp_listener_relay_server_type* server=malloc(sizeof(tcp_listener_relay_server_type));
+  tcp_listener_relay_server_type* server=(tcp_listener_relay_server_type*)
+    malloc(sizeof(tcp_listener_relay_server_type));
 
   memset(server,0,sizeof(tcp_listener_relay_server_type));
 

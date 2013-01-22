@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Citrix Systems
+ * Copyright (C) 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -32,91 +32,21 @@
 #define __LIB_TURN_MSG__
 
 #include "ns_turn_ioaddr.h"
+#include "ns_turn_msg_defs.h"
 
-#define STUN_HEADER_LENGTH (20)
-#define STUN_CHANNEL_HEADER_LENGTH (4)
-
-#define STUN_MAX_USERNAME_SIZE (513)
-#define STUN_MAX_REALM_SIZE (127)
-#define STUN_MAX_NONCE_SIZE (127)
-#define STUN_MAX_PWD_SIZE (127)
-
-#define STUN_MAGIC_COOKIE (0x2112A442)
-
-#define IS_STUN_REQUEST(msg_type)       (((msg_type) & 0x0110) == 0x0000)
-#define IS_STUN_INDICATION(msg_type)    (((msg_type) & 0x0110) == 0x0010)
-#define IS_STUN_SUCCESS_RESP(msg_type)  (((msg_type) & 0x0110) == 0x0100)
-#define IS_STUN_ERR_RESP(msg_type)      (((msg_type) & 0x0110) == 0x0110)
-
-#define GET_STUN_REQUEST(msg_type)      (msg_type & 0xFEEF)
-#define GET_STUN_INDICATION(msg_type)   ((msg_type & 0xFEEF)|0x0010)
-#define GET_STUN_SUCCESS_RESP(msg_type)  ((msg_type & 0xFEEF)|0x0100)
-#define GET_STUN_ERR_RESP(msg_type)      (msg_type | 0x0110)
-
-#define STUN_DEFAULT_ALLOCATE_LIFETIME (600)
-#define STUN_MIN_ALLOCATE_LIFETIME STUN_DEFAULT_ALLOCATE_LIFETIME
-#define STUN_MAX_ALLOCATE_LIFETIME (3600)
-#define STUN_CHANNEL_LIFETIME (600)
-#define STUN_PERMISSION_LIFETIME (300)
-
-#define STUN_METHOD_BINDING (0x001)
-#define STUN_METHOD_ALLOCATE (0x003)
-#define STUN_METHOD_REFRESH (0x004)
-#define STUN_METHOD_SEND (0x006)
-#define STUN_METHOD_DATA (0x007)
-#define STUN_METHOD_CREATE_PERMISSION (0x008)
-#define STUN_METHOD_CHANNEL_BIND (0x009)
-
-#define STUN_ATTRIBUTE_MAPPED_ADDRESS (0x0001)
-#define STUN_ATTRIBUTE_RESPONSE_ADDRESS (0x0002)
-#define STUN_ATTRIBUTE_CHANGE_REQUEST (0x0003)
-#define STUN_ATTRIBUTE_SOURCE_ADDRESS (0x0004)
-#define STUN_ATTRIBUTE_CHANGED_ADDRESS (0x0005)
-#define STUN_ATTRIBUTE_USERNAME (0x0006)
-#define STUN_ATTRIBUTE_PASSWORD (0x0007)
-#define STUN_ATTRIBUTE_MESSAGE_INTEGRITY (0x0008)
-#define STUN_ATTRIBUTE_ERROR_CODE (0x0009)
-#define STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES (0x000A)
-#define STUN_ATTRIBUTE_REFLECTED_FROM (0x000B)
-#define STUN_ATTRIBUTE_REALM (0x0014)
-#define STUN_ATTRIBUTE_NONCE (0x0015)
-#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY (0x0017)
-#define STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS (0x0020)
-
-#define STUN_ATTRIBUTE_SOFTWARE (0x8022)
-#define STUN_ATTRIBUTE_ALTERNATE_SERVER (0x8023)
-#define STUN_ATTRIBUTE_FINGERPRINT (0x8028)
-
-#define STUN_ATTRIBUTE_CHANNEL_NUMBER (0x000C)
-#define STUN_ATTRIBUTE_LIFETIME (0x000D)
-#define STUN_ATTRIBUTE_BANDWIDTH (0x0010)
-#define STUN_ATTRIBUTE_XOR_PEER_ADDRESS (0x0012)
-#define STUN_ATTRIBUTE_DATA (0x0013)
-#define STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS (0x0016)
-#define STUN_ATTRIBUTE_EVEN_PORT (0x0018)
-#define STUN_ATTRIBUTE_REQUESTED_TRANSPORT (0x0019)
-#define STUN_ATTRIBUTE_DONT_FRAGMENT (0x001A)
-#define STUN_ATTRIBUTE_TIMER_VAL (0x0021)
-#define STUN_ATTRIBUTE_RESERVATION_TOKEN (0x0022)
-
-/* RFC 5780 */
-#define STUN_ATTRIBUTE_PADDING (0x0026)
-#define STUN_ATTRIBUTE_RESPONSE_PORT (0x0027)
-#define STUN_ATTRIBUTE_RESPONSE_ORIGIN (0xb02b)
-#define STUN_ATTRIBUTE_OTHER_ADDRESS (0xb02c)
-
-#define STUN_VALID_CHANNEL(chn) ((chn)>=0x4000 && (chn)<=0x7FFF)
-
-///////// values //////////////////
-
-#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4 (0x01)
-#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6 (0x02)
-#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT (0x00)
-#define STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID (-1)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ///////////////////////////////////
 
+/**
+ * Structure holding the STUN message Transaction ID
+ */
 typedef struct {
+	/**
+	 * Binary array
+	 */
   uint8_t tsx_id[12];
 } stun_tid;
 
@@ -188,7 +118,7 @@ int stun_attr_get_type(stun_attr_ref attr);
 int stun_attr_get_len(stun_attr_ref attr);
 const u08bits* stun_attr_get_value(stun_attr_ref attr);
 u16bits stun_attr_get_channel_number(stun_attr_ref attr);
-uint8_t stun_attr_get_even_port(stun_attr_ref attr);
+u08bits stun_attr_get_even_port(stun_attr_ref attr);
 u64bits stun_attr_get_reservation_token_value(stun_attr_ref attr);
 stun_attr_ref stun_attr_get_first_by_type_str(const u08bits* buf, size_t len, u16bits attr_type);
 stun_attr_ref stun_attr_get_first_str(const u08bits* buf, size_t len);
@@ -241,11 +171,15 @@ int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac);
 /* RFC 5780 */
 int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port);
 int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, int change_port);
-u16bits stun_attr_get_response_port_str(stun_attr_ref attr);
+int stun_attr_get_response_port_str(stun_attr_ref attr);
 int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port);
-u16bits stun_attr_get_padding_len_str(stun_attr_ref attr);
+int stun_attr_get_padding_len_str(stun_attr_ref attr);
 int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 ///////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__LIB_TURN_MSG__

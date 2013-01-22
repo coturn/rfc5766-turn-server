@@ -38,7 +38,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
 
   if(!(what&EV_READ)) return;
 
-  ioa_addr *addr = arg;
+  ioa_addr *addr = (ioa_addr*)arg;
 
   int len = 0;
   int slen = get_ioa_addr_len(addr);
@@ -68,7 +68,7 @@ static int udp_create_server_socket(server_type* server,
   if(!server) return -1;
 
   evutil_socket_t udp_fd = -1;
-  ioa_addr *server_addr = malloc(sizeof(ioa_addr));
+  ioa_addr *server_addr = (ioa_addr*)malloc(sizeof(ioa_addr));
 
   strncpy(server->ifname,ifname,sizeof(server->ifname)-1);
 

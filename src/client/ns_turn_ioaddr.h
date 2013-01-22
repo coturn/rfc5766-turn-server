@@ -33,6 +33,12 @@
 
 #include "../ns_turn_defs.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/////////////////////////////////////////////////////
+
 typedef union {
   struct sockaddr_storage ss;
   struct sockaddr_in s4;
@@ -73,5 +79,9 @@ int ioa_addr_in_range(const ioa_addr_range* range, const ioa_addr* addr);
 void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__IOADDR__

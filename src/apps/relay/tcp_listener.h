@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioalib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////
 
 struct tcp_listener_relay_server_info;
@@ -53,5 +57,9 @@ tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
 void delete_tcp_listener_server(tcp_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TCP_LISTENER__

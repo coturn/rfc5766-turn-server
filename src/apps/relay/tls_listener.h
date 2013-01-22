@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioalib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////
 
 struct tls_listener_relay_server_info;
@@ -50,5 +54,9 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 void delete_tls_listener_server(tls_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TLS_LISTENER__

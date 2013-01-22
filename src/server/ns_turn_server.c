@@ -211,7 +211,7 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		release_allocation_quota(ss->server,ss->username);
+		release_allocation_quota((turn_turnserver*)ss->server,ss->username);
 		if (ss->client_session.s) {
 			set_ioa_socket_session(ss->client_session.s, NULL);
 		}
@@ -724,6 +724,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 			}
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS:
+			  {
 				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
 						       ioa_network_buffer_get_size(in_buffer->nbh), 
 						       sar, &peer_addr,
@@ -737,6 +738,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				}
 
 				break;
+			  }
 			default:
 				if(attr_type>=0x0000 && attr_type<=0x7FFF)
 					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
@@ -879,8 +881,14 @@ static int handle_turn_binding(turn_turnserver *server,
 				*err_code = 400;
 				*reason = (const u08bits *)"Wrong request: applicable only to UDP protocol";
 			} else {
-				response_port_present = 1;
-				response_port = stun_attr_get_response_port_str(sar);
+				int rp = stun_attr_get_response_port_str(sar);
+				if(rp>=0) {
+					response_port_present = 1;
+					response_port = (u16bits)rp;
+				} else {
+					*err_code = 400;
+					*reason = (const u08bits *)"Wrong response port format";
+				}
 			}
 			break;
 		default:
@@ -1569,7 +1577,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 
 int shutdown_client_connection_ss(ts_ur_super_session *ss)
 {
-	return shutdown_client_connection(ss->server, ss);
+  return shutdown_client_connection((turn_turnserver*)ss->server, ss);
 }
 
 static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
@@ -1990,9 +1998,9 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	UNUSED_ARG(s);
 	UNUSED_ARG(event_type);
 
-	ts_ur_super_session* ss = arg;
+	ts_ur_super_session* ss = (ts_ur_super_session*)arg;
 
-	turn_turnserver *server = ss->server;
+	turn_turnserver *server = (turn_turnserver*)ss->server;
 
 	if (!server) {
 		return;

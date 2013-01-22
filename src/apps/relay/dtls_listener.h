@@ -37,6 +37,10 @@
 
 #include <event2/event.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////
 
 struct dtls_listener_relay_server_info;
@@ -53,5 +57,9 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__DTLS_LISTENER__

@@ -37,6 +37,12 @@
 
 #include <openssl/ssl.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//////////////////////////////////////////////
+
 extern int clmessage_length;
 extern int use_send_method;
 extern int clnet_verbose;
@@ -61,6 +67,12 @@ void start_mclient(const char *remote_address, int port,
 
 int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
 int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
+
+////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__UCLIENT_ECHO__
 

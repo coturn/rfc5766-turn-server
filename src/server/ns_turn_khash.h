@@ -386,4 +386,6 @@ typedef const str_chunk_t *kh_ncstr_t;
 #define KHASH_MAP_INIT_NCSTR(name, khval_t)								\
 	KHASH_INIT(name, kh_ncstr_t, khval_t, 1, kh_ncstr_hash_func, kh_ncstr_hash_equal)
 
+//////////////////////////////////////////////
+
 #endif /* __AC_KHASH_H */

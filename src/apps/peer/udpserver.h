@@ -37,6 +37,10 @@
 
 #include <event2/event.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////////////
 
 struct server_info;
@@ -64,5 +68,9 @@ void run_udp_server(server_type* server);
 void clean_udp_server(server_type* server);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__UDP_SERVER__

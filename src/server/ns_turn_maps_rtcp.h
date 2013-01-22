@@ -34,6 +34,10 @@
 #include "ns_turn_maps.h"
 #include "ns_turn_ioalib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////// RTCP MAP //////////////////
 
 typedef ur_map_key_type rtcp_token_type;
@@ -77,5 +81,9 @@ void rtcp_map_free(rtcp_map** map);
 size_t rtcp_map_size(const rtcp_map* map);
 
 ////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_RTCP_MAP__

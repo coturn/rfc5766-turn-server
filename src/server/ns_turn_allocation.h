@@ -36,6 +36,10 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_maps.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////// types ////////////
 
 enum _UR_STATE {
@@ -137,5 +141,9 @@ ts_ur_session *get_relay_session(allocation *a);
 ioa_socket_handle get_relay_socket(allocation *a);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_TURN_A_LIB__

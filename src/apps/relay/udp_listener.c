@@ -85,7 +85,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_addr client_addr;
 
-	ioa_network_buffer_handle *elem = ioa_network_buffer_allocate(server->e);
+	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
+	  ioa_network_buffer_allocate(server->e);
 	ioa_net_data nd = { &client_addr, elem, 0, TTL_IGNORE, TOS_IGNORE };
 	ioa_addr si_other;
 	int slen = get_ioa_addr_len(&(server->addr));
@@ -280,7 +281,8 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
 							     ioa_engine_handle e,
 							     uint32_t *stats) {
   
-  udp_listener_relay_server_type* server=malloc(sizeof(udp_listener_relay_server_type));
+  udp_listener_relay_server_type* server=(udp_listener_relay_server_type*)
+    malloc(sizeof(udp_listener_relay_server_type));
 
   memset(server,0,sizeof(udp_listener_relay_server_type));
 

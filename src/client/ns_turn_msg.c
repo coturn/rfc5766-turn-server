@@ -1159,7 +1159,7 @@ int stun_attr_add_change_request_str(u08bits *buf, size_t *len, int change_ip, i
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_CHANGE_REQUEST, avalue, 4);
 }
 
-u16bits stun_attr_get_response_port_str(stun_attr_ref attr)
+int stun_attr_get_response_port_str(stun_attr_ref attr)
 {
 	if(stun_attr_get_len(attr) >= 2) {
 		const u08bits* value = stun_attr_get_value(attr);
@@ -1167,22 +1167,23 @@ u16bits stun_attr_get_response_port_str(stun_attr_ref attr)
 			return nswap16(((const u16bits*)value)[0]);
 		}
 	}
-	return 0;
+	return -1;
 }
 
 int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port)
 {
 	u08bits avalue[4]={0,0,0,0};
+	u16bits *port_ptr = (u16bits*)avalue;
 
-	((u16bits*)avalue)[0] = nswap16(port);
+	*port_ptr = nswap16(port);
 
 	return stun_attr_add_str(buf, len, STUN_ATTRIBUTE_RESPONSE_PORT, avalue, 4);
 }
 
-u16bits stun_attr_get_padding_len_str(stun_attr_ref attr) {
+int stun_attr_get_padding_len_str(stun_attr_ref attr) {
 	int len = stun_attr_get_len(attr);
 	if(len<0)
-		return 0;
+		return -1;
 	return (u16bits)len;
 }
 

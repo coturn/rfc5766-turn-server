@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////// Common defines ///////////////////////////
 
 #define PEER_DEFAULT_PORT (DEFAULT_STUN_PORT+1)
@@ -86,5 +90,9 @@ char* find_config_file(const char *config_file, int print_file_name);
 void set_execdir(void);
 
 ///////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__APP_LIB__

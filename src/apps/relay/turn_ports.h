@@ -33,6 +33,10 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////////////////////////////////
 
 #define LOW_DEFAULT_PORTS_BOUNDARY (49152)
@@ -60,5 +64,9 @@ int turnipports_is_allocated(turnipports* tp, const ioa_addr *backend_addr, u16b
 int turnipports_is_available(turnipports* tp, const ioa_addr *backend_addr, u16bits port);
 
 //////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_PORTS__

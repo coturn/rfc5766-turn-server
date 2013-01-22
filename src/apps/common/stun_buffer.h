@@ -33,6 +33,10 @@
 
 #include "ns_turn_msg.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////////////////////////
 
 #define STUN_BUFFER_SIZE (65507)
@@ -123,5 +127,9 @@ u16bits stun_set_channel_bind_request(stun_buffer* buf, const ioa_addr* peer_add
 void stun_set_channel_bind_response(stun_buffer* buf, stun_tid* tid, int error_code, const u08bits *reason);
 
 ///////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_STUN_BUF__

@@ -104,12 +104,14 @@ int main(int argc, const char **argv)
 			size_t len = 0;
 			u16bits message_type = STUN_METHOD_BINDING;
 			stun_tid tid;
+			u16bits *buf16 = (u16bits*)buf;
+			u32bits *buf32 = (u32bits*)buf;
 			memcpy(tid.tsx_id,"\x78\xad\x34\x33\xc6\xad\x72\xc0\x29\xda\x41\x2e",12);
 			stun_init_buffer_str(buf,&len);
 			message_type &= (u16bits)(0x3FFF);
-			((u16bits*)buf)[0]=nswap16(message_type);
-			((u16bits*)buf)[1]=0;
-			((u32bits*)buf)[1]=nswap32(STUN_MAGIC_COOKIE);
+			buf16[0]=nswap16(message_type);
+			buf16[1]=0;
+			buf32[1]=nswap32(STUN_MAGIC_COOKIE);
 			stun_tid_message_cpy(buf, &tid);
 			stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce);
 			if(len != (sizeof(reqltc)-1)) {

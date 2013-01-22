@@ -36,6 +36,10 @@
 #include "ns_turn_ioalib.h"
 #include "ns_turn_allocation.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////// session info //////////////////////
 
 #define STUN_NONCE_EXPIRATION_TIME (600)
@@ -58,5 +62,9 @@ allocation* get_allocation_ss(ts_ur_super_session *ss);
 int shutdown_client_connection_ss(ts_ur_super_session *ss);
 
 ///////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_SESSION__

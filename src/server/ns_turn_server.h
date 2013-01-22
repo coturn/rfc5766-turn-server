@@ -34,6 +34,10 @@
 #include "ns_turn_utils.h"
 #include "ns_turn_session.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////////////////////////
 
 struct socket_message {
@@ -98,5 +102,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_SERVER__

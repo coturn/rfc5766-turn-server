@@ -41,6 +41,10 @@
 
 #include <openssl/ssl.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////// types ////////////
 
 enum _UR_STATE {
@@ -99,5 +103,9 @@ typedef struct _message_info {
 } message_info;
 
 ///////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__SESSION__

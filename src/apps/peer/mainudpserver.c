@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 			port = atoi(optarg);
 			break;
 		case 'L':
-		  local_addr_list = realloc(local_addr_list,++las*sizeof(char*));
+		  local_addr_list = (char**)realloc(local_addr_list,++las*sizeof(char*));
 		  local_addr_list[las-1]=strdup(optarg);
 		  break;
 		case 'v':

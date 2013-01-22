@@ -401,7 +401,7 @@ static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 
 	UNUSED_ARG(fd);
 
-	new_dtls_conn *ndc = arg;
+	new_dtls_conn *ndc = (new_dtls_conn *)arg;
 
 	dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *) (ndc->server);
 
@@ -441,7 +441,7 @@ static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, voi
 
   if(!arg) return;
 
-  new_dtls_conn *ndc = arg;
+  new_dtls_conn *ndc = (new_dtls_conn *)arg;
 
   dtls_listener_relay_server_type *server = ndc->server;
 
@@ -528,7 +528,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		if (open_client_connection_socket(server, &info) >= 0) {
 
-			new_dtls_conn *ndc = malloc(sizeof(new_dtls_conn));
+		  new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
 			memset(ndc, 0, sizeof(new_dtls_conn));
 
 			memcpy(&(ndc->info), &info, sizeof(info));

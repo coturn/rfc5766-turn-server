@@ -1,13 +1,13 @@
 
 LIBEVENT_INCLUDE = -I${PREFIX}/include/ -I/usr/local/include/
 
-INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client ${LIBEVENT_INCLUDE} 
+INCFLAGS = -Isrc/apps/common -Isrc/server -Isrc/client -Isrc/client++ ${LIBEVENT_INCLUDE} 
 
 CFLAGS += ${INCFLAGS}
 
 MAKE_DEPS = Makefile
 
-LIBCLIENTTURN_HEADERS = src/ns_turn_defs.h src/client/ns_turn_ioaddr.h src/client/ns_turn_msg.h src/client/ns_turn_msg_addr.h src/client/ns_turn_msg.h src/client/ns_turn_utils.h
+LIBCLIENTTURN_HEADERS = src/ns_turn_defs.h src/client++/TurnMsgLib.h src/client/ns_turn_ioaddr.h src/client/ns_turn_msg.h src/client/ns_turn_msg_defs.h src/client/ns_turn_msg_addr.h src/client/ns_turn_utils.h
 LIBCLIENTTURN_DEPS = ${LIBCLIENTTURN_HEADERS} ${MAKE_DEPS} 
 LIBCLIENTTURN_OBJS = build/obj/ns_turn_ioaddr.o build/obj/ns_turn_msg_addr.o build/obj/ns_turn_msg.o build/obj/ns_turn_utils.o
 
@@ -27,6 +27,7 @@ include/src/ns_turn_defs.h:
 	${RMCMD} include
 	${MKDIR} include/turn/client
 	cp -pf src/client/*.h include/turn/client/
+	cp -pf src/client++/*.h include/turn/client/
 	cp -pf src/ns_turn_defs.h include/turn/
 
 examples/bin/uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h

@@ -184,16 +184,16 @@ static void read_userdb_file(void);
 static void add_listener_addr(const char* addr) {
 	++listener.addrs_number;
 	++listener.services_number;
-	listener.addrs = realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
+	listener.addrs = (char**)realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
 	listener.addrs[listener.addrs_number-1]=strdup(addr);
-	listener.encaddrs = realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
-	listener.encaddrs[listener.addrs_number-1]=malloc(sizeof(ioa_addr));
+	listener.encaddrs = (ioa_addr**)realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
+	listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 	make_ioa_addr((const u08bits*)addr,0,listener.encaddrs[listener.addrs_number-1]);
 }
 
 static void add_relay_addr(const char* addr) {
 	++relays_number;
-	relay_addrs = realloc(relay_addrs, sizeof(char*)*relays_number);
+	relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
 	relay_addrs[relays_number-1]=strdup(addr);
 }
 
@@ -234,7 +234,7 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
-		struct relay_server *rs = ptr;
+		struct relay_server *rs = (struct relay_server *)ptr;
 		if (sm.s->defer_nbh) {
 			if (!sm.nbh) {
 				sm.nbh = sm.s->defer_nbh;
@@ -263,9 +263,9 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 		ioa_network_buffer_delete(rs->ioa_eng, sm.nbh);
 
 		if (ioa_socket_tobeclosed(s)) {
-			ts_ur_super_session *ss = s->session;
+		  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
 			if (ss) {
-				turn_turnserver *server = ss->server;
+			  turn_turnserver *server = (turn_turnserver *)ss->server;
 				if (server)
 					shutdown_client_connection(server, ss);
 			}
@@ -398,10 +398,10 @@ static void setup_listener_servers(void)
 		}
 	}
 
-	listener.udp_services = realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.services_number);
-	listener.tcp_services = realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.services_number);
-	listener.tls_services = realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
-	listener.dtls_services = realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+	listener.udp_services = (udp_listener_relay_server_type**)realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.services_number);
+	listener.tcp_services = (tcp_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.services_number);
+	listener.tls_services = (tls_listener_relay_server_type**)realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
+	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
 
 	for(i=0; i<listener.addrs_number; i++) {
 		int index = rfc5780 ? i*2 : i;
@@ -558,7 +558,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 static void *run_relay_thread(void *arg)
 {
   static int always_true = 1;
-  struct relay_server *rs = arg;
+  struct relay_server *rs = (struct relay_server *)arg;
   
   setup_relay_server(rs, NULL);
 
@@ -577,11 +577,11 @@ static void setup_relay_servers(void)
 	relay_servers_number = 0;
 #endif
 
-	relay_servers = malloc(sizeof(struct relay_server *)*get_real_relay_servers_number());
+	relay_servers = (struct relay_server**)malloc(sizeof(struct relay_server *)*get_real_relay_servers_number());
 
 	for(i=0;i<get_real_relay_servers_number();i++) {
 
-		relay_servers[i] = malloc(sizeof(struct relay_server));
+		relay_servers[i] = (struct relay_server*)malloc(sizeof(struct relay_server));
 
 #if defined(TURN_NO_THREADS)
 		setup_relay_server(relay_servers[i], listener.ioa_eng);
@@ -960,12 +960,14 @@ static int get_bool_value(const char* s)
 static int add_user_account(const char *user, int dynamic)
 {
 	if(user) {
-		char *s = strstr(user,":");
-		if(!s || (s==user) || (strlen(s)<2)) {
+	  char hay[513];
+	  strncpy(hay,user,sizeof(hay)-1);
+		char *s = strstr(hay, ":");
+		if(!s || (s==hay) || (strlen(s)<2)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
-			size_t ulen = s-user;
-			char *uname = malloc(sizeof(char)*(ulen+1));
+			size_t ulen = s-hay;
+			char *uname = (char*)malloc(sizeof(char)*(ulen+1));
 			strncpy(uname,user,ulen);
 			uname[ulen]=0;
 			if(SASLprep((u08bits*)uname)<0) {
@@ -974,7 +976,7 @@ static int add_user_account(const char *user, int dynamic)
 				return -1;
 			}
 			s = skip_blanks(s+1);
-			unsigned char *key = malloc(16);
+			unsigned char *key = (unsigned char*)malloc(16);
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
 				if(strlen(keysource)!=32) {
@@ -1417,8 +1419,8 @@ static int adminmain(int argc, char **argv)
 					s0 = us;
 				}
 
-				add_and_cont: content = realloc(content, sizeof(char*)
-									* (++csz));
+				add_and_cont: 
+				content = (char**)realloc(content, sizeof(char*) * (++csz));
 				content[csz - 1] = strdup(s0);
 			}
 
@@ -1431,14 +1433,14 @@ static int adminmain(int argc, char **argv)
 			for(i=0;i<sizeof(key);i++) {
 				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
 			}
-			content = realloc(content,sizeof(char*)*(++csz));
+			content = (char**)realloc(content,sizeof(char*)*(++csz));
 			content[csz-1]=strdup(us);
 		}
 
 		if(!full_path_to_userdb_file)
 			full_path_to_userdb_file=strdup(userdb_file);
 
-		char *dir = malloc(strlen(full_path_to_userdb_file)+21);
+		char *dir = (char*)malloc(strlen(full_path_to_userdb_file)+21);
 		strcpy(dir,full_path_to_userdb_file);
 		size_t dlen = strlen(dir);
 		while(dlen) {
@@ -1509,7 +1511,7 @@ int main(int argc, char **argv)
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6156 STUN/TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
 
-	users = malloc(sizeof(turn_user_db));
+	users = (turn_user_db*)malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->static_accounts = ur_string_map_create(free);
@@ -1701,35 +1703,38 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	char *full_path_to_file = NULL;
 
 	if(!fn[0]) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: you must set the %s file parameter\n",file_title);
-		goto keyerr;
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: you must set the %s file parameter\n",file_title);
+	  goto keyerr;
+	} else {
+	  
+	  full_path_to_file = find_config_file(fn, 1);
+	  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
+	  if(!f) {
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
+	    goto keyerr;
+	  }
+	  
+	  if(!full_path_to_file) {
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (2)\n",file_title,fn);
+	    goto keyerr;
+	  }
+	  
+	  strcpy(fn,full_path_to_file);
+	  
+	  if(full_path_to_file)
+	    free(full_path_to_file);
+	  return;
 	}
-
-	full_path_to_file = find_config_file(fn, 1);
-	FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
-	if(!f) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
-		goto keyerr;
-	}
-
-	if(!full_path_to_file) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (2)\n",file_title,fn);
-		goto keyerr;
-	}
-
-	strcpy(fn,full_path_to_file);
-
-	if(full_path_to_file)
-		free(full_path_to_file);
-	return;
 
 	keyerr:
-	no_tls = 1;
-	no_dtls = 1;
-	if(full_path_to_file)
-		free(full_path_to_file);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
-	return;
+	{
+	  no_tls = 1;
+	  no_dtls = 1;
+	  if(full_path_to_file)
+	    free(full_path_to_file);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
+	  return;
+	}
 }
 
 static void adjust_key_file_names(void)

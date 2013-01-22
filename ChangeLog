@@ -1,5 +1,10 @@
-01/13/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 1.4.3 'Calder':
+01/20/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.1.0 'Calder':
+	- C++ compatible headers and build.
+	- C++ library header. 
+	
+01/15/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.0.0 'Calder':
 	- RFC 5769 check utility implemented.
 	- RFC 5780 STUN extension implemented. 
 	

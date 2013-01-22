@@ -137,8 +137,9 @@ TMPCPROGC=${TMPDIR}/${TMPCPROG}.c
 TMPCPROGB=${TMPDIR}/${TMPCPROG}
 
 cat > ${TMPCPROGC} <<!
-int main() {
-    return 0;
+#include <stdlib.h>
+int main(int argc, char** argv) {
+    return (int)(argv[argc][0]);
 }
 !
 
@@ -147,10 +148,11 @@ TH_TMPCPROGC=${TMPDIR}/${TH_TMPCPROG}.c
 TH_TMPCPROGB=${TMPDIR}/${TH_TMPCPROG}
 
 cat > ${TH_TMPCPROGC} <<!
+#include <stdlib.h>
 #include <pthread.h>
-int main() {
+int main(int argc, char** argv) {
     pthread_mutexattr_settype(0,PTHREAD_MUTEX_RECURSIVE);
-    return (int)pthread_create(0,0,0,0);
+    return (int)pthread_create(0,0,0,0)+(int)(argv[argc][0]);
 }
 !
 
@@ -161,8 +163,8 @@ D_TMPCPROGB=${TMPDIR}/${D_TMPCPROG}
 cat > ${D_TMPCPROGC} <<!
 #include <stdlib.h>
 #include <unistd.h>
-int main() {
-    return (int)daemon(0,0);
+int main(int argc, char** argv) {
+    return (int)daemon(0,0)+(int)(argv[argc][0]);
 }
 !
 
@@ -172,15 +174,15 @@ int main() {
 
 if [ -z "${CC}" ] ; then
     CC=cc
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 		CC=gcc
-    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 		ER=$?
 		if ! [ ${ER} -eq 0 ] ; then
 			CC=clang
-    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 			ER=$?
 			if ! [ ${ER} -eq 0 ] ; then
 				CC=unknown
@@ -206,12 +208,20 @@ fi
 
 GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual -Wredundant-decls"
 
-${CC} ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Not an ordinary GNU or Clang compiler"
+	echo "Hm..."
+	${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+    	echo "Not an ordinary GNU or Clang compiler"
+    else
+    	echo "C++ or something..."
+    	OSCFLAGS="-Wall ${OSCFLAGS}"
+    fi
 else
-    OSCFLAGS="${OSCFLAGS} ${GNUOSCFLAGS}"
+    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
 fi
 
 ###########################

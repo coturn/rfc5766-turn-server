@@ -34,6 +34,12 @@
 #include "ns_turn_utils.h"
 #include "session.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/////////////////////////////////////////////////////////
+
 int start_c2c_connection(uint16_t clnet_remote_port,
 			 const char *remote_address, 
 			 const unsigned char* ifname, const char *local_address,
@@ -55,6 +61,12 @@ int start_connection(uint16_t clnet_remote_port,
 		     uint16_t *chn,
 		     app_ur_conn_info *clnet_info_rtcp,
 		     uint16_t *chn_rtcp);
+
+////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__STARTCLIENT_TURN__
 

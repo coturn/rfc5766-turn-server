@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioalib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////
 
 struct udp_listener_relay_server_info;
@@ -55,5 +59,9 @@ void delete_udp_listener_server(udp_listener_relay_server_type* server, int dele
 void udp_send_message(udp_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__UDP_LISTENER__

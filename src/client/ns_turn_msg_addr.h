@@ -33,11 +33,19 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ///////////////////////////////////////////
 
 int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed, u32bits mc, const u08bits *tsx_id);
 int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u32bits mc, const u08bits *tsx_id);
 
 ///////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__LIB_TURN_MSG_ADDR__

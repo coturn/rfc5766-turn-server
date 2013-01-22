@@ -206,7 +206,8 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 				ioa_engine_handle e, uint32_t *stats)
 {
 
-	tls_listener_relay_server_type* server = malloc(sizeof(tls_listener_relay_server_type));
+  tls_listener_relay_server_type* server = (tls_listener_relay_server_type*)
+    malloc(sizeof(tls_listener_relay_server_type));
 
 	memset(server, 0, sizeof(tls_listener_relay_server_type));
 

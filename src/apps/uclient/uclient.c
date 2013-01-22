@@ -570,7 +570,7 @@ static void client_input_handler(evutil_socket_t fd, short what, void* arg) {
 
   UNUSED_ARG(fd);
 
-  app_ur_session* elem = arg;
+  app_ur_session* elem = (app_ur_session*)arg;
   if(!elem) {
     return;
   }

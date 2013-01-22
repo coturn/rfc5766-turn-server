@@ -145,7 +145,7 @@ static int cilist_size(turn_permission_info* cdi) {
 
 void init_turn_permission_map(turn_permission_map *map) {
   int i=0;
-  (*map)=turn_malloc(sizeof(turn_permission_info*)*TURN_PERMISSION_MAP_SIZE);
+  (*map)=(turn_permission_map)turn_malloc(sizeof(turn_permission_info*)*TURN_PERMISSION_MAP_SIZE);
   for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
     (*map)[i]=NULL;
   }
@@ -233,7 +233,7 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 void turn_channel_delete(ch_info* chn)
 {
 	if(chn) {
-		turn_permission_info* tinfo = chn->owner;
+	  turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
 		if(tinfo) {
 			ur_map_del(tinfo->channels, (ur_map_key_type)addr_get_port(&(chn->peer_addr)),NULL);
 			delete_channel_info_from_allocation_map((ur_map_key_type)addr_get_port(&(chn->peer_addr)),(ur_map_value_type)chn);
@@ -266,7 +266,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	if (!tinfo)
 		tinfo = allocation_add_permission(a, peer_addr);
 
-	ch_info* chn = turn_malloc(sizeof(ch_info));
+	ch_info* chn = (ch_info*)turn_malloc(sizeof(ch_info));
 
 	ns_bzero(chn,sizeof(ch_info));
 
@@ -334,7 +334,7 @@ turn_permission_map allocation_get_turn_permission_map(const allocation *a) {
 turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr) {
   if(a && addr) {
     turn_permission_map map = a->addr_to_perm;
-    turn_permission_info *elem=turn_malloc(sizeof(turn_permission_info));
+    turn_permission_info *elem=(turn_permission_info *)turn_malloc(sizeof(turn_permission_info));
     ns_bzero(elem,sizeof(turn_permission_info));
     elem->channels = ur_map_create();
     addr_cpy(&elem->addr,addr);

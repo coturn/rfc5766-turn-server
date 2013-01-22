@@ -52,6 +52,12 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//////////////////////////////////////////////////////
+
 #define TOO_BIG_BAD_TCP_MESSAGE (40000)
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (16)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
@@ -82,7 +88,7 @@ struct _ioa_engine
   ioa_addr *relay_addrs;
   int verbose;
   turnipports* tp;
-  rtcp_map *rtcp_map;
+  rtcp_map *map_rtcp;
   stun_buffer_list bufs;
   SSL_CTX *tls_ctx;
   SSL_CTX *dtls_ctx;
@@ -164,5 +170,11 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 
 int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len);
+
+/////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __IOA_LIBIMPL__ */

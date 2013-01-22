@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ////////////// Mutexes /////////////////////
 
 struct _turn_mutex {
@@ -165,5 +169,11 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void* create_ioa_socket_channel(ioa_socket_handle s, void *channel_info);
 void refresh_ioa_socket_channel(void *socket_channel);
 void delete_ioa_socket_channel(void **socket_channel);
+
+///////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __IOA_LIB__ */

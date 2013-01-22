@@ -33,6 +33,10 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////// UR MAP //////////////////
 
 typedef u64bits ur_map_key_type;
@@ -185,5 +189,9 @@ int ur_string_map_lock(const ur_string_map* map);
 int ur_string_map_unlock(const ur_string_map* map);
 
 ////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_MAPS__

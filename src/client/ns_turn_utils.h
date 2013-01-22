@@ -37,6 +37,10 @@
 
 #include "ns_turn_ioaddr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////// LOG //////////////////////////
 
 typedef enum {
@@ -56,5 +60,9 @@ int vrtpprintf(const char *format, va_list args);
 void reset_rtpprintf(void);
 
 ///////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TURN_ULIB__
