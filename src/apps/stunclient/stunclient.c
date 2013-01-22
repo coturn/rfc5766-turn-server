@@ -84,19 +84,19 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 			err(-1, NULL);
 	}
 
-	StunMsgRequest req(STUN_METHOD_BINDING);
+	turn::StunMsgRequest req(STUN_METHOD_BINDING);
 
 	req.constructBindingRequest();
 
 	if (response_port >= 0) {
-		StunAttrResponsePort rpa;
+	  turn::StunAttrResponsePort rpa;
 		rpa.setResponsePort((u16bits)response_port);
 		try {
 			req.addAttr(rpa);
-		} catch(WrongStunAttrFormatException &ex1) {
+		} catch(turn::WrongStunAttrFormatException &ex1) {
 			printf("Wrong rp attr format\n");
 			exit(-1);
-		} catch(WrongStunBufferFormatException &ex2) {
+		} catch(turn::WrongStunBufferFormatException &ex2) {
 			printf("Wrong stun buffer format (1)\n");
 			exit(-1);
 		} catch(...) {
@@ -105,15 +105,15 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 		}
 	}
 	if (change_ip || change_port) {
-		StunAttrChangeRequest cra;
+		turn::StunAttrChangeRequest cra;
 		cra.setChangeIp(change_ip);
 		cra.setChangePort(change_port);
 		try {
 			req.addAttr(cra);
-		} catch(WrongStunAttrFormatException &ex1) {
+		} catch(turn::WrongStunAttrFormatException &ex1) {
 			printf("Wrong cr attr format\n");
 			exit(-1);
-		} catch(WrongStunBufferFormatException &ex2) {
+		} catch(turn::WrongStunBufferFormatException &ex2) {
 			printf("Wrong stun buffer format (2)\n");
 			exit(-1);
 		} catch(...) {
@@ -122,14 +122,14 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 		}
 	}
 	if (padding) {
-		StunAttrPadding pa;
+		turn::StunAttrPadding pa;
 		pa.setPadding(1500);
 		try {
 			req.addAttr(pa);
-		} catch(WrongStunAttrFormatException &ex1) {
+		} catch(turn::WrongStunAttrFormatException &ex1) {
 			printf("Wrong p attr format\n");
 			exit(-1);
-		} catch(WrongStunBufferFormatException &ex2) {
+		} catch(turn::WrongStunBufferFormatException &ex2) {
 			printf("Wrong stun buffer format (3)\n");
 			exit(-1);
 		} catch(...) {
@@ -186,7 +186,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 		buf.len = len;
 
 		try {
-			StunMsgResponse res(buf.buf, sizeof(buf.buf), (size_t)buf.len, true);
+			turn::StunMsgResponse res(buf.buf, sizeof(buf.buf), (size_t)buf.len, true);
 
 			if (res.isCommand()) {
 
@@ -196,24 +196,24 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 						ioa_addr reflexive_addr;
 						addr_set_any(&reflexive_addr);
-						StunAttrIterator iter(res,STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS);
+						turn::StunAttrIterator iter(res,STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS);
 						if (!iter.eof()) {
 
-							StunAttrAddr addr(iter);
+							turn::StunAttrAddr addr(iter);
 							addr.getAddr(reflexive_addr);
 
-							StunAttrIterator iter1(res,STUN_ATTRIBUTE_OTHER_ADDRESS);
+							turn::StunAttrIterator iter1(res,STUN_ATTRIBUTE_OTHER_ADDRESS);
 							if (!iter1.eof()) {
 								*rfc5780 = 1;
 								printf("\n========================================\n");
 								printf("RFC 5780 response %d\n",++counter);
 								ioa_addr other_addr;
-								StunAttrAddr addr1(iter1);
+								turn::StunAttrAddr addr1(iter1);
 								addr1.getAddr(other_addr);
-								StunAttrIterator iter2(res,STUN_ATTRIBUTE_RESPONSE_ORIGIN);
+								turn::StunAttrIterator iter2(res,STUN_ATTRIBUTE_RESPONSE_ORIGIN);
 								if (!iter2.eof()) {
 									ioa_addr response_origin;
-									StunAttrAddr addr2(iter2);
+									turn::StunAttrAddr addr2(iter2);
 									addr2.getAddr(response_origin);
 									addr_debug_print(1, &response_origin, "Response origin: ");
 								}

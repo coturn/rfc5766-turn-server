@@ -957,16 +957,14 @@ static int get_bool_value(const char* s)
 	exit(-1);
 }
 
-static int add_user_account(const char *user, int dynamic)
+static int add_user_account(char *user, int dynamic)
 {
 	if(user) {
-	  char hay[513];
-	  strncpy(hay,user,sizeof(hay)-1);
-		char *s = strstr(hay, ":");
-		if(!s || (s==hay) || (strlen(s)<2)) {
+		char *s = strstr(user, ":");
+		if(!s || (s==user) || (strlen(s)<2)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
-			size_t ulen = s-hay;
+			size_t ulen = s-user;
 			char *uname = (char*)malloc(sizeof(char)*(ulen+1));
 			strncpy(uname,user,ulen);
 			uname[ulen]=0;
@@ -1015,7 +1013,7 @@ static int add_user_account(const char *user, int dynamic)
 	return -1;
 }
 
-static void set_option(int c, const char *value)
+static void set_option(int c, char *value)
 {
 	switch (c){
 	case 'i':

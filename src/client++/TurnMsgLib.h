@@ -36,6 +36,8 @@
 
 #include <string>
 
+namespace turn {
+
 class StunAttr;
 
 /**
@@ -980,6 +982,9 @@ private:
 	u16bits _cn;
 	size_t _len;
 };
+
+};
+/* namespace */
 
 #endif
 /* __LIB_TURN_MSG_CPP__ */
