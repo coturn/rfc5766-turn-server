@@ -238,4 +238,7 @@ installation, run the command:
 
 	$	man -M man turnserver
 
-HTML-formatted client library functions reference is located in docs/html subdirectory.
+HTML-formatted client library functions reference is located in docs/html subdirectory
+of the original archive tree. After the installation, it will be placed in 
+PREFIX/share/doc/turnserver/html.
+

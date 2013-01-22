@@ -311,7 +311,7 @@ $ man turnserver
 to see the man page.
 
 In the docs/html subdirectory of the original archive tree, you will find the client library 
-reference. 
+reference. After the installation, it will be placed in PREFIX/share/doc/turnserver/html.
 
 LOGS
 
