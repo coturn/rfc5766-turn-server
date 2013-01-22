@@ -310,6 +310,9 @@ $ man turnserver
 
 to see the man page.
 
+In the docs/html subdirectory of the original archive tree, you will find the client library 
+reference. 
+
 LOGS
 
 When the TURN Server starts, it makes efforts to create a log file turn_<pid>.log 

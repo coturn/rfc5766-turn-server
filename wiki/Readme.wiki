@@ -1,5 +1,5 @@
 
-TURN(14 Jan 2013)	
+TURN(22 Jan 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -202,8 +202,27 @@ $ rfc5769check
 
        In the lib/ sub-directory the build process  will  create  TURN	client
        messaging  library.   In	 the  include/	sub-directory,	the  necessary
-       include files will be placed.
+       include files will be placed. 
+       The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
+       An example of C++ code can be found in stunclient.c file.
 
+== DOCS ==
+
+In the original archive tree, the command:
+
+	$ man -M man turnserver
+
+will give you the man page.
+
+After the proper installation, the command:
+
+	$ man turnserver
+	
+will give you the same man page.
+
+In the docs/html subdirectory of the original archive tree, you will find the client library 
+reference. 
+ 
 == LOGS ==
 
 When the *TURN Server* starts, it makes efforts to create a log file {{{turnserver_<pid>.log}}} 
@@ -218,7 +237,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(14 Jan 2013)
+							TURN(22 Jan 2013)
 
 
 

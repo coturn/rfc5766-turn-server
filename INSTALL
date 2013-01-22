@@ -30,13 +30,22 @@ that you can use to build the project:
 
 	$ make
 
-The make command will create bin sub-directory and put the TURN server there. 
-The test applications will be located in examples/ sub-directory.
+The make command will do the following:
+ - create bin/ sub-directory and put the TURN server and TURN admin programs there.
+ - create lib/ sub-directory and put the client library there.
+ - create include/turn/ sub-directory and put include files there.
+ - create examples/bin/ sub-directory and put all tests program there.
 
 The programs can be either called directly, or a shell scripts can be used. 
 The script examples are located in examples/scripts directory. These scripts are just 
 examples: you can run them successfully for the tests, but
 you will have to change the script parameters for your real environment.
+
+The command:
+
+	$ make install 
+
+will install everything into the system file structure (see below).
 
 The command:
 
@@ -86,7 +95,7 @@ The following platforms have been used in the development:
 	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64
 	- Linux Debian 'squeeze', i386
 
-It must work on many other *NIXes, as well. The build.sh script and/or 
+It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
 
 The code of the client messaging library can be compiled and used on 
@@ -105,6 +114,12 @@ The tested C compilers are:
 
 It may be compiled with others compilers, too.
 
+The code is compatible with C++ compiler, and a C++ compiler
+(like g++) can be used for the compilation, too:
+
+	$ CC=g++ ./configure
+	$ make
+
 VI. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common *NIX OS services and libraries, to compile this code, 
@@ -117,7 +132,7 @@ then even runtime installation is not needed.
 OpenSSL and libevent2 can be downloaded from their web sites -
 http://www.openssl.org and http://www.libevent.org. The installation
 is pretty straightforward - the usual "./configure" and "make install" commands.
-Install them into their default locations - the build.sh script and
+Install them into their default locations - the configure script and
 the Makefile are assuming that they are installed in their default locations.
 If not, then you will have to modify those.
 
@@ -196,7 +211,8 @@ or
 If the client application produces output and in approximately 22 seconds prints 
 the jitter, loss and round-trip-delay statistics, then everything is fine.
 
-There is a similar set of secure* scripts for TURN environment with authentication.
+There is a similar set of examples/scripts/secure_* scripts for TURN environment 
+with authentication.
 
 The provided scripts are for the local loopback communications, as an example and 
 as a test environment. Real networking IPs must be used in real scripts.
@@ -211,7 +227,8 @@ VIII. CLIENT API LIBRARY.
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.
 The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
-An example of C++ code can be found in stunclient.c file. 
+An example of C++ code can be found in stunclient.c file. This file is compiled as a 
+C++ program if C++ compiler is used, and as a C program if C compiler is used.
 
 IX. DOCS
 
@@ -220,3 +237,5 @@ located in man/man1 subdirectory. If you want to see the man page without
 installation, run the command:
 
 	$	man -M man turnserver
+
+HTML-formatted client library functions reference is located in docs/html subdirectory.
