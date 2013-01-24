@@ -19,18 +19,20 @@ First, you have to run the configure script:
 It will create a Makefile customized for your system. 
 
 By default, the generated Makefile will be set to install everything
-in /usr/local directory. You can change that and some other settings my 
-setting PREFIX variable in the command line. Compilation and linking options
+in /usr/local directory. You can change that and some other settings by 
+setting PREFIX variable (and other common build variables) in the 
+configure command line. Compilation and linking options
 can be customized, too. For example:
 
-	$ PREFIX=/opt CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure   
+	$ PREFIX=/opt CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure   
 
 The script configure is a proprietary script. It will create a Makefile 
 that you can use to build the project:
 
 	$ make
 
-The make command will do the following:
+The make command without options will do the following:
+ - compile the code.
  - create bin/ sub-directory and put the TURN server and TURN admin programs there.
  - create lib/ sub-directory and put the client library there.
  - create include/turn/ sub-directory and put include files there.
@@ -60,16 +62,20 @@ The command:
 will clean all results of the build and configuration actions.
 
 Do not run "make clean" before "make deinstall". The "clean" command will
-remove the Makefile and you will not be able to "deinstall" it then. If that 
+remove the Makefile and you will not be able to "deinstall" then. If that 
 has happened, then run ./configure and make again, then deinstall and then clean.
 
 NOTE: On most modern systems, the build will produce dynamically linked 
 executables. If you want statically linked executables, you have to modify, 
-accordingly, the Makefile.
+accordingly, the Makefile.in template file.
 
 III. INSTALL
 
-run command:
+This step is optional. You can run the turnserver from the original build 
+directory, successfully. You need to install the turnserver only if you 
+want to integrate the turnserver in your system.
+
+Run the command:
 
 $ make install
 
@@ -123,8 +129,8 @@ The code is compatible with C++ compiler, and a C++ compiler
 VI. EXTRA LIBRARIES AND UTILITIES
 
 In addition to common *NIX OS services and libraries, to compile this code, 
-OpenSSL (version 1.0.0a or better is recommended) and libevent2 (version 2.0.5 
-or better) are required. For build, both must be installed
+OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
+or better) are required. For fully functional build, both must be installed
 in full version (development headers and runtime libraries). For runtime, 
 only runtime setup is required. If the build is modified for static linking, 
 then even runtime installation is not needed.
@@ -164,11 +170,11 @@ distributions. That version has its deficiencies and is inferior to the newer
 libevent2, especially in the performance department. This is why we are 
 not providing backward compatibility with the older libevent version. 
 If you have a system with older libevent, then you have to install the new 
-libevent2 from their web site. It was tested on older *NIXes and it works 
-just fine. 
+libevent2 from their web site. It was tested with older *NIXes (like FreeBSD 6.x) 
+and it works just fine.
 
 NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not 
-support DTLS, reliably. For example, the Debian 'squeeze' Linux with 
+support DTLS, reliably, in some cases. For example, the Debian 'squeeze' Linux with 
 supplied 0.9.8 version of OpenSSL, does not work correctly with DTLS over IPv6. 
 
 VII. TEST
@@ -212,10 +218,12 @@ If the client application produces output and in approximately 22 seconds prints
 the jitter, loss and round-trip-delay statistics, then everything is fine.
 
 There is a similar set of examples/scripts/secure_* scripts for TURN environment 
-with authentication.
+with authentication. This set of scripts is more complex, and checking the scripts options
+is useful for understanding how the TURN Server works.
 
-The provided scripts are for the local loopback communications, as an example and 
-as a test environment. Real networking IPs must be used in real scripts.
+The provided scripts are set for the local loopback communications, as an example and 
+as a test environment. Real networking IPs must be used in real scripts. If you have several 
+systems, you can use the same scripts, but you have to change the IP addresses in the scripts.
 
 Try wireshark to check the communications between client, turnserver and the peer. 
 
