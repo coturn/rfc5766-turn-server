@@ -72,7 +72,8 @@ accordingly, the Makefile.in template file.
 III. INSTALL
 
 This step is optional. You can run the turnserver from the original build 
-directory, successfully. You need to install the turnserver only if you 
+directory, successfully, without installing the TURN server. 
+You have to install the turnserver only if you 
 want to integrate the turnserver in your system.
 
 Run the command:
@@ -126,7 +127,7 @@ The code is compatible with C++ compiler, and a C++ compiler
 	$ CC=g++ ./configure
 	$ make
 
-VI. EXTRA LIBRARIES AND UTILITIES
+VI. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED 
 
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
@@ -177,7 +178,7 @@ NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not
 support DTLS, reliably, in some cases. For example, the Debian 'squeeze' Linux with 
 supplied 0.9.8 version of OpenSSL, does not work correctly with DTLS over IPv6. 
 
-VII. TEST
+VII. TEST SCRIPT SETS
 
 First of all, we can use test vectors from RFC 5769 to double-check that our STUN/TURN 
 message encoding algorithms work properly. Run the utility:
@@ -188,42 +189,64 @@ message encoding algorithms work properly. Run the utility:
 It will perform several protocol checks and print the results on the output. If anything
 has compiled wrongly (TURN Server, or OpenSSL libraries) then you will see some errors.
 
-Now, the TURN functionality test:
+Now, you can perform the TURN functionality test (bare minimum TURN example).
 
 If everything compiled properly, then the following programs must run 
 together successfully, simulating TURN network routing in local loopback
 networking environment:
 
-Open three shell screens or consoles:
+Open two shell screens or consoles:
 
-In shell number 1, run peer application (from build directory): 
- $ cd examples
- $ ./scripts/peer.sh
-
-In shell number 2, run local TURN server application:
+In shell number 1, run TURN server application:
  $ cd examples
  $ ./scripts/relay.sh
 
-In shell number 3, run test client application:
+In shell number 2, run test client application:
 
  $ cd examples
- $ ./scripts/udp_client.sh
-
-or
-
- $ cd examples
- $ ./scripts/tcp_client.sh
+ $ ./scripts/udp_c2c_client.sh
 
 If the client application produces output and in approximately 22 seconds prints 
 the jitter, loss and round-trip-delay statistics, then everything is fine.
 
+There is another more complex test:
+
+In shell number 1, run TURN server application:
+ $ cd examples
+ $ ./scripts/relay.sh
+ 
+In shell number 2, run "peer" application:
+ $ cd examples
+ $ ./scripts/peer.sh
+
+In shell number 3, run test client application:
+
+ $ cd examples
+ $ ./scripts/udp_client.sh (or ./scripts/tcp_client.sh)
+
 There is a similar set of examples/scripts/secure_* scripts for TURN environment 
 with authentication. This set of scripts is more complex, and checking the scripts options
-is useful for understanding how the TURN Server works.
+is useful for understanding how the TURN Server works:
+
+In shell number 1, run secure TURN server application:
+ $ cd examples
+ $ ./scripts/secure_relay.sh
+ 
+In shell number 2, run "peer" application:
+ $ cd examples
+ $ ./scripts/peer.sh
+
+In shell number 3, run secure test client application:
+
+ $ cd examples
+ $ ./scripts/secure_udp_client.sh
+  
+ (or ./scripts/secure tcp_client.sh)
+ (or ./scripts/secure tls_client.sh)
+ (or ./scripts/secure dtls_client.sh)
 
 The provided scripts are set for the local loopback communications, as an example and 
-as a test environment. Real networking IPs must be used in real scripts. If you have several 
-systems, you can use the same scripts, but you have to change the IP addresses in the scripts.
+as a test environment. Real networking IPs must be used in real work environments. 
 
 Try wireshark to check the communications between client, turnserver and the peer. 
 

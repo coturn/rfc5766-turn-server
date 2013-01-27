@@ -73,8 +73,8 @@ TURN(22 Jan 2013)
     *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
     *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478).
     *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349).
-    *   *--alt-listening-port*   Alternative STUN listener port for UDP and TCP listeners. Default value is 4378. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
-    *   *--alt-tls-listening-port*   Alternative STUN listener port for TLS and DTLS listeners (Default: 3549).
+    *   *--alt-listening-port*   Alternative STUN listener port for UDP and TCP listeners. Default value is 24378. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
+    *   *--alt-tls-listening-port*   Alternative STUN listener port for TLS and DTLS listeners (Default: 23549).
     *   *-i,* *--relay-device* Relay interface device for relay sockets (optional, Linux	only).
     *   *-E,* *--relay-ip* Relay  address  (the local IP address that will be used to relay the packets to the _peer_).	Multiple relay addresses may be	 used. If  no  relay  *IP*(s) specified, then all non-loopback system IPs will be used.
     *   *-m,* *--relay-threads* Number of	extra threads to handle	the  established  connections. By  default, everything in handled in single thread (the default number of	extra threads is 0).

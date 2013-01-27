@@ -52,15 +52,20 @@ to run the programs. The scripts are meant to be run from examples/ subdirectory
 $ cd examples
 $ ./scripts/secure_relay.sh
   
-RUN
-
-1.	turnserver application is a TURN relay server implementation. 
+RUNNING THE TURN SERVER
   
-Usage:
+===============================================================================
+
+  NAME
+  
+turnserver application is a TURN relay server implementation.
+  
+  SYNOPSIS
   
 $ turnserver [-vfao] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [options]
-
 $ turnserver -h
+  
+  DESCRIPTION
   
 Flags:   
 
@@ -115,13 +120,13 @@ Options:
 --tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
 
 --alt-listening-port		Alternative STUN listening port for UDP and TCP listeners.
-				Default value is 4378. This is needed for RFC 5780 support
+				Default value is 24378. This is needed for RFC 5780 support
 				(STUN extension specs, NAT behavior discovery). The TURN Server 
 				supports RFC 5780 only if it is started with more than one 
 				listening IP address of the same family (IPv4 or IPv6).
 							 
 --alt-tls-listening-port	Alternative STUN listening port for TLS and DTLS protocols.
-				Default value is 3549.
+				Default value is 23549.
 
 -i, --relay-device		Relay interface device for relay sockets 
 				(optional, Linux only).
@@ -185,14 +190,20 @@ Options:
 --no-dtls			Do not start DTLS listeners.
 
 -h				Help.
-	
-2.	turnadmin application is a TURN relay administration tool. 
+
+===============================================================================
+
+  NAME
+
+turnadmin application is a TURN relay administration tool. 
   
-Usage:  
+  SYNOPSIS  
 
 $ turnadmin [command] [options]
 
 $ turnadmin [ -h | --help]
+
+  DESCRIPTION
   
 Commands:  
 
@@ -223,80 +234,139 @@ $ turnadmin -d [-c <user-db-file>] -u <username>
 Help:  
 
 $ turnadmin -h
+
+==================================================================================
     
-3.	uclient application is for test purposes only. 
-It was designed to simulate multiple clients. It uses asynch IO API in 
+  NAME
+  
+uclient application is for test purposes only.
+ 
+  SYNOPSIS  
+
+$ uclient [-tSvsyhcxg] [options] <TURN-Server-IP-address>
+  
+  DESCRIPTION
+  
+  It was designed to simulate multiple clients. It uses asynch IO API in 
 libevent to handle multiple clients. A client connects to the relay, 
 negotiates the session, and sends multiple (configured number) messages to the server (relay), 
 expecting the same number of replies. The length of the messages is configurable. 
 The message is an arbitrary octet stream, but it can be configured as a string. 
 The number of the messages to send is configurable. 
   
-Usage:  
-
-$ uclient [-tSvsyhcxg] [options] <TURN-Server-IP-address>
-  
-Flags:  
+Flags:   
 
 -t      Use TCP (default is UDP).
+
 -S      Secure connection: TLS for TCP, DTLS for UDP.
+
 -v      Verbose.
+
 -s      Use "send" method in TURN; by default, it uses TURN "channels".
+
 -y      Use client-to-client connections: 
     	RTP/RTCP pair of channels to another RTP/RTCP pair of channels.
     	with this option the peer application is not used,
-    	as the relay endpoints are talking to each other. 
+    	as the relay endpoints are talking to each other.
+    	 
 -h      Hang on indefinitely after the last sent packet.
+
 -c      Do not create rtcp connections.
+
 -x      Request IPv6 relayed address (RFC6156).
+
 -g      Set DONT_FRAGMENT parameter in TURN requests.
   
 Options:  
 
 -l      Message length (Default: 100 Bytes).
+
 -i      Certificate file (for secure connections only).
+
 -k      Private key file (for secure connections only).
+
 -p      TURN Server port (Default: 3478 unsecure, 5349 secure).
+
 -n      Number of messages to send (Default: 5).
+
 -d      Local interface device (optional).
+
 -L      Local IP address (optional).
+
 -m      Number of clients (default is 1, 2 or 4, depending on options below).
+
 -e      Peer address.
+
 -r      Peer port (default 3479).
 
 See the examples in the "examples/scripts" directory.
-    
-4.	peer application is a simple UDP-only echo backend server. This application
-is used for the test purposes only, as a 'peer' for the uclient application. 
+
+====================================================================================
   
-Usage:  
+  NAME
+    
+peer application is a simple UDP-only echo backend server.  
+  
+  SYNOPSYS
 
 $ peer [-v] [options]
   
+  DESCRIPTION
+  
+  This application is used for the test purposes only, as a 'peer' for the uclient application.
+  
 Options:  
 
--p  Listening UDP port (Default: 3479). 
+-p  Listening UDP port (Default: 3479).
+ 
 -d  Listening interface device (optional)
+
 -L  Listening address of peer server. Multiple listening addresses can be used, IPv4 and IPv6.
+
 -v  Verbose
 
-5.	stunclient is a basic STUN client. It sends a STUN request (over UDP)
-and shows the reply information. This stunclient can work only with "unsecure"
-TURN Server - it cannot answer the authentication challenge.
+===================================================================================
+
+  NAME
   
-Usage:  
+stunclient is a basic STUN client. 
+  
+  SYNOPSIS
 
 $ stunclient [options] <STUN-Server-IP-address>
   
+  DESCRIPTION
+  
+  It sends a STUN request (over UDP)
+and shows the reply information. This stunclient can work only with "unsecure"
+TURN Server - it cannot answer the authentication challenge.
+
 Options:  
 
--p  STUN server port (Default: 3478). 
+-p  STUN server port (Default: 3478).
+ 
 -L  Local address to use (optional).
 
-The stunclient program checks the results of the first request, and if it finds that the STUN server supports RFC 5780 (the binding response reveals that) then the stunclient makes a couple more requests with different parameters, to demonstrate the NAT discovery capabilities.
+The stunclient program checks the results of the first request, 
+and if it finds that the STUN server supports RFC 5780 
+(the binding response reveals that) then the stunclient makes a couple more 
+requests with different parameters, to demonstrate the NAT discovery capabilities.
 
-6.	rfc5769check tests the correctness of STUN protocol implementation against the test vectors predefined in RFC 5769 and prints the results of the tests on the screen.   
+===================================================================================
+
+  NAME
   
+rfc5769check tests the correctness of STUN protocol implementation.   
+  
+  SYNOPSIS
+  
+  $ rfc5769check
+  
+  DESCRIPTION
+
+rfc5769check tests the correctness of STUN protocol implementation 
+against the test vectors predefined in RFC 5769 and prints the results of the tests on the screen.
+      
 Usage:  
 
 $ rfc5769check
@@ -342,5 +412,28 @@ the RTP and RTCP relaying endpoints must be allocated on the same relay IP. It w
 to design a scheme with the application-level requests forwarding (and we may do that later) but 
 it would affect the performance.
 
+FILES
 
-  
+/etc/turnserver.conf
+
+/etc/turnuserdb.conf
+
+/usr/local/etc/turnserver.conf
+
+/usr/local/etc/turnuserdb.conf
+
+STANDARDS
+
+new STUN RFC 5389
+
+TURN RFC 5766
+ 
+IPv6 extention RFC 6156
+
+test vectors RFC 5769
+
+NAT behavior discovery RFC5780
+
+AUTHORS
+
+Oleg Moskalenko <mom040267@gmail.com>
