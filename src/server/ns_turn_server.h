@@ -84,7 +84,8 @@ turn_turnserver* create_turn_server(int verbose,
 				    int stun_port,
 				    int fingerprint,
 				    dont_fragment_option_t dont_fragment,
-				    turn_user_db *users);
+				    turn_user_db *users,
+				    ioa_addr *external_addr);
 
 void delete_turn_server(turn_turnserver* server);
 

@@ -152,6 +152,7 @@ static char relay_ifname[1025]="\0";
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;
+static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
 
@@ -548,7 +549,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
-	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users);
+	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users, external_ip);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message);
 	}
@@ -833,6 +834,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.\n"
 	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
 	"	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
+	"	-X, --external-ip		\"External\" TURN Server address if the server is behind NAT.\n"
+	"					In the server-behind-NAT situation, only one relay address must be used, and\n"
+	"					that single relay address must be mapped by NAT to the 'external' IP.\n"
+	"					For this 'external' IP, NAT must forward ports directly (relayed port 12345\n"
+	"					must be always mapped to the same 'external' port 12345).\n"
 	"	-m, --relay-threads		Number of extra threads to handle established connections (default is 0).\n"
 	"	    --min-port			Lower bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 49152, according to RFC 5766.\n"
@@ -877,7 +883,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "c:d:p:L:E:i:m:l:r:u:b:q:Q:vofha"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:q:Q:vofha"
 
 #define ADMIN_OPTIONS "kadb:u:r:p:h"
 
@@ -904,6 +910,7 @@ static struct option long_options[] = {
 				{ "listening-ip", required_argument, NULL, 'L' },
 				{ "relay-device", required_argument, NULL, 'i' },
 				{ "relay-ip", required_argument, NULL, 'E' },
+				{ "external-ip", required_argument, NULL, 'X' },
 				{ "relay-threads", required_argument, NULL, 'm' },
 				{ "min-port", required_argument, NULL, MIN_PORT_OPT },
 				{ "max-port", required_argument, NULL, MAX_PORT_OPT },
@@ -1054,6 +1061,14 @@ static void set_option(int c, char *value)
 		break;
 	case 'E':
 		add_relay_addr(value);
+		break;
+	case 'X':
+		if(external_ip) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
+		} else {
+			external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+			make_ioa_addr((const u08bits*)value,0,external_ip);
+		}
 		break;
 	case 'v':
 		verbose = get_bool_value(value);

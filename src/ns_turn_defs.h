@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.5.1.2")
+#define TURN_SERVER_VERSION ("1.5.1.3")
 #define TURN_SERVER_VERSION_NAME ("Calder")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)

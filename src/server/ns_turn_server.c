@@ -60,6 +60,7 @@ struct _turn_turnserver {
 	int (*disconnect)(ts_ur_super_session*);
 	turn_user_db *users;
 	ioa_addr **encaddrs;
+	ioa_addr *external_ip;
 	size_t addrs_number;
 };
 
@@ -345,9 +346,17 @@ static int handle_turn_allocate(turn_turnserver *server,
 			*reason = (const u08bits *)"Wrong TID";
 		} else {
 			size_t len = ioa_network_buffer_get_size(nbh);
+			ioa_addr xor_relayed_addr;
+			ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
+			if(server->external_ip) {
+				addr_cpy(&xor_relayed_addr, server->external_ip);
+				addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
+			} else {
+				addr_cpy(&xor_relayed_addr, relayed_addr);
+			}
 			stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len,
 							tid,
-					get_local_addr_from_ioa_socket(get_relay_socket_ss(ss)),
+					&xor_relayed_addr,
 					get_remote_addr_from_ioa_socket(elem->s),
 					(a->expiration_time - turn_time()), 0, NULL, 0);
 			ioa_network_buffer_set_size(nbh,len);
@@ -539,8 +548,17 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 				size_t len = ioa_network_buffer_get_size(nbh);
 
+				ioa_addr xor_relayed_addr;
+				ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
+				if(server->external_ip) {
+					addr_cpy(&xor_relayed_addr, server->external_ip);
+					addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
+				} else {
+					addr_cpy(&xor_relayed_addr, relayed_addr);
+				}
+
 				stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid,
-							   get_local_addr_from_ioa_socket(get_relay_socket_ss(ss)),
+							   &xor_relayed_addr,
 							   get_remote_addr_from_ioa_socket(elem->s), lifetime, 
 							   0,NULL,
 							   out_reservation_token);
@@ -2057,7 +2075,7 @@ static int clean_server(turn_turnserver* server) {
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
 		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
-		turn_user_db *users) {
+		turn_user_db *users, ioa_addr *external_ip) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2071,6 +2089,7 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
 	server->stats = stats;
+	server->external_ip = external_ip;
 	if (stun_port < 1)
 		stun_port = DEFAULT_STUN_PORT;
 

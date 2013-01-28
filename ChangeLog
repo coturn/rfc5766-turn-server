@@ -1,3 +1,7 @@
+01/27/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.1.3 'Calder':
+	- 'External' IP implemented for TURN-server-behind-NAT situation.
+
 01/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.2 'Calder':
 	- Alternative ports moved to 20000-ish territory.

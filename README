@@ -139,6 +139,14 @@ Options:
 				non-loopback system IPs will be used.
 				The same ip(s) can be used as both listening and relay ip(s).
 
+-X, --external-ip		"External" TURN Server address if the server is behind NAT.
+				In the server-behind-NAT situation, only one relay address must be used, and
+				that single relay address must be mapped by NAT to the 'external' IP.
+				For this 'external' IP, NAT must forward ports directly (relayed port 12345
+				must be always mapped to the same 'external' port 12345).
+				This value, if not empty, is returned in XOR-RELAYED-ADDRESS field.
+				By default, this value is empty, and the real relay IP address is used.
+				
 -m, --relay-threads		number of extra threads to handle the 
 				established connections.
 				By default, everything in handled in single thread 
