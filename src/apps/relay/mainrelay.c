@@ -192,12 +192,14 @@ static void add_listener_addr(const char* addr) {
 	listener.encaddrs = (ioa_addr**)realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
 	listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
 	make_ioa_addr((const u08bits*)addr,0,listener.encaddrs[listener.addrs_number-1]);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
 }
 
 static void add_relay_addr(const char* addr) {
 	++relays_number;
 	relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
 	relay_addrs[relays_number-1]=strdup(addr);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
 }
 
 //////////////////////////////////////////////////
@@ -774,11 +776,11 @@ static int make_local_listeners_list(void)
 			} else
 				continue;
 
-			add_listener_addr(saddr);
 			if(ifa->ifa_name)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (%s)\n",saddr,ifa->ifa_name);
 			else
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (NULL)\n",saddr);
+			add_listener_addr(saddr);
 		}
 		freeifaddrs(ifs);
 	}
@@ -814,8 +816,8 @@ static int make_local_relays_list(int allow_local)
 			} else
 				continue;
 
-			add_relay_addr(saddr);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added relay address %s (%s)\n",saddr,ifa->ifa_name);
+			add_relay_addr(saddr);
 		}
 		freeifaddrs(ifs);
 	}
@@ -1573,8 +1575,10 @@ int main(int argc, char **argv)
 
 	openssl_setup();
 
+	int local_listeners = 0;
 	if (!listener.addrs_number) {
 		make_local_listeners_list();
+		local_listeners = 1;
 		if (!listener.addrs_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
@@ -1583,7 +1587,15 @@ int main(int argc, char **argv)
 	}
 
 	if (!relays_number) {
-		make_local_relays_list(0);
+		if(!local_listeners && listener.addrs_number && listener.addrs) {
+			size_t la = 0;
+			for(la=0;la<listener.addrs_number;la++) {
+				if(listener.addrs[la])
+					add_relay_addr(listener.addrs[la]);
+			}
+		}
+		if (!relays_number)
+			make_local_relays_list(0);
 		if (!relays_number) {
 			make_local_relays_list(1);
 			if (!relays_number) {
