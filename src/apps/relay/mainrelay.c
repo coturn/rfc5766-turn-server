@@ -157,6 +157,8 @@ static ioa_addr *external_ip = NULL;
 static int fingerprint = 0;
 
 static char userdb_file[1025]="\0";
+static size_t users_number = 0;
+static int use_lt_credentials = 0;
 static turn_user_db *users = NULL;
 static s08bits global_realm[1025];
 
@@ -1012,6 +1014,7 @@ static int add_user_account(char *user, int dynamic)
 				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
 				ur_string_map_unlock(users->static_accounts);
 			}
+			users_number++;
 			free(uname);
 			return 0;
 		}
@@ -1077,8 +1080,10 @@ static void set_option(int c, char *value)
 		turn_daemon = get_bool_value(value);
 		break;
 	case 'a':
-		if (get_bool_value(value))
+		if (get_bool_value(value)) {
 			users->ct = TURN_CREDENTIALS_LONG_TERM;
+			use_lt_credentials=1;
+		}
 		break;
 	case 'f':
 		fingerprint = get_bool_value(value);
@@ -1551,8 +1556,19 @@ int main(int argc, char **argv)
 	argv += optind;
 
 	if(argc>0) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown argument: %s\n",argv[argc-1]);
-		exit(-1);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: Unknown argument: %s\n",argv[argc-1]);
+	}
+
+	if(!use_lt_credentials) {
+		if(users_number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified users account, (-u option) \n	but you did not specify the long-term credentials option (-a option).\n	The user accounts will be ignored.\n	Check your configuration.\n");
+		}
+	} else {
+		if(!users_number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specify the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
+		} else if(!global_realm[0]) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials\n	and user accounts (-a and -u options) \n	but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
+		}
 	}
 
 	openssl_setup();

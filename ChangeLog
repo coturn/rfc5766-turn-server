@@ -1,3 +1,7 @@
+01/29/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.1.4 'Calder':
+	- Configuration alert (warning) messages.
+	
 01/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.3 'Calder':
 	- 'External' IP implemented for TURN-server-behind-NAT situation.
