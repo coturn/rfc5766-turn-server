@@ -101,7 +101,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 	ARCHIVERCMD="ar -r"
 fi
 
-OSCFLAGS="${CFLAGS} -I${PREFIX}/include/"
+OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS} -Llib -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
 TURN_NO_THREADS=
 TURN_NO_TLS=
