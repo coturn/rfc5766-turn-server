@@ -179,7 +179,7 @@ static struct relay_server **relay_servers = NULL;
 
 ////////////// Configuration functionality ////////////////////////////////
 
-static void read_config_file(int argc, char **argv);
+static void read_config_file(int argc, char **argv, int pass);
 static void read_userdb_file(void);
 
 //////////////////////////////////////////////////
@@ -1027,6 +1027,10 @@ static int add_user_account(char *user, int dynamic)
 
 static void set_option(int c, char *value)
 {
+  if(value && value[0]=='=') {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options (like --user=<username>).\n",(char)c,(char)c);
+  }
+
 	switch (c){
 	case 'i':
 		strcpy(relay_ifname, value);
@@ -1238,29 +1242,31 @@ static void read_userdb_file(void)
 	first_read = 0;
 }
 
-static void read_config_file(int argc, char **argv)
+static void read_config_file(int argc, char **argv, int pass)
 {
-	char config_file[1025] = DEFAULT_CONFIG_FILE;
+	static char config_file[1025] = DEFAULT_CONFIG_FILE;
 
-	strcpy(userdb_file,DEFAULT_USERDB_FILE);
+	if(pass == 0) {
+	  strcpy(userdb_file,DEFAULT_USERDB_FILE);
 
-	if (argv) {
-		int i = 0;
-		for (i = 0; i < argc; i++) {
-			if (!strcmp(argv[i], "-c")) {
-				if (i < argc - 1) {
-					strncpy(config_file, argv[i + 1], sizeof(config_file)
-									- 1);
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
-				}
-			} else if (!strcmp(argv[i], "-n")) {
-				return;
-			} else if (!strcmp(argv[i], "-h")) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", Usage);
-				exit(0);
-			}
+	  if (argv) {
+	    int i = 0;
+	    for (i = 0; i < argc; i++) {
+	      if (!strcmp(argv[i], "-c")) {
+		if (i < argc - 1) {
+		  strncpy(config_file, argv[i + 1], sizeof(config_file)
+			  - 1);
+		} else {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
 		}
+	      } else if (!strcmp(argv[i], "-n")) {
+		return;
+	      } else if (!strcmp(argv[i], "-h")) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", Usage);
+		exit(0);
+	      }
+	    }
+	  }
 	}
 
 	if (config_file[0]) {
@@ -1296,8 +1302,11 @@ static void read_config_file(int argc, char **argv)
 					if (parse_arg_string(sarg, &c, &value) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
 							sarg);
-					} else
-						set_option(c, value);
+					} else if((pass == 0) && (c != 'u')) {
+					  set_option(c, value);
+					} else if((pass > 0) && (c == 'u')) {
+					  set_option(c, value);
+					}
 				}
 			}
 
@@ -1538,18 +1547,21 @@ int main(int argc, char **argv)
 	users->dynamic_accounts = ur_string_map_create(free);
 	users->alloc_counters = ur_string_map_create(NULL);
 
-	read_config_file(argc,argv);
+	read_config_file(argc,argv,0);
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
 		if(c != 'u')
 			set_option(c,optarg);
 	}
 
+	read_config_file(argc,argv,1);
+
 	optind = 0;
 
 	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
-		if(c == 'u')
-			set_option(c,optarg);
+	  if(c == 'u') {
+	    set_option(c,optarg);
+	  }
 	}
 
 	read_userdb_file();

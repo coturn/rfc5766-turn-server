@@ -362,11 +362,25 @@ static int clnet_allocate(int verbose,
 	}
 	////////////<<== allocate response received
 
+	if(!allocate_finished) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+			"Cannot complete Allocation\n");
+	  exit(-1);
+	}
+
 	allocate_rtcp = !allocate_rtcp;
 
 	if (1) {
 
+	  af_cycle = 0;
+
 		beg_refresh:
+
+	  if(af_cycle++>32) {
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+			  "Cannot complete Refresh\n");
+	    exit(-1);
+	  }
 
 		//==>>refresh request, for an example only:
 		{

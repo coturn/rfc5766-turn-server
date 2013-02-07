@@ -38,7 +38,7 @@ examples/bin/stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/
 	pwd
 	${MKDIR} examples/bin
 	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient  
-	
+
 examples/bin/rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
 	pwd
 	${MKDIR} examples/bin

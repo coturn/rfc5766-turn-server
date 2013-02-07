@@ -139,7 +139,6 @@ static int remove_all_from_ss(app_ur_session* ss)
 	if (ss) {
 		uc_delete_session_elem_data(ss);
 
-		free(ss);
 		--current_clients_number;
 	}
 
