@@ -85,7 +85,11 @@ static int show_statistics = 0;
 static void __turn_getMSTime(void) {
   static u64bits start_sec = 0;
   struct timespec tp={0,0};
+#if defined(CLOCK_REALTIME)
   clock_gettime(CLOCK_REALTIME, &tp);
+#else
+  tp.tv_sec = time(NULL);
+#endif
   if(!start_sec)
     start_sec = tp.tv_sec;
   if(current_time != (u64bits)((u64bits)(tp.tv_sec)-start_sec))

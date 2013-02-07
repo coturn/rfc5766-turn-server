@@ -253,7 +253,14 @@ Try wireshark to check the communications between client, turnserver and the pee
 Check the README file and the comments in the scripts relay.sh and secure_relay.sh 
 as a guidance how to run the TURN server.
 
-VIII. CLIENT API LIBRARY.
+VIII. OSX compilation notes
+
+OSX usually has an older version of openssl supplied, with some Apple additions. 
+The compilation will produce lots of warnings which can be ignored, but the best 
+option is to install a good fresh openssl development library, free of Apple tweaks,
+from http://www.openssl.org. 
+
+IX. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.
@@ -261,7 +268,7 @@ The C++ wrapper for the messaging functionality is located in TurnMsgLib.h heade
 An example of C++ code can be found in stunclient.c file. This file is compiled as a 
 C++ program if C++ compiler is used, and as a C program if C compiler is used.
 
-IX. DOCS
+X. DOCS
 
 After installation, the man page turnserver(1) must be available. The man page is 
 located in man/man1 subdirectory. If you want to see the man page without 
