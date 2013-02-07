@@ -1,4 +1,8 @@
-01/29/2013 Oleg Moskalenko <mom040267@gmail.com>
+01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.1.5 'Calder':
+	- Mac compilation fixes.
+	
+01/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.4 'Calder':
 	- Configuration alert (warning) messages.
 	- Relay addresses by default use listener addresses.

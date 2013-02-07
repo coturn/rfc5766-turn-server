@@ -215,7 +215,10 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
     }
   }
 #else
-#error CANNOT SET SOCKET DF FLAG (3) : UNKNOWN PLATFORM
+//CANNOT SET SOCKET DF FLAG (3) : UNKNOWN PLATFORM
+  UNUSED_ARG(fd);
+  UNUSED_ARG(family);
+  UNUSED_ARG(value);
 #endif
 
   return ret;
