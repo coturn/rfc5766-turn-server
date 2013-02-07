@@ -1,6 +1,7 @@
 01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.5 'Calder':
 	- Mac compilation fixes.
+	- Fixes for old Linuxes.
 	
 01/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.4 'Calder':
