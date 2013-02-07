@@ -9,6 +9,8 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
+	rm -rf ${E_TMPCPROGC}
+	rm -rf ${E_TMPCPROGO}
 }
 
 testlibraw() {
@@ -19,6 +21,17 @@ testlibraw() {
 	return 0
     else
 	OSLIBS="${OSLIBS} -${1}"
+	return 1
+    fi
+}
+
+testlibevent2() {
+    ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo "Libevent2 development is not installed properly"
+	return 0
+    else
 	return 1
     fi
 }
@@ -60,9 +73,9 @@ pthread_testlib() {
 testdaemon() {
 
 	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
-    ER=$?
-    if [ ${ER} -eq 0 ] ; then
-		OSCFLAGS="${OSCFLAGS} -DHAS_DAEMON"
+	ER=$?
+	if [ ${ER} -eq 0 ] ; then
+	    OSCFLAGS="${OSCFLAGS} -DHAS_DAEMON"
 	fi
 }
 
@@ -88,7 +101,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 	ARCHIVERCMD="ar -r"
 fi
 
-OSCFLAGS="${CFLAGS}"
+OSCFLAGS="${CFLAGS} -I${PREFIX}/include/"
 OSLIBS="${LDFLAGS} -Llib -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
 TURN_NO_THREADS=
 TURN_NO_TLS=
@@ -165,6 +178,18 @@ cat > ${D_TMPCPROGC} <<!
 #include <unistd.h>
 int main(int argc, char** argv) {
     return (int)daemon(0,0)+(int)(argv[argc][0]);
+}
+!
+
+E_TMPCPROG=__test__ccomp__libevent2__$$
+E_TMPCPROGC=${TMPDIR}/${E_TMPCPROG}.c
+E_TMPCPROGO=${TMPDIR}/${E_TMPCPROG}.o
+
+cat > ${E_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <event2/event.h>
+int main(int argc, char** argv) {
+    return (int)(argv[argc][0]);
 }
 !
 
@@ -280,13 +305,25 @@ fi
 ###########################
 # Test Libevent2 setup
 ###########################
+testlibevent2
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "Libevent2 development found."
+else
+    echo "ERROR: Libevent2 development libraries are not installed properly in required location."
+    echo "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
+    echo "See the INSTALL file."
+    echo "Abort."
+    cleanup
+    exit
+fi
 
 testlib event
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2 found."
+    echo "Libevent2 runtime found."
 else
-    echo "ERROR: Libevent2 development libraries are not installed properly in required location."
+    echo "ERROR: Libevent2 runtime libraries are not installed properly in required location."
     echo "See the INSTALL file."
     echo "Abort."
     cleanup
