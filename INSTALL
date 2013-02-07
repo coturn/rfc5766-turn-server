@@ -26,6 +26,8 @@ can be customized, too. For example:
 
 	$ PREFIX=/opt CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure   
 
+(see below a separate section for more details).
+
 The script configure is a proprietary script. It will create a Makefile 
 that you can use to build the project:
 
@@ -178,7 +180,38 @@ NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not
 support DTLS, reliably, in some cases. For example, the Debian 'squeeze' Linux with 
 supplied 0.9.8 version of OpenSSL, does not work correctly with DTLS over IPv6. 
 
-VII. TEST SCRIPT SETS
+VII. BUILDING WITH NON-DEFAULT PREFIX DIRECTORY
+
+Say, you have an older system with old openssl and old libevent 
+library and you do not want to change that, but you still want 
+to build the turnserver.
+
+Do the following steps:
+
+1) Download new openssl from openssl.org.
+2) Configure and build new openssl and install it into /opt:
+  
+    $ ./config --prefix=/opt
+    $ make
+    $ make install
+
+3) Download the latest libevent2 from libevent.org, configure and installe it into /opt:
+
+    $ ./configure --prefix=/opt
+    $ make
+    $ make install
+
+4) Change directory to rfc5766-turn-server and build it:
+
+    $ PREFIX=/opt ./configure
+    $ make
+
+After that, you can either use it locally, or install it into /opt. 
+But remember that to run it, you have to adjust your LD_LIBRARY_PATH, like that:
+
+    $ LD_LIBRARY_PATH=/opt/lib ./bin/turnserver
+
+VIII. TEST SCRIPT SETS
 
 First of all, we can use test vectors from RFC 5769 to double-check that our STUN/TURN 
 message encoding algorithms work properly. Run the utility:
@@ -253,14 +286,14 @@ Try wireshark to check the communications between client, turnserver and the pee
 Check the README file and the comments in the scripts relay.sh and secure_relay.sh 
 as a guidance how to run the TURN server.
 
-VIII. OSX compilation notes
+IX. OSX compilation notes
 
 OSX usually has an older version of openssl supplied, with some Apple additions. 
 The compilation will produce lots of warnings which can be ignored, but the best 
 option is to install a good fresh openssl development library, free of Apple tweaks,
 from http://www.openssl.org. 
 
-IX. CLIENT API LIBRARY.
+X. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a library. 
 The header files for this library are located in include/turn/client/ sub-directory.
@@ -268,7 +301,7 @@ The C++ wrapper for the messaging functionality is located in TurnMsgLib.h heade
 An example of C++ code can be found in stunclient.c file. This file is compiled as a 
 C++ program if C++ compiler is used, and as a C program if C compiler is used.
 
-X. DOCS
+XI. DOCS
 
 After installation, the man page turnserver(1) must be available. The man page is 
 located in man/man1 subdirectory. If you want to see the man page without 
