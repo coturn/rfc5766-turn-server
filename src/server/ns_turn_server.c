@@ -933,15 +933,32 @@ static int handle_turn_binding(turn_turnserver *server,
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
 					get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
 
+			{
+				ioa_addr response_origin_addr;
+				ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(ss->client_session.s);
+				if(server->external_ip) {
+					addr_cpy(&response_origin_addr, server->external_ip);
+					addr_set_port(&response_origin_addr,addr_get_port(relayed_addr));
+				} else {
+					addr_cpy(&response_origin_addr, relayed_addr);
+				}
+
+				addr_cpy(response_origin, &response_origin_addr);
+			}
+
 			*resp_constructed = 1;
 
-			if(is_rfc5780(server)) {
+			if(!is_rfc5780(server)) {
+
+				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+											STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+
+			} else {
 
 				ioa_addr other_address;
 
 				if(get_other_address(server,ss,&other_address) == 0) {
 
-					addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_session.s));
 					addr_cpy(response_destination, get_remote_addr_from_ioa_socket(ss->client_session.s));
 
 					if(change_ip) {

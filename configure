@@ -231,7 +231,7 @@ fi
 # or Clang compiler flags
 ###########################
 
-GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual -Wredundant-decls"
+GNUOSCFLAGS="-Wall -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
 
 ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 ER=$?

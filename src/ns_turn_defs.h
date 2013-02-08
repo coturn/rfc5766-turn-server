@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.5.1.6")
-#define TURN_SERVER_VERSION_NAME ("Calder")
+#define TURN_SERVER_VERSION ("1.5.2.0")
+#define TURN_SERVER_VERSION_NAME ("Lestek")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
