@@ -933,25 +933,14 @@ static int handle_turn_binding(turn_turnserver *server,
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
 					get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
 
-			{
-				ioa_addr response_origin_addr;
-				ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(ss->client_session.s);
-				if(server->external_ip) {
-					addr_cpy(&response_origin_addr, server->external_ip);
-					addr_set_port(&response_origin_addr,addr_get_port(relayed_addr));
-				} else {
-					addr_cpy(&response_origin_addr, relayed_addr);
-				}
-
-				addr_cpy(response_origin, &response_origin_addr);
-			}
+			addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_session.s));
 
 			*resp_constructed = 1;
 
 			if(!is_rfc5780(server)) {
 
 				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
-											STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+							STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
 
 			} else {
 
@@ -1392,7 +1381,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity);
+		if(method != STUN_METHOD_BINDING)
+			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity);
 
 		if (!err_code && !(*resp_constructed)) {
 
@@ -1439,6 +1429,14 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 					if (server->verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5780 request successfully processed\n");
+					}
+
+					{
+						static const u08bits *field = (const u08bits *) "Citrix-AG";
+						static const size_t fsz = 9;
+						size_t len = ioa_network_buffer_get_size(nbh);
+						stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+						ioa_network_buffer_set_size(nbh, len);
 					}
 
 					send_turn_message_to(server, nbh, &response_origin, &response_destination);
@@ -1515,6 +1513,14 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid);
 			ioa_network_buffer_set_size(nbh,len);
 			*resp_constructed = 1;
+		}
+
+		{
+			static const u08bits *field = (const u08bits *) "Citrix-AG";
+			static const size_t fsz = 9;
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+			ioa_network_buffer_set_size(nbh, len);
 		}
 
 		if(message_integrity) {

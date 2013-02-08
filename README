@@ -345,9 +345,7 @@ $ stunclient [options] <STUN-Server-IP-address>
   
   DESCRIPTION
   
-  It sends a STUN request (over UDP)
-and shows the reply information. This stunclient can work only with "unsecure"
-TURN Server - it cannot answer the authentication challenge.
+  It sends a STUN request (over UDP) and shows the reply information. 
 
 Options:  
 

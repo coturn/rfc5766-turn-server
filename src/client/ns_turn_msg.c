@@ -223,11 +223,6 @@ void stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len) {
   ((u16bits*)buf)[1]=0;
   ((u32bits*)buf)[1]=nswap32(STUN_MAGIC_COOKIE);
   stun_tid_generate_in_message_str(buf,NULL);
-  {
-    static const u08bits *field = (const u08bits *)"Citrix-AG";
-    static const size_t fsz = 9;
-    stun_attr_add_str(buf,len,STUN_ATTRIBUTE_SOFTWARE,field,fsz);
-  }
 }
 
 void stun_init_request_str(u16bits method, u08bits* buf, size_t *len) {

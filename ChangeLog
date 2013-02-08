@@ -1,3 +1,8 @@
+01/9/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.1 'Lestek':
+	- Binding requests do not require authentication.
+	- SOFTWARE in the end of the message.
+	
 01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.0 'Lestek':
 	- NAT discovery fixed (RFC5780).

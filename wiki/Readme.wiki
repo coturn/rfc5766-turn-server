@@ -180,7 +180,7 @@ Peer a simple UDP-only echo backend server. This application is used for the tes
  *      *-v*     Verbose
 
 === stunclient is a basic STUN client ===
-It sends a STUN request and shows the	reply information.
+It sends a STUN request and shows the reply information.
 
 ====Usage:====
 {{{
