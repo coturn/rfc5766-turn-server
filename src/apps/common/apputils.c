@@ -37,6 +37,14 @@
 
 /*********************** Sockets *********************************/
 
+void read_spare_buffer(evutil_socket_t fd)
+{
+	if(fd >= 0) {
+		char buffer[65536];
+		read(fd, buffer, sizeof(buffer));
+	}
+}
+
 int set_sock_buf_size(evutil_socket_t fd, int sz) {
 
   if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,(const void*)(&sz),(socklen_t)sizeof(sz))<0) {

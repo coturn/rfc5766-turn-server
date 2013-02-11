@@ -396,8 +396,13 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 {
 
-	if (!(what & EV_READ) || !arg)
+	if (!(what & EV_READ))
 		return;
+
+	if(!arg) {
+		read_spare_buffer(fd);
+		return;
+	}
 
 	UNUSED_ARG(fd);
 
@@ -406,14 +411,17 @@ static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 	dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *) (ndc->server);
 
 	if (!server) {
+		read_spare_buffer(fd);
 		return;
 	}
 
 	if (ndc->info.fd < 0) {
+		read_spare_buffer(fd);
 		return;
 	}
 
 	if (!(ndc->info.ssl)) {
+		read_spare_buffer(fd);
 		return;
 	}
 
@@ -471,11 +479,16 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	FUNCSTART;
 
-	if (!server)
+	if (!server) {
+		if(what & EV_READ) {
+			read_spare_buffer(fd);
+		}
 		return;
+	}
 
-	if (!(what & EV_READ))
+	if (!(what & EV_READ)) {
 		return;
+	}
 
 	if (server->stats)
 		++(*(server->stats));

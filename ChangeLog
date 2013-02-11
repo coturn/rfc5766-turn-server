@@ -1,22 +1,26 @@
-01/9/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/11/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.2 'Lestek':
+	- Some cleanup added to the network input handlers.
+	
+02/9/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.1 'Lestek':
 	- Binding requests do not require authentication.
 	- SOFTWARE in the end of the message.
 	
-01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.0 'Lestek':
 	- NAT discovery fixed (RFC5780).
 	
-01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.6 'Calder':
 	- Installation instructions fixed.
 
-01/8/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.5 'Calder':
 	- Mac compilation fixes.
 	- Fixes for old Linuxes.
 	
-01/7/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.4 'Calder':
 	- Configuration alert (warning) messages.
 	- Relay addresses by default use listener addresses.

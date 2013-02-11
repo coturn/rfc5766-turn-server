@@ -1418,18 +1418,26 @@ static int socket_input_worker(ioa_socket_handle s)
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 
-	if (!(what & EV_READ) || !arg)
+	if (!(what & EV_READ))
 		return;
+
+	if(!arg) {
+		read_spare_buffer(fd);
+		return;
+	}
 
 	ioa_socket_handle s = (ioa_socket_handle)arg;
 
 	if(s->done) {
+		read_spare_buffer(fd);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
 		return;
 	}
 
-	if(fd != s->fd)
+	if(fd != s->fd) {
+		read_spare_buffer(fd);
 		return;
+	}
 
 	if (!ioa_socket_tobeclosed(s))
 		socket_input_worker(s);
