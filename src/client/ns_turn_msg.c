@@ -94,7 +94,7 @@ int stun_is_command_message_str(const u08bits* buf, size_t blen) {
   return 0;
 }
 
-int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint) {
+int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present) {
 	if(!stun_is_command_message_str(buf,blen))
 		return 0;
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
@@ -106,7 +106,10 @@ int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int 
 	if(!fingerprint)
 		return !must_check_fingerprint;
 	u32bits crc32len = (u32bits)((((const u08bits*)fingerprint)-buf)-4);
-	return (*fingerprint == nswap32(ns_crc32(buf,crc32len) ^ ((u32bits)0x5354554e)));
+	int ret = (*fingerprint == nswap32(ns_crc32(buf,crc32len) ^ ((u32bits)0x5354554e)));
+	if(ret && fingerprint_present)
+		*fingerprint_present = ret;
+	return ret;
 }
 
 int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset) {

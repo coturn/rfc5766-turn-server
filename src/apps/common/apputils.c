@@ -40,8 +40,8 @@
 void read_spare_buffer(evutil_socket_t fd)
 {
 	if(fd >= 0) {
-		char buffer[65536];
-		read(fd, buffer, sizeof(buffer));
+		static char buffer[65536];
+		recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
 	}
 }
 

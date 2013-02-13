@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.5.2.2")
+#define TURN_SERVER_VERSION ("1.5.2.3")
 #define TURN_SERVER_VERSION_NAME ("Lestek")
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
@@ -129,9 +129,9 @@ typedef u32bits turn_time_t;
 #define NONCE_LENGTH_32BITS (2)
 
 #define DEFAULT_STUN_PORT (3478)
-#define DEFAULT_ALT_STUN_PORT (24378)
+#define DEFAULT_ALT_STUN_PORT (3479)
 #define DEFAULT_STUN_TLS_PORT (5349)
-#define DEFAULT_ALT_STUN_TLS_PORT (23549)
+#define DEFAULT_ALT_STUN_TLS_PORT (5350)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define DEFAULT_STUN_PORT_NBO (0x960D)

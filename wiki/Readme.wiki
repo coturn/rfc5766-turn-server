@@ -1,5 +1,5 @@
 
-TURN(22 Jan 2013)	
+TURN(13 Feb 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -48,8 +48,9 @@ TURN(22 Jan 2013)
 
    * *-v,* *--verbose* Verbose.
    * *-o,* *--daemon* Run server process as daemon.
-   * *-f,* *--fingerprint* Use fingerprints in the TURN messages.
+   * *-f,* *--fingerprint* Use fingerprints in the TURN messages. If an incoming request contains fingerprint, then TURN server will always add fingerprints to the messages in this session, regardless of the per-server setting.
    * *-a,* *--lt-cred-mech* Use long-term credential mechanism. By default, no credential mechanism is used - any user is allowed.
+   * *-z,* *--no-auth* Do not use any credential mechanism, allow anonymous access. Opposite to *-a* option.
    * *-h*  Help.
 
 ====Config file setting:====
@@ -73,8 +74,8 @@ TURN(22 Jan 2013)
     *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
     *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478).
     *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349).
-    *   *--alt-listening-port*   Alternative STUN listener port for UDP and TCP listeners. Default value is 24378. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
-    *   *--alt-tls-listening-port*   Alternative STUN listener port for TLS and DTLS listeners (Default: 23549).
+    *   *--alt-listening-port*   Alternative listener port for UDP and TCP listeners. Default value is 3479. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
+    *   *--alt-tls-listening-port*   Alternative listener port for TLS and DTLS listeners (Default: 5350).
     *   *-i,* *--relay-device* Relay interface device for relay sockets (optional, Linux	only).
     *   *-E,* *--relay-ip* Relay  address  (the local IP address that will be used to relay the packets to the _peer_).	Multiple relay addresses may be	 used. If  no  relay  *IP*(s) specified, then all non-loopback system IPs will be used.
     *   *-X,* *--external-ip* "External" TURN Server address if the server is behind NAT. In the server-behind-NAT situation, only one relay address must be used, and that single relay address must be mapped by NAT to the 'external' IP. For this 'external' IP, NAT must forward ports directly (relayed port 12345 must be always mapped to the same 'external' port 12345). This value, if not empty, is returned in XOR-RELAYED-ADDRESS field. By default, this value is empty, and the real relay IP address is used.
@@ -86,8 +87,8 @@ TURN(22 Jan 2013)
     *   *-q,* *--user-quota* Per-user allocation quota.
     *   *-Q,* *--total-quota* total allocation quota.
     *	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
-    *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
-    *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed.
+    *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
+    *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
     *   *--no-udp* Do not start 'plain' UDP listeners.
     *   *--no-tcp* Do not start 'plain'TCP listeners.
     *   *--no-tls* Do not start TLS listeners.
@@ -161,7 +162,8 @@ TURN(22 Jan 2013)
  *      *-L*     Local IP address (optional).
  *      *-m*     Number of	clients	(default is 1, 2 or 4,	depending  on  options below).
  *      *-e*     Peer address.
- *      *-r*     Peer port	(default 3479).
+ *      *-r*     Peer port	(default 3480).
+ *		*-z*     Per-session packet interval in milliseconds (default is 20 ms).
 
        See the _uclient_ usage examples	in the "examples/scripts" directory.
 
@@ -174,7 +176,7 @@ Peer a simple UDP-only echo backend server. This application is used for the tes
 }}}
 ====Options:====
 
- *      *-p*     Listening	UDP port (Default: 3479).
+ *      *-p*     Listening	UDP port (Default: 3480).
  *      *-d*     Listening	interface device (optional)
  *      *-L*     Listening	address	of _peer_	server. Multiple listening addresses can be used, IPv4 and IPv6.
  *      *-v*     Verbose
@@ -239,7 +241,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(22 Jan 2013)
+							TURN(13 Feb 2013)
 
 
 

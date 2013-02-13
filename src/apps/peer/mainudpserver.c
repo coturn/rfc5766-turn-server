@@ -43,7 +43,7 @@
 static char Usage[] =
   "Usage: server [options]\n"
   "Options:\n"
-  "        -p      Listening UDP port (Default: 3479)\n"
+  "        -p      Listening UDP port (Default: 3480)\n"
   "        -d      Listening interface device (optional)\n"
   "        -L      Listening address\n"
   "        -v      verbose\n";

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Citrix Systems
+ * Copyright (C) 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -60,6 +60,7 @@ extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 extern int use_fingerprints;
 extern SSL_CTX *root_tls_ctx;
+extern int RTP_PACKET_INTERVAL;
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address,

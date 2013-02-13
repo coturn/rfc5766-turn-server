@@ -1860,7 +1860,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		return 0;
 
 	} else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh),
-					       ioa_network_buffer_get_size(in_buffer->nbh), 0)) {
+			ioa_network_buffer_get_size(in_buffer->nbh), 0, &(ss->enforce_fingerprints))) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
@@ -1869,7 +1869,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 		if(resp_constructed) {
 
-			if(server->fingerprint) {
+			if(server->fingerprint || ss->enforce_fingerprints) {
 				size_t len = ioa_network_buffer_get_size(nbh);
 				if(stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh),&len)<0) {
 					FUNCEND;

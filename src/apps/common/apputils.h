@@ -43,7 +43,7 @@ extern "C" {
 
 //////////// Common defines ///////////////////////////
 
-#define PEER_DEFAULT_PORT (DEFAULT_STUN_PORT+1)
+#define PEER_DEFAULT_PORT (3480)
 
 #define DTLS_MAX_RECV_TIMEOUT (5)
 #define DTLS_MAX_CONNECT_TIMEOUT (5)

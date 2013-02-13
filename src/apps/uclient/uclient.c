@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -62,7 +62,8 @@ static int total_clients = 0;
 static app_ur_session* elems[MAX_CLIENTS];
 
 #define SLEEP_INTERVAL (2345)
-#define RTP_PACKET_INTERVAL (20)
+
+int RTP_PACKET_INTERVAL = 20;
 
 static inline s64bits time_minus(u64bits t1, u64bits t2) {
 	return ( (s64bits)t1 - (s64bits)t2 );

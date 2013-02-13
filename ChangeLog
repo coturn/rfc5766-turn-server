@@ -1,3 +1,17 @@
+02/12/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.3 'Lestek':
+	- Added feature: TURN Server always uses fingerprints in a session if 
+	  the session client is using fingerprints.
+	- Default unsecure alternative port changed to 3479,
+	  default secure alternative port changed to 5350.
+	- TURN Server always trying to search for default certificate file
+	  turn_server_cert.pem and for default private key file
+	  turn_server_pkey.pem, if not certificate or private key is
+	  explicitly configured.
+	- configurable packet rate in the uclient test program. 
+	- default peer port changed to 3480.
+	- -z, --no-auth option added to turnserver.
+	
 02/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.2 'Lestek':
 	- Some cleanup added to the network input handlers.

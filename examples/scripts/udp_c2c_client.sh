@@ -16,9 +16,10 @@
 # 9) -s option is absent - it means that the client will be using 
 # the "channel" mechanism for data.
 # 10) 127.0.0.1 (the last parameter) is the TURN Server IP address.
+# 11) -z 5 means that we want 5 ms interval between the packets (per each session).
 #
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin/:bin/:${PATH} uclient -n 1000 -m 10 -y -l 170 127.0.0.1
+PATH=examples/bin/:../bin/:bin/:${PATH} uclient -n 1000 -m 10 -y -l 170 -z 5 127.0.0.1
 

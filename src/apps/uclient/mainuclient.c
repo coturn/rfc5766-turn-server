@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -82,10 +82,11 @@ static char Usage[] =
   "	-y	Use client-to-client connections.\n"
   "	-h	Hang on indefinitely after the last sent packet.\n"
   "	-e	Peer address.\n"
-  "	-r	Peer port (default 3479).\n"
+  "	-r	Peer port (default 3480).\n"
   "	-c	No rtcp connections.\n"
   "	-x	IPv6 relayed address requested.\n"
   "	-g	Include DONT_FRAGMENT option\n."
+  "	-z	Per-session packet interval in milliseconds (default is 20 ms).\n"
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n";
 
@@ -108,8 +109,11 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:vsyhcxgtS")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:vsyhcxgtS")) != -1) {
 		switch (c){
+		case 'z':
+			RTP_PACKET_INTERVAL = atoi(optarg);
+			break;
 		case 'u':
 			strcpy((char*) g_uname, optarg);
 			break;

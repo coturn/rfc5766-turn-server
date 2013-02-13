@@ -53,6 +53,26 @@ $ cd examples
 $ ./scripts/secure_relay.sh
   
 RUNNING THE TURN SERVER
+
+Options note: turnserver and turnadmin have long and short option names, for most options.
+Some options have only long form, some options have only short form. Their syntax 
+somewhat different, if an argument is required:
+
+The short form must be used as this (for example):
+
+  $ turnserver -L 12.34.56.78
+  
+The long form equivalent must use the "=" character:
+
+  $ turnserver --listening-ip=12.34.56.78
+  
+If this is a flag option (no argument required) then their usage are the same, for example:
+
+ $ turnserver -a
+ 
+is equivalent to:
+
+ $ turnserver --lt-cred-mech
   
 ===============================================================================
 
@@ -62,7 +82,7 @@ turnserver application is a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-vfao] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [options]
+$ turnserver [-vfao] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION
@@ -73,11 +93,16 @@ Flags:
 
 -o, --daemon			Run server as daemon.
 
--f, --fingerprint		Use fingerprints in the TURN messages.
+-f, --fingerprint		Use fingerprints in the TURN messages. If an incoming request
+						contains fingerprint, then TURN server will always add 
+						fingerprints to the messages in this session, regardless of the
+						per-server setting.
 
 -a, --lt-cred-mech		Use long-term credential mechanism. 
 						By default, no credential mechanism is used -
 						any user is allowed.
+-z, --no-auth			Do not use any credential mechanism, allow anonymous access. 
+						Opposite to -a option.						
   
 Config file setting:  
 
@@ -119,14 +144,14 @@ Options:
 
 --tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
 
---alt-listening-port		Alternative STUN listening port for UDP and TCP listeners.
-				Default value is 24378. This is needed for RFC 5780 support
+--alt-listening-port		Alternative listening port for UDP and TCP listeners
+				(default value is 3479). This is needed for RFC 5780 support
 				(STUN extension specs, NAT behavior discovery). The TURN Server 
 				supports RFC 5780 only if it is started with more than one 
 				listening IP address of the same family (IPv4 or IPv6).
 							 
---alt-tls-listening-port	Alternative STUN listening port for TLS and DTLS protocols.
-				Default value is 23549.
+--alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
+				Default value is 5350.
 
 -i, --relay-device		Relay interface device for relay sockets 
 				(optional, Linux only).
@@ -181,13 +206,14 @@ Options:
 --cert				Certificate file, PEM format. Same file 
 				search rules applied as for the configuration 
 				file. If both --no-tls and --no-dtls options 
-				are specified, 
-				then this parameter is not needed.
+				are specified, then this parameter is not needed.
+				Default value is turn_server_cert.pem.
 
 --pkey		     		Private key file, PEM format. Same file 
 				search rules applied as for the configuration 
 				file. If both --no-tls and --no-dtls options 
 				are specified, then this parameter is not needed.
+				Default value is turn_server_pkey.pem.
 
 --no-udp			Do not start UDP listeners.
 
@@ -305,7 +331,9 @@ Options:
 
 -e      Peer address.
 
--r      Peer port (default 3479).
+-r      Peer port (default 3480).
+
+-z		Per-session packet interval in milliseconds (default is 20 ms).
 
 See the examples in the "examples/scripts" directory.
 
@@ -325,7 +353,7 @@ $ peer [-v] [options]
   
 Options:  
 
--p  Listening UDP port (Default: 3479).
+-p  Listening UDP port (Default: 3480).
  
 -d  Listening interface device (optional)
 

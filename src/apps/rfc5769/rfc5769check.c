@@ -170,7 +170,7 @@ int main(int argc, const char **argv)
 		u08bits buf[sizeof(respv4)];
 		memcpy(buf, respv4, sizeof(respv4));
 
-		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1);
+		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
 		printf("RFC 5769 message fingerprint test(1) result: ");
 
 		if (res) {
@@ -182,7 +182,7 @@ int main(int argc, const char **argv)
 
 		buf[27] = 23;
 
-		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1);
+		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
 		printf("RFC 5769 NEGATIVE fingerprint test(1) result: ");
 
 		if (!res) {
@@ -235,7 +235,7 @@ int main(int argc, const char **argv)
 		{ //decoding test
 			memcpy(buf, respv6, sizeof(respv6));
 
-			res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1);
+			res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1, NULL);
 			printf("RFC 5769 message fingerprint test(2) result: ");
 
 			if (res) {
@@ -249,7 +249,7 @@ int main(int argc, const char **argv)
 		{//negative decoding test
 			buf[27] = 23;
 
-			res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1);
+			res = stun_is_command_message_full_check_str(buf, sizeof(respv6) - 1, 1, NULL);
 			printf("RFC 5769 NEGATIVE fingerprint test(2) result: ");
 
 			if (!res) {

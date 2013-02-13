@@ -84,6 +84,8 @@ static void openssl_cleanup(void);
 static int verbose=0;
 static int turn_daemon = 0;
 
+static int do_not_use_config_file = 0;
+
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 #define DEFAULT_USERDB_FILE "turnuserdb.conf"
 
@@ -111,8 +113,8 @@ static char listener_ifname[1025]="\0";
  * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
  *
 */
-static char cert_file[1025]="\0";
-static char pkey_file[1025]="\0";
+static char cert_file[1025]="turn_server_cert.pem\0";
+static char pkey_file[1025]="turn_server_pkey.pem\0";
 
 struct message_message {
 	ioa_addr origin;
@@ -159,6 +161,7 @@ static int fingerprint = 0;
 static char userdb_file[1025]="\0";
 static size_t users_number = 0;
 static int use_lt_credentials = 0;
+static int auth_credentials = 0;
 static turn_user_db *users = NULL;
 static s08bits global_realm[1025];
 
@@ -397,7 +400,7 @@ static void setup_listener_servers(void)
 	if(alt_listener_port>=0 || alt_tls_listener_port>=0) {
 		if(listener.addrs_number<2) {
 			rfc5780 = 0;
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
 		} else {
 			listener.services_number = listener.services_number * 2;
 		}
@@ -851,7 +854,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-v, --verbose			Verbose.\n"
 	"	-o, --daemon			Start process as daemon (detach from current shell).\n"
 	"	-f, --fingerprint		Use fingerprints in the TURN messages.\n"
-	"	-a, --lt-cred-mech		Use long-term credential mechanism. Default - no authentication.\n"
+	"	-a, --lt-cred-mech		Use long-term credential mechanism. Default - no authentication - anonymous access.\n"
+	"	-z, --no-auth			Do not use any credential mechanism, allow anonymous access. Opposite to -a option.\n"
 	"	-u, --user			User account, in form 'username:password'.\n"
 	"	-r, --realm			Realm.\n"
 	"	-q, --user-quota		per-user allocation quota.\n"
@@ -887,7 +891,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:q:Q:vofha"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:q:Q:s:vofhzna"
 
 #define ADMIN_OPTIONS "kadb:u:r:p:h"
 
@@ -919,7 +923,9 @@ static struct option long_options[] = {
 				{ "min-port", required_argument, NULL, MIN_PORT_OPT },
 				{ "max-port", required_argument, NULL, MAX_PORT_OPT },
 				{ "lt-cred-mech", optional_argument, NULL, 'a' },
+				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
+				{ "userdb", required_argument, NULL, 'b' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
@@ -1089,6 +1095,18 @@ static void set_option(int c, char *value)
 		if (get_bool_value(value)) {
 			users->ct = TURN_CREDENTIALS_LONG_TERM;
 			use_lt_credentials=1;
+		} else {
+			users->ct = TURN_CREDENTIALS_NONE;
+			use_lt_credentials=0;
+		}
+		break;
+	case 'z':
+		if (!get_bool_value(value)) {
+			users->ct = TURN_CREDENTIALS_LONG_TERM;
+			auth_credentials = 0;
+		} else {
+			users->ct = TURN_CREDENTIALS_NONE;
+			auth_credentials = 1;
 		}
 		break;
 	case 'f':
@@ -1237,7 +1255,7 @@ static void read_userdb_file(void)
 		fclose(f);
 
 	} else if (first_read)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
 
 	first_read = 0;
 }
@@ -1260,6 +1278,8 @@ static void read_config_file(int argc, char **argv, int pass)
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
 		}
 	      } else if (!strcmp(argv[i], "-n")) {
+		do_not_use_config_file = 1;
+		config_file[0]=0;
 		return;
 	      } else if (!strcmp(argv[i], "-h")) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", Usage);
@@ -1269,7 +1289,7 @@ static void read_config_file(int argc, char **argv, int pass)
 	  }
 	}
 
-	if (config_file[0]) {
+	if (!do_not_use_config_file && config_file[0]) {
 
 		FILE *f = NULL;
 		char *full_path_to_config_file = NULL;
@@ -1313,7 +1333,7 @@ static void read_config_file(int argc, char **argv, int pass)
 			fclose(f);
 
 		} else
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Cannot find config file: %s. Default settings will be used.\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default settings will be used.\n",
 				config_file);
 	}
 }
@@ -1573,15 +1593,35 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: Unknown argument: %s\n",argv[argc-1]);
 	}
 
-	if(!use_lt_credentials) {
+	if(use_lt_credentials && auth_credentials) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -z options cannot be used together.\n");
+		exit(-1);
+	}
+
+	if(!use_lt_credentials && !auth_credentials) {
 		if(users_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified users account, (-u option) \n	but you did not specify the long-term credentials option (-a option).\n	The user accounts will be ignored.\n	Check your configuration.\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you did not specify the long-term credentials option (-a or --lt-cred-mech option).\n 	I am turning --lt-cred-mech ON for you, but double-check your configuration.\n");
+			users->ct = TURN_CREDENTIALS_LONG_TERM;
+			use_lt_credentials=1;
+		} else {
+			users->ct = TURN_CREDENTIALS_NONE;
+			use_lt_credentials=0;
 		}
-	} else {
+	}
+
+	if(use_lt_credentials) {
 		if(!users_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specify the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		} else if(!global_realm[0]) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials\n	and user accounts (-a and -u options) \n	but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
+		}
+	}
+
+	if(auth_credentials) {
+		if(users_number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you also specified the anonymous user access option (-z or --no-auth option).\n 	User accounts will be ignored.\n");
+			users->ct = TURN_CREDENTIALS_NONE;
+			use_lt_credentials=0;
 		}
 	}
 
@@ -1625,12 +1665,12 @@ int main(int argc, char **argv)
 		if(pid>0)
 			exit(0);
 		if(pid<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: Cannot start daemon process\n");
 			exit(-1);
 		}
 #else
 		if(daemon(1,0)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot start daemon process\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: Cannot start daemon process\n");
 			exit(-1);
 		}
 		reset_rtpprintf();
@@ -1763,12 +1803,12 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	  full_path_to_file = find_config_file(fn, 1);
 	  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
 	  if(!f) {
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (1)\n",file_title,fn);
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (1)\n",file_title,fn);
 	    goto keyerr;
 	  }
 	  
 	  if(!full_path_to_file) {
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot find %s file: %s (2)\n",file_title,fn);
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (2)\n",file_title,fn);
 	    goto keyerr;
 	  }
 	  
@@ -1785,7 +1825,7 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	  no_dtls = 1;
 	  if(full_path_to_file)
 	    free(full_path_to_file);
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
 	  return;
 	}
 }
