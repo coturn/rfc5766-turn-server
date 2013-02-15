@@ -803,6 +803,11 @@ static int make_local_relays_list(int allow_local)
 	if (ifs) {
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
+			if(!(ifa->ifa_name))
+				continue;
+			if(!(ifa ->ifa_addr))
+				continue;
+
 			if(!allow_local && (strstr(ifa->ifa_name,"lo") == ifa->ifa_name))
 				continue;
 
@@ -858,9 +863,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-z, --no-auth			Do not use any credential mechanism, allow anonymous access. Opposite to -a option.\n"
 	"	-u, --user			User account, in form 'username:password'.\n"
 	"	-r, --realm			Realm.\n"
-	"	-q, --user-quota		per-user allocation quota.\n"
-	"	-Q, --total-quota		total allocation quota.\n"
-	"	-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle\n"
+	"	-q, --user-quota		Per-user allocation quota: how many concurrent allocations a user can create.\n"
+	"	-Q, --total-quota		Total allocations quota: global limit on concurrent allocations.\n"
+	"	-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle.\n"
 	"					(input and output network streams combined).\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-b, --userdb			'Dynamic' user database file name (default - turnuserdb.conf).\n"

@@ -196,9 +196,11 @@ Options:
 
 -r, --realm			Realm to be used for all users.
 
--q, --user-quota		Per-user allocation quota.
+-q, --user-quota		Per-user allocations quota: how many concurrent 
+						allocations a user can create.
 
--Q, --total-quota		total allocation quota.
+-Q, --total-quota		Total allocations quota: global limit on concurrent allocations.
+ 
 -s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle
 				(input and output network streams combined). Anything above that limit
 				will be dropped.
