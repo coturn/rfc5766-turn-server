@@ -489,9 +489,9 @@ static int client_read(app_ur_session *elem) {
 		}
 
 		++elem->rmsgnum;
+		++tot_recv_messages;
 		elem->recvtimems=current_mstime;
 		elem->wait_cycles = 0;
-		tot_recv_messages++;
 
 	} else if(rc == 0) {
 		return 0;
@@ -509,7 +509,6 @@ static int client_shutdown(app_ur_session *elem) {
   elem->state=UR_STATE_DONE;
 
   elem->ctime=current_time;
-  elems[elem->clnum]=NULL;
 
   remove_all_from_ss(elem);
   
@@ -646,7 +645,6 @@ static int start_client(const char *remote_address, int port,
   ss->input_ev=ev;
   ss->tot_msgnum=messagenumber;
   ss->recvmsgnum=-1;
-  ss->clnum=i;
   ss->chnum=chnum;
 
   if(!no_rtcp) {
@@ -657,7 +655,6 @@ static int start_client(const char *remote_address, int port,
     ss_rtcp->tot_msgnum=ss->tot_msgnum;
     if(ss_rtcp->tot_msgnum<1) ss_rtcp->tot_msgnum=1;
     ss_rtcp->recvmsgnum=-1;
-    ss_rtcp->clnum=i+1;
     ss_rtcp->chnum=chnum_rtcp;
   }
   
@@ -760,7 +757,6 @@ static int start_c2c(const char *remote_address, int port,
   ss1->input_ev=ev1;
   ss1->tot_msgnum=messagenumber;
   ss1->recvmsgnum=-1;
-  ss1->clnum=i;
   ss1->chnum=chnum1;
 
   if(!no_rtcp) {
@@ -771,7 +767,6 @@ static int start_c2c(const char *remote_address, int port,
     ss1_rtcp->tot_msgnum=ss1->tot_msgnum;
     if(ss1_rtcp->tot_msgnum<1) ss1_rtcp->tot_msgnum=1;
     ss1_rtcp->recvmsgnum=-1;
-    ss1_rtcp->clnum=i+1;
     ss1_rtcp->chnum=chnum1_rtcp;
   }
 
@@ -780,7 +775,6 @@ static int start_c2c(const char *remote_address, int port,
   ss2->input_ev=ev2;
   ss2->tot_msgnum=ss1->tot_msgnum;
   ss2->recvmsgnum=-1;
-  ss2->clnum=i+2;
   ss2->chnum=chnum2;
 
 
@@ -790,7 +784,6 @@ static int start_c2c(const char *remote_address, int port,
     ss2_rtcp->input_ev=ev2_rtcp;
     ss2_rtcp->tot_msgnum=ss1_rtcp->tot_msgnum;
     ss2_rtcp->recvmsgnum=-1;
-    ss2_rtcp->clnum=i+3;
     ss2_rtcp->chnum=chnum2_rtcp;
   }
   
@@ -867,7 +860,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 	return 0;
 }
 
-static inline void client_timer_handler(app_ur_session* elem)
+static inline int client_timer_handler(app_ur_session* elem)
 {
 
 	if (elem) {
@@ -882,7 +875,7 @@ static inline void client_timer_handler(app_ur_session* elem)
 				if (!turn_time_before(current_mstime, elem->finished_time) ||
 					(elem->tot_msgnum - elem->rmsgnum) < 1) {
 					/*
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.111: c=%d, w=%d, r=%d\n",__FUNCTION__,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: elem=0x%x: 111.111: c=%d, t=%d, r=%d, w=%d\n",__FUNCTION__,(int)elem,elem->wait_cycles,elem->tot_msgnum,elem->rmsgnum,elem->wmsgnum);
 					*/
 					/*
 					 TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: 111.222: ly=%llu, ls=%llu, j=%llu\n",__FUNCTION__,
@@ -898,6 +891,7 @@ static inline void client_timer_handler(app_ur_session* elem)
 					elem->jitter=0;
 					if (!hang_on)
 						client_shutdown(elem);
+					return 1;
 				}
 			} else {
 				client_write(elem);
@@ -905,6 +899,8 @@ static inline void client_timer_handler(app_ur_session* elem)
 			}
 		}
 	}
+
+	return 0;
 }
 
 static void timer_handler(void)
@@ -915,7 +911,10 @@ static void timer_handler(void)
 	__turn_getMSTime();
 
 	for (i = 0; i < total_clients; ++i) {
-	  client_timer_handler(elems[i]);
+	  int finished = client_timer_handler(elems[i]);
+	  if(finished) {
+		  elems[i]=NULL;
+	  }
 	}
 }
 

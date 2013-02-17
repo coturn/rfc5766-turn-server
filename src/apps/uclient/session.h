@@ -74,7 +74,6 @@ typedef struct {
   unsigned int ctime;
   uint16_t chnum;
   int wait_cycles;
-  int clnum;
   int timer_cycle;
   int known_mtu;
   struct event *input_ev; 

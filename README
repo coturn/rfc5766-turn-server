@@ -32,12 +32,12 @@ functionality in the client library, but the client must implement
 the correct Networking IO processing in the client program code.
 
 4.	peer: a simple stateless UDP-only "echo" server, 
-	to be used as the final server in relay pattern ("peer"). For every incoming 
-	UDP packet, it simply echoes it back.
-	(this program is provided for the testing purposes only !) 
-	When the test clients are communicating in the client-to-client manner 
-	(when the "uclient" program is used with "-y" option) then the peer
-	is not needed.
+to be used as the final server in relay pattern ("peer"). For every incoming 
+UDP packet, it simply echoes it back.
+(this program is provided for the testing purposes only !) 
+When the test clients are communicating in the client-to-client manner 
+(when the "uclient" program is used with "-y" option) then the peer
+is not needed.
 	
 The compiled binary image of this program is located in examples/bin/ subdirectory.
    
@@ -82,51 +82,53 @@ turnserver application is a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-vfao] [-n | -c <config-file> ] [-b <user-db-file> | --userdb=<user-db-file> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [-vfao] [-b <user-db-file> | --userdb=<user-db-file> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
-  DESCRIPTION
-  
-Flags:   
-
--v, --verbose			Verbose.
-
--o, --daemon			Run server as daemon.
-
--f, --fingerprint		Use fingerprints in the TURN messages. If an incoming request
-						contains fingerprint, then TURN server will always add 
-						fingerprints to the messages in this session, regardless of the
-						per-server setting.
-
--a, --lt-cred-mech		Use long-term credential mechanism. 
-						By default, no credential mechanism is used -
-						any user is allowed.
--z, --no-auth			Do not use any credential mechanism, allow anonymous access. 
-						Opposite to -a option.						
+  DESCRIPTION						
   
 Config file setting:  
 
--n				Do not use configuration file, use only command line parameters.
+-n		Do not use configuration file, use only command line parameters.
 
--c				Configuration file name (default - turnserver.conf).
-				The format of config file can be seen in
-				the supplied examples/etc/turnserver.conf example file. Long 
-				names of the options are used as the configuration 
-				items names in the file. If not an absolute path is supplied, 
-				then the file is searched in the following directories: 
-				  * current directory
-				  * current directory etc/ subdirectory
-				  * upper directory level etc/
-				  * /etc/ 
-				  * /usr/local/etc/
-				  * installation directory /etc
+-c		Configuration file name (default - turnserver.conf).
+		The format of config file can be seen in
+		the supplied examples/etc/turnserver.conf example file. Long 
+		names of the options are used as the configuration 
+		items names in the file. If not an absolute path is supplied, 
+		then the file is searched in the following directories: 
+		  * current directory
+		  * current directory etc/ subdirectory
+		  * upper directory level etc/
+		  * /etc/ 
+		  * /usr/local/etc/
+		  * installation directory /etc
 				  
 -b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
-				This user database is being dynamically checked while the turnserver 
-				is working, and the user accounts can be changed dynamically by
-				editing the file.
+		This user database is being dynamically checked while the turnserver 
+		is working, and the user accounts can be changed dynamically by
+		editing the file.
+
+Flags:   
+
+-v, --verbose		Verbose.
+
+-o, --daemon		Run server as daemon.
+
+-f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
+			contains fingerprint, then TURN server will always add 
+			fingerprints to the messages in this session, regardless of the
+			per-server setting.
+
+-a, --lt-cred-mech	Use long-term credential mechanism.
+
+-z, --no-auth		Do not use any credential mechanism, allow anonymous access. 
+			Opposite to -a option. This is default option when no 
+			authentication-related options are set.
+			By default, no credential mechanism is used -
+			any user is allowed.
     
-Options:  
+Options with required values:  
 
 -d, --listening-device		Listener interface device (optional functionality, Linux only). 
 				The turnserver process must have root privileges to bind the 
@@ -197,7 +199,7 @@ Options:
 -r, --realm			Realm to be used for all users.
 
 -q, --user-quota		Per-user allocations quota: how many concurrent 
-						allocations a user can create.
+				allocations a user can create.
 
 -Q, --total-quota		Total allocations quota: global limit on concurrent allocations.
  
@@ -243,17 +245,17 @@ $ turnadmin [ -h | --help]
   
 Commands:  
 
--k, --key		Generate key for a user.
+-k, --key	Generate key for a user.
 -a, --add       Add or update a user.
 -d, --delete	Delete a user.
   
-Options:  
+Options with required values:  
 
 -b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
--u, --user		User name.
--r, --realm		Realm.
+-u, --user	User name.
+-r, --realm	Realm.
 -p, --password	Password.
--h, --help		Help.
+-h, --help	Help.
   
 Generate a key:  
 
@@ -283,13 +285,13 @@ $ uclient [-tSvsyhcxg] [options] <TURN-Server-IP-address>
   
   DESCRIPTION
   
-  It was designed to simulate multiple clients. It uses asynch IO API in 
+It was designed to simulate multiple clients. It uses asynch IO API in 
 libevent to handle multiple clients. A client connects to the relay, 
 negotiates the session, and sends multiple (configured number) messages to the server (relay), 
 expecting the same number of replies. The length of the messages is configurable. 
 The message is an arbitrary octet stream, but it can be configured as a string. 
-The number of the messages to send is configurable. 
-  
+The number of the messages to send is configurable.
+
 Flags:   
 
 -t      Use TCP (default is UDP).
@@ -312,8 +314,8 @@ Flags:
 -x      Request IPv6 relayed address (RFC6156).
 
 -g      Set DONT_FRAGMENT parameter in TURN requests.
-  
-Options:  
+
+Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
 
@@ -321,21 +323,21 @@ Options:
 
 -k      Private key file (for secure connections only).
 
--p      TURN Server port (Default: 3478 unsecure, 5349 secure).
+-p      TURN Server port (Defaults: 3478 unsecure, 5349 secure).
 
 -n      Number of messages to send (Default: 5).
 
--d      Local interface device (optional).
+-d      Local interface device (optional, Linux only).
 
 -L      Local IP address (optional).
 
--m      Number of clients (default is 1, 2 or 4, depending on options below).
+-m      Number of clients (Default: 1, 2 or 4, depending on options).
 
 -e      Peer address.
 
--r      Peer port (default 3480).
+-r      Peer port (Default: 3480).
 
--z		Per-session packet interval in milliseconds (default is 20 ms).
+-z	Per-session packet interval in milliseconds (Default: 20).
 
 See the examples in the "examples/scripts" directory.
 
@@ -351,9 +353,9 @@ $ peer [-v] [options]
   
   DESCRIPTION
   
-  This application is used for the test purposes only, as a 'peer' for the uclient application.
-  
-Options:  
+This application is used for the test purposes only, as a 'peer' for the uclient application.
+
+Options with required values:  
 
 -p  Listening UDP port (Default: 3480).
  
@@ -375,9 +377,9 @@ $ stunclient [options] <STUN-Server-IP-address>
   
   DESCRIPTION
   
-  It sends a STUN request (over UDP) and shows the reply information. 
+It sends a STUN request (over UDP) and shows the reply information.
 
-Options:  
+Options with required values:  
 
 -p  STUN server port (Default: 3478).
  
@@ -387,7 +389,7 @@ The stunclient program checks the results of the first request,
 and if it finds that the STUN server supports RFC 5780 
 (the binding response reveals that) then the stunclient makes a couple more 
 requests with different parameters, to demonstrate the NAT discovery capabilities.
-
+  
 ===================================================================================
 
   NAME
@@ -407,12 +409,16 @@ Usage:
 
 $ rfc5769check
 
+===================================================================================
+
 LIBRARIES
 
 In the lib/ sub-directory the build process will create TURN client messaging library.
 In the include/ sub-directory, the necessary include files will be placed.
 The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
 An example of C++ code can be found in stunclient.c file. 
+
+===================================================================================
  
 DOCS
 
@@ -424,6 +430,8 @@ to see the man page.
 
 In the docs/html subdirectory of the original archive tree, you will find the client library 
 reference. After the installation, it will be placed in PREFIX/share/doc/turnserver/html.
+
+===================================================================================
 
 LOGS
 
@@ -439,6 +447,8 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
+===================================================================================
+
 CLUSTERS
 
 TURN Server can be a part of the cluster installation. But, to support the "even port" functionality 
@@ -447,6 +457,8 @@ TURN Server instance, so it requires some networking setup massaging for the clu
 the RTP and RTCP relaying endpoints must be allocated on the same relay IP. It would be possible 
 to design a scheme with the application-level requests forwarding (and we may do that later) but 
 it would affect the performance.
+
+===================================================================================
 
 FILES
 
@@ -457,6 +469,8 @@ FILES
 /usr/local/etc/turnserver.conf
 
 /usr/local/etc/turnuserdb.conf
+
+===================================================================================
 
 STANDARDS
 
@@ -470,6 +484,9 @@ test vectors RFC 5769
 
 NAT behavior discovery RFC5780
 
+===================================================================================
+
 AUTHORS
 
 Oleg Moskalenko <mom040267@gmail.com>
+

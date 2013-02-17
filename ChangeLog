@@ -1,3 +1,8 @@
+02/16/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.5 'Lestek':
+	- uclient application fixed
+	- Docs fixes
+
 02/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.4 'Lestek':
 	- Crash fixed on unconfigured interfaces
