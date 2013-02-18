@@ -285,8 +285,9 @@ void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 	avalue[1] = 0;
 	avalue[2] = (u08bits) (error_code / 100);
 	avalue[3] = (u08bits) (error_code % 100);
-	strcpy((s08bits*) (avalue + 4), (const s08bits*) reason);
-	int alen = 4 + strlen((const s08bits*) reason);
+	strncpy((s08bits*) (avalue + 4), (const s08bits*) reason, sizeof(avalue)-4);
+	avalue[sizeof(avalue)-1]=0;
+	int alen = 4 + strlen((const s08bits*) (avalue+4));
 
 	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE, (u08bits*) avalue, alen);
 	if (id) {

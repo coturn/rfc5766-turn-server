@@ -1,3 +1,7 @@
+02/18/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.6 'Lestek':
+	- strcpy/strncpy fixes
+	
 02/16/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.5 'Lestek':
 	- uclient application fixed

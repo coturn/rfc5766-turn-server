@@ -247,7 +247,7 @@ static int init_server(udp_listener_relay_server_type* server,
 
   server->stats=stats;
 
-  if(ifname) strncpy(server->ifname,ifname,sizeof(server->ifname)-1);
+  if(ifname) STRCPY(server->ifname,ifname);
 
   if(make_ioa_addr((const u08bits*)local_address, port, &server->addr)<0) {
     return -1;

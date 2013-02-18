@@ -423,7 +423,7 @@ int main(int argc, char **argv)
       port = atoi(optarg);
       break;
     case 'L':
-      strncpy(local_addr, optarg, sizeof(local_addr)-1);
+      STRCPY(local_addr, optarg);
       break;
     default:
       fprintf(stderr,"%s\n", Usage);

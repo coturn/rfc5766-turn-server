@@ -115,16 +115,16 @@ int main(int argc, char **argv)
 			RTP_PACKET_INTERVAL = atoi(optarg);
 			break;
 		case 'u':
-			strcpy((char*) g_uname, optarg);
+			STRCPY(g_uname, optarg);
 			break;
 		case 'w':
-			strcpy((char*) g_upwd, optarg);
+			STRCPY(g_upwd, optarg);
 			break;
 		case 'g':
 			dont_fragment = 1;
 			break;
 		case 'd':
-			strcpy((char*) ifname, optarg);
+			STRCPY(ifname, optarg);
 			break;
 		case 'x':
 			default_address_family
@@ -143,10 +143,10 @@ int main(int argc, char **argv)
 			port = atoi(optarg);
 			break;
 		case 'L':
-			strncpy(local_addr, optarg, sizeof(local_addr) - 1);
+			STRCPY(local_addr, optarg);
 			break;
 		case 'e':
-			strncpy(peer_address, optarg, sizeof(peer_address) - 1);
+			STRCPY(peer_address, optarg);
 			break;
 		case 'r':
 			peer_port = atoi(optarg);
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 				fprintf(stderr,"ERROR: file %s not found\n",optarg);
 				exit(-1);
 			}
-			strcpy(pkey_file,fn);
+			STRCPY(pkey_file,fn);
 			free(fn);
 			break;
 		}

@@ -241,7 +241,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			e->deallocate_eb = 1;
 		}
 		if (relay_ifname)
-			strncpy(e->relay_ifname, relay_ifname, sizeof(e->relay_ifname) - 1);
+			STRCPY(e->relay_ifname, relay_ifname);
 		if (relay_addrs) {
 			size_t i = 0;
 			e->relay_addrs = (ioa_addr*)malloc(relays_number * sizeof(ioa_addr));

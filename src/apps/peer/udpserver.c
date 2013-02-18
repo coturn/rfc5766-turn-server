@@ -70,7 +70,7 @@ static int udp_create_server_socket(server_type* server,
   evutil_socket_t udp_fd = -1;
   ioa_addr *server_addr = (ioa_addr*)malloc(sizeof(ioa_addr));
 
-  strncpy(server->ifname,ifname,sizeof(server->ifname)-1);
+  STRCPY(server->ifname,ifname);
 
   if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
   

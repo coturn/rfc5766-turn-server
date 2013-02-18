@@ -542,7 +542,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 				a = get_allocation_ss(ss);
 				set_allocation_valid(a,1);
 
-				strcpy((char*)ss->username,(char*)username);
+				STRCPY(ss->username,username);
 
 				stun_tid_cpy(&(a->tid), tid);
 

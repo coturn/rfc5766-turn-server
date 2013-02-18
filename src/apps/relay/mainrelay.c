@@ -1044,7 +1044,7 @@ static void set_option(int c, char *value)
 
 	switch (c){
 	case 'i':
-		strcpy(relay_ifname, value);
+		STRCPY(relay_ifname, value);
 		break;
 	case 'm':
 #if defined(TURN_NO_THREADS)
@@ -1056,7 +1056,7 @@ static void set_option(int c, char *value)
 #endif
 		break;
 	case 'd':
-		strcpy(listener_ifname, value);
+		STRCPY(listener_ifname, value);
 		break;
 	case 'p':
 		listener_port = atoi(value);
@@ -1121,11 +1121,11 @@ static void set_option(int c, char *value)
 		add_user_account(value,0);
 		break;
 	case 'b':
-		strcpy(userdb_file, value);
+		STRCPY(userdb_file, value);
 		break;
 	case 'r':
-		strcpy(global_realm,value);
-		strcpy((s08bits*) users->realm, value);
+		STRCPY(global_realm,value);
+		STRCPY(users->realm, value);
 		break;
 	case 'q':
 		users->user_quota = atoi(value);
@@ -1160,10 +1160,10 @@ static void set_option(int c, char *value)
 #endif
 		break;
 	case CERT_FILE_OPT:
-		strcpy(cert_file,value);
+		STRCPY(cert_file,value);
 		break;
 	case PKEY_FILE_OPT:
-		strcpy(pkey_file,value);
+		STRCPY(pkey_file,value);
 		break;
 	/* these options have been already taken care of before: */
 	case 'c':
@@ -1270,15 +1270,14 @@ static void read_config_file(int argc, char **argv, int pass)
 	static char config_file[1025] = DEFAULT_CONFIG_FILE;
 
 	if(pass == 0) {
-	  strcpy(userdb_file,DEFAULT_USERDB_FILE);
+	  STRCPY(userdb_file,DEFAULT_USERDB_FILE);
 
 	  if (argv) {
 	    int i = 0;
 	    for (i = 0; i < argc; i++) {
 	      if (!strcmp(argv[i], "-c")) {
 		if (i < argc - 1) {
-		  strncpy(config_file, argv[i + 1], sizeof(config_file)
-			  - 1);
+		  STRCPY(config_file, argv[i + 1]);
 		} else {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
 		}
@@ -1323,7 +1322,7 @@ static void read_config_file(int argc, char **argv, int pass)
 				if (slen) {
 					int c = 0;
 					char *value = NULL;
-					strcpy(sarg, s);
+					STRCPY(sarg, s);
 					if (parse_arg_string(sarg, &c, &value) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
 							sarg);

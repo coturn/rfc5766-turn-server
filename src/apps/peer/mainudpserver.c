@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
 		switch (c){
 		case 'd':
-			strcpy(ifname, optarg);
+			STRCPY(ifname, optarg);
 			break;
 		case 'p':
 			port = atoi(optarg);
