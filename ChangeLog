@@ -1,6 +1,10 @@
 02/18/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 1.5.2.6 'Lestek':
-	- strcpy/strncpy fixes
+Version 1.5.2.6 'Iosiv Lestek':
+	- strcpy/strncpy fixed
+	- some screen messages fixed
+	- uclient statistics fixed
+	- software attribute fixed
+	- example scripts fixed
 	
 02/16/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.5 'Lestek':

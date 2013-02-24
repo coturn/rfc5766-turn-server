@@ -43,8 +43,8 @@ static const int verbose_packets=0;
 
 static size_t current_clients_number = 0;
 
-static ev_uint32_t tot_send_messages=0;
-static ev_uint32_t tot_recv_messages=0;
+static u32bits tot_send_messages=0;
+static u32bits tot_recv_messages=0;
 
 static struct event_base* client_event_base=NULL;
 
@@ -1034,9 +1034,6 @@ void start_mclient(const char *remote_address, int port,
 	if(tot_send_messages<tot_recv_messages)
 		tot_recv_messages=tot_send_messages;
 
-	if(tot_recv_messages<1)
-		tot_recv_messages=1;
-
 	total_loss = tot_send_messages-tot_recv_messages;
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n",
@@ -1044,7 +1041,7 @@ void start_mclient(const char *remote_address, int port,
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
 				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%');
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",
-				((double)total_latency/(double)tot_recv_messages),
+				((double)total_latency/(double)((tot_recv_messages<1) ? 1 : tot_recv_messages)),
 				(unsigned long)min_latency,
 				(unsigned long)max_latency);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average jitter %f ms; min = %lu ms, max = %lu ms\n",

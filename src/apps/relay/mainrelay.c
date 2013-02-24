@@ -761,6 +761,7 @@ static int make_local_listeners_list(void)
 
 	if((getifaddrs(&ifs) == 0) && ifs) {
 
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
 			if(!(ifa->ifa_addr))
@@ -779,12 +780,9 @@ static int make_local_listeners_list(void)
 			} else
 				continue;
 
-			if(ifa->ifa_name)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (%s)\n",saddr,ifa->ifa_name);
-			else
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added listener address %s (NULL)\n",saddr);
 			add_listener_addr(saddr);
 		}
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		freeifaddrs(ifs);
 	}
 
@@ -801,6 +799,7 @@ static int make_local_relays_list(int allow_local)
 	getifaddrs(&ifs);
 
 	if (ifs) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
 			if(!(ifa->ifa_name))
@@ -824,9 +823,9 @@ static int make_local_relays_list(int allow_local)
 			} else
 				continue;
 
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Added relay address %s (%s)\n",saddr,ifa->ifa_name);
 			add_relay_addr(saddr);
 		}
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		freeifaddrs(ifs);
 	}
 
@@ -1562,7 +1561,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6156 STUN/TURN Server, version number %s '%s'\n",TURN_SERVER_VERSION,TURN_SERVER_VERSION_NAME);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
 
 	users = (turn_user_db*)malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));

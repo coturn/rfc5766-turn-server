@@ -21,7 +21,11 @@
 # We use IPv6 - to - IPv4 here to illustrate how the TURN Server 
 # converts the traffic from IPv6 to IPv4 and back.
 #
-     
+
+if [ -d examples ] ; then
+       cd examples
+fi
+
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
 PATH=examples/bin/:../bin:./bin/:${PATH} uclient -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s 127.0.0.1

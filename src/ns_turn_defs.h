@@ -31,8 +31,9 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION ("1.5.2.6")
-#define TURN_SERVER_VERSION_NAME ("Lestek")
+#define TURN_SERVER_VERSION "1.5.2.6"
+#define TURN_SERVER_VERSION_NAME "Iosiv Lestek"
+#define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
@@ -141,7 +142,15 @@ typedef u32bits turn_time_t;
 #error WRONG BYTE_ORDER SETTING
 #endif
 
-#define STRCPY(dst,src) do { strncpy((char*)(dst),(const char*)(src),sizeof((dst))); ((char*)(dst))[sizeof((dst))-1] = 0; } while(0)
+#define STRCPY(dst,src) \
+	do { \
+		if(sizeof(dst)==sizeof(char*))\
+			strcpy(((char*)(dst)),(const char*)(src));\
+		else {\
+			strncpy((char*)(dst),(const char*)(src),sizeof((dst)));\
+			((char*)(dst))[sizeof((dst))-1] = 0; \
+		}\
+	} while(0)
 
 ////////////////////////////////////////////////////////
 

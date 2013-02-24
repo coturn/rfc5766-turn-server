@@ -1432,8 +1432,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					}
 
 					{
-						static const u08bits *field = (const u08bits *) "Citrix-AG";
-						static const size_t fsz = 9;
+						static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+						static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
 						size_t len = ioa_network_buffer_get_size(nbh);
 						stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 						ioa_network_buffer_set_size(nbh, len);
@@ -1516,8 +1516,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		}
 
 		{
-			static const u08bits *field = (const u08bits *) "Citrix-AG";
-			static const size_t fsz = 9;
+			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
 			ioa_network_buffer_set_size(nbh, len);

@@ -6,6 +6,10 @@
 # The default port 3480 is used.
 #
 
+if [ -d examples ] ; then
+       cd examples
+fi
+
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
 PATH=examples/bin/:bin/:../bin:${PATH} peer -L 127.0.0.1 -L ::1
