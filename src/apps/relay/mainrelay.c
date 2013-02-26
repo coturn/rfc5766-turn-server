@@ -62,6 +62,8 @@
 
 #include "ns_turn_utils.h"
 
+#include "userdb.h"
+
 #include "udp_listener.h"
 #include "tcp_listener.h"
 #include "tls_listener.h"
@@ -157,13 +159,6 @@ static char **relay_addrs = NULL;
 static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
-
-static char userdb_file[1025]="\0";
-static size_t users_number = 0;
-static int use_lt_credentials = 0;
-static int auth_credentials = 0;
-static turn_user_db *users = NULL;
-static s08bits global_realm[1025];
 
 static size_t relay_servers_number = 0;
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
@@ -556,7 +551,13 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
-	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED, users, external_ip);
+	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
+					users->ct,
+					users->realm,
+					get_user_key,
+					check_new_allocation_quota,
+					release_allocation_quota,
+					external_ip);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message);
 	}

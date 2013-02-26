@@ -1,4 +1,8 @@
-02/18/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/25/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.7 'Iosiv Lestek':
+	- authorization processing fixed
+	
+02/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.6 'Iosiv Lestek':
 	- strcpy/strncpy fixed
 	- some screen messages fixed

@@ -56,25 +56,15 @@ typedef enum {
 	DONT_FRAGMENT_SUPPORT_EMULATED
 } dont_fragment_option_t;
 
-///////////////////////////////////////////
-
 typedef enum {
 	TURN_CREDENTIALS_NONE = 0,
 	TURN_CREDENTIALS_LONG_TERM,
 	TURN_CREDENTIALS_SHORT_TERM
 } turn_credential_type;
 
-struct _turn_user_db {
-	turn_credential_type ct;
-	u08bits realm[STUN_MAX_REALM_SIZE+1];
-	size_t total_quota;
-	size_t user_quota;
-	size_t total_current_allocs;
-	ur_string_map *static_accounts;
-	ur_string_map *dynamic_accounts;
-	ur_string_map *alloc_counters;
-};
-typedef struct _turn_user_db turn_user_db;
+typedef u08bits *(*get_user_key_cb)(u08bits *uname);
+typedef int (*check_new_allocation_quota_cb)(u08bits *username);
+typedef void (*release_allocation_quota_cb)(u08bits *username);
 
 ///////////////////////////////////////////
 
@@ -84,7 +74,11 @@ turn_turnserver* create_turn_server(int verbose,
 				    int stun_port,
 				    int fingerprint,
 				    dont_fragment_option_t dont_fragment,
-				    turn_user_db *users,
+				    turn_credential_type ct,
+				    u08bits *realm,
+				    get_user_key_cb userkeycb,
+				    check_new_allocation_quota_cb chquotacb,
+				    release_allocation_quota_cb raqcb,
 				    ioa_addr *external_addr);
 
 void delete_turn_server(turn_turnserver* server);

@@ -44,10 +44,10 @@ examples/bin/rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/r
 	${MKDIR} examples/bin
 	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient
 
-bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
+bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/userdb.h src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
 	${MKDIR} bin
 	${RMCMD} bin/turnadmin
-	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LDFLAGS}
+	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LDFLAGS}
 	cd bin; ln -s turnserver turnadmin  
 
 examples/bin/peer:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c

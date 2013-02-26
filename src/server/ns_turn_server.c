@@ -58,7 +58,11 @@ struct _turn_turnserver {
 	dont_fragment_option_t dont_fragment;
 	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
-	turn_user_db *users;
+	turn_credential_type ct;
+	u08bits realm[STUN_MAX_REALM_SIZE+1];
+	get_user_key_cb userkeycb;
+	check_new_allocation_quota_cb chquoatacb;
+	release_allocation_quota_cb raqcb;
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
 	size_t addrs_number;
@@ -151,50 +155,6 @@ static ts_ur_super_session* create_new_ss(void) {
 			sizeof(ts_ur_super_session)));
 }
 
-static int check_new_allocation_quota(turn_turnserver *server, u08bits *username)
-{
-	int ret = 0;
-	if (server && username) {
-		ur_string_map_lock(server->users->alloc_counters);
-		if (server->users->total_quota && (server->users->total_current_allocs >= server->users->total_quota)) {
-			ret = -1;
-		} else {
-			ur_string_map_value_type value = 0;
-			if (!ur_string_map_get(server->users->alloc_counters, (ur_string_map_key_type) username, &value)) {
-				value = (ur_string_map_value_type) 1;
-				ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
-				++(server->users->total_current_allocs);
-			} else {
-				if ((server->users->user_quota) && ((size_t) value >= server->users->user_quota)) {
-					ret = -1;
-				} else {
-					value = (ur_string_map_value_type)(((size_t)value) + 1);
-					ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
-					++(server->users->total_current_allocs);
-				}
-			}
-		}
-		ur_string_map_unlock(server->users->alloc_counters);
-	}
-	return ret;
-}
-
-static void release_allocation_quota(turn_turnserver *server, u08bits *username)
-{
-	if (server && username) {
-		ur_string_map_lock(server->users->alloc_counters);
-		ur_string_map_value_type value = 0;
-		ur_string_map_get(server->users->alloc_counters, (ur_string_map_key_type) username, &value);
-		if (value) {
-			value = (ur_string_map_value_type)(((size_t)value) - 1);
-			ur_string_map_put(server->users->alloc_counters, (ur_string_map_key_type) username, value);
-		}
-		if (server->users->total_current_allocs)
-			--(server->users->total_current_allocs);
-		ur_string_map_unlock(server->users->alloc_counters);
-	}
-}
-
 /////////// clean all /////////////////////
 
 static void delete_ur_map_ss(void *p) {
@@ -212,7 +172,7 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		release_allocation_quota((turn_turnserver*)ss->server,ss->username);
+		(((turn_turnserver*)ss->server)->raqcb)(ss->username);
 		if (ss->client_session.s) {
 			set_ioa_socket_session(ss->client_session.s, NULL);
 		}
@@ -521,7 +481,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
-			if(check_new_allocation_quota(server,username)<0) {
+			if((server->chquoatacb)(username)<0) {
 
 				*err_code = 486;
 				*reason = (const u08bits *)"Allocation Quota Reached";
@@ -529,7 +489,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			} else if (create_relay_connection(server, ss, lifetime, af, even_port,
 						    in_reservation_token, &out_reservation_token, err_code, reason) < 0) {
 
-				release_allocation_quota(server,username);
+				(server->raqcb)(username);
 
 				if (!*err_code) {
 				  *err_code = 437;
@@ -1198,7 +1158,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 static int need_stun_authentication(turn_turnserver *server)
 {
-	switch(server->users->ct) {
+	switch(server->ct) {
 	case TURN_CREDENTIALS_LONG_TERM:
 		return 1;
 	case TURN_CREDENTIALS_NONE:
@@ -1229,7 +1189,7 @@ static int create_challenge_response(turn_turnserver *server,
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE,
 					ss->nonce, (int)(sizeof(ss->nonce)-1));
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM,
-					server->users->realm, (int)(strlen((s08bits*)(server->users->realm))));
+					server->realm, (int)(strlen((s08bits*)(server->realm))));
 	ioa_network_buffer_set_size(nbh,len);
 	return 0;
 }
@@ -1324,20 +1284,11 @@ static int check_stun_auth(turn_turnserver *server,
 
 	/* Password */
 	if(ss->hmackey[0] == 0) {
-		ur_string_map_value_type ukey;
-		ur_string_map_lock(server->users->static_accounts);
-		if(!ur_string_map_get(server->users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
-			ur_string_map_unlock(server->users->static_accounts);
-			ur_string_map_lock(server->users->dynamic_accounts);
-			if(!ur_string_map_get(server->users->dynamic_accounts, (ur_string_map_key_type)uname, &ukey)) {
-				ur_string_map_unlock(server->users->dynamic_accounts);
-				*err_code = 401;
-				*reason = (u08bits*)"Unauthorised";
-				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
-			}
-			ur_string_map_unlock(server->users->dynamic_accounts);
-		} else {
-			ur_string_map_unlock(server->users->static_accounts);
+		ur_string_map_value_type ukey = (server->userkeycb)(uname);
+		if(!ukey) {
+			*err_code = 401;
+			*reason = (u08bits*)"Unauthorised";
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
 		}
 		ns_bcopy(ukey,ss->hmackey,16);
 	}
@@ -2098,7 +2049,12 @@ static int clean_server(turn_turnserver* server) {
 turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		u32bits *stats,
 		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
-		turn_user_db *users, ioa_addr *external_ip) {
+		turn_credential_type ct,
+		u08bits *realm,
+		get_user_key_cb userkeycb,
+		check_new_allocation_quota_cb chquotacb,
+		release_allocation_quota_cb raqcb,
+		ioa_addr *external_ip) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2108,7 +2064,12 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
-	server->users = users;
+	server->ct = ct;
+	STRCPY(server->realm,realm);
+	server->userkeycb = userkeycb;
+	server->chquoatacb = chquotacb;
+	server->raqcb = raqcb;
+
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
 	server->stats = stats;

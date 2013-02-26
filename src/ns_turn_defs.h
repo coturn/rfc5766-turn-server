@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "1.5.2.6"
+#define TURN_SERVER_VERSION "1.5.2.7"
 #define TURN_SERVER_VERSION_NAME "Iosiv Lestek"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
