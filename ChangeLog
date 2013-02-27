@@ -1,6 +1,8 @@
-02/25/2013 Oleg Moskalenko <mom040267@gmail.com>
+02/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.7 'Iosiv Lestek':
-	- authorization processing fixed
+	- authorization processing improvements
+	- Issue 4 fixed.
+	- secure cclient-to-client script added
 	
 02/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.6 'Iosiv Lestek':

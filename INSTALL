@@ -277,6 +277,7 @@ In shell number 3, run secure test client application:
  (or ./scripts/secure tcp_client.sh)
  (or ./scripts/secure tls_client.sh)
  (or ./scripts/secure dtls_client.sh)
+ (or ./scripts/secure udp_c2c.sh for "peerless" client-to-client communications)
 
 The provided scripts are set for the local loopback communications, as an example and 
 as a test environment. Real networking IPs must be used in real work environments. 

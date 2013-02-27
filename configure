@@ -257,6 +257,7 @@ fi
 testlib socket
 testlib nsl
 testlib dl
+testlib rt
 
 ###########################
 # Can we use multi-threading ?
