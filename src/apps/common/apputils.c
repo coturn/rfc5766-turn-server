@@ -390,6 +390,16 @@ int handle_socket_error() {
   }
 }
 
+//////////////////// Misc utils //////////////////////////////
+
+char *skip_blanks(char* s)
+{
+	while(*s==' ' || *s=='\t' || *s=='\n')
+		++s;
+
+	return s;
+}
+
 //////////////////// Config file search //////////////////////
 
 #define Q(x) #x

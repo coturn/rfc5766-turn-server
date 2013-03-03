@@ -44,6 +44,10 @@
 extern "C" {
 #endif
 
+//////////// Defines //////////////////////////////
+
+#define DEFAULT_USERDB_FILE "turnuserdb.conf"
+
 //////////// USER DB //////////////////////////////
 
 struct _turn_user_db {
@@ -70,6 +74,11 @@ extern s08bits global_realm[1025];
 u08bits *get_user_key(u08bits *uname);
 int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
+
+/////////// Handle user DB /////////////////
+
+void read_userdb_file(void);
+int add_user_account(char *user, int dynamic);
 
 ////////////////////////////////////////////
 

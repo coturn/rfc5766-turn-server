@@ -53,7 +53,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
 
   if(len>=0) {
     do {
-      len = sendto(fd, buffer.buf, len, 0, (const struct sockaddr*) &remote_addr, (socklen_t) slen);
+      len = sendto(fd, buffer.buf, buffer.len, 0, (const struct sockaddr*) &remote_addr, (socklen_t) slen);
     } while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
   }
 }

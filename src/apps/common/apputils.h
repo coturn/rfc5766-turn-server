@@ -86,6 +86,10 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose);
 int decrease_mtu(SSL* ssl, int mtu, int verbose);
 int get_socket_mtu(evutil_socket_t fd, int family, int verbose);
 
+////////////////// Misc utils /////////////////////////
+
+char *skip_blanks(char* s);
+
 ////////////////// File search ////////////////////////
 
 char* find_config_file(const char *config_file, int print_file_name);

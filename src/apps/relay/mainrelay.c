@@ -89,7 +89,6 @@ static int turn_daemon = 0;
 static int do_not_use_config_file = 0;
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
-#define DEFAULT_USERDB_FILE "turnuserdb.conf"
 
 ////////////////  Listener server /////////////////
 
@@ -178,7 +177,6 @@ static struct relay_server **relay_servers = NULL;
 ////////////// Configuration functionality ////////////////////////////////
 
 static void read_config_file(int argc, char **argv, int pass);
-static void read_userdb_file(void);
 
 //////////////////////////////////////////////////
 
@@ -959,14 +957,6 @@ static struct option admin_long_options[] = {
 				{ NULL, no_argument, NULL, 0 }
 };
 
-static char *skip_blanks(char* s)
-{
-	while(*s==' ' || *s=='\t' || *s=='\n')
-		++s;
-
-	return s;
-}
-
 static int get_bool_value(const char* s)
 {
 	if(!s || !(s[0])) return 1;
@@ -977,63 +967,6 @@ static int get_bool_value(const char* s)
 	if(!strcmp(s,"on") || !strcmp(s,"ON") || !strcmp(s,"On")) return 1;
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown boolean value: %s. You can use on/off, yes/no, 1/0, true/false.\n",s);
 	exit(-1);
-}
-
-static int add_user_account(char *user, int dynamic)
-{
-	if(user) {
-		char *s = strstr(user, ":");
-		if(!s || (s==user) || (strlen(s)<2)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
-		} else {
-			size_t ulen = s-user;
-			char *uname = (char*)malloc(sizeof(char)*(ulen+1));
-			strncpy(uname,user,ulen);
-			uname[ulen]=0;
-			if(SASLprep((u08bits*)uname)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-				free(uname);
-				return -1;
-			}
-			s = skip_blanks(s+1);
-			unsigned char *key = (unsigned char*)malloc(16);
-			if(strstr(s,"0x")==s) {
-				char *keysource = s + 2;
-				if(strlen(keysource)!=32) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					free(uname);
-					free(key);
-					return -1;
-				}
-				char is[3];
-				int i;
-				unsigned int v;
-				is[2]=0;
-				for(i=0;i<16;i++) {
-					is[0]=keysource[i*2];
-					is[1]=keysource[i*2+1];
-					sscanf(is,"%02x",&v);
-					key[i]=(unsigned char)v;
-				}
-			} else {
-				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, key);
-			}
-			if(dynamic) {
-				ur_string_map_lock(users->dynamic_accounts);
-				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
-				ur_string_map_unlock(users->dynamic_accounts);
-			} else {
-				ur_string_map_lock(users->static_accounts);
-				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
-				ur_string_map_unlock(users->static_accounts);
-			}
-			users_number++;
-			free(uname);
-			return 0;
-		}
-	}
-
-	return -1;
 }
 
 static void set_option(int c, char *value)
@@ -1203,66 +1136,6 @@ static int parse_arg_string(char *sarg, int *c, char **value)
 	}
 
 	return -1;
-}
-
-static void read_userdb_file(void)
-{
-	static char *full_path_to_userdb_file = NULL;
-	static int first_read = 1;
-	static turn_time_t mtime = 0;
-
-	FILE *f = NULL;
-
-	if(full_path_to_userdb_file) {
-		struct stat sb;
-		if(stat(full_path_to_userdb_file,&sb)<0) {
-			perror("File statistics");
-		} else {
-			turn_time_t newmtime = (turn_time_t)(sb.st_mtime);
-			if(mtime == newmtime)
-				return;
-			mtime = newmtime;
-
-		}
-	}
-
-	if (!full_path_to_userdb_file)
-		full_path_to_userdb_file = find_config_file(userdb_file, first_read);
-
-	if (full_path_to_userdb_file)
-		f = fopen(full_path_to_userdb_file, "r");
-
-	if (f) {
-
-		char sbuf[1025];
-
-		ur_string_map_lock(users->dynamic_accounts);
-		ur_string_map_clean(users->dynamic_accounts);
-
-		for (;;) {
-			char *s = fgets(sbuf, sizeof(sbuf) - 1, f);
-			if (!s)
-				break;
-			s = skip_blanks(s);
-			if (s[0] == '#')
-				continue;
-			if (!s[0])
-				continue;
-			size_t slen = strlen(s);
-			while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
-				s[--slen] = 0;
-			if (slen)
-				add_user_account(s,1);
-		}
-
-		ur_string_map_unlock(users->dynamic_accounts);
-
-		fclose(f);
-
-	} else if (first_read)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
-
-	first_read = 0;
 }
 
 static void read_config_file(int argc, char **argv, int pass)

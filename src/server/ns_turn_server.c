@@ -284,7 +284,7 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 
 /////////////// TURN ///////////////////////////
 
-#define SKIP_AUTH_ATTRIBUTES case STUN_ATTRIBUTE_FINGERPRINT: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: break; \
+#define SKIP_ATTRIBUTES case STUN_ATTRIBUTE_PRIORITY: case STUN_ATTRIBUTE_FINGERPRINT: case STUN_ATTRIBUTE_MESSAGE_INTEGRITY: break; \
 	case STUN_ATTRIBUTE_USERNAME: case STUN_ATTRIBUTE_REALM: case STUN_ATTRIBUTE_NONCE: \
 	sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),\
 		ioa_network_buffer_get_size(in_buffer->nbh), sar); \
@@ -355,7 +355,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			}
 
 			switch (attr_type) {
-			SKIP_AUTH_ATTRIBUTES;
+			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_REQUESTED_TRANSPORT: {
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
@@ -566,7 +566,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
-			SKIP_AUTH_ATTRIBUTES;
+			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_LIFETIME: {
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
@@ -690,7 +690,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
-			SKIP_AUTH_ATTRIBUTES;
+			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_CHANNEL_NUMBER: {
 				if (chnum) {
 					chnum = 0;
@@ -825,7 +825,7 @@ static int handle_turn_binding(turn_turnserver *server,
 	while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 		int attr_type = stun_attr_get_type(sar);
 		switch (attr_type) {
-		SKIP_AUTH_ATTRIBUTES;
+		SKIP_ATTRIBUTES;
 		case STUN_ATTRIBUTE_CHANGE_REQUEST:
 			if(!is_rfc5780(server)) {
 				*err_code = 420;
@@ -974,7 +974,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
-			SKIP_AUTH_ATTRIBUTES;
+			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
 				if(!(server->dont_fragment))
 					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
@@ -1095,7 +1095,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 			int attr_type = stun_attr_get_type(sar);
 			switch (attr_type) {
-			SKIP_AUTH_ATTRIBUTES;
+			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
 				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
 						       ioa_network_buffer_get_size(in_buffer->nbh),

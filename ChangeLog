@@ -1,8 +1,14 @@
+03/03/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.5.2.8 'Iosiv Lestek':
+	- authorization processing improvements.
+	- peer application fixed.
+	- some ICE attributes added.
+	
 02/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.7 'Iosiv Lestek':
 	- authorization processing improvements
 	- Issue 4 fixed.
-	- secure cclient-to-client script added
+	- secure client-to-client script added
 	
 02/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.6 'Iosiv Lestek':
