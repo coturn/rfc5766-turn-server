@@ -103,6 +103,9 @@ static int no_tcp = 0;
 static int no_tls = 0;
 static int no_dtls = 0;
 
+static int no_tcp_relay = 0;
+static int no_udp_relay = 0;
+
 static SSL_CTX *tls_ctx = NULL;
 static SSL_CTX *dtls_ctx = NULL;
 
@@ -555,7 +558,9 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					get_user_key,
 					check_new_allocation_quota,
 					release_allocation_quota,
-					external_ip);
+					external_ip,
+					no_tcp_relay,
+					no_udp_relay);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message);
 	}
@@ -876,10 +881,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"					applied as for the configuration file.\n"
 	"					If both --no-tls and --no-dtls options\n"
 	"					are specified, then this parameter is not needed.\n"
-	"	    --no-udp			Do not start UDP listeners.\n"
-	"	    --no-tcp			Do not start TCP listeners.\n"
-	"	    --no-tls			Do not start TLS listeners.\n"
-	"	    --no-dtls			Do not start DTLS listeners.\n"
+	"	    --no-udp			Do not start UDP client listeners.\n"
+	"	    --no-tcp			Do not start TCP client listeners.\n"
+	"	    --no-tls			Do not start TLS client listeners.\n"
+	"	    --no-dtls			Do not start DTLS client listeners.\n"
+	"	    --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.\n"
+	"	    --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay options.\n"
 	"	-h				Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -903,6 +910,8 @@ enum EXTRA_OPTS {
 	NO_TCP_OPT,
 	NO_TLS_OPT,
 	NO_DTLS_OPT,
+	NO_UDP_RELAY_OPT,
+	NO_TCP_RELAY_OPT,
 	TLS_PORT_OPT,
 	ALT_PORT_OPT,
 	ALT_TLS_PORT_OPT,
@@ -940,6 +949,8 @@ static struct option long_options[] = {
 				{ "no-tcp", optional_argument, NULL, NO_TCP_OPT },
 				{ "no-tls", optional_argument, NULL, NO_TLS_OPT },
 				{ "no-dtls", optional_argument, NULL, NO_DTLS_OPT },
+				{ "no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT },
+				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
@@ -1041,10 +1052,10 @@ static void set_option(int c, char *value)
 	case 'z':
 		if (!get_bool_value(value)) {
 			users->ct = TURN_CREDENTIALS_LONG_TERM;
-			auth_credentials = 0;
+			anon_credentials = 0;
 		} else {
 			users->ct = TURN_CREDENTIALS_NONE;
-			auth_credentials = 1;
+			anon_credentials = 1;
 		}
 		break;
 	case 'f':
@@ -1075,6 +1086,12 @@ static void set_option(int c, char *value)
 		break;
 	case NO_TCP_OPT:
 		no_tcp = get_bool_value(value);
+		break;
+	case NO_UDP_RELAY_OPT:
+		no_udp_relay = get_bool_value(value);
+		break;
+	case NO_TCP_RELAY_OPT:
+		no_tcp_relay = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
 #if defined(TURN_NO_TLS)
@@ -1461,6 +1478,19 @@ int main(int argc, char **argv)
 	  }
 	}
 
+	if(no_udp_relay && no_tcp_relay) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
+		exit(-1);
+	}
+
+	if(no_udp_relay) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
+	}
+
+	if(no_tcp_relay) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
+	}
+
 	read_userdb_file();
 
 	argc -= optind;
@@ -1470,12 +1500,12 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: Unknown argument: %s\n",argv[argc-1]);
 	}
 
-	if(use_lt_credentials && auth_credentials) {
+	if(use_lt_credentials && anon_credentials) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -z options cannot be used together.\n");
 		exit(-1);
 	}
 
-	if(!use_lt_credentials && !auth_credentials) {
+	if(!use_lt_credentials && !anon_credentials) {
 		if(users_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you did not specify the long-term credentials option (-a or --lt-cred-mech option).\n 	I am turning --lt-cred-mech ON for you, but double-check your configuration.\n");
 			users->ct = TURN_CREDENTIALS_LONG_TERM;
@@ -1494,7 +1524,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(auth_credentials) {
+	if(anon_credentials) {
 		if(users_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you also specified the anonymous user access option (-z or --no-auth option).\n 	User accounts will be ignored.\n");
 			users->ct = TURN_CREDENTIALS_NONE;

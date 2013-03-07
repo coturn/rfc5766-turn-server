@@ -65,7 +65,7 @@ typedef struct _turn_user_db turn_user_db;
 extern char userdb_file[1025];
 extern size_t users_number;
 extern int use_lt_credentials;
-extern int auth_credentials;
+extern int anon_credentials;
 extern turn_user_db *users;
 extern s08bits global_realm[1025];
 

@@ -321,19 +321,27 @@ Default value is turn_server_pkey.pem.
 .TP
 .B
 \fB--no-udp\fP
-Do not start UDP listeners.
+Do not start UDP client listeners.
 .TP
 .B
 \fB--no-tcp\fP
-Do not start TCP listeners.
+Do not start TCP client listeners.
 .TP
 .B
 \fB--no-tls\fP
-Do not start TLS listeners.
+Do not start TLS client listeners.
 .TP
 .B
 \fB--no-dtls\fP
-Do not start DTLS listeners.
+Do not start DTLS client listeners.
+.TP
+.B
+\fB--no-udp-relay\fP
+Do not allow UDP relay endpoints, use only TCP relay option.
+.TP
+.B
+\fB--no-tcp-relay\fP
+Do not allow TCP relay endpoints, use only UDP relay option.
 .TP
 .B
 \fB-h\fP

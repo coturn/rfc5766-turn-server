@@ -79,7 +79,9 @@ turn_turnserver* create_turn_server(int verbose,
 				    get_user_key_cb userkeycb,
 				    check_new_allocation_quota_cb chquotacb,
 				    release_allocation_quota_cb raqcb,
-				    ioa_addr *external_addr);
+				    ioa_addr *external_addr,
+				    int no_tcp_relay,
+				    int no_udp_relay);
 
 void delete_turn_server(turn_turnserver* server);
 

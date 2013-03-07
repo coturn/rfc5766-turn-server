@@ -66,6 +66,8 @@ struct _turn_turnserver {
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
 	size_t addrs_number;
+	int no_tcp_relay;
+	int no_udp_relay;
 };
 
 ///////////////////////////////////////////
@@ -381,13 +383,21 @@ static int handle_turn_allocate(turn_turnserver *server,
 							*err_code = 442;
 							*reason = (const u08bits *)"Unsupported Transport Protocol";
 						}
-						SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) &&
-						  (cst!=TCP_SOCKET) && (cst!=TLS_SOCKET)) {
-							*err_code = 400;
-							*reason = (const u08bits *)"Wrong Transport Data";
+						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && server->no_tcp_relay) {
+							*err_code = 403;
+							*reason = (const u08bits *)"TCP Transport is not allowed by the TURN Server configuration";
+						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && server->no_udp_relay) {
+							*err_code = 403;
+							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
 						} else {
-							ss->is_tcp_relay = (transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE);
+							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+							if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) &&
+											(cst!=TCP_SOCKET) && (cst!=TLS_SOCKET)) {
+								*err_code = 400;
+								*reason = (const u08bits *)"Wrong Transport Data";
+							} else {
+								ss->is_tcp_relay = (transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE);
+							}
 						}
 					} else {
 						*err_code = 400;
@@ -2096,7 +2106,9 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 		get_user_key_cb userkeycb,
 		check_new_allocation_quota_cb chquotacb,
 		release_allocation_quota_cb raqcb,
-		ioa_addr *external_ip) {
+		ioa_addr *external_ip,
+		int no_tcp_relay,
+		int no_udp_relay) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2111,6 +2123,9 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 	server->userkeycb = userkeycb;
 	server->chquoatacb = chquotacb;
 	server->raqcb = raqcb;
+
+	server->no_tcp_relay = no_tcp_relay;
+	server->no_udp_relay = no_udp_relay;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;

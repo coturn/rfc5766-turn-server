@@ -93,6 +93,8 @@ TURN(06 Mar 2013)
     *   *--no-tcp* Do not start 'plain'TCP listeners.
     *   *--no-tls* Do not start TLS listeners.
     *   *--no-dtls* Do not start DTLS	listeners.
+    *   *--no-udp-relay* Do not allow UDP relay endpoints, use only TCP relay option.
+    *   *--no-tcp-relay* Do not allow TCP relay endpoints, use only UDP relay option.
 
 === turnadmin application: a TURN relay administration tool===
 

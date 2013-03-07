@@ -67,7 +67,7 @@
 char userdb_file[1025]="\0";
 size_t users_number = 0;
 int use_lt_credentials = 0;
-int auth_credentials = 0;
+int anon_credentials = 0;
 turn_user_db *users = NULL;
 s08bits global_realm[1025];
 
