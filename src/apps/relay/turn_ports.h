@@ -52,16 +52,16 @@ typedef struct _turnipports turnipports;
 turnipports* turnipports_create(u16bits start, u16bits end);
 void turnipports_destroy(turnipports** tp);
 
-void turnipports_remove(turnipports* tp, const ioa_addr *backend_addr);
+void turnipports_remove(turnipports* tp, u08bits transport, const ioa_addr *backend_addr);
 
-int turnipports_allocate(turnipports* tp, const ioa_addr *backend_addr);
+int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr);
 int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, 
 			      int allocate_rtcp, u64bits *reservation_token);
 
-void turnipports_release(turnipports* tp, const ioa_addr *socket_addr);
+void turnipports_release(turnipports* tp, u08bits transport, const ioa_addr *socket_addr);
 
-int turnipports_is_allocated(turnipports* tp, const ioa_addr *backend_addr, u16bits port);
-int turnipports_is_available(turnipports* tp, const ioa_addr *backend_addr, u16bits port);
+int turnipports_is_allocated(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port);
+int turnipports_is_available(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port);
 
 //////////////////////////////////////////////////
 

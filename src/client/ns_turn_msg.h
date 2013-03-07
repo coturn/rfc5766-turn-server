@@ -133,7 +133,7 @@ u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
 int stun_get_channel_message_len_str(const u08bits* buf);
 int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits chnumber);
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family);
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family, u08bits transport);
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr,
 				   const ioa_addr *reflexive_addr,

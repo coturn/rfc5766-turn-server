@@ -104,7 +104,7 @@ int stun_is_specific_channel_message(const stun_buffer* buf, u16bits chnumber);
 
 ///////////////////////////////////////////////////////////////
 
-int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int address_family);
+int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int address_family, u08bits transport);
 int stun_set_allocate_response(stun_buffer* buf, stun_tid* tid, 
 			       const ioa_addr *relayed_addr, const ioa_addr *reflexive_addr,
 			       u32bits lifetime,

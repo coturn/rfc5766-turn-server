@@ -814,8 +814,8 @@ public:
 	/**
 	 * Construct allocate request
 	 */
-	void constructAllocateRequest(u32bits lifetime, int address_family) {
-		stun_set_allocate_request_str(_buffer, &_sz, lifetime, address_family);
+	void constructAllocateRequest(u32bits lifetime, int address_family, u08bits transport) {
+		stun_set_allocate_request_str(_buffer, &_sz, lifetime, address_family, transport);
 	}
 
 	/**

@@ -55,6 +55,7 @@ typedef struct {
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
   u08bits hmackey[16];
   int enforce_fingerprints;
+  int is_tcp_relay;
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

@@ -68,11 +68,11 @@ int turn_mutex_destroy(turn_mutex* mutex);
 /////// Sockets //////////////////////////////
 
 enum _SOCKET_TYPE {
-	UNKNOWN_SOCKET,
-	UDP_SOCKET,
-	TCP_SOCKET,
-	TLS_SOCKET,
-	DTLS_SOCKET
+	UNKNOWN_SOCKET=0,
+	TCP_SOCKET=6,
+	UDP_SOCKET=17,
+	TLS_SOCKET=56,
+	DTLS_SOCKET=250
 };
 
 #define IOA_EV_TIMEOUT	0x01
@@ -146,7 +146,7 @@ void delete_ioa_timer(ioa_timer_handle th);
  * event_port == 0: reserve rtcp;
  * even_port == +1: reserve and bind rtcp.
  */
-int create_relay_ioa_sockets(ioa_engine_handle e, int address_family,
+int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
 				u64bits *out_reservation_token, int *err_code, const u08bits **reason);
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);

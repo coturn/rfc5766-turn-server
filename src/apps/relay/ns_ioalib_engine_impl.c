@@ -715,8 +715,16 @@ static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int fami
 		}
 		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
 		break;
+	case TCP_SOCKET:
+		fd = socket(family, SOCK_STREAM, 0);
+		if (fd < 0) {
+			perror("socket");
+			return NULL;
+		}
+		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
+		break;
 	default:
-		/* we do not support non-UDP sockets in the relay position */
+		/* we do not support other sockets in the relay position */
 		return NULL;
 	}
 
@@ -748,9 +756,11 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 	return -1;
 }
 
-int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_port, ioa_socket_handle *rtp_s,
-				ioa_socket_handle *rtcp_s, uint64_t *out_reservation_token, int *err_code,
-				const u08bits **reason)
+int create_relay_ioa_sockets(ioa_engine_handle e,
+				int address_family, u08bits transport,
+				int even_port, ioa_socket_handle *rtp_s,
+				ioa_socket_handle *rtcp_s, uint64_t *out_reservation_token,
+				int *err_code, const u08bits **reason)
 {
 
 	*rtp_s = NULL;
@@ -776,7 +786,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 
 		int rtcp_port = -1;
 
-		*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_SOCKET);
+		*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family,
+						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
+						RELAY_SOCKET);
 		if (*rtp_s == NULL) {
 			perror("socket");
 			return -1;
@@ -807,7 +819,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 			int port = 0;
 			rtcp_port = -1;
 			if (even_port < 0) {
-				port = turnipports_allocate(tp, &relay_addr);
+				port = turnipports_allocate(tp, transport, &relay_addr);
 			} else {
 				port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
 				if (port >= 0 && even_port > 0) {
@@ -815,8 +827,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 					addr_set_port(&rtcp_local_addr, rtcp_port);
 					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr) < 0) {
 						addr_set_port(&local_addr, port);
-						turnipports_release(tp, &local_addr);
-						turnipports_release(tp, &rtcp_local_addr);
+						turnipports_release(tp, transport, &local_addr);
+						turnipports_release(tp, transport, &rtcp_local_addr);
 						rtcp_port = -1;
 						continue;
 					}
@@ -833,9 +845,9 @@ int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, int even_p
 			if (bind_ioa_socket(*rtp_s, &local_addr) >= 0) {
 				break;
 			} else {
-				turnipports_release(tp, &local_addr);
+				turnipports_release(tp, transport, &local_addr);
 				if (rtcp_port >= 0)
-					turnipports_release(tp, &rtcp_local_addr);
+					turnipports_release(tp, transport, &rtcp_local_addr);
 				rtcp_port = -1;
 			}
 		}
@@ -1068,7 +1080,9 @@ void close_ioa_socket(ioa_socket_handle s)
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
 		if(s->bound && s->e && s->e->tp) {
-			turnipports_release(s->e->tp,&(s->local_addr));
+			turnipports_release(s->e->tp,
+					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
+					&(s->local_addr));
 		}
 
 		close_socket_net_data(s);

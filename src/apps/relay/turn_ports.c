@@ -29,6 +29,7 @@
  */
 
 #include "ns_turn_maps.h"
+#include "ns_turn_msg_defs.h"
 
 #include "ns_turn_ioalib.h"
 
@@ -288,16 +289,26 @@ struct _turnipports
 {
 	u16bits start;
 	u16bits end;
-	ur_addr_map* ip_to_turnports;
+	ur_addr_map* ip_to_turnports_udp;
+	ur_addr_map* ip_to_turnports_tcp;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
 //////////////////////////////////////////////////
 
+static ur_addr_map *get_map(turnipports *tp, u08bits transport)
+{
+	if(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
+		return tp->ip_to_turnports_tcp;
+	return tp->ip_to_turnports_udp;
+}
+//////////////////////////////////////////////////
+
 turnipports* turnipports_create(u16bits start, u16bits end)
 {
 	turnipports *ret = (turnipports*) turn_malloc(sizeof(turnipports));
-	ret->ip_to_turnports = ur_addr_map_create(0);
+	ret->ip_to_turnports_udp = ur_addr_map_create(0);
+	ret->ip_to_turnports_tcp = ur_addr_map_create(0);
 	ret->start = start;
 	ret->end = end;
 	TURN_MUTEX_INIT_RECURSIVE(&(ret->mutex));
@@ -313,15 +324,17 @@ static void turnipports_del_func(ur_addr_map_value_type val)
 void turnipports_destroy(turnipports** tp)
 {
 	if (tp && *tp) {
-		ur_addr_map_foreach((*tp)->ip_to_turnports, turnipports_del_func);
-		ur_addr_map_free(&((*tp)->ip_to_turnports));
+		ur_addr_map_foreach((*tp)->ip_to_turnports_udp, turnipports_del_func);
+		ur_addr_map_free(&((*tp)->ip_to_turnports_udp));
+		ur_addr_map_foreach((*tp)->ip_to_turnports_tcp, turnipports_del_func);
+		ur_addr_map_free(&((*tp)->ip_to_turnports_tcp));
 		TURN_MUTEX_DESTROY(&((*tp)->mutex));
 		turn_free(*tp,sizeof(turnipports));
 		*tp = NULL;
 	}
 }
 
-static turnports* turnipports_add(turnipports* tp, const ioa_addr *backend_addr)
+static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
 {
 	ur_addr_map_value_type t = 0;
 	if (tp && backend_addr) {
@@ -329,33 +342,33 @@ static turnports* turnipports_add(turnipports* tp, const ioa_addr *backend_addr)
 		addr_cpy(&ba, backend_addr);
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		if (!ur_addr_map_get(tp->ip_to_turnports, &ba, &t)) {
+		if (!ur_addr_map_get(get_map(tp, transport), &ba, &t)) {
 			t = (ur_addr_map_value_type) turnports_create(tp->start, tp->end);
-			ur_addr_map_put(tp->ip_to_turnports, &ba, t);
+			ur_addr_map_put(get_map(tp, transport), &ba, t);
 		}
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 	return (turnports*) t;
 }
 
-void turnipports_remove(turnipports* tp, const ioa_addr *backend_addr)
+void turnipports_remove(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
 {
 	if (tp && backend_addr) {
 		ioa_addr ba;
 		addr_cpy(&ba, backend_addr);
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		ur_addr_map_del(tp->ip_to_turnports, &ba, turnipports_del_func);
+		ur_addr_map_del(get_map(tp, transport), &ba, turnipports_del_func);
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 }
 
-int turnipports_allocate(turnipports* tp, const ioa_addr *backend_addr)
+int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
 {
 	int ret = -1;
 	if (tp && backend_addr) {
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		turnports *t = turnipports_add(tp, backend_addr);
+		turnports *t = turnipports_add(tp, transport, backend_addr);
 		ret = turnports_allocate(t);
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
@@ -368,14 +381,14 @@ int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, int
 	int ret = -1;
 	if (tp && backend_addr) {
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		turnports *t = turnipports_add(tp, backend_addr);
+		turnports *t = turnipports_add(tp, STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, backend_addr);
 		ret = turnports_allocate_even(t, allocate_rtcp, reservation_token);
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 	return ret;
 }
 
-void turnipports_release(turnipports* tp, const ioa_addr *socket_addr)
+void turnipports_release(turnipports* tp, u08bits transport, const ioa_addr *socket_addr)
 {
 	if (tp && socket_addr) {
 		ioa_addr ba;
@@ -383,14 +396,14 @@ void turnipports_release(turnipports* tp, const ioa_addr *socket_addr)
 		addr_cpy(&ba, socket_addr);
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		if (ur_addr_map_get(tp->ip_to_turnports, &ba, &t)) {
+		if (ur_addr_map_get(get_map(tp, transport), &ba, &t)) {
 			turnports_release((turnports*) t, addr_get_port(socket_addr));
 		}
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 }
 
-int turnipports_is_allocated(turnipports* tp, const ioa_addr *backend_addr, u16bits port)
+int turnipports_is_allocated(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port)
 {
 	int ret = 0;
 	if (tp && backend_addr) {
@@ -399,7 +412,7 @@ int turnipports_is_allocated(turnipports* tp, const ioa_addr *backend_addr, u16b
 		addr_cpy(&ba, backend_addr);
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		if (ur_addr_map_get(tp->ip_to_turnports, &ba, &t)) {
+		if (ur_addr_map_get(get_map(tp,transport), &ba, &t)) {
 			ret = turnports_is_allocated((turnports*) t, port);
 		}
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
@@ -407,7 +420,7 @@ int turnipports_is_allocated(turnipports* tp, const ioa_addr *backend_addr, u16b
 	return ret;
 }
 
-int turnipports_is_available(turnipports* tp, const ioa_addr *backend_addr, u16bits port)
+int turnipports_is_available(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port)
 {
 	int ret = 0;
 	if (tp && backend_addr) {
@@ -416,7 +429,7 @@ int turnipports_is_available(turnipports* tp, const ioa_addr *backend_addr, u16b
 		addr_cpy(&ba, backend_addr);
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		if (!ur_addr_map_get(tp->ip_to_turnports, &ba, &t)) {
+		if (!ur_addr_map_get(get_map(tp,transport), &ba, &t)) {
 			ret = 1;
 		} else {
 			ret = turnports_is_available((turnports*) t, port);

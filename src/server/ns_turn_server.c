@@ -71,7 +71,8 @@ struct _turn_turnserver {
 ///////////////////////////////////////////
 
 static int create_relay_connection(turn_turnserver* server,
-		ts_ur_super_session *ss, u32bits lifetime, int address_family,
+		ts_ur_super_session *ss, u32bits lifetime,
+		int address_family, u08bits transport,
 		int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
 		int *err_code, const u08bits **reason);
 
@@ -290,6 +291,14 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 		ioa_network_buffer_get_size(in_buffer->nbh), sar); \
 	continue
 
+static u08bits get_transport_value(const u08bits *value) {
+	if((value[0] == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE)||
+	   (value[0] == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) {
+		return value[0];
+	}
+	return 0;
+}
+
 static int handle_turn_allocate(turn_turnserver *server,
 				ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 				int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
@@ -327,9 +336,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 		a = NULL;
 
-		int valid_transport_included = 0;
+		u08bits transport = 0;
 		u32bits lifetime = 0;
 		int even_port = -1;
+		int dont_fragment = 0;
 		u64bits in_reservation_token = 0;
 		int af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		u08bits username[STUN_MAX_USERNAME_SIZE+1]="\0";
@@ -360,14 +370,24 @@ static int handle_turn_allocate(turn_turnserver *server,
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
 					*reason = (const u08bits *)"Wrong Transport Field";
+				} else if(transport) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Duplicate Transport Fields";
 				} else {
 					const u08bits* value = stun_attr_get_value(sar);
 					if (value) {
-						if (value[0] != 17 || value[1] || value[2] || value[3]) {
+						transport = get_transport_value(value);
+						if (!transport || value[1] || value[2] || value[3]) {
 							*err_code = 442;
-							*reason = (const u08bits *)"Wrong Transport"; 
+							*reason = (const u08bits *)"Unsupported Transport Protocol";
+						}
+						SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) &&
+						  (cst!=TCP_SOCKET) && (cst!=TLS_SOCKET)) {
+							*err_code = 400;
+							*reason = (const u08bits *)"Wrong Transport Data";
 						} else {
-							valid_transport_included = 1;
+							ss->is_tcp_relay = (transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE);
 						}
 					} else {
 						*err_code = 400;
@@ -377,6 +397,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			}
 				break;
 			case STUN_ATTRIBUTE_DONT_FRAGMENT:
+				dont_fragment = 1;
 				if(!(server->dont_fragment))
 					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
 				break;
@@ -460,11 +481,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 						     sar);
 		}
 
-		if (!valid_transport_included) {
+		if (!transport) {
 
 		  *err_code = 400;
 		  if(!(*reason))
-		    *reason = (const u08bits *)"Transport field missed";
+		    *reason = (const u08bits *)"Transport field missed or wrong";
 		  
 		} else if (*ua_num > 0) {
 
@@ -476,6 +497,12 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			;
 
+		} else if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && (dont_fragment || in_reservation_token || (even_port!=-1))) {
+
+			*err_code = 400;
+			if(!(*reason))
+			    *reason = (const u08bits *)"Request parameters are incompatible with TCP transport";
+
 		} else {
 
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
@@ -486,8 +513,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 				*err_code = 486;
 				*reason = (const u08bits *)"Allocation Quota Reached";
 
-			} else if (create_relay_connection(server, ss, lifetime, af, even_port,
-						    in_reservation_token, &out_reservation_token, err_code, reason) < 0) {
+			} else if (create_relay_connection(server, ss, lifetime,
+							af, transport,
+							even_port, in_reservation_token, &out_reservation_token,
+							err_code, reason) < 0) {
 
 				(server->raqcb)(username);
 
@@ -683,7 +712,10 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 	addr_set_any(&peer_addr);
 	allocation* a = get_allocation_ss(ss);
 
-	if (is_allocation_valid(a)) {
+	if(ss->is_tcp_relay) {
+		*err_code = 403;
+		*reason = (const u08bits *)"Channel bind cannot be used with TCP relay";
+	} else if (is_allocation_valid(a)) {
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -967,7 +999,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 	addr_set_any(&peer_addr);
 	allocation* a = get_allocation_ss(ss);
 
-	if (is_allocation_valid(a) && (in_buffer->recv_ttl != 0)) {
+	if(ss->is_tcp_relay) {
+		*err_code = 403;
+		*reason = (const u08bits *)"Send cannot be used with TCP relay";
+	} else if (is_allocation_valid(a) && (in_buffer->recv_ttl != 0)) {
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -1415,7 +1450,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		  handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
-			break;
+		  break;
 
 		case STUN_METHOD_DATA:
 
@@ -1654,7 +1689,8 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 }
 
 static int create_relay_connection(turn_turnserver* server,
-				   ts_ur_super_session *ss, u32bits lifetime, int address_family,
+				   ts_ur_super_session *ss, u32bits lifetime,
+				   int address_family, u08bits transport,
 				   int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
 				   int *err_code, const u08bits **reason) {
 
@@ -1679,9 +1715,10 @@ static int create_relay_connection(turn_turnserver* server,
 
 		} else {
 
-			int res = create_relay_ioa_sockets(server->e, address_family, even_port,
-					&(newelem->s), &rtcp_s, out_reservation_token,
-					err_code, reason);
+			int res = create_relay_ioa_sockets(server->e,
+							address_family, transport,
+							even_port, &(newelem->s), &rtcp_s, out_reservation_token,
+							err_code, reason);
 			if (res < 0) {
 				if(!(*err_code))
 					*err_code = 508;
@@ -1800,6 +1837,11 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 					ioa_network_buffer_get_size(in_buffer->nbh), 
 					&chnum)) {
 
+		if(ss->is_tcp_relay) {
+			//Forbidden
+			FUNCEND;
+			return -1;
+		}
 		int rc = write_to_peerchannel(ss, chnum, in_buffer);
 
 		if (server->verbose) {

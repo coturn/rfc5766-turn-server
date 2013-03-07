@@ -61,6 +61,7 @@ u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 int use_fingerprints = 1;
 SSL_CTX *root_tls_ctx = NULL;
+u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 
 //////////////// local definitions /////////////////
 
@@ -69,6 +70,8 @@ static char Usage[] =
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-t	TCP (default - UDP).\n"
+  "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"
+  "		options -s, -e, -r and -g.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
   "	-i	Certificate file (for secure connections only).\n"
   "	-k	Private key file (for secure connections only).\n"
@@ -109,7 +112,7 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:vsyhcxgtS")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:vsyhcxgtTS")) != -1) {
 		switch (c){
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
@@ -127,8 +130,7 @@ int main(int argc, char **argv)
 			STRCPY(ifname, optarg);
 			break;
 		case 'x':
-			default_address_family
-							= STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 			break;
 		case 'l':
 			clmessage_length = atoi(optarg);
@@ -169,6 +171,9 @@ int main(int argc, char **argv)
 		case 't':
 			use_tcp = 1;
 			break;
+		case 'T':
+			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
+			break;
 		case 'S':
 			use_secure = 1;
 			break;
@@ -198,6 +203,13 @@ int main(int argc, char **argv)
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
 		}
+	}
+
+	if(is_TCP_relay()) {
+		dont_fragment = 0;
+		no_rtcp = 1;
+		c2c = 1;
+		use_tcp = 1;
 	}
 
 	if(port == 0) {

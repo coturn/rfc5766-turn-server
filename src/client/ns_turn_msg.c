@@ -376,14 +376,15 @@ int stun_get_message_len_str(u08bits *buf, size_t blen) {
 
 ////////// ALLOCATE ///////////////////////////////////
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family) {
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family,
+				u08bits transport) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
   //REQUESTED-TRANSPORT
   {
     u08bits field[4];
-    field[0]=17;
+    field[0]=transport;
     field[1]=0;
     field[2]=0;
     field[3]=0;

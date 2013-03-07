@@ -61,6 +61,9 @@ extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 extern int use_fingerprints;
 extern SSL_CTX *root_tls_ctx;
 extern int RTP_PACKET_INTERVAL;
+extern u08bits relay_transport;
+
+#define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
 void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address,

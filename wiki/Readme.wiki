@@ -1,5 +1,5 @@
 
-TURN(14 Feb 2013)	
+TURN(06 Mar 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -142,10 +142,11 @@ TURN(14 Feb 2013)
 ====Flags:====
 
  *      *-t*     Use TCP (default is UDP).
+ *      *-T*     TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores options -s, -e, -r and -g.
  *      *-S*     Secure connection: TLS for TCP, DTLS for UDP.
  *      *-v*     Verbose.
- *      *-s*     Use "send" method	in TURN; by default, it	uses TURN  "channels".
- *      *-y*     Use  client-to-client  connections: RTP/RTCP pair	of channels to another RTP/RTCP pair of channels.  with this  option  the  _peer_ application  is  not used, as the relay endpoints	are talking to each other.
+ *      *-s*     Use "Send" method	in TURN; by default, it	uses TURN Channels.
+ *      *-y*     Use  client-to-client  connections: RTP/RTCP pair	of channels to another RTP/RTCP pair of channels.  with this  option  the  _peer_ application  is  not used, as the allocated relay endpoints	are talking to each other.
  *      *-h*     Hang on indefinitely after the last sent packet.
  *      *-c*     Do not create rtcp connections.
  *      *-x*     Request IPv6 relayed address (RFC6156).

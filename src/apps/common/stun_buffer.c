@@ -162,8 +162,8 @@ int stun_is_specific_channel_message(const stun_buffer* buf, u16bits chnumber) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int address_family) {
-  return stun_set_allocate_request_str(buf->buf, (size_t*)(&(buf->len)), lifetime, address_family);
+int stun_set_allocate_request(stun_buffer* buf, u32bits lifetime, int address_family, u08bits transport) {
+  return stun_set_allocate_request_str(buf->buf, (size_t*)(&(buf->len)), lifetime, address_family, transport);
 }
 
 int stun_set_allocate_response(stun_buffer* buf, stun_tid* tid, 
