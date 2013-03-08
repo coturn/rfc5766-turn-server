@@ -58,6 +58,7 @@ struct tcp_listener_relay_server_info {
   int verbose;
   struct evconnlistener *l;
   uint32_t *stats;
+  ioa_engine_new_connection_event_handler connect_cb;
 };
 
 /////////////// io handlers ///////////////////
@@ -70,7 +71,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	tcp_listener_relay_server_type * server = (tcp_listener_relay_server_type*) arg;
 
-	if(!(server->e->connect_cb)) {
+	if(!(server->connect_cb)) {
 		close(fd);
 		return;
 	}
@@ -99,7 +100,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	if (ioas) {
 		ioa_net_data nd = { &client_addr, NULL, 0, TTL_IGNORE, TOS_IGNORE };
-		int rc = server->e->connect_cb(server->e, ioas, &nd);
+		int rc = server->connect_cb(server->e, ioas, &nd);
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -168,11 +169,13 @@ static int init_server(tcp_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       uint32_t *stats) {
+		       uint32_t *stats,
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->stats=stats;
+  server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -205,7 +208,8 @@ tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     uint32_t *stats) {
+							     uint32_t *stats,
+							     ioa_engine_new_connection_event_handler send_socket) {
   
   tcp_listener_relay_server_type* server=(tcp_listener_relay_server_type*)
     malloc(sizeof(tcp_listener_relay_server_type));
@@ -216,7 +220,8 @@ tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 stats)<0) {
+		 stats,
+		 send_socket)<0) {
     free(server);
     return NULL;
   } else {

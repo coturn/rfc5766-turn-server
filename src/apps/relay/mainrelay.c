@@ -120,10 +120,23 @@ static char listener_ifname[1025]="\0";
 static char cert_file[1025]="turn_server_cert.pem\0";
 static char pkey_file[1025]="turn_server_pkey.pem\0";
 
-struct message_message {
+struct message_to_listener_to_client {
 	ioa_addr origin;
 	ioa_addr destination;
 	ioa_network_buffer_handle nbh;
+};
+
+enum _MESSAGE_TO_LISTENER_TYPE {
+	LMT_UNKNOWN,
+	LMT_TO_CLIENT
+};
+typedef enum _MESSAGE_TO_LISTENER_TYPE MESSAGE_TO_LISTENER_TYPE;
+
+struct message_to_listener {
+	MESSAGE_TO_LISTENER_TYPE t;
+	union {
+		struct message_to_listener_to_client tc;
+	} m;
 };
 
 struct listener_server {
@@ -165,7 +178,21 @@ static int fingerprint = 0;
 static size_t relay_servers_number = 0;
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
 
+enum _MESSAGE_TO_RELAY_TYPE {
+	RMT_UNKNOWN,
+	RMT_SOCKET
+};
+typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
+
+struct message_to_relay {
+	MESSAGE_TO_RELAY_TYPE t;
+	union {
+		struct socket_message sm;
+	} m;
+};
+
 struct relay_server {
+	turnserver_id id;
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
@@ -205,21 +232,27 @@ static void add_relay_addr(const char* addr) {
 
 // communications between listener and relays ==>>
 
-static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
+static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
 	static size_t current_relay_server = 0;
+
+	int is_tcp = ((get_ioa_socket_type(s) == TCP_SOCKET)||(get_ioa_socket_type(s) == TLS_SOCKET));
 
 	UNUSED_ARG(e);
 
 	current_relay_server = current_relay_server % get_real_relay_servers_number();
 
-	struct socket_message sm;
-	addr_cpy(&(sm.remote_addr),nd->remote_addr);
-	sm.nbh = nd->nbh;
+	struct message_to_relay sm;
+	sm.t = RMT_SOCKET;
+	addr_cpy(&(sm.m.sm.remote_addr),nd->remote_addr);
+	sm.m.sm.nbh = nd->nbh;
 	nd->nbh = NULL;
-	sm.s = s;
-	size_t dest = current_relay_server++;
-	sm.chnum = nd->chnum;
+	sm.m.sm.s = s;
+
+	/* To support RFC 6062, we have to run all TCP connections
+	 * within the same relay server: */
+	size_t dest = (is_tcp && (!no_tcp_relay)) ? 0 : current_relay_server++;
+	sm.m.sm.chnum = nd->chnum;
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 	evbuffer_add(output,&sm,sizeof(sm));
@@ -228,9 +261,9 @@ static int send_socket(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *n
 	return 0;
 }
 
-static void acceptsocket(struct bufferevent *bev, void *ptr)
+static void relay_receive_message(struct bufferevent *bev, void *ptr)
 {
-	struct socket_message sm;
+	struct message_to_relay sm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	while ((n = evbuffer_remove(input, &sm, sizeof(sm))) > 0) {
@@ -238,18 +271,22 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
+		if (sm.t != RMT_SOCKET) {
+			perror("Weird buffer type\n");
+			continue;
+		}
 		struct relay_server *rs = (struct relay_server *)ptr;
-		if (sm.s->defer_nbh) {
-			if (!sm.nbh) {
-				sm.nbh = sm.s->defer_nbh;
-				sm.s->defer_nbh = NULL;
+		if (sm.m.sm.s->defer_nbh) {
+			if (!sm.m.sm.nbh) {
+				sm.m.sm.nbh = sm.m.sm.s->defer_nbh;
+				sm.m.sm.s->defer_nbh = NULL;
 			} else {
-				ioa_network_buffer_delete(rs->ioa_eng, sm.s->defer_nbh);
-				sm.s->defer_nbh = NULL;
+				ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.s->defer_nbh);
+				sm.m.sm.s->defer_nbh = NULL;
 			}
 		}
 
-		ioa_socket_handle s = sm.s;
+		ioa_socket_handle s = sm.m.sm.s;
 
 		if (s->read_event || s->bev) {
 			TURN_LOG_FUNC(
@@ -257,14 +294,14 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 				"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 				__FUNCTION__, (long) s->read_event,
 				(long) s->bev);
-			IOA_CLOSE_SOCKET(sm.s);
+			IOA_CLOSE_SOCKET(sm.m.sm.s);
 			return;
 		}
 
 		s->e = rs->ioa_eng;
 
-		open_client_connection_session(rs->server, &sm);
-		ioa_network_buffer_delete(rs->ioa_eng, sm.nbh);
+		open_client_connection_session(rs->server, &(sm.m.sm));
+		ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
 
 		if (ioa_socket_tobeclosed(s)) {
 		  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
@@ -277,16 +314,17 @@ static void acceptsocket(struct bufferevent *bev, void *ptr)
 	}
 }
 
-static int send_message(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination)
+static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination)
 {
 
-	struct message_message mm;
-	addr_cpy(&(mm.origin),origin);
-	addr_cpy(&(mm.destination),destination);
-	mm.nbh = ioa_network_buffer_allocate(e);
-	ioa_network_buffer_header_init(mm.nbh);
-	ns_bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.nbh),ioa_network_buffer_get_size(nbh));
-	ioa_network_buffer_set_size(mm.nbh,ioa_network_buffer_get_size(nbh));
+	struct message_to_listener mm;
+	mm.t = LMT_TO_CLIENT;
+	addr_cpy(&(mm.m.tc.origin),origin);
+	addr_cpy(&(mm.m.tc.destination),destination);
+	mm.m.tc.nbh = ioa_network_buffer_allocate(e);
+	ioa_network_buffer_header_init(mm.m.tc.nbh);
+	ns_bcopy(ioa_network_buffer_data(nbh),ioa_network_buffer_data(mm.m.tc.nbh),ioa_network_buffer_get_size(nbh));
+	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(listener.out_buf);
 	evbuffer_add(output,&mm,sizeof(mm));
@@ -295,11 +333,11 @@ static int send_message(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_
 	return 0;
 }
 
-static void acceptmessage(struct bufferevent *bev, void *ptr)
+static void listener_receive_message(struct bufferevent *bev, void *ptr)
 {
 	UNUSED_ARG(ptr);
 
-	struct message_message mm;
+	struct message_to_listener mm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	while ((n = evbuffer_remove(input, &mm, sizeof(mm))) > 0) {
@@ -307,17 +345,21 @@ static void acceptmessage(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
+		if (mm.t != LMT_TO_CLIENT) {
+			perror("Weird buffer type\n");
+			continue;
+		}
 
 		size_t i;
 		int found = 0;
 		for(i=0;i<listener.addrs_number;i++) {
-			if(addr_eq_no_port(listener.encaddrs[i],&mm.origin)) {
-				int o_port = addr_get_port(&mm.origin);
+			if(addr_eq_no_port(listener.encaddrs[i],&mm.m.tc.origin)) {
+				int o_port = addr_get_port(&mm.m.tc.origin);
 				if(listener.addrs_number == listener.services_number) {
 					if(o_port == listener_port) {
 						if(listener.udp_services && listener.udp_services[i]) {
 							found = 1;
-							udp_send_message(listener.udp_services[i], mm.nbh, &mm.destination);
+							udp_send_message(listener.udp_services[i], mm.m.tc.nbh, &mm.m.tc.destination);
 						}
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Wrong origin port(1): %d\n",__FUNCTION__,o_port);
@@ -326,12 +368,12 @@ static void acceptmessage(struct bufferevent *bev, void *ptr)
 					if(o_port == listener_port) {
 						if(listener.udp_services && listener.udp_services[i*2]) {
 							found = 1;
-							udp_send_message(listener.udp_services[i*2], mm.nbh, &mm.destination);
+							udp_send_message(listener.udp_services[i*2], mm.m.tc.nbh, &mm.m.tc.destination);
 						}
 					} else if(o_port == alt_listener_port) {
 						if(listener.udp_services && listener.udp_services[i*2+1]) {
 							found = 1;
-							udp_send_message(listener.udp_services[i*2+1], mm.nbh, &mm.destination);
+							udp_send_message(listener.udp_services[i*2+1], mm.m.tc.nbh, &mm.m.tc.destination);
 						}
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Wrong origin port(2): %d\n",__FUNCTION__,o_port);
@@ -345,11 +387,11 @@ static void acceptmessage(struct bufferevent *bev, void *ptr)
 
 		if(!found) {
 			u08bits saddr[129];
-			addr_to_string(&mm.origin, saddr);
+			addr_to_string(&mm.m.tc.origin, saddr);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot find local source %s\n",__FUNCTION__,saddr);
 		}
 
-		ioa_network_buffer_delete(listener.ioa_eng, mm.nbh);
+		ioa_network_buffer_delete(listener.ioa_eng, mm.m.tc.nbh);
 	}
 }
 
@@ -372,8 +414,6 @@ static void setup_listener_servers(void)
 
 	set_ssl_ctx(listener.ioa_eng, tls_ctx, dtls_ctx);
 
-	register_callback_on_ioa_engine_new_connection(listener.ioa_eng, send_socket);
-
 	listener.rtcpmap = rtcp_map_create(listener.ioa_eng);
 
 	ioa_engine_set_rtcp_map(listener.ioa_eng, listener.rtcpmap);
@@ -389,7 +429,7 @@ static void setup_listener_servers(void)
 		bufferevent_pair_new(listener.event_base, opts, pair);
 		listener.in_buf = pair[0];
 		listener.out_buf = pair[1];
-		bufferevent_setcb(listener.in_buf, acceptmessage, NULL, NULL, &listener);
+		bufferevent_setcb(listener.in_buf, listener_receive_message, NULL, NULL, &listener);
 		bufferevent_enable(listener.in_buf, EV_READ);
 	}
 
@@ -410,36 +450,36 @@ static void setup_listener_servers(void)
 	for(i=0; i<listener.addrs_number; i++) {
 		int index = rfc5780 ? i*2 : i;
 		if(!no_udp) {
-			listener.udp_services[index] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
+			listener.udp_services[index] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_listener_port>=0)
-				listener.udp_services[index+1] = create_udp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats);
+				listener.udp_services[index+1] = create_udp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.udp_services[index] = NULL;
 			if(rfc5780)
 				listener.udp_services[index+1] = NULL;
 		}
 		if(!no_tcp) {
-			listener.tcp_services[index] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats);
+			listener.tcp_services[index] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_listener_port>=0)
-				listener.tcp_services[index+1] = create_tcp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats);
+				listener.tcp_services[index+1] = create_tcp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.tcp_services[index] = NULL;
 			if(rfc5780)
 				listener.tcp_services[index+1] = NULL;
 		}
 		if(!no_tls) {
-			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_tls_listener_port>=0)
-				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats);
+				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.tls_services[index] = NULL;
 			if(rfc5780)
 				listener.tls_services[index+1] = NULL;
 		}
 		if(!no_dtls) {
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_tls_listener_port>=0)
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.dtls_services[index] = NULL;
 			if(rfc5780)
@@ -550,9 +590,10 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->in_buf = pair[0];
 	rs->out_buf = pair[1];
-	bufferevent_setcb(rs->in_buf, acceptsocket, NULL, NULL, rs);
+	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
-	rs->server = create_turn_server(verbose, rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
+	rs->server = create_turn_server(rs->id, verbose,
+					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
 					users->realm,
 					get_user_key,
@@ -562,7 +603,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					no_tcp_relay,
 					no_udp_relay);
 	if(rfc5780) {
-		set_rfc5780(rs->server, get_alt_addr, send_message);
+		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
 }
 
@@ -590,10 +631,13 @@ static void setup_relay_servers(void)
 #endif
 
 	relay_servers = (struct relay_server**)malloc(sizeof(struct relay_server *)*get_real_relay_servers_number());
+	ns_bzero(relay_servers,sizeof(struct relay_server *)*get_real_relay_servers_number());
 
 	for(i=0;i<get_real_relay_servers_number();i++) {
 
 		relay_servers[i] = (struct relay_server*)malloc(sizeof(struct relay_server));
+		ns_bzero(relay_servers[i], sizeof(struct relay_server));
+		relay_servers[i]->id = (turnserver_id)i;
 
 #if defined(TURN_NO_THREADS)
 		setup_relay_server(relay_servers[i], listener.ioa_eng);
@@ -1031,6 +1075,7 @@ static void set_option(int c, char *value)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 		} else {
 			external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+			ns_bzero(external_ip,sizeof(ioa_addr));
 			make_ioa_addr((const u08bits*)value,0,external_ip);
 		}
 		break;

@@ -59,6 +59,7 @@ struct tls_listener_relay_server_info
 	int verbose;
 	struct evconnlistener *l;
 	uint32_t *stats;
+	ioa_engine_new_connection_event_handler connect_cb;
 };
 
 /////////////// io handlers ///////////////////
@@ -71,7 +72,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
 
-	if(!(server->e->connect_cb)) {
+	if(!(server->connect_cb)) {
 		close(fd);
 		return;
 	}
@@ -100,7 +101,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	if (ioas) {
 		ioa_net_data nd = { &client_addr, NULL, 0, TTL_IGNORE, TOS_IGNORE };
-		int rc = server->e->connect_cb(server->e, ioas, &nd);
+		int rc = server->connect_cb(server->e, ioas, &nd);
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -169,11 +170,13 @@ static int init_server(tls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       uint32_t *stats) {
+		       uint32_t *stats,
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->stats=stats;
+  server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -203,7 +206,8 @@ static int clean_server(tls_listener_relay_server_type* server) {
 
 tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 				const char *local_address, int port, int verbose,
-				ioa_engine_handle e, uint32_t *stats)
+				ioa_engine_handle e, uint32_t *stats,
+				ioa_engine_new_connection_event_handler send_socket)
 {
 
   tls_listener_relay_server_type* server = (tls_listener_relay_server_type*)
@@ -211,7 +215,7 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 
 	memset(server, 0, sizeof(tls_listener_relay_server_type));
 
-	if (init_server(server, ifname, local_address, port, verbose, e, stats) < 0) {
+	if (init_server(server, ifname, local_address, port, verbose, e, stats, send_socket) < 0) {
 		free(server);
 		return NULL;
 	} else {

@@ -66,6 +66,7 @@ struct dtls_listener_relay_server_info {
   struct event *udp_listen_ev;
   evutil_socket_t udp_listen_fd;
   uint32_t *stats;
+  ioa_engine_new_connection_event_handler connect_cb;
 };
 
 enum {
@@ -315,7 +316,7 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
 		if(ioas) {
 			ioa_net_data nd = { &((*ndc)->info.remote_addr), NULL, 0, TTL_IGNORE, TOS_IGNORE };
-			server->e->connect_cb(server->e, ioas, &nd);
+			server->connect_cb(server->e, ioas, &nd);
 			(*ndc)->info.ssl = NULL;
 			(*ndc)->info.fd = -1;
 		} else {
@@ -721,12 +722,14 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       uint32_t *stats) {
+		       uint32_t *stats,
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
   server->stats=stats;
+  server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -774,7 +777,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     uint32_t *stats) {
+							     uint32_t *stats,
+							     ioa_engine_new_connection_event_handler send_socket) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     malloc(sizeof(dtls_listener_relay_server_type));
@@ -785,7 +789,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 stats)<0) {
+		 stats,
+		 send_socket)<0) {
     free(server);
     return NULL;
   } else {

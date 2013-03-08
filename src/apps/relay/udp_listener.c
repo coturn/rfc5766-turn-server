@@ -57,6 +57,7 @@ struct udp_listener_relay_server_info {
   struct event *udp_listen_ev;
   evutil_socket_t udp_listen_fd;
   uint32_t *stats;
+  ioa_engine_new_connection_event_handler connect_cb;
 };
 
 /////////////// io handlers ///////////////////
@@ -68,7 +69,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	udp_listener_relay_server_type* server = (udp_listener_relay_server_type*) arg;
 
-	if(!(server->e->connect_cb)) {
+	if(!(server->connect_cb)) {
 		return;
 	}
 
@@ -121,7 +122,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 				if (ioas) {
 
-					int rc = server->e->connect_cb(server->e, ioas, &nd);
+					int rc = server->connect_cb(server->e, ioas, &nd);
 
 					if(rc < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
@@ -241,11 +242,13 @@ static int init_server(udp_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       uint32_t *stats) {
+		       uint32_t *stats,
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->stats=stats;
+  server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -279,7 +282,8 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     uint32_t *stats) {
+							     uint32_t *stats,
+							     ioa_engine_new_connection_event_handler send_socket) {
   
   udp_listener_relay_server_type* server=(udp_listener_relay_server_type*)
     malloc(sizeof(udp_listener_relay_server_type));
@@ -290,7 +294,8 @@ udp_listener_relay_server_type* create_udp_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 stats)<0) {
+		 stats,
+		 send_socket)<0) {
     free(server);
     return NULL;
   } else {

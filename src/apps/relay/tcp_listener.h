@@ -35,7 +35,7 @@
 
 #include "ns_turn_utils.h"
 
-#include "ns_turn_ioalib.h"
+#include "ns_ioalib_impl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +53,8 @@ tcp_listener_relay_server_type* create_tcp_listener_server(const char* ifname,
 							     int port,
 							     int verbose,
 							     ioa_engine_handle e,
-							     uint32_t *stats);
+							     uint32_t *stats,
+							     ioa_engine_new_connection_event_handler send_socket);
 void delete_tcp_listener_server(tcp_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////

@@ -49,6 +49,7 @@
 
 struct _turn_turnserver {
 
+	turnserver_id id;
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
@@ -2098,7 +2099,7 @@ static int clean_server(turn_turnserver* server) {
 
 ///////////////////////////////////////////////////////////
 
-turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
+turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_handle e,
 		u32bits *stats,
 		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
 		turn_credential_type ct,
@@ -2118,6 +2119,7 @@ turn_turnserver* create_turn_server(int verbose, ioa_engine_handle e,
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
+	server->id = id;
 	server->ct = ct;
 	STRCPY(server->realm,realm);
 	server->userkeycb = userkeycb;

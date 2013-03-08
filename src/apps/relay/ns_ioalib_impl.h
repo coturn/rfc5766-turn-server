@@ -77,11 +77,15 @@ typedef struct _stun_buffer_list {
 typedef unsigned long band_limit_t;
 #define SECS_PER_JIFFIE (1)
 
+/*
+ * New connection callback
+ */
+typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd);
+
 struct _ioa_engine
 {
   struct event_base *event_base;
   int deallocate_eb;
-  ioa_engine_new_connection_event_handler connect_cb;
   s08bits relay_ifname[1025];
   size_t relays_number;
   size_t relay_addr_counter;
@@ -166,8 +170,6 @@ void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
-
-int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb);
 
 int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len);
 

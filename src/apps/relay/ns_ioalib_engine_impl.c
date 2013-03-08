@@ -289,12 +289,6 @@ void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
 		e->map_rtcp = rtcpmap;
 }
 
-int register_callback_on_ioa_engine_new_connection(ioa_engine_handle e, ioa_engine_new_connection_event_handler cb)
-{
-	e->connect_cb = cb;
-	return 0;
-}
-
 static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, int address_family, int *err_code)
 {
 	if (e && e->relays_number) {
@@ -357,7 +351,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
 	if (e && cb && secs > 0) {
 
-	  timer_event * te = (timer_event*)malloc(sizeof(timer_event));
+		timer_event * te = (timer_event*) malloc(sizeof(timer_event));
 		int flags = EV_TIMEOUT;
 		if (persist)
 			flags |= EV_PERSIST;
@@ -371,7 +365,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		te->e = e;
 		te->ev = ev;
 		te->cb = cb;
-		te->txt=strdup(txt);
+		te->txt = strdup(txt);
 
 		evtimer_add(ev,&tv);
 

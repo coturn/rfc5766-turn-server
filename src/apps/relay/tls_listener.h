@@ -35,7 +35,7 @@
 
 #include "ns_turn_utils.h"
 
-#include "ns_turn_ioalib.h"
+#include "ns_ioalib_impl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,7 +50,8 @@ typedef struct tls_listener_relay_server_info tls_listener_relay_server_type;
 
 tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 				const char *local_address, int port, int verbose,
-				ioa_engine_handle e, uint32_t *stats);
+				ioa_engine_handle e, uint32_t *stats,
+				ioa_engine_new_connection_event_handler send_socket);
 void delete_tls_listener_server(tls_listener_relay_server_type* server, int delete_engine);
 
 ///////////////////////////////////////////

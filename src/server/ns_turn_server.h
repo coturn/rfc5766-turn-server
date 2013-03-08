@@ -47,6 +47,8 @@ struct socket_message {
 	u16bits chnum;
 };
 
+typedef u08bits turnserver_id;
+
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
 
@@ -68,7 +70,7 @@ typedef void (*release_allocation_quota_cb)(u08bits *username);
 
 ///////////////////////////////////////////
 
-turn_turnserver* create_turn_server(int verbose,
+turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    ioa_engine_handle e,
 				    u32bits *stats,
 				    int stun_port,

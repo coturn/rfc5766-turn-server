@@ -124,11 +124,6 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 typedef void (*ioa_net_event_handler)(ioa_socket_handle s, int event_type, ioa_net_data *data, void *ctx);
 
 /*
- * New connection callback
- */
-typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd);
-
-/*
  * Timer callback
  */
 typedef void (*ioa_timer_event_handler)(ioa_engine_handle e, void *ctx);
