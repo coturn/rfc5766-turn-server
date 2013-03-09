@@ -106,7 +106,8 @@ enum _SOCKET_APP_TYPE {
 	CLIENT_SOCKET,
 	RELAY_SOCKET,
 	RELAY_RTCP_SOCKET,
-	CHANNEL_SOCKET
+	CHANNEL_SOCKET,
+	TCP_RELAY_DATA_SOCKET
 };
 
 typedef enum _SOCKET_APP_TYPE SOCKET_APP_TYPE;
@@ -144,6 +145,11 @@ struct _ioa_socket
 	stun_buffer_list bufs;
 	turn_time_t jiffie;
 	band_limit_t jiffie_bytes;
+	/* RFC 6062 ==>> */
+	struct bufferevent *conn_bev;
+	connect_cb conn_cb;
+	void *conn_arg;
+	/* <<== RFC 6062 */
 	TURN_MUTEX_DECLARE(mutex)
 };
 

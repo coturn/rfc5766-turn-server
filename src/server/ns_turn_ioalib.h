@@ -104,7 +104,7 @@ typedef struct _ioa_net_data {
 	int				recv_tos;
 } ioa_net_data;
 
-typedef void (*connect_cb)(void *arg);
+typedef void (*connect_cb)(int success, void *arg);
 
 /*
  * Network buffer functions

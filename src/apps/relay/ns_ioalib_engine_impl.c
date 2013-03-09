@@ -873,10 +873,65 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 /* RFC 6062 ==>> */
 
-ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
+static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 {
-	//TODO
-	return NULL;
+	ioa_socket_handle ret = (ioa_socket_handle) ptr;
+	if (ret) {
+		connect_cb cb = ret->conn_cb;
+		void *arg = ret->conn_arg;
+		ret->conn_cb = NULL;
+		ret->conn_arg = NULL;
+		if(ret->conn_bev) {
+			bufferevent_free(ret->conn_bev);
+			ret->conn_bev=NULL;
+		}
+		if (events & BEV_EVENT_CONNECTED) {
+			ret->connected = 1;
+			if(cb) {
+				cb(1,arg);
+			}
+		} else if (events & BEV_EVENT_ERROR) {
+			/* An error occured while connecting. */
+			if(cb) {
+				cb(0,arg);
+			}
+		}
+	}
+}
+
+ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
+{
+	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
+
+	if(bind_ioa_socket(ret, &(s->local_addr))<0) {
+		IOA_CLOSE_SOCKET(ret);
+		return NULL;
+	}
+
+	addr_cpy(&(ret->remote_addr), peer_addr);
+
+	set_ioa_socket_session(ret, s->session);
+
+	if(ret->conn_bev) {
+		bufferevent_free(ret->conn_bev);
+		ret->conn_bev=NULL;
+	}
+
+	ret->conn_bev = bufferevent_socket_new(ret->e->event_base,
+					ret->fd,
+					BEV_OPT_DEFER_CALLBACKS);
+	bufferevent_setcb(ret->conn_bev, NULL, NULL, connect_eventcb, ret);
+
+	ret->conn_arg = arg;
+	ret->conn_cb = cb;
+
+	if (bufferevent_socket_connect(ret->conn_bev, (struct sockaddr *) peer_addr, get_ioa_addr_len(peer_addr)) < 0) {
+		/* Error starting connection */
+		IOA_CLOSE_SOCKET(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /* <<== RFC 6062 */
@@ -1029,6 +1084,10 @@ static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
 		EVENT_DEL(s->read_event);
+		if(s->conn_bev) {
+			bufferevent_free(s->conn_bev);
+			s->conn_bev=NULL;
+		}
 		if(s->bev) {
 			if (!s->broken) {
 				if(s->st == TLS_SOCKET) {

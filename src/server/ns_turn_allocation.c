@@ -369,7 +369,7 @@ static void set_new_tc_id(tcp_connection *tc) {
 	ur_map_put(map, (ur_map_key_type)newid, (ur_map_value_type)tc);
 }
 
-tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *err_code)
+tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
 {
 	tcp_connection_list *tcl = &(a->tcl);
 	while(tcl->next) {
@@ -384,6 +384,8 @@ tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *e
 	ns_bzero(tc,sizeof(tcp_connection));
 	tcl->next = &(tc->list);
 	addr_cpy(&(tc->peer_addr),peer_addr);
+	if(tid)
+		ns_bcopy(tid,&(tc->tid),sizeof(tc->tid));
 	tc->owner = a;
 	set_new_tc_id(tc);
 	return tc;
@@ -392,6 +394,8 @@ tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *e
 void delete_tcp_connection(tcp_connection *tc)
 {
 	if(tc) {
+		IOA_EVENT_DEL(tc->peer_conn_timeout);
+		IOA_EVENT_DEL(tc->conn_bind_timeout);
 		allocation *a = (allocation*)(tc->owner);
 		if(a) {
 			ur_map *map = a->tcp_connections;

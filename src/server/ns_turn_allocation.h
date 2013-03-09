@@ -40,6 +40,11 @@
 extern "C" {
 #endif
 
+///////// Defines //////////
+
+#define TCP_PEER_CONN_TIMEOUT (30)
+#define TCP_CONN_BIND_TIMEOUT (30)
+
 ///////// types ////////////
 
 enum _UR_STATE {
@@ -72,7 +77,9 @@ enum _TC_STATE {
 	TC_STATE_UNKNOWN=0,
 	TC_STATE_CLIENT_TO_PEER_CONNECTING,
 	TC_STATE_PEER_CONNECTING,
-	TC_STATE_READY
+	TC_STATE_PEER_CONNECTED,
+	TC_STATE_READY,
+	TC_STATE_FAILED
 };
 
 typedef enum _TC_STATE TC_STATE;
@@ -89,6 +96,9 @@ typedef struct
 	ioa_addr peer_addr;
 	ioa_socket_handle client_s;
 	ioa_socket_handle peer_s;
+	ioa_timer_handle peer_conn_timeout;
+	ioa_timer_handle conn_bind_timeout;
+	stun_tid tid;
 	void *owner; //a
 } tcp_connection;
 
@@ -172,7 +182,7 @@ ioa_socket_handle get_relay_socket(allocation *a);
 tcp_connection *get_tcp_connection_by_id(ur_map *map, u32bits id);
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr);
-tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *err_code);
+tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code);
 void delete_tcp_connection(tcp_connection *tc);
 
 ///////////////////////////////////////////

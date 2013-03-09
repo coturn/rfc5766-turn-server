@@ -88,6 +88,8 @@ static int refresh_relay_connection(turn_turnserver* server,
 		u64bits in_reservation_token, u64bits *out_reservation_token,
 		int *err_code);
 
+static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl, int tos);
+
 /////////////////// RFC 5780 ///////////////////////
 
 void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb)
@@ -713,13 +715,61 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 /* RFC 6062 ==>> */
 
-static void client_to_peer_connect_callback(void *arg)
+static void conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
 {
-	tcp_connection *tc = (tcp_connection *)arg;
-	//TODO
+	UNUSED_ARG(e);
+	if(arg) {
+		tcp_connection *tc = (tcp_connection *)arg;
+		delete_tcp_connection(tc);
+	}
 }
 
-static int start_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss,
+static void client_to_peer_connect_callback(int success, void *arg)
+{
+	if(arg) {
+		tcp_connection *tc = (tcp_connection *)arg;
+		allocation *a = (allocation*)(tc->owner);
+		ts_ur_super_session *ss = (ts_ur_super_session*)(a->owner);
+		turn_turnserver *server=(turn_turnserver*)(ss->server);
+
+		IOA_EVENT_DEL(tc->peer_conn_timeout);
+
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		size_t len = ioa_network_buffer_get_size(nbh);
+
+		if(success) {
+			tc->state = TC_STATE_PEER_CONNECTED;
+			stun_init_success_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, &(tc->tid));
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
+									(const u08bits*)&(tc->id), 4);
+			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
+									conn_bind_timeout_handler, tc, 0,
+									"conn_bind_timeout_handler");
+		} else {
+			tc->state = TC_STATE_FAILED;
+			int err_code = 447;
+			const u08bits *reason = (const u08bits *)"Connection Timeout or Failure";
+			stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, reason, &(tc->tid));
+		}
+
+		ioa_network_buffer_set_size(nbh,len);
+
+		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+
+		if(!success) {
+			delete_tcp_connection(tc);
+		}
+	}
+}
+
+static void peer_conn_timeout_handler(ioa_engine_handle e, void *arg)
+{
+	UNUSED_ARG(e);
+
+	client_to_peer_connect_callback(0,arg);
+}
+
+static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid,
 				allocation *a, ioa_addr *peer_addr,
 				int *err_code, const u08bits **reason)
 {
@@ -739,7 +789,7 @@ static int start_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss
 		return -1;
 	}
 
-	tc = create_tcp_connection(a, peer_addr, err_code);
+	tc = create_tcp_connection(a, tid, peer_addr, err_code);
 	if(!tc) {
 		if(!(*err_code)) {
 			*err_code = 500;
@@ -751,6 +801,10 @@ static int start_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss
 		FUNCEND;
 		return -1;
 	}
+
+	tc->peer_conn_timeout = set_ioa_timer(server->e, TCP_PEER_CONN_TIMEOUT, 0,
+						peer_conn_timeout_handler, tc, 0,
+						"peer_conn_timeout_handler");
 
 	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(a->relay_session.s, peer_addr, client_to_peer_connect_callback, tc);
 	if(!tcs) {
@@ -768,7 +822,7 @@ static int start_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss
 }
 
 static int handle_turn_connect(turn_turnserver *server,
-				    ts_ur_super_session *ss,
+				    ts_ur_super_session *ss, stun_tid *tid,
 				    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 				    ioa_net_data *in_buffer) {
 
@@ -836,7 +890,7 @@ static int handle_turn_connect(turn_turnserver *server,
 			*reason = (const u08bits *)"Where is Peer Address ?";
 
 		} else {
-			start_tcp_connection(server, ss, a, &peer_addr, err_code, reason);
+			start_tcp_connection_to_peer(server, ss, tid, a, &peer_addr, err_code, reason);
 		}
 	}
 
@@ -1527,7 +1581,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			case STUN_METHOD_CONNECT:
 
-				handle_turn_connect(server, ss, &err_code, &reason,
+				handle_turn_connect(server, ss, &tid, &err_code, &reason,
 							unknown_attrs, &ua_num, in_buffer);
 
 				if(!err_code)
