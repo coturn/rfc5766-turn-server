@@ -104,6 +104,8 @@ typedef struct _ioa_net_data {
 	int				recv_tos;
 } ioa_net_data;
 
+typedef void (*connect_cb)(void *arg);
+
 /*
  * Network buffer functions
  */
@@ -144,6 +146,9 @@ void delete_ioa_timer(ioa_timer_handle th);
 int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
 				u64bits *out_reservation_token, int *err_code, const u08bits **reason);
+
+ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg);
+
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
 
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);

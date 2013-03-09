@@ -36,17 +36,24 @@
 
 /////////////// ALLOCATION ///////////////////////////////////////
 
-void init_allocation(allocation* a) {
+void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
     ns_bzero(a,sizeof(allocation));
+    a->owner = owner;
     a->channel_to_ch_info=ur_map_create();
+    a->tcp_connections = tcp_connections;
     init_turn_permission_map(&(a->addr_to_perm));
   }
 }
 
-void free_allocation(allocation *a)
+void clean_allocation(allocation *a)
 {
 	if (a) {
+
+		while(a->tcl.next) {
+			tcp_connection *tc = (tcp_connection*)(a->tcl.next);
+			delete_tcp_connection(tc);
+		}
 
 		delete_ur_map_session_elem_data(&(a->relay_session));
 
@@ -349,5 +356,110 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
   }
 }
 
+////////////////// TCP connections ///////////////////////////////
+
+static void set_new_tc_id(tcp_connection *tc) {
+	allocation *a = (allocation*)(tc->owner);
+	ur_map *map = a->tcp_connections;
+	u32bits newid = 0;
+	do {
+		while (!newid) newid = (u32bits)random();
+	} while(ur_map_get(map, (ur_map_key_type)newid, NULL));
+	tc->id = newid;
+	ur_map_put(map, (ur_map_key_type)newid, (ur_map_value_type)tc);
+}
+
+tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *err_code)
+{
+	tcp_connection_list *tcl = &(a->tcl);
+	while(tcl->next) {
+		tcp_connection *otc = (tcp_connection*)(tcl->next);
+		if(addr_eq(&(otc->peer_addr),peer_addr)) {
+			*err_code = 446;
+			return NULL;
+		}
+		tcl=tcl->next;
+	}
+	tcp_connection *tc = (tcp_connection*)turn_malloc(sizeof(tcp_connection));
+	ns_bzero(tc,sizeof(tcp_connection));
+	tcl->next = &(tc->list);
+	addr_cpy(&(tc->peer_addr),peer_addr);
+	tc->owner = a;
+	set_new_tc_id(tc);
+	return tc;
+}
+
+void delete_tcp_connection(tcp_connection *tc)
+{
+	if(tc) {
+		allocation *a = (allocation*)(tc->owner);
+		if(a) {
+			ur_map *map = a->tcp_connections;
+			if(map) {
+				ur_map_del(map, (ur_map_key_type)(tc->id),NULL);
+			}
+			tcp_connection_list *tcl = &(a->tcl);
+			while(tcl->next) {
+				if((void*)(tcl->next) == (void*)tc) {
+					tcl->next = tc->list.next;
+					break;
+				} else {
+					tcl=tcl->next;
+				}
+			}
+		}
+		IOA_CLOSE_SOCKET(tc->client_s);
+		IOA_CLOSE_SOCKET(tc->peer_s);
+		turn_free(tc,sizeof(tcp_connection));
+	}
+}
+
+tcp_connection *get_tcp_connection_by_id(ur_map *map, u32bits id)
+{
+	if(map) {
+		ur_map_value_type t = 0;
+		if (ur_map_get(map, (ur_map_key_type)id, &t) && t) {
+			return (tcp_connection*)t;
+		}
+	}
+	return NULL;
+}
+
+tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr)
+{
+	if(a && peer_addr) {
+		tcp_connection_list *tcl = &(a->tcl);
+		while(tcl->next) {
+			tcp_connection *tc = (tcp_connection*)(tcl->next);
+			if(addr_eq(&(tc->peer_addr),peer_addr)) {
+				return tc;
+			}
+			tcl=tcl->next;
+		}
+	}
+	return NULL;
+}
+
+int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr)
+{
+	if(a && peer_addr) {
+		const turn_permission_map map = a->addr_to_perm;
+		if(map) {
+			u32bits hash=addr_hash_no_port(peer_addr);
+			turn_permission_info* ret=map[hash%TURN_PERMISSION_MAP_SIZE];
+			int found = 0;
+			while(ret) {
+				if(addr_eq_no_port(&ret->addr,peer_addr)) {
+					found=1;
+					break;
+				} else {
+					ret=(turn_permission_info*)(ret->list.next);
+				}
+			}
+			return found;
+		  }
+	}
+	return 0;
+}
 //////////////////////////////////////////////////////////////////
 

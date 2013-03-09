@@ -67,8 +67,12 @@ struct _turn_turnserver {
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
 	size_t addrs_number;
-	int no_tcp_relay;
+
+	/* RFC 6062 ==>> */
 	int no_udp_relay;
+	int no_tcp_relay;
+	ur_map *tcp_relay_connections;
+	/* <<== RFC 6062 */
 };
 
 ///////////////////////////////////////////
@@ -146,30 +150,25 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
 
 /////////// SS /////////////////
 
-static ts_ur_super_session* init_super_session(ts_ur_super_session *ss) {
-	if (ss) {
-		ns_bzero(ss,sizeof(ts_ur_super_session));
-		init_allocation(&(ss->alloc));
-	}
+static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
+	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
+	ns_bzero(ss,sizeof(ts_ur_super_session));
+	ss->server = server;
+	init_allocation(ss,&(ss->alloc), server->tcp_relay_connections);
 	return ss;
 }
-
-static ts_ur_super_session* create_new_ss(void) {
-	return init_super_session((ts_ur_super_session*) turn_malloc(
-			sizeof(ts_ur_super_session)));
-}
-
-/////////// clean all /////////////////////
 
 static void delete_ur_map_ss(void *p) {
 	if (p) {
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_ur_map_session_elem_data(&(ss->client_session));
-		free_allocation(get_allocation_ss(ss));
+		clean_allocation(get_allocation_ss(ss));
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 		turn_free(p,sizeof(ts_ur_super_session));
 	}
 }
+
+/////////// clean all /////////////////////
 
 static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 	if (!ss)
@@ -711,6 +710,141 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 	return 0;
 }
+
+/* RFC 6062 ==>> */
+
+static void client_to_peer_connect_callback(void *arg)
+{
+	tcp_connection *tc = (tcp_connection *)arg;
+	//TODO
+}
+
+static int start_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss,
+				allocation *a, ioa_addr *peer_addr,
+				int *err_code, const u08bits **reason)
+{
+	FUNCSTART;
+
+	if(!ss || !(a->relay_session.s)) {
+		*err_code = 500;
+		FUNCEND;
+		return -1;
+	}
+
+	tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
+	if(tc) {
+		*err_code = 446;
+		*reason = (const u08bits *)"Connection Already Exists";
+		FUNCEND;
+		return -1;
+	}
+
+	tc = create_tcp_connection(a, peer_addr, err_code);
+	if(!tc) {
+		if(!(*err_code)) {
+			*err_code = 500;
+		}
+		FUNCEND;
+		return -1;
+	} else if(*err_code) {
+		delete_tcp_connection(tc);
+		FUNCEND;
+		return -1;
+	}
+
+	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(a->relay_session.s, peer_addr, client_to_peer_connect_callback, tc);
+	if(!tcs) {
+		delete_tcp_connection(tc);
+		*err_code = 500;
+		FUNCEND;
+		return -1;
+	}
+
+	tc->state = TC_STATE_CLIENT_TO_PEER_CONNECTING;
+	tc->peer_s = tcs;
+
+	FUNCEND;
+	return 0;
+}
+
+static int handle_turn_connect(turn_turnserver *server,
+				    ts_ur_super_session *ss,
+				    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
+				    ioa_net_data *in_buffer) {
+
+	FUNCSTART;
+	ioa_addr peer_addr;
+	int peer_found = 0;
+	addr_set_any(&peer_addr);
+	allocation* a = get_allocation_ss(ss);
+
+	if(!(ss->is_tcp_relay)) {
+		*err_code = 403;
+		*reason = (const u08bits *)"Connect cannot be used with UDP relay";
+	} else if (!is_allocation_valid(a)) {
+		*err_code = 437;
+		*reason = (const u08bits *)"Allocation mismatch";
+	} else {
+
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+							    ioa_network_buffer_get_size(in_buffer->nbh));
+		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+			int attr_type = stun_attr_get_type(sar);
+			switch (attr_type) {
+			SKIP_ATTRIBUTES;
+			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS:
+			  {
+				if(stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
+						       ioa_network_buffer_get_size(in_buffer->nbh),
+						       sar, &peer_addr,
+						       &(ss->default_peer_addr)) == -1) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Bad Peer Address";
+				} else {
+					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
+
+					if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+						*err_code = 443;
+						*reason = (const u08bits *)"Peer Address Family Mismatch";
+					}
+
+					peer_found = 1;
+				}
+				break;
+			  }
+			default:
+				if(attr_type>=0x0000 && attr_type<=0x7FFF)
+					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+			};
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+						     ioa_network_buffer_get_size(in_buffer->nbh),
+						     sar);
+		}
+
+		if (*ua_num > 0) {
+
+			*err_code = 420;
+			*reason = (const u08bits *)"Unknown attribute";
+
+		} else if (*err_code) {
+
+			;
+
+		} else if (!peer_found) {
+
+			*err_code = 400;
+			*reason = (const u08bits *)"Where is Peer Address ?";
+
+		} else {
+			start_tcp_connection(server, ss, a, &peer_addr, err_code, reason);
+		}
+	}
+
+	FUNCEND;
+	return 0;
+}
+
+/* <<== RFC 6062 */
 
 static int handle_turn_channel_bind(turn_turnserver *server,
 				    ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
@@ -1391,6 +1525,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh);
 				break;
 
+			case STUN_METHOD_CONNECT:
+
+				handle_turn_connect(server, ss, &err_code, &reason,
+							unknown_attrs, &ua_num, in_buffer);
+
+				if(!err_code)
+					no_response = 1;
+
+				break;
+
 			case STUN_METHOD_REFRESH:
 
 				handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason,
@@ -1688,7 +1832,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 	turn_turnserver* server = (turn_turnserver*) (ss->server);
 
 	if (!server) {
-		free_allocation(a);
+		clean_allocation(a);
 		return;
 	}
 
@@ -1909,8 +2053,7 @@ int open_client_connection_session(turn_turnserver* server,
 	if (!(sm->s))
 		return -1;
 
-	ts_ur_super_session* ss = create_new_ss();
-	ss->server = server;
+	ts_ur_super_session* ss = create_new_ss(server);
 
 	ts_ur_session *newelem = &(ss->client_session);
 
@@ -2120,6 +2263,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	ns_bzero(server,sizeof(turn_turnserver));
 
 	server->id = id;
+	server->tcp_relay_connections = ur_map_create();
 	server->ct = ct;
 	STRCPY(server->realm,realm);
 	server->userkeycb = userkeycb;

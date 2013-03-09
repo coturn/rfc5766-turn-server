@@ -668,9 +668,9 @@ static int set_socket_options(ioa_socket_handle s)
 	set_sock_buf_size(s->fd,UR_CLIENT_SOCK_BUF_SIZE);
 
 	evutil_make_socket_nonblocking(s->fd);
+	socket_set_reusable(s->fd);
 
 	if ((s->st == UDP_SOCKET) || (s->st == DTLS_SOCKET)) {
-		socket_set_reusable(s->fd);
 		set_raw_socket_ttl_options(s->fd, s->family);
 		set_raw_socket_tos_options(s->fd, s->family);
 	} else {
@@ -870,6 +870,16 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 	return 0;
 }
+
+/* RFC 6062 ==>> */
+
+ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
+{
+	//TODO
+	return NULL;
+}
+
+/* <<== RFC 6062 */
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 				ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat,

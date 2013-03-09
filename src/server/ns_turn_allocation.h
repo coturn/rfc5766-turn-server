@@ -66,6 +66,32 @@ static inline void delete_ur_map_session_elem_data(ts_ur_session* cdi)
 		IOA_CLOSE_SOCKET(cdi->s);
 }
 
+////////// RFC 6062 TCP connection ////////
+
+enum _TC_STATE {
+	TC_STATE_UNKNOWN=0,
+	TC_STATE_CLIENT_TO_PEER_CONNECTING,
+	TC_STATE_PEER_CONNECTING,
+	TC_STATE_READY
+};
+
+typedef enum _TC_STATE TC_STATE;
+
+typedef struct _tcp_connection_list {
+  struct _tcp_connection_list *next;
+} tcp_connection_list;
+
+typedef struct
+{
+	tcp_connection_list list;
+	TC_STATE state;
+	u32bits id;
+	ioa_addr peer_addr;
+	ioa_socket_handle client_s;
+	ioa_socket_handle peer_s;
+	void *owner; //a
+} tcp_connection;
+
 ////////////////////////////////
 
 typedef struct _ch_info {
@@ -103,6 +129,9 @@ typedef struct _allocation {
   turn_permission_map addr_to_perm;
   ts_ur_session relay_session;
   ur_map *channel_to_ch_info;
+  void *owner; //ss
+  ur_map *tcp_connections; //global reference
+  tcp_connection_list tcl; //local reference
 } allocation;
 
 //////////// PERMISSION AND CHANNELS ////////////////////
@@ -122,8 +151,8 @@ void turn_channel_delete(ch_info* chn);
 
 /////////// ALLOCATION ////////////
 
-void init_allocation(allocation* a);
-void free_allocation(allocation *a);
+void init_allocation(void *owner, allocation* a, ur_map *tcp_connections);
+void clean_allocation(allocation *a);
 
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
 int is_allocation_valid(const allocation* a);
@@ -139,6 +168,12 @@ ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr)
 
 ts_ur_session *get_relay_session(allocation *a);
 ioa_socket_handle get_relay_socket(allocation *a);
+
+tcp_connection *get_tcp_connection_by_id(ur_map *map, u32bits id);
+tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
+int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr);
+tcp_connection *create_tcp_connection(allocation *a, ioa_addr *peer_addr, int *err_code);
+void delete_tcp_connection(tcp_connection *tc);
 
 ///////////////////////////////////////////
 
