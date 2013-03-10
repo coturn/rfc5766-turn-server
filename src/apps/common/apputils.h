@@ -73,6 +73,10 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
 int handle_socket_error(void);
 
+/////////////////////// SYS /////////////////////
+
+void set_system_parameters(void);
+
 ///////////////////////// MTU //////////////////////////
 
 #define MAX_MTU (1500 - 20 - 8)

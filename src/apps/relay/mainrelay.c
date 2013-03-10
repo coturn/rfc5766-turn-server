@@ -307,8 +307,9 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 		  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
 			if (ss) {
 			  turn_turnserver *server = (turn_turnserver *)ss->server;
-				if (server)
+				if (server) {
 					shutdown_client_connection(server, ss);
+				}
 			}
 		}
 	}
@@ -1453,27 +1454,6 @@ static int adminmain(int argc, char **argv)
 	}
 
 	return 0;
-}
-
-static void set_system_parameters(void)
-{
-	srandom((unsigned int) time(NULL));
-	setlocale(LC_ALL, "C");
-
-	/* Ignore SIGPIPE from TCP sockets */
-	signal(SIGPIPE, SIG_IGN);
-
-	{
-		struct rlimit rlim;
-		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
-			perror("Cannot get system limit");
-		} else {
-			rlim.rlim_cur = rlim.rlim_max;
-			if(setrlimit(RLIMIT_NOFILE, &rlim)<0) {
-				perror("Cannot set system limit");
-			}
-		}
-	}
 }
 
 int main(int argc, char **argv)

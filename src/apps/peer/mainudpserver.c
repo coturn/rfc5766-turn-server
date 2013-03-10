@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	char c;
 	char ifname[1025] = "\0";
 
-	srandom((unsigned int) time(NULL));
+	set_system_parameters();
 
 	while ((c = getopt(argc, argv, "d:p:L:v")) != -1)
 		switch (c){

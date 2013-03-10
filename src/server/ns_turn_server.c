@@ -2237,8 +2237,10 @@ static int create_relay_connection(turn_turnserver* server,
 		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.ss_family == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
-		register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
+		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {
+			register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
 				peer_input_handler, ss, 0);
+		}
 
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 

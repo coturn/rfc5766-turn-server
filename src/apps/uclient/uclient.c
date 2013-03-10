@@ -530,7 +530,7 @@ static int client_write(app_ur_session *elem) {
   mi->msgnum=elem->wmsgnum;
   mi->mstime=current_mstime;
 
-  if(!use_send_method) {
+  if(!do_not_use_channel) {
     stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length);
     memcpy(elem->out_buffer.buf+4,buffer_to_send,clmessage_length);
   } else {
@@ -777,7 +777,6 @@ static int start_c2c(const char *remote_address, int port,
   ss2->recvmsgnum=-1;
   ss2->chnum=chnum2;
 
-
   if(!no_rtcp) {
     ss2_rtcp->state=UR_STATE_READY;
   
@@ -862,15 +861,12 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 
 static inline int client_timer_handler(app_ur_session* elem)
 {
-
 	if (elem) {
-
 		if (!turn_time_before(current_mstime, elem->refresh_time)) {
 			refresh_channel(elem, 0);
 		}
 
 		if (!turn_time_before(current_mstime, elem->to_send_timems)) {
-
 			if (elem->wmsgnum >= elem->tot_msgnum) {
 				if (!turn_time_before(current_mstime, elem->finished_time) ||
 					(elem->tot_msgnum - elem->rmsgnum) < 1) {
@@ -911,10 +907,12 @@ static void timer_handler(void)
 	__turn_getMSTime();
 
 	for (i = 0; i < total_clients; ++i) {
-	  int finished = client_timer_handler(elems[i]);
-	  if(finished) {
-		  elems[i]=NULL;
-	  }
+		if (elems[i]) {
+			int finished = client_timer_handler(elems[i]);
+			if (finished) {
+				elems[i] = NULL;
+			}
+		}
 	}
 }
 

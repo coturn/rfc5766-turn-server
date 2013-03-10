@@ -45,7 +45,7 @@
 /////////////// extern definitions /////////////////////
 
 int clmessage_length=100;
-int use_send_method=0;
+int do_not_use_channel=0;
 int c2c=0;
 int clnet_verbose=0;
 int use_tcp=0;
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 
 	set_execdir();
 
-	srandom((unsigned int) time(NULL));
+	set_system_parameters();
 
 	memset(local_addr, 0, sizeof(local_addr));
 
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 			clmessage_length = atoi(optarg);
 			break;
 		case 's':
-			use_send_method = 1;
+			do_not_use_channel = 1;
 			break;
 		case 'n':
 			messagenumber = atoi(optarg);
@@ -210,6 +210,7 @@ int main(int argc, char **argv)
 		no_rtcp = 1;
 		c2c = 1;
 		use_tcp = 1;
+		do_not_use_channel = 1;
 	}
 
 	if(port == 0) {

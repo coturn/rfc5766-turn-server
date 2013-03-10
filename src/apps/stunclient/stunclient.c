@@ -413,7 +413,7 @@ int main(int argc, char **argv)
   char local_addr[256]="\0";
   char c=0;
 
-  srandom((unsigned int)time(NULL));
+  set_system_parameters();
   
   memset(local_addr, 0, sizeof(local_addr));
 

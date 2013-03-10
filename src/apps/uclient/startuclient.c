@@ -632,6 +632,48 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 	return 0;
 }
 
+static int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info,
+		ioa_addr *peer_addr) {
+
+	{
+		int cp_sent = 0;
+
+		stun_buffer message;
+
+		stun_init_request(STUN_METHOD_CONNECT, &message);
+		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+		if(clnet_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
+
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
+		while (!cp_sent) {
+
+			int len = send_buffer(clnet_info, &message);
+
+			if (len > 0) {
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cp sent\n");
+				}
+				cp_sent = 1;
+			} else {
+				perror("send");
+				exit(1);
+			}
+		}
+	}
+
+	////////////<<==create permission send
+
+	return 0;
+}
+
 int start_connection(uint16_t clnet_remote_port,
 		     const char *remote_address, 
 		     const unsigned char* ifname, const char *local_address,
@@ -670,7 +712,7 @@ int start_connection(uint16_t clnet_remote_port,
 	  }
 	}
 
-	if (!use_send_method) {
+	if (!do_not_use_channel) {
 		ioa_addr some_addr;
 		addr_cpy(&some_addr,&peer_addr);
 		addr_set_port(&some_addr,addr_get_port(&some_addr)+1);
@@ -779,7 +821,7 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 	  }
 	}
 
-	if (!use_send_method) {
+	if (!do_not_use_channel) {
 		if (turn_channel_bind(verbose, chn1, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
@@ -800,19 +842,23 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 		if (turn_create_permission(verbose, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
-		if(!no_rtcp)
-		  if (turn_create_permission(verbose, clnet_info1_rtcp, &relay_addr2_rtcp)
-		      < 0) {
-		    exit(-1);
-		  }
+		if (!no_rtcp)
+			if (turn_create_permission(verbose, clnet_info1_rtcp, &relay_addr2_rtcp) < 0) {
+				exit(-1);
+			}
 		if (turn_create_permission(verbose, clnet_info2, &relay_addr1) < 0) {
 			exit(-1);
 		}
-		if(!no_rtcp)
-		  if (turn_create_permission(verbose, clnet_info2_rtcp, &relay_addr1_rtcp)
-		      < 0) {
-		    exit(-1);
-		  }
+		if (!no_rtcp)
+			if (turn_create_permission(verbose, clnet_info2_rtcp, &relay_addr1_rtcp) < 0) {
+				exit(-1);
+			}
+
+		if(is_TCP_relay()) {
+			if (turn_tcp_connect(verbose, clnet_info1, &relay_addr2) < 0) {
+				exit(-1);
+			}
+		}
 	}
 
 	addr_cpy(&(clnet_info1->peer_addr), &relay_addr2);

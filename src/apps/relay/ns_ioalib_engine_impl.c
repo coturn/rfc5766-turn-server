@@ -1516,7 +1516,14 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(inbuf) {
 			ev_ssize_t blen = evbuffer_copyout(inbuf, elem->buf.buf, sizeof(elem->buf.buf));
 			if(blen>0) {
-				int mlen = stun_get_message_len_str(elem->buf.buf, blen);
+				int mlen = 0;
+
+				if((s->st == TCP_SOCKET) &&((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
+					mlen = blen;
+				} else {
+					mlen = stun_get_message_len_str(elem->buf.buf, blen);
+				}
+
 				if(mlen>0 && mlen<=(int)blen) {
 					len = (int)bufferevent_read(s->bev, elem->buf.buf, mlen);
 					if(len < 0) {
@@ -1634,8 +1641,9 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 			ts_ur_super_session *ss = (ts_ur_super_session *)(s->session);
 			if (ss) {
 				turn_turnserver *server = (turn_turnserver *)ss->server;
-				if (server)
+				if (server) {
 					shutdown_client_connection(server, ss);
+				}
 			}
 		}
 		}
@@ -1679,8 +1687,9 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 				ts_ur_super_session *ss = (ts_ur_super_session *)(s->session);
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *)ss->server;
-					if (server)
+					if (server) {
 						shutdown_client_connection(server, ss);
+					}
 				}
 			}
 			}
@@ -1696,21 +1705,23 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 		// Connect okay
 	} else if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
 		if (arg) {
-		  ioa_socket_handle s = (ioa_socket_handle)arg;
+			ioa_socket_handle s = (ioa_socket_handle) arg;
 
-			if(s->done) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n",__FUNCTION__, (long) s, (int)s->done, (int)s->fd, s->broken, s->st, s->sat, s->tobeclosed);
+			if (s->done) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n", __FUNCTION__, (long) s, (int) s->done,
+								(int) s->fd, s->broken, s->st, s->sat, s->tobeclosed);
 				return;
 			}
 
-			if(events == BEV_EVENT_ERROR)
+			if (events == BEV_EVENT_ERROR)
 				s->broken = 1;
 
-			ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
+			ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
 			if (ss) {
-			  turn_turnserver *server = (turn_turnserver *)ss->server;
-				if (server)
+				turn_turnserver *server = (turn_turnserver *) ss->server;
+				if (server) {
 					shutdown_client_connection(server, ss);
+				}
 			}
 		}
 	}
@@ -1846,7 +1857,6 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 {
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
-
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_INFO,
 				"!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
@@ -1854,23 +1864,19 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				(int) s->fd, s->st, s->sat);
 
 	} else if (nbh) {
-
 		if(!ioa_socket_check_bandwidth(s,ioa_network_buffer_get_size(nbh))) {
 			/* Bandwidth exhausted, we pretend everything is fine: */
 			ret = (int)(ioa_network_buffer_get_size(nbh));
 		} else {
 			if (!ioa_socket_tobeclosed(s) && s->e) {
-
 				if (to_peer && socket_channel)
 				  s = (ioa_socket*)socket_channel; //Use dedicated socket
 
 				if (!(s->done || (s->fd == -1))) {
-
 					set_socket_ttl(s, ttl);
 					set_socket_tos(s, tos);
 
 					if (s->connected && s->bev) {
-
 						if (s->st == TLS_SOCKET) {
 #if !defined(TURN_NO_TLS)
 							SSL *ctx = bufferevent_openssl_get_ssl(s->bev);

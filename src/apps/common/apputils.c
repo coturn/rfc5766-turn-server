@@ -33,7 +33,27 @@
 
 #include "apputils.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <limits.h>
+#include <ifaddrs.h>
+#include <getopt.h>
+#include <locale.h>
 #include <libgen.h>
+
+#if !defined(TURN_NO_THREADS)
+#include <pthread.h>
+#endif
+
+#include <signal.h>
+
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <sys/resource.h>
 
 /*********************** Sockets *********************************/
 
@@ -489,6 +509,29 @@ char* find_config_file(const char *config_file, int print_file_name)
 	}
 
 	return full_path_to_config_file;
+}
+
+/////////////////// SYS SETTINGS ///////////////////////
+
+void set_system_parameters(void)
+{
+	srandom((unsigned int) time(NULL));
+	setlocale(LC_ALL, "C");
+
+	/* Ignore SIGPIPE from TCP sockets */
+	signal(SIGPIPE, SIG_IGN);
+
+	{
+		struct rlimit rlim;
+		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
+			perror("Cannot get system limit");
+		} else {
+			rlim.rlim_cur = rlim.rlim_max;
+			if(setrlimit(RLIMIT_NOFILE, &rlim)<0) {
+				perror("Cannot set system limit");
+			}
+		}
+	}
 }
 
 //////////////////////////////////////////////////////////////

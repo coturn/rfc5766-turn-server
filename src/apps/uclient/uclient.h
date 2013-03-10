@@ -44,7 +44,7 @@ extern "C" {
 //////////////////////////////////////////////
 
 extern int clmessage_length;
-extern int use_send_method;
+extern int do_not_use_channel;
 extern int clnet_verbose;
 extern int use_tcp;
 extern int use_secure;
