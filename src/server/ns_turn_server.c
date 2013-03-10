@@ -81,7 +81,7 @@ static int create_relay_connection(turn_turnserver* server,
 		ts_ur_super_session *ss, u32bits lifetime,
 		int address_family, u08bits transport,
 		int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
-		int *err_code, const u08bits **reason);
+		int *err_code, const u08bits **reason, accept_cb acb);
 
 static int refresh_relay_connection(turn_turnserver* server,
 		ts_ur_super_session *ss, u32bits lifetime, int even_port,
@@ -89,6 +89,8 @@ static int refresh_relay_connection(turn_turnserver* server,
 		int *err_code);
 
 static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl, int tos);
+
+static void accept_tcp_connection(ioa_socket_handle s, void *arg);
 
 /////////////////// RFC 5780 ///////////////////////
 
@@ -528,7 +530,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 			} else if (create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
-							err_code, reason) < 0) {
+							err_code, reason,
+							accept_tcp_connection) < 0) {
 
 				(server->raqcb)(username);
 
@@ -715,6 +718,54 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 /* RFC 6062 ==>> */
 
+static void tcp_peer_data_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+{
+	if (!(event_type & IOA_EV_READ) || !arg)
+		return;
+
+	UNUSED_ARG(s);
+
+	tcp_connection *tc = (tcp_connection*)arg;
+
+	if(tc->state != TC_STATE_READY)
+		return;
+
+	if(!(tc->client_s))
+		return;
+
+	ioa_network_buffer_handle nbh = in_buffer->nbh;
+	in_buffer->nbh = NULL;
+
+	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+	if (ret < 0) {
+		set_ioa_socket_tobeclosed(s);
+	}
+}
+
+static void tcp_client_data_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+{
+	if (!(event_type & IOA_EV_READ) || !arg)
+		return;
+
+	UNUSED_ARG(s);
+
+	tcp_connection *tc = (tcp_connection*)arg;
+
+	if(tc->state != TC_STATE_READY)
+		return;
+
+	if(!(tc->peer_s))
+		return;
+
+	ioa_network_buffer_handle nbh = in_buffer->nbh;
+	in_buffer->nbh = NULL;
+
+	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+	if (ret < 0) {
+		set_ioa_socket_tobeclosed(s);
+	}
+}
+
 static void conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
 {
 	UNUSED_ARG(e);
@@ -731,6 +782,7 @@ static void client_to_peer_connect_callback(int success, void *arg)
 		allocation *a = (allocation*)(tc->owner);
 		ts_ur_super_session *ss = (ts_ur_super_session*)(a->owner);
 		turn_turnserver *server=(turn_turnserver*)(ss->server);
+		int err_code = 0;
 
 		IOA_EVENT_DEL(tc->peer_conn_timeout);
 
@@ -738,16 +790,28 @@ static void client_to_peer_connect_callback(int success, void *arg)
 		size_t len = ioa_network_buffer_get_size(nbh);
 
 		if(success) {
+			if(register_callback_on_ioa_socket(server->e, tc->peer_s, IOA_EV_READ, tcp_peer_data_input_handler, tc, 1)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
+				success=0;
+				err_code = 500;
+			}
+		}
+
+		if(success) {
 			tc->state = TC_STATE_PEER_CONNECTED;
 			stun_init_success_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, &(tc->tid));
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
 									(const u08bits*)&(tc->id), 4);
+
+			IOA_EVENT_DEL(tc->conn_bind_timeout);
 			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
 									conn_bind_timeout_handler, tc, 0,
 									"conn_bind_timeout_handler");
+
 		} else {
 			tc->state = TC_STATE_FAILED;
-			int err_code = 447;
+			if(!err_code)
+				err_code = 447;
 			const u08bits *reason = (const u08bits *)"Connection Timeout or Failure";
 			stun_init_error_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, err_code, reason, &(tc->tid));
 		}
@@ -802,6 +866,7 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 		return -1;
 	}
 
+	IOA_EVENT_DEL(tc->peer_conn_timeout);
 	tc->peer_conn_timeout = set_ioa_timer(server->e, TCP_PEER_CONN_TIMEOUT, 0,
 						peer_conn_timeout_handler, tc, 0,
 						"peer_conn_timeout_handler");
@@ -816,9 +881,85 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 
 	tc->state = TC_STATE_CLIENT_TO_PEER_CONNECTING;
 	tc->peer_s = tcs;
+	set_ioa_socket_sub_session(tc->peer_s,tc);
 
 	FUNCEND;
 	return 0;
+}
+
+static void accept_tcp_connection(ioa_socket_handle s, void *arg)
+{
+	if(s) {
+		if(arg) {
+			ts_ur_super_session *ss = (ts_ur_super_session*)arg;
+			turn_turnserver *server=(turn_turnserver*)(ss->server);
+
+			FUNCSTART;
+
+			allocation *a = &(ss->alloc);
+			ioa_addr *peer_addr = get_remote_addr_from_ioa_socket(s);
+			tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
+			if(tc) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer data socket with this address already exist\n", __FUNCTION__);
+				close_ioa_socket(s);
+				FUNCEND;
+				return;
+			}
+
+			if(!can_accept_tcp_connection_from_peer(a,peer_addr)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
+				close_ioa_socket(s);
+				FUNCEND;
+				return;
+			}
+
+			stun_tid tid;
+			ns_bzero(&tid,sizeof(tid));
+			int err_code=0;
+			tc = create_tcp_connection(a, &tid, peer_addr, &err_code);
+			if(!tc) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+				close_ioa_socket(s);
+				FUNCEND;
+				return;
+			}
+
+			tc->state = TC_STATE_PEER_CONNECTED;
+			tc->peer_s = s;
+
+			set_ioa_socket_session(s,ss);
+			set_ioa_socket_sub_session(s,tc);
+
+			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_data_input_handler, tc, 1)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
+				close_ioa_socket(s);
+				FUNCEND;
+				return;
+			}
+
+			IOA_EVENT_DEL(tc->conn_bind_timeout);
+			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
+								conn_bind_timeout_handler, tc, 0,
+								"conn_bind_timeout_handler");
+
+			ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+			size_t len = ioa_network_buffer_get_size(nbh);
+
+			stun_init_indication_str(STUN_METHOD_CONNECTION_ATTEMPT, ioa_network_buffer_data(nbh), &len);
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
+						(const u08bits*)&(tc->id), 4);
+			stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+			ioa_network_buffer_set_size(nbh,len);
+
+			write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+
+			FUNCEND;
+
+		} else {
+			close_ioa_socket(s);
+		}
+	}
 }
 
 static int handle_turn_connect(turn_turnserver *server,
@@ -895,6 +1036,134 @@ static int handle_turn_connect(turn_turnserver *server,
 	}
 
 	FUNCEND;
+	return 0;
+}
+
+static int bind_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss, u32bits id, int *err_code)
+{
+	tcp_connection *tc = get_tcp_connection_by_id(server->tcp_relay_connections, id);
+	if(!tc) {
+		*err_code = 404;
+		return -1;
+	} else if(tc->state == TC_STATE_READY) {
+		*err_code = 404;
+		return -1;
+	} else if(tc->client_s) {
+		*err_code = 500;
+		return -1;
+	} else {
+		allocation *a = (allocation*)(tc->owner);
+		ts_ur_super_session *ss_orig = (ts_ur_super_session*)(a->owner);
+		tc->state = TC_STATE_READY;
+		tc->client_s = ss->client_session.s;
+		ss->client_session.s = NULL;
+		set_ioa_socket_session(tc->client_s,ss_orig);
+		set_ioa_socket_sub_session(tc->client_s,tc);
+		set_ioa_socket_app_type(tc->client_s,TCP_CLIENT_DATA_SOCKET);
+		if(register_callback_on_ioa_socket(server->e, tc->client_s, IOA_EV_READ, tcp_client_data_input_handler, tc, 1)<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
+			*err_code = 500;
+			return -1;
+		}
+		IOA_EVENT_DEL(tc->conn_bind_timeout);
+	}
+
+	return 0;
+}
+
+static int handle_turn_connection_bind(turn_turnserver *server,
+			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
+			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
+			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
+
+	allocation* a = get_allocation_ss(ss);
+
+	u16bits method = STUN_METHOD_CONNECTION_BIND;
+
+	if (is_allocation_valid(a)) {
+
+		*err_code = 400;
+		*reason = (const u08bits *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
+
+	} else if(!(ss->is_tcp_relay)) {
+
+		*err_code = 400;
+		*reason = (const u08bits *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
+
+	} else {
+		u32bits id = 0;
+
+		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+							    ioa_network_buffer_get_size(in_buffer->nbh));
+		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+			int attr_type = stun_attr_get_type(sar);
+			switch (attr_type) {
+			SKIP_ATTRIBUTES;
+			case STUN_ATTRIBUTE_CONNECTION_ID: {
+				if (stun_attr_get_len(sar) != 4) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Wrong Connection ID field format";
+				} else {
+					const u08bits* value = stun_attr_get_value(sar);
+					if (!value) {
+						*err_code = 400;
+						*reason = (const u08bits *)"Wrong Connection ID field data";
+					} else {
+						id = *((const u32bits*)value); //AS-IS encoding, no conversion to/from network byte order
+					}
+				}
+			}
+				break;
+			default:
+				if(attr_type>=0x0000 && attr_type<=0x7FFF)
+					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+			};
+			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+						     ioa_network_buffer_get_size(in_buffer->nbh), sar);
+		}
+
+		if (*ua_num > 0) {
+
+			*err_code = 420;
+			*reason = (const u08bits *)"Unknown attribute";
+
+		} else if (*err_code) {
+
+			;
+
+		} else {
+
+			if (bind_tcp_connection(server, ss, id, err_code) < 0) {
+
+				if (!(*err_code)) {
+					*err_code = 437;
+					*reason = (const u08bits *)"Cannot bind TCP relay connection (internal error)";
+				}
+
+			} else {
+
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_success_response_str(method, ioa_network_buffer_data(nbh), &len, tid);
+				ioa_network_buffer_set_size(nbh,len);
+
+				*resp_constructed = 1;
+			}
+		}
+	}
+
+	if (!(*resp_constructed)) {
+
+		if (!(*err_code)) {
+			*err_code = 437;
+		}
+
+		size_t len = ioa_network_buffer_get_size(nbh);
+		stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+		ioa_network_buffer_set_size(nbh,len);
+
+		*resp_constructed = 1;
+	}
+
 	return 0;
 }
 
@@ -1589,6 +1858,12 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				break;
 
+			case STUN_METHOD_CONNECTION_BIND:
+
+				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
+								unknown_attrs, &ua_num, in_buffer, nbh);
+				break;
+
 			case STUN_METHOD_REFRESH:
 
 				handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason,
@@ -1901,7 +2176,8 @@ static int create_relay_connection(turn_turnserver* server,
 				   ts_ur_super_session *ss, u32bits lifetime,
 				   int address_family, u08bits transport,
 				   int even_port, u64bits in_reservation_token, u64bits *out_reservation_token,
-				   int *err_code, const u08bits **reason) {
+				   int *err_code, const u08bits **reason,
+				   accept_cb acb) {
 
 	if (server && ss) {
 
@@ -1927,7 +2203,7 @@ static int create_relay_connection(turn_turnserver* server,
 			int res = create_relay_ioa_sockets(server->e,
 							address_family, transport,
 							even_port, &(newelem->s), &rtcp_s, out_reservation_token,
-							err_code, reason);
+							err_code, reason, acb, ss);
 			if (res < 0) {
 				if(!(*err_code))
 					*err_code = 508;
@@ -1962,7 +2238,7 @@ static int create_relay_connection(turn_turnserver* server,
 			set_do_not_use_df(newelem->s);
 
 		register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
-				peer_input_handler, ss);
+				peer_input_handler, ss, 0);
 
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 
@@ -2114,7 +2390,7 @@ int open_client_connection_session(turn_turnserver* server,
 	newelem->s = sm->s;
 
 	register_callback_on_ioa_socket(server->e, newelem->s, IOA_EV_READ,
-			client_input_handler, ss);
+			client_input_handler, ss, 0);
 
 	newelem->state = UR_STATE_READY;
 
@@ -2124,6 +2400,7 @@ int open_client_connection_session(turn_turnserver* server,
 	if (server->stats)
 		++(*(server->stats));
 
+	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 	ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e,
 			TURN_MAX_TO_ALLOCATE_TIMEOUT, 0,
 			client_to_be_allocated_timeout_handler, ss, 0,

@@ -41,6 +41,8 @@
 #include <event2/bufferevent_ssl.h>
 #endif
 
+#include <event2/listener.h>
+
 #include <openssl/err.h>
 
 /* Compilation test:
@@ -65,6 +67,8 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
 static int send_backlog_buffers(ioa_socket_handle s);
+
+static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 /************** Utils **************************/
 
@@ -754,7 +758,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 				int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s,
 				ioa_socket_handle *rtcp_s, uint64_t *out_reservation_token,
-				int *err_code, const u08bits **reason)
+				int *err_code, const u08bits **reason,
+				accept_cb acb, void *acbarg)
 {
 
 	*rtp_s = NULL;
@@ -859,9 +864,11 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 		return -1;
 	}
 
+	set_accept_cb(*rtp_s, acb, acbarg);
+
 	if (rtcp_s && *rtcp_s && out_reservation_token && *out_reservation_token) {
 		if (rtcp_map_put(e->map_rtcp, *out_reservation_token, *rtcp_s) < 0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot update RTCP map\n", __FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot update RTCP map\n", __FUNCTION__);
 			IOA_CLOSE_SOCKET(*rtp_s);
 			IOA_CLOSE_SOCKET(*rtcp_s);
 			return -1;
@@ -873,25 +880,86 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 /* RFC 6062 ==>> */
 
+static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t fd,
+				struct sockaddr *sa, int socklen, void *arg)
+{
+	UNUSED_ARG(l);
+
+	ioa_socket_handle list_s = (ioa_socket_handle) arg;
+
+	ioa_addr client_addr;
+	ns_bcopy(sa,&client_addr,socklen);
+
+	addr_debug_print(list_s->e->verbose, &client_addr,"tcp accepted from");
+
+	ioa_socket_handle s =
+				create_ioa_socket_from_fd(
+							list_s->e,
+							fd,
+							TCP_SOCKET,
+							TCP_RELAY_DATA_SOCKET,
+							&client_addr,
+							&(list_s->local_addr));
+
+	if (s) {
+		if(list_s->acb) {
+			list_s->acb(s,list_s->acbarg);
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"Do not know what to do with accepted TCP socket\n");
+			close_ioa_socket(s);
+		}
+	} else {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Cannot create ioa_socket from FD\n");
+		close(fd);
+	}
+}
+
+static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg)
+{
+	if(s->st == TCP_SOCKET) {
+		s->list_ev = evconnlistener_new(s->e->event_base,
+			  tcp_listener_input_handler, s,
+			  LEV_OPT_REUSEABLE,
+			  1024, s->fd);
+		if(!(s->list_ev)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot start TCP listener\n", __FUNCTION__);
+			return -1;
+		}
+		s->acb = acb;
+		s->acbarg = arg;
+	}
+	return 0;
+}
+
 static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 {
+	UNUSED_ARG(bev);
+
 	ioa_socket_handle ret = (ioa_socket_handle) ptr;
 	if (ret) {
 		connect_cb cb = ret->conn_cb;
 		void *arg = ret->conn_arg;
-		ret->conn_cb = NULL;
-		ret->conn_arg = NULL;
-		if(ret->conn_bev) {
-			bufferevent_free(ret->conn_bev);
-			ret->conn_bev=NULL;
-		}
 		if (events & BEV_EVENT_CONNECTED) {
+			ret->conn_cb = NULL;
+			ret->conn_arg = NULL;
+			if(ret->conn_bev) {
+				bufferevent_free(ret->conn_bev);
+				ret->conn_bev=NULL;
+			}
 			ret->connected = 1;
 			if(cb) {
 				cb(1,arg);
 			}
 		} else if (events & BEV_EVENT_ERROR) {
 			/* An error occured while connecting. */
+			ret->conn_cb = NULL;
+			ret->conn_arg = NULL;
+			if(ret->conn_bev) {
+				bufferevent_free(ret->conn_bev);
+				ret->conn_bev=NULL;
+			}
 			if(cb) {
 				cb(0,arg);
 			}
@@ -1066,7 +1134,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	if(s->current_df_relay_flag)
 		set_df_on_ioa_socket(cs,s->current_df_relay_flag);
 
-	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn);
+	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn, 0);
 
 	return cs;
 }
@@ -1084,6 +1152,10 @@ static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
 		EVENT_DEL(s->read_event);
+		if(s->list_ev) {
+			evconnlistener_free(s->list_ev);
+			s->list_ev = NULL;
+		}
 		if(s->conn_bev) {
 			bufferevent_free(s->conn_bev);
 			s->conn_bev=NULL;
@@ -1165,12 +1237,35 @@ void set_ioa_socket_session(ioa_socket_handle s, void *ss)
 		s->session = ss;
 }
 
+void *get_ioa_socket_sub_session(ioa_socket_handle s)
+{
+	return s->sub_session;
+}
+
+void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc)
+{
+	if(s)
+		s->sub_session = tc;
+}
+
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s)
 {
 	if(s)
 		return s->st;
 
 	return UNKNOWN_SOCKET;
+}
+
+SOCKET_APP_TYPE get_ioa_socket_app_type(ioa_socket_handle s)
+{
+	if(s)
+		return s->sat;
+	return UNKNOWN_APP_SOCKET;
+}
+
+void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat) {
+	if(s)
+		s->sat = sat;
 }
 
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
@@ -1525,11 +1620,24 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 	}
 
 	if (ioa_socket_tobeclosed(s)) {
-	  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-		if (ss) {
-		  turn_turnserver *server = (turn_turnserver *)ss->server;
-			if (server)
-				shutdown_client_connection(server, ss);
+		switch(s->sat) {
+		case TCP_CLIENT_DATA_SOCKET:
+		case TCP_RELAY_DATA_SOCKET:
+		{
+			tcp_connection *tc = (tcp_connection *)(s->sub_session);
+			if(tc)
+				delete_tcp_connection(tc);
+		}
+		break;
+		default:
+		{
+			ts_ur_super_session *ss = (ts_ur_super_session *)(s->session);
+			if (ss) {
+				turn_turnserver *server = (turn_turnserver *)ss->server;
+				if (server)
+					shutdown_client_connection(server, ss);
+			}
+		}
 		}
 	}
 }
@@ -1539,31 +1647,43 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 	if (bev && arg) {
 
-	  ioa_socket_handle s = (ioa_socket_handle)arg;
+		ioa_socket_handle s = (ioa_socket_handle) arg;
 
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		if (s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
 			return;
 		}
 
 		while (!ioa_socket_tobeclosed(s)) {
-			if(socket_input_worker(s)<=0)
+			if (socket_input_worker(s) <= 0)
 				break;
 		}
 
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		if (s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
 			return;
 		}
 
 		if (ioa_socket_tobeclosed(s)) {
-		  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-			if (ss) {
-			  turn_turnserver *server = (turn_turnserver *)ss->server;
-				if (server)
-					shutdown_client_connection(server, ss);
+			switch(s->sat) {
+			case TCP_CLIENT_DATA_SOCKET:
+			case TCP_RELAY_DATA_SOCKET:
+			{
+				tcp_connection *tc = (tcp_connection *)(s->sub_session);
+				if(tc)
+					delete_tcp_connection(tc);
 			}
-			return;
+			break;
+			default:
+			{
+				ts_ur_super_session *ss = (ts_ur_super_session *)(s->session);
+				if (ss) {
+					turn_turnserver *server = (turn_turnserver *)ss->server;
+					if (server)
+						shutdown_client_connection(server, ss);
+				}
+			}
+			}
 		}
 	}
 }
@@ -1817,7 +1937,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 	return ret;
 }
 
-int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx)
+int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx, int clean_preexisting)
 {
 
 	if (cb) {
@@ -1831,9 +1951,11 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 				case DTLS_SOCKET:
 				case UDP_SOCKET:
 					if(s->read_event) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						if(!clean_preexisting) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 								"%s: software error: buffer preset 1\n", __FUNCTION__);
-						return -1;
+							return -1;
+						}
 					} else {
 						s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
 						event_add(s->read_event,NULL);
@@ -1841,9 +1963,11 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					break;
 				case TCP_SOCKET:
 					if(s->bev) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						if(!clean_preexisting) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 								"%s: software error: buffer preset 2\n", __FUNCTION__);
-						return -1;
+							return -1;
+						}
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
@@ -1856,9 +1980,11 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					break;
 				case TLS_SOCKET:
 					if(s->bev) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						if(!clean_preexisting) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 								"%s: software error: buffer preset 2\n", __FUNCTION__);
-						return -1;
+							return -1;
+						}
 					} else {
 #if !defined(TURN_NO_TLS)
 						SSL *tls_ssl = SSL_new(e->tls_ctx);

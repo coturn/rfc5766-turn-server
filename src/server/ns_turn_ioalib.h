@@ -67,6 +67,12 @@ int turn_mutex_destroy(turn_mutex* mutex);
 
 /////// Sockets //////////////////////////////
 
+#define IOA_EV_TIMEOUT	0x01
+#define IOA_EV_READ	0x02
+#define IOA_EV_WRITE	0x04
+#define IOA_EV_SIGNAL	0x08
+#define IOA_EV_CLOSE	0x10
+
 enum _SOCKET_TYPE {
 	UNKNOWN_SOCKET=0,
 	TCP_SOCKET=6,
@@ -75,13 +81,19 @@ enum _SOCKET_TYPE {
 	DTLS_SOCKET=250
 };
 
-#define IOA_EV_TIMEOUT	0x01
-#define IOA_EV_READ	0x02
-#define IOA_EV_WRITE	0x04
-#define IOA_EV_SIGNAL	0x08
-#define IOA_EV_CLOSE	0x10
-
 typedef enum _SOCKET_TYPE SOCKET_TYPE;
+
+enum _SOCKET_APP_TYPE {
+	UNKNOWN_APP_SOCKET,
+	CLIENT_SOCKET,
+	RELAY_SOCKET,
+	RELAY_RTCP_SOCKET,
+	CHANNEL_SOCKET,
+	TCP_CLIENT_DATA_SOCKET,
+	TCP_RELAY_DATA_SOCKET
+};
+
+typedef enum _SOCKET_APP_TYPE SOCKET_APP_TYPE;
 
 struct _ioa_socket;
 typedef struct _ioa_socket ioa_socket;
@@ -104,7 +116,10 @@ typedef struct _ioa_net_data {
 	int				recv_tos;
 } ioa_net_data;
 
+/* Callback on TCP connection completion */
 typedef void (*connect_cb)(int success, void *arg);
+/* Callback on accepted socket from TCP relay endpoint */
+typedef void (*accept_cb)(ioa_socket_handle s, void *arg);
 
 /*
  * Network buffer functions
@@ -145,19 +160,24 @@ void delete_ioa_timer(ioa_timer_handle th);
  */
 int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
-				u64bits *out_reservation_token, int *err_code, const u08bits **reason);
+				u64bits *out_reservation_token, int *err_code, const u08bits **reason,
+				accept_cb acb, void *acbarg);
 
 ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg);
 
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
 
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);
+SOCKET_APP_TYPE get_ioa_socket_app_type(ioa_socket_handle s);
+void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat);
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s);
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);
 int get_local_mtu_ioa_socket(ioa_socket_handle s);
 void *get_ioa_socket_session(ioa_socket_handle s);
 void set_ioa_socket_session(ioa_socket_handle s, void *ss);
-int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx);
+void *get_ioa_socket_sub_session(ioa_socket_handle s);
+void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc);
+int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx, int clean_preexisting);
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel, int ttl, int tos);
 void close_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)

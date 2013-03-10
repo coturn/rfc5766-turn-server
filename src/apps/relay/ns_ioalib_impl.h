@@ -101,17 +101,6 @@ struct _ioa_engine
   ioa_timer_handle timer_ev;
 };
 
-enum _SOCKET_APP_TYPE {
-	UNKNOWN_APP_SOCKET,
-	CLIENT_SOCKET,
-	RELAY_SOCKET,
-	RELAY_RTCP_SOCKET,
-	CHANNEL_SOCKET,
-	TCP_RELAY_DATA_SOCKET
-};
-
-typedef enum _SOCKET_APP_TYPE SOCKET_APP_TYPE;
-
 struct _ioa_socket
 {
 	evutil_socket_t fd;
@@ -146,9 +135,16 @@ struct _ioa_socket
 	turn_time_t jiffie;
 	band_limit_t jiffie_bytes;
 	/* RFC 6062 ==>> */
+	//Connection session:
+	void *sub_session;
+	//Connect:
 	struct bufferevent *conn_bev;
 	connect_cb conn_cb;
 	void *conn_arg;
+	//Accept:
+	struct evconnlistener *list_ev;
+	accept_cb acb;
+	void *acbarg;
 	/* <<== RFC 6062 */
 	TURN_MUTEX_DECLARE(mutex)
 };
