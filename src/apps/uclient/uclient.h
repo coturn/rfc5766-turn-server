@@ -62,6 +62,7 @@ extern int use_fingerprints;
 extern SSL_CTX *root_tls_ctx;
 extern int RTP_PACKET_INTERVAL;
 extern u08bits relay_transport;
+extern unsigned char client_ifname[1025];
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 

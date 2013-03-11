@@ -207,6 +207,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		addr_cpy(&(clnet_info->remote_addr), &remote_addr);
 		addr_cpy(&(clnet_info->local_addr), &local_addr);
 		clnet_info->fd = clnet_fd;
+		addr_get_from_sock(clnet_fd,&(clnet_info->local_addr));
 	}
 
 	if(use_secure) {
@@ -632,8 +633,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 	return 0;
 }
 
-static int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info,
-		ioa_addr *peer_addr) {
+int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
 
 	{
 		int cp_sent = 0;
@@ -853,12 +853,6 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 			if (turn_create_permission(verbose, clnet_info2_rtcp, &relay_addr1_rtcp) < 0) {
 				exit(-1);
 			}
-
-		if(is_TCP_relay()) {
-			if (turn_tcp_connect(verbose, clnet_info1, &relay_addr2) < 0) {
-				exit(-1);
-			}
-		}
 	}
 
 	addr_cpy(&(clnet_info1->peer_addr), &relay_addr2);
@@ -871,3 +865,50 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 	return 0;
 }
 
+//////////// RFC 6062 ///////////////
+
+void tcp_data_connect(app_ur_session *elem)
+{
+	int clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
+	if (clnet_fd < 0) {
+		perror("socket");
+		exit(-1);
+	}
+	if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+						"Cannot bind client socket to device %s\n", client_ifname);
+	}
+	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
+
+	addr_cpy(&(elem->pinfo.tcp_data_local_addr),&(elem->pinfo.local_addr));
+
+	addr_set_port(&(elem->pinfo.tcp_data_local_addr),0);
+
+	addr_bind(clnet_fd, &(elem->pinfo.tcp_data_local_addr));
+
+	addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_data_local_addr));
+
+	if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr)) < 0) {
+		perror("connect");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"%s: cannot connect to remote addr\n", __FUNCTION__);
+		exit(-1);
+	}
+
+	elem->pinfo.tcp_data_fd = clnet_fd;
+
+	if(use_secure) {
+		elem->pinfo.tcp_data_ssl = tls_connect(elem->pinfo.tcp_data_fd, &(elem->pinfo.remote_addr));
+		if(!(elem->pinfo.tcp_data_ssl)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: cannot SSL connect to remote addr\n", __FUNCTION__);
+			exit(-1);
+		}
+	}
+
+	evutil_make_socket_nonblocking(clnet_fd);
+
+	addr_debug_print(clnet_verbose, &(elem->pinfo.remote_addr), "TCP data network connected to");
+}
+
+/////////////////////////////////////////////////

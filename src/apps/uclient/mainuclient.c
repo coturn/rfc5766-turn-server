@@ -62,6 +62,7 @@ u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
 int use_fingerprints = 1;
 SSL_CTX *root_tls_ctx = NULL;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
+unsigned char client_ifname[1025] = "\0";
 
 //////////////// local definitions /////////////////
 
@@ -102,7 +103,6 @@ int main(int argc, char **argv)
 	char local_addr[256];
 	char c;
 	int mclient = 1;
-	unsigned char ifname[1025] = "\0";
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;
 
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 			dont_fragment = 1;
 			break;
 		case 'd':
-			STRCPY(ifname, optarg);
+			STRCPY(client_ifname, optarg);
 			break;
 		case 'x':
 			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 		SSL_CTX_set_read_ahead(root_tls_ctx, 1);
 	}
 
-	start_mclient(argv[optind], port, ifname, local_addr, messagenumber, mclient);
+	start_mclient(argv[optind], port, client_ifname, local_addr, messagenumber, mclient);
 
 	return 0;
 }

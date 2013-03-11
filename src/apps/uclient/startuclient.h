@@ -62,6 +62,10 @@ int start_connection(uint16_t clnet_remote_port,
 		     app_ur_conn_info *clnet_info_rtcp,
 		     uint16_t *chn_rtcp);
 
+int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr);
+
+void tcp_data_connect(app_ur_session *elem);
+
 ////////////////////////////////////////////
 
 #ifdef __cplusplus

@@ -32,6 +32,7 @@
 #define __SESSION__
 
 #include <event2/event.h>
+#include <event2/bufferevent.h>
 
 #include "ns_turn_ioaddr.h"
 #include "ns_turn_utils.h"
@@ -66,6 +67,11 @@ typedef struct {
   int broken;
   u08bits nonce[STUN_MAX_NONCE_SIZE+1];
   u08bits realm[STUN_MAX_REALM_SIZE+1];
+  /* RFC 6062 */
+  u32bits cid;
+  ioa_addr tcp_data_local_addr;
+  ioa_socket_raw tcp_data_fd;
+  SSL *tcp_data_ssl;
 } app_ur_conn_info;
 
 typedef struct {

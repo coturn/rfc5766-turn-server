@@ -109,6 +109,7 @@ static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
     memset(ss,0,sizeof(app_ur_session));
     ss->pinfo.fd=-1;
+    ss->pinfo.tcp_data_fd=-1;
   }
   return ss;
 }
@@ -122,20 +123,34 @@ static app_ur_session* create_new_ss(void)
 static void uc_delete_session_elem_data(app_ur_session* cdi) {
   if(cdi) {
     EVENT_DEL(cdi->input_ev);
+    if(cdi->pinfo.tcp_data_ssl && !(cdi->pinfo.broken)) {
+	    if(!(SSL_get_shutdown(cdi->pinfo.tcp_data_ssl) & SSL_SENT_SHUTDOWN)) {
+		    SSL_set_shutdown(cdi->pinfo.tcp_data_ssl, SSL_RECEIVED_SHUTDOWN);
+		    SSL_shutdown(cdi->pinfo.tcp_data_ssl);
+	    }
+    }
     if(cdi->pinfo.ssl && !(cdi->pinfo.broken)) {
 	    if(!(SSL_get_shutdown(cdi->pinfo.ssl) & SSL_SENT_SHUTDOWN)) {
 		    SSL_set_shutdown(cdi->pinfo.ssl, SSL_RECEIVED_SHUTDOWN);
 		    SSL_shutdown(cdi->pinfo.ssl);
 	    }
     }
-    if(cdi->pinfo.fd>=0) {
-      evutil_closesocket(cdi->pinfo.fd);
-    }
-    cdi->pinfo.fd=-1;
     if(cdi->pinfo.ssl) {
 	    SSL_free(cdi->pinfo.ssl);
 	    cdi->pinfo.ssl = NULL;
     }
+    if(cdi->pinfo.tcp_data_ssl) {
+	    SSL_free(cdi->pinfo.tcp_data_ssl);
+	    cdi->pinfo.tcp_data_ssl = NULL;
+    }
+    if(cdi->pinfo.tcp_data_fd>=0) {
+      evutil_closesocket(cdi->pinfo.tcp_data_fd);
+    }
+    cdi->pinfo.tcp_data_fd=-1;
+    if(cdi->pinfo.fd>=0) {
+      evutil_closesocket(cdi->pinfo.fd);
+    }
+    cdi->pinfo.fd=-1;
   }
 }
 
@@ -396,36 +411,52 @@ static int client_read(app_ur_session *elem) {
 		if (stun_is_indication(&(elem->in_buffer))) {
 
 			uint16_t method = stun_get_method(&elem->in_buffer);
-			if (method != STUN_METHOD_DATA) {
+
+			if((method == STUN_METHOD_CONNECTION_ATTEMPT)&& is_TCP_relay()) {
+				if(elem->pinfo.tcp_data_fd==-1) {
+					stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
+					if(sar) {
+						elem->pinfo.cid = *((const u32bits*)stun_attr_get_value(sar));
+						printf("%s: 111.000: Received connection indication: cid=%u\n",__FUNCTION__,(unsigned int)elem->pinfo.cid);
+						tcp_data_connect(elem);
+					}
+				}
+				return 0;
+			} else if (method != STUN_METHOD_DATA) {
 				TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
 						"ERROR: received indication message has wrong method: 0x%x\n",
 						(int) method);
 				return 0;
+			} else {
+
+				stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
+				if (!sar) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data, size=%d\n", rc);
+					return 0;
+				}
+
+				int rlen = stun_attr_get_len(sar);
+				if (rlen != clmessage_length) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen, clmessage_length);
+					return 0;
+				}
+
+				const u08bits* data = stun_attr_get_value(sar);
+
+				mi = (const message_info*) data;
 			}
-
-			stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer),
-					STUN_ATTRIBUTE_DATA);
-			if (!sar) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-						"ERROR: received DATA message has no data, size=%d\n",rc);
-				return 0;
-			}
-
-			int rlen = stun_attr_get_len(sar);
-			if (rlen != clmessage_length) {
-				TURN_LOG_FUNC(
-						TURN_LOG_LEVEL_INFO,
-						"ERROR: received DATA message has wrong len: %d, must be %d\n",
-						rlen, clmessage_length);
-				return 0;
-			}
-
-			const u08bits* data = stun_attr_get_value(sar);
-
-			mi = (const message_info*)data;
 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
+			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT) &&
+							(elem->pinfo.tcp_data_fd==-1)) {
+				stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
+				if(sar) {
+					elem->pinfo.cid = *((const u32bits*)stun_attr_get_value(sar));
+					printf("%s: 111.111: received Connect reply: cid=%u\n",__FUNCTION__,(unsigned int)elem->pinfo.cid);
+					tcp_data_connect(elem);
+				}
+			}
 			return 0;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
@@ -990,6 +1021,12 @@ void start_mclient(const char *remote_address, int port,
 	total_clients = tot_clients;
 
 	for(i=0;i<total_clients;i++) {
+
+		if(is_TCP_relay() && (i%2 == 0)) {
+			if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
+				exit(-1);
+			}
+		}
 		__turn_getMSTime();
 		elems[i]->to_send_timems = current_mstime + ((u32bits)random())%500;
 	}
