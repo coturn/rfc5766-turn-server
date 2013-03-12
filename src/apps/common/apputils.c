@@ -369,6 +369,11 @@ int handle_socket_error() {
      */
     return 1;
   case EAGAIN:
+#if defined(EWOULDBLOCK)
+#if (EWOULDBLOCK != EAGAIN)
+  case EWOULDBLOCK:
+#endif
+#endif
     return 1;
   case EMSGSIZE:
     return 1;

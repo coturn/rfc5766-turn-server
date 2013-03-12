@@ -506,7 +506,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	do {
 		rc = recvfrom(fd, buf, sizeof(buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
-	} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+	} while (rc < 0 && (errno == EINTR));
 
 	addr_cpy(&client_addr, &si_other);
 
@@ -585,7 +585,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		do {
 			rc = recvfrom(fd, buf, sizeof(buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
-		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		} while (rc < 0 && (errno == EINTR));
 	}
 
 	if (server->stats)

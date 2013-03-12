@@ -97,7 +97,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	do {
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
-	} while (bsize < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+	} while (bsize < 0 && (errno == EINTR));
 
 	if (bsize > 0) {
 

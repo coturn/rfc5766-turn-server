@@ -1304,8 +1304,14 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
 	return -1;
 }
 
-static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose)
+/*
+ * Return: -1 - error, 0 or >0 - OK
+ * *read_len -1 - no data, >=0 - data available
+ */
+static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
 {
+
+	*read_len = -1;
 
 	if (!ssl || !buffer)
 		return -1;
@@ -1336,6 +1342,7 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose)
 	}
 
 	if (len >= 0) {
+		*read_len = len;
 		return len;
 	} else {
 		switch (SSL_get_error(ssl, len)){
@@ -1378,8 +1385,9 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose)
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
-static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos)
+static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, int *read_len)
 {
+	*read_len = -1;
 
 	if (fd < 0 || !orig_addr || !like_addr || !buffer)
 		return -1;
@@ -1392,7 +1400,7 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 #if !defined(CMSG_SPACE)
 	do {
 	  len = recvfrom(fd, buffer, buf_size, 0, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
-	} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+	} while (len < 0 && (errno == EINTR));
 
 #else
 	struct msghdr msg;
@@ -1413,9 +1421,11 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 
 	do {
 		len = recvmsg(fd,&msg,0);
-	} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+	} while (len < 0 && (errno == EINTR));
 
 	if (len >= 0) {
+
+		*read_len = len;
 
 		struct cmsghdr *cmsgh;
 
@@ -1481,6 +1491,7 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 static int socket_input_worker(ioa_socket_handle s)
 {
 	int len = 0;
+	int ret = 0;
 	int ttl = TTL_IGNORE;
 	int tos = TOS_IGNORE;
 	ioa_addr remote_addr;
@@ -1527,17 +1538,20 @@ static int socket_input_worker(ioa_socket_handle s)
 				if(mlen>0 && mlen<=(int)blen) {
 					len = (int)bufferevent_read(s->bev, elem->buf.buf, mlen);
 					if(len < 0) {
+						ret = -1;
 						s->tobeclosed = 1;
 						s->broken = 1;
 					} else if(s->st == TLS_SOCKET) {
 #if !defined(TURN_NO_TLS)
 						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
 						if(!ctx || SSL_get_shutdown(ctx)) {
+							ret = -1;
 							s->tobeclosed = 1;
 						}
 #endif
 					}
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
+					ret = -1;
 					s->tobeclosed = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bad TCP message, session to be closed.\n",
 							__FUNCTION__);
@@ -1545,27 +1559,30 @@ static int socket_input_worker(ioa_socket_handle s)
 			} else if(blen<0) {
 				s->tobeclosed = 1;
 				s->broken = 1;
+				ret = -1;
 			}
 		} else {
 			s->tobeclosed = 1;
 			s->broken = 1;
+			ret = -1;
 		}
 	} else if(s->ssl) { /* DTLS */
 		send_backlog_buffers(s);
-		len = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), s->e->verbose);
+		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), s->e->verbose, &len);
 		addr_cpy(&remote_addr,&(s->remote_addr));
-		if(len < 0) {
+		if(ret < 0) {
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
 	} else if(s->fd>=0){
-		len = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos);
+		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos, &len);
 	} else {
 		s->tobeclosed = 1;
 		s->broken = 1;
+		ret = -1;
 	}
 
-	if (len >= 0) {
+	if ((ret!=-1) && (len >= 0)) {
 		if(ioa_socket_check_bandwidth(s,(size_t)len)) {
 			elem->buf.len = len;
 			if(s->read_cb) {
@@ -1841,11 +1858,19 @@ int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffe
 		int slen = get_ioa_addr_len(dest_addr);
 		do {
 			rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (rc < 0 && (errno == EINTR));
+		if(rc<0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+			//Lost packet
+			rc = len;
+		}
 	} else {
 		do {
 			rc = send(fd, buffer, len, 0);
-		} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+		} while (rc < 0 && (errno == EINTR));
+		if(rc<0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+			//Lost packet
+			rc = len;
+		}
 	}
 
 	return rc;

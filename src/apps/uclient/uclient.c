@@ -268,7 +268,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message) {
 
 		do {
 			rc = recv(clnet_info->fd, message->buf, sizeof(message->buf) - 1, 0);
-		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		} while (rc < 0 && (errno == EINTR));
 
 		if (rc < 0)
 			return -1;
@@ -289,7 +289,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message) {
 			do {
 				rc = SSL_read(clnet_info->ssl, message->buf,
 								sizeof(message->buf) - 1);
-			} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+			} while (rc < 0 && (errno == EINTR));
 
 			if (rc > 0) {
 
@@ -354,13 +354,13 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message) {
 
 		do {
 			rc = recv(clnet_info->fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
-		} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		} while (rc < 0 && (errno == EINTR));
 		if(rc>0) {
 			int mlen = stun_get_message_len_str(message->buf, rc);
 			if(mlen>0 && mlen<=rc) {
 				do {
 					rc = recv(clnet_info->fd, message->buf, (size_t)mlen, 0);
-				} while (rc < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+				} while (rc < 0 && (errno == EINTR));
 
 				if (rc < 0)
 					return -1;

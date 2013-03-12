@@ -47,7 +47,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg) 
 
   do {
     len = recvfrom(fd, buffer.buf, sizeof(buffer.buf)-1, 0, (struct sockaddr*) &remote_addr, (socklen_t*) &slen);
-  } while(len<0 && ((errno==EINTR)||(errno==EAGAIN)));
+  } while(len<0 && (errno==EINTR));
   
   buffer.len=len;
 

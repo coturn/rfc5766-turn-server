@@ -179,7 +179,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 				ptr += len;
 				break;
 			}
-		} while (len < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+		} while (len < 0 && (errno == EINTR));
 
 		if (recvd > 0)
 			len = recvd;
