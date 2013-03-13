@@ -181,10 +181,10 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		int ret = 0;
 		(((turn_turnserver*)ss->server)->raqcb)(ss->username);
 		if (ss->client_session.s) {
-			set_ioa_socket_session(ss->client_session.s, NULL);
+			clear_ioa_socket_session_if(ss->client_session.s, ss);
 		}
 		if (get_relay_socket_ss(ss)) {
-			set_ioa_socket_session(get_relay_socket_ss(ss), NULL);
+			clear_ioa_socket_session_if(get_relay_socket_ss(ss), ss);
 		}
 		delete_ur_map_ss(ss);
 		return ret;
@@ -1056,7 +1056,7 @@ static int bind_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss,
 		ts_ur_super_session *ss_orig = (ts_ur_super_session*)(a->owner);
 		tc->state = TC_STATE_READY;
 		tc->client_s = ss->client_session.s;
-		ss->client_session.s = NULL;
+		inc_ioa_socket_ref_counter(ss->client_session.s);
 		set_ioa_socket_session(tc->client_s,ss_orig);
 		set_ioa_socket_sub_session(tc->client_s,tc);
 		set_ioa_socket_app_type(tc->client_s,TCP_CLIENT_DATA_SOCKET);
@@ -1085,7 +1085,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND cannot be issued after allocation";
 
-	} else if(!(ss->is_tcp_relay)) {
+	} else if((get_ioa_socket_type(ss->client_session.s)!=TCP_SOCKET) && (get_ioa_socket_type(ss->client_session.s)!=TLS_SOCKET)) {
 
 		*err_code = 400;
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
@@ -2057,14 +2057,17 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 
 	if (server->verbose) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"closing connection 0x%lx in state %ld\n", (long) elem->s,
-				(long) (elem->state));
+				"closing session 0x%lx, client socket 0x%lx in state %ld (socket session=0x%lx)\n",
+				(long) ss,
+				(long) elem->s,
+				(long) (elem->state),
+				(long)get_ioa_socket_session(elem->s));
 	}
 
 	if (elem->state == UR_STATE_DONE) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"!!! closing connection 0x%lx in DONE state %ld\n",
-				(long) elem->s, (long) (elem->state));
+				"!!! closing session 0x%lx, socket 0x%lx in DONE state %ld\n",
+				(long)ss, (long) elem->s, (long) (elem->state));
 		return -1;
 	}
 
@@ -2073,6 +2076,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 	if (server->disconnect)
 		server->disconnect(ss);
 
+	clear_ioa_socket_session_if(elem->s,ss);
 	IOA_CLOSE_SOCKET(elem->s);
 
 	turn_server_remove_all_from_ur_map_ss(ss);

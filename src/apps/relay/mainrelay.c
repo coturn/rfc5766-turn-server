@@ -680,10 +680,14 @@ static void clean_server(void)
 				delete_turn_server(relay_servers[i]->server);
 				if(relay_servers[i]->ioa_eng != listener.ioa_eng)
 					close_ioa_engine(relay_servers[i]->ioa_eng);
-				if(relay_servers[i]->in_buf)
+				if(relay_servers[i]->in_buf) {
+					bufferevent_disable(relay_servers[i]->in_buf,EV_READ|EV_WRITE);
 					bufferevent_free(relay_servers[i]->in_buf);
-				if(relay_servers[i]->out_buf)
+				}
+				if(relay_servers[i]->out_buf) {
+					bufferevent_disable(relay_servers[i]->out_buf,EV_READ|EV_WRITE);
 					bufferevent_free(relay_servers[i]->out_buf);
+				}
 				if(relay_servers[i]->event_base != listener.event_base)
 					event_base_free(relay_servers[i]->event_base);
 				free(relay_servers[i]);
@@ -1472,7 +1476,7 @@ int main(int argc, char **argv)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: OpenSSL version is too old, DTLS is not supported\n");
 #endif
 
-	set_system_parameters();
+	set_system_parameters(1);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);

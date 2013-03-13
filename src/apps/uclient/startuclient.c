@@ -271,7 +271,7 @@ static int clnet_allocate(int verbose,
 
 		while (!allocate_sent) {
 
-			int len = send_buffer(clnet_info, &message);
+			int len = send_buffer(clnet_info, &message,0);
 
 			if (len > 0) {
 				if (verbose) {
@@ -292,7 +292,7 @@ static int clnet_allocate(int verbose,
 			stun_buffer message;
 			while (!allocate_received) {
 
-				int len = recv_buffer(clnet_info, &message);
+				int len = recv_buffer(clnet_info, &message, 1, 0);
 
 				if (len > 0) {
 					if (verbose) {
@@ -405,7 +405,7 @@ static int clnet_allocate(int verbose,
 
 			while (!refresh_sent) {
 
-				int len = send_buffer(clnet_info, &message);
+				int len = send_buffer(clnet_info, &message, 0);
 
 				if (len > 0) {
 					if (verbose) {
@@ -425,7 +425,7 @@ static int clnet_allocate(int verbose,
 			stun_buffer message;
 			while (!refresh_received) {
 
-				int len = recv_buffer(clnet_info, &message);
+				int len = recv_buffer(clnet_info, &message, 1, 0);
 
 				if (len > 0) {
 					if (verbose) {
@@ -489,7 +489,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		while (!cb_sent) {
 
-			int len = send_buffer(clnet_info, &message);
+			int len = send_buffer(clnet_info, &message, 0);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cb sent\n");
@@ -511,7 +511,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 		stun_buffer message;
 		while (!cb_received) {
 
-			int len = recv_buffer(clnet_info, &message);
+			int len = recv_buffer(clnet_info, &message, 1, 0);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -574,7 +574,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 		while (!cp_sent) {
 
-			int len = send_buffer(clnet_info, &message);
+			int len = send_buffer(clnet_info, &message, 0);
 
 			if (len > 0) {
 				if (verbose) {
@@ -597,7 +597,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		stun_buffer message;
 		while (!cp_received) {
 
-			int len = recv_buffer(clnet_info, &message);
+			int len = recv_buffer(clnet_info, &message, 1, 0);
 			if (len > 0) {
 				if (verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -629,47 +629,6 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 			}
 		}
 	}
-
-	return 0;
-}
-
-int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
-
-	{
-		int cp_sent = 0;
-
-		stun_buffer message;
-
-		stun_init_request(STUN_METHOD_CONNECT, &message);
-		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
-
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
-
-		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
-
-		while (!cp_sent) {
-
-			int len = send_buffer(clnet_info, &message);
-
-			if (len > 0) {
-				if (verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cp sent\n");
-				}
-				cp_sent = 1;
-			} else {
-				perror("send");
-				exit(1);
-			}
-		}
-	}
-
-	////////////<<==create permission send
 
 	return 0;
 }
@@ -867,6 +826,133 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 
 //////////// RFC 6062 ///////////////
 
+int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_addr) {
+
+	{
+		int cp_sent = 0;
+
+		stun_buffer message;
+
+		stun_init_request(STUN_METHOD_CONNECT, &message);
+		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+		if(clnet_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
+
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
+		while (!cp_sent) {
+
+			int len = send_buffer(clnet_info, &message, 0);
+
+			if (len > 0) {
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cp sent\n");
+				}
+				cp_sent = 1;
+			} else {
+				perror("send");
+				exit(1);
+			}
+		}
+	}
+
+	////////////<<==connect send
+
+	return 0;
+}
+
+static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info) {
+
+	beg_cb:
+
+	{
+		int cb_sent = 0;
+
+		stun_buffer message;
+
+		stun_init_request(STUN_METHOD_CONNECTION_BIND, &message);
+		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&(clnet_info->cid),4);
+
+		if(clnet_info->nonce[0]) {
+			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
+						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+				return -1;
+			}
+		}
+
+		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
+
+		while (!cb_sent) {
+
+			int len = send_buffer(clnet_info, &message, 1);
+
+			if (len > 0) {
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "cp sent\n");
+				}
+				cb_sent = 1;
+			} else {
+				perror("send");
+				exit(1);
+			}
+		}
+	}
+
+	////////////<<==connection bind send
+
+	////////connection bind response==>>
+
+	{
+		int cb_received = 0;
+		stun_buffer message;
+		while (!cb_received) {
+
+			int len = recv_buffer(clnet_info, &message, 1, 1);
+			if (len > 0) {
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"cb response received: \n");
+				}
+				int err_code = 0;
+				u08bits err_msg[129];
+				if (stun_is_success_response(&message)) {
+					if(stun_get_method(&message)!=STUN_METHOD_CONNECTION_BIND)
+						continue;
+					cb_received = 1;
+					if (verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
+					}
+					clnet_info->tcp_data_bound = 1;
+				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
+										&err_code,err_msg,sizeof(err_msg),
+										clnet_info->realm,clnet_info->nonce)) {
+					goto beg_cb;
+				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
+					cb_received = 1;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "connection bind error %d (%s)\n",
+							      err_code,(char*)err_msg);
+					return -1;
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "unknown connection bind response\n");
+					/* Try again ? */
+				}
+			} else {
+				perror("recv");
+				exit(-1);
+			}
+		}
+	}
+
+	return 0;
+}
+
 void tcp_data_connect(app_ur_session *elem)
 {
 	int clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
@@ -907,6 +993,16 @@ void tcp_data_connect(app_ur_session *elem)
 	}
 
 	evutil_make_socket_nonblocking(clnet_fd);
+
+	turn_tcp_connection_bind(clnet_verbose, &(elem->pinfo));
+
+	struct event* ev = event_new(client_event_base,clnet_fd,
+					EV_READ|EV_PERSIST,client_input_handler,
+					elem);
+
+	event_add(ev,NULL);
+
+	elem->input_tcp_data_ev = ev;
 
 	addr_debug_print(clnet_verbose, &(elem->pinfo.remote_addr), "TCP data network connected to");
 }

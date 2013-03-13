@@ -413,7 +413,7 @@ int main(int argc, char **argv)
   char local_addr[256]="\0";
   char c=0;
 
-  set_system_parameters();
+  set_system_parameters(0);
   
   memset(local_addr, 0, sizeof(local_addr));
 

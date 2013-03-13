@@ -48,7 +48,7 @@ int main(int argc, const char **argv)
 	UNUSED_ARG(argc);
 	UNUSED_ARG(argv);
 
-	set_system_parameters();
+	set_system_parameters(0);
 
 	{
 		const unsigned char reqltc[] = "\x00\x01\x00\x60"

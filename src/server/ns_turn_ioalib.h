@@ -152,7 +152,11 @@ void stop_ioa_timer(ioa_timer_handle th);
 void delete_ioa_timer(ioa_timer_handle th);
 #define IOA_EVENT_DEL(E) do { if(E) { delete_ioa_timer(E); E = NULL; } } while(0)
 
-/* RTP socket handling */
+ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat);
+
+void inc_ioa_socket_ref_counter(ioa_socket_handle s);
+
+/* Relay socket handling */
 /*
  * event_port == -1: no rtcp;
  * event_port == 0: reserve rtcp;
@@ -167,6 +171,7 @@ ioa_socket_handle  ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, i
 
 int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_token, ioa_socket_handle *s);
 
+int get_ioa_socket_address_family(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);
 SOCKET_APP_TYPE get_ioa_socket_app_type(ioa_socket_handle s);
 void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat);
@@ -175,6 +180,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);
 int get_local_mtu_ioa_socket(ioa_socket_handle s);
 void *get_ioa_socket_session(ioa_socket_handle s);
 void set_ioa_socket_session(ioa_socket_handle s, void *ss);
+void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss);
 void *get_ioa_socket_sub_session(ioa_socket_handle s);
 void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc);
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx, int clean_preexisting);

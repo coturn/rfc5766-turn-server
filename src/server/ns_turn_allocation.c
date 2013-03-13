@@ -55,6 +55,7 @@ void clean_allocation(allocation *a)
 			delete_tcp_connection(tc);
 		}
 
+		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
 		delete_ur_map_session_elem_data(&(a->relay_session));
 
 		IOA_EVENT_DEL(a->lifetime_ev);
@@ -412,7 +413,9 @@ void delete_tcp_connection(tcp_connection *tc)
 				}
 			}
 		}
+		set_ioa_socket_sub_session(tc->client_s,NULL);
 		IOA_CLOSE_SOCKET(tc->client_s);
+		set_ioa_socket_sub_session(tc->peer_s,NULL);
 		IOA_CLOSE_SOCKET(tc->peer_s);
 		turn_free(tc,sizeof(tcp_connection));
 	}
@@ -423,6 +426,7 @@ tcp_connection *get_tcp_connection_by_id(ur_map *map, u32bits id)
 	if(map) {
 		ur_map_value_type t = 0;
 		if (ur_map_get(map, (ur_map_key_type)id, &t) && t) {
+			ur_map_del(map, (ur_map_key_type)id,NULL);
 			return (tcp_connection*)t;
 		}
 	}

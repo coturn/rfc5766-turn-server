@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 
 	set_execdir();
 
-	set_system_parameters();
+	set_system_parameters(0);
 
 	memset(local_addr, 0, sizeof(local_addr));
 

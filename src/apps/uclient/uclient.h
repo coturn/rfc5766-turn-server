@@ -63,6 +63,7 @@ extern SSL_CTX *root_tls_ctx;
 extern int RTP_PACKET_INTERVAL;
 extern u08bits relay_transport;
 extern unsigned char client_ifname[1025];
+extern struct event_base* client_event_base;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
@@ -70,8 +71,10 @@ void start_mclient(const char *remote_address, int port,
 		   const unsigned char* ifname, const char *local_address,
 		   int messagenumber, int mclient);
 
-int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message);
+int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_connection);
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, int is_tcp_data);
+
+void client_input_handler(evutil_socket_t fd, short what, void* arg);
 
 ////////////////////////////////////////////
 

@@ -699,7 +699,7 @@ static int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
-static ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
+ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
@@ -945,6 +945,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
 			if(ret->conn_bev) {
+				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 				bufferevent_free(ret->conn_bev);
 				ret->conn_bev=NULL;
 			}
@@ -957,6 +958,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
 			if(ret->conn_bev) {
+				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 				bufferevent_free(ret->conn_bev);
 				ret->conn_bev=NULL;
 			}
@@ -981,6 +983,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	set_ioa_socket_session(ret, s->session);
 
 	if(ret->conn_bev) {
+		bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 		bufferevent_free(ret->conn_bev);
 		ret->conn_bev=NULL;
 	}
@@ -1157,6 +1160,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 			s->list_ev = NULL;
 		}
 		if(s->conn_bev) {
+			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->conn_bev);
 			s->conn_bev=NULL;
 		}
@@ -1183,6 +1187,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 #endif
 				}
 			}
+			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->bev);
 			s->bev=NULL;
 			s->fd=-1;
@@ -1206,6 +1211,10 @@ static void close_socket_net_data(ioa_socket_handle s)
 void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
+		if(s->ref_counter) {
+			s->ref_counter -= 1;
+			return;
+		}
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
@@ -1237,6 +1246,13 @@ void set_ioa_socket_session(ioa_socket_handle s, void *ss)
 		s->session = ss;
 }
 
+void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss)
+{
+	if(s && s->session==ss) {
+		s->session=NULL;
+	}
+}
+
 void *get_ioa_socket_sub_session(ioa_socket_handle s)
 {
 	return s->sub_session;
@@ -1246,6 +1262,21 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc)
 {
 	if(s)
 		s->sub_session = tc;
+}
+
+void inc_ioa_socket_ref_counter(ioa_socket_handle s)
+{
+	if(s) {
+		s->ref_counter += 1;
+	}
+}
+
+int get_ioa_socket_address_family(ioa_socket_handle s) {
+	if(!s) {
+		return AF_INET;
+	} else {
+		return s->family;
+	}
 }
 
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s)
@@ -1522,7 +1553,7 @@ static int socket_input_worker(ioa_socket_handle s)
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
 	len = -1;
 
-	if(s->bev) {
+	if(s->bev) { /* TCP & TLS */
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
 		if(inbuf) {
 			ev_ssize_t blen = evbuffer_copyout(inbuf, elem->buf.buf, sizeof(elem->buf.buf));
@@ -1550,6 +1581,8 @@ static int socket_input_worker(ioa_socket_handle s)
 						}
 #endif
 					}
+					if(ret != -1)
+						ret = len;
 				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
 					ret = -1;
 					s->tobeclosed = 1;
@@ -1566,6 +1599,8 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->broken = 1;
 			ret = -1;
 		}
+		if(len == 0)
+			len = -1;
 	} else if(s->ssl) { /* DTLS */
 		send_backlog_buffers(s);
 		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), s->e->verbose, &len);
@@ -1574,7 +1609,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
-	} else if(s->fd>=0){
+	} else if(s->fd>=0){ /* UDP */
 		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos, &len);
 	} else {
 		s->tobeclosed = 1;
@@ -1649,8 +1684,11 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		case TCP_RELAY_DATA_SOCKET:
 		{
 			tcp_connection *tc = (tcp_connection *)(s->sub_session);
-			if(tc)
+			if(tc) {
+				s->sub_session = NULL;
+				s->session = NULL;
 				delete_tcp_connection(tc);
+			}
 		}
 		break;
 		default:
@@ -1659,6 +1697,8 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 			if (ss) {
 				turn_turnserver *server = (turn_turnserver *)ss->server;
 				if (server) {
+					s->session=NULL;
+					s->sub_session=NULL;
 					shutdown_client_connection(server, ss);
 				}
 			}
@@ -1695,8 +1735,11 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			case TCP_RELAY_DATA_SOCKET:
 			{
 				tcp_connection *tc = (tcp_connection *)(s->sub_session);
-				if(tc)
+				if(tc) {
+					s->sub_session = NULL;
+					s->session = NULL;
 					delete_tcp_connection(tc);
+				}
 			}
 			break;
 			default:
@@ -1705,6 +1748,8 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *)ss->server;
 					if (server) {
+						s->session=NULL;
+						s->sub_session=NULL;
 						shutdown_client_connection(server, ss);
 					}
 				}
@@ -1733,12 +1778,30 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			if (events == BEV_EVENT_ERROR)
 				s->broken = 1;
 
-			ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
-			if (ss) {
-				turn_turnserver *server = (turn_turnserver *) ss->server;
-				if (server) {
-					shutdown_client_connection(server, ss);
+			switch (s->sat){
+			case TCP_CLIENT_DATA_SOCKET:
+			case TCP_RELAY_DATA_SOCKET:
+			{
+				tcp_connection *tc = (tcp_connection *) (s->sub_session);
+				if (tc) {
+					s->sub_session = NULL;
+					s->session = NULL;
+					delete_tcp_connection(tc);
 				}
+			}
+				break;
+			default:
+			{
+				ts_ur_super_session *ss = (ts_ur_super_session *) (s->session);
+				if (ss) {
+					turn_turnserver *server = (turn_turnserver *) ss->server;
+					if (server) {
+						s->session = NULL;
+						s->sub_session = NULL;
+						shutdown_client_connection(server, ss);
+					}
+				}
+			}
 			}
 		}
 	}

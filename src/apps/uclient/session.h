@@ -72,6 +72,7 @@ typedef struct {
   ioa_addr tcp_data_local_addr;
   ioa_socket_raw tcp_data_fd;
   SSL *tcp_data_ssl;
+  int tcp_data_bound;
 } app_ur_conn_info;
 
 typedef struct {
@@ -82,7 +83,8 @@ typedef struct {
   int wait_cycles;
   int timer_cycle;
   int known_mtu;
-  struct event *input_ev; 
+  struct event *input_ev;
+  struct event *input_tcp_data_ev;
   stun_buffer in_buffer;
   stun_buffer out_buffer;
   u32bits refresh_time;

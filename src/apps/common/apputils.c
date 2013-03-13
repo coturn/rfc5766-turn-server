@@ -518,7 +518,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 /////////////////// SYS SETTINGS ///////////////////////
 
-void set_system_parameters(void)
+void set_system_parameters(int max_resources)
 {
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
@@ -526,7 +526,7 @@ void set_system_parameters(void)
 	/* Ignore SIGPIPE from TCP sockets */
 	signal(SIGPIPE, SIG_IGN);
 
-	{
+	if(max_resources) {
 		struct rlimit rlim;
 		if(getrlimit(RLIMIT_NOFILE, &rlim)<0) {
 			perror("Cannot get system limit");

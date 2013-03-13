@@ -103,6 +103,7 @@ struct _ioa_engine
 
 struct _ioa_socket
 {
+	int ref_counter;
 	evutil_socket_t fd;
 	struct bufferevent *bev;
 	ioa_network_buffer_handle defer_nbh;
