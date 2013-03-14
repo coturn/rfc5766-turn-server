@@ -748,6 +748,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
+			addr_get_from_sock(s->fd, &(s->local_addr));
 			return 0;
 		}
 	}
@@ -973,7 +974,11 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 {
 	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
 
-	if(bind_ioa_socket(ret, &(s->local_addr))<0) {
+	ioa_addr local_addr;
+	addr_cpy(&local_addr,&(s->local_addr));
+	addr_set_port(&local_addr,0);
+
+	if(bind_ioa_socket(ret, &local_addr)<0) {
 		IOA_CLOSE_SOCKET(ret);
 		return NULL;
 	}
@@ -1560,6 +1565,9 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(blen>0) {
 				int mlen = 0;
 
+				if(blen>(ev_ssize_t)sizeof(elem->buf.buf))
+				  blen=(ev_ssize_t)sizeof(elem->buf.buf);
+
 				if(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
 					mlen = blen;
 				} else {
@@ -1583,11 +1591,6 @@ static int socket_input_worker(ioa_socket_handle s)
 					}
 					if(ret != -1)
 						ret = len;
-				} else if(blen>=TOO_BIG_BAD_TCP_MESSAGE) {
-					ret = -1;
-					s->tobeclosed = 1;
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: bad TCP message, session to be closed.\n",
-							__FUNCTION__);
 				}
 			} else if(blen<0) {
 				s->tobeclosed = 1;

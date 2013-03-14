@@ -607,6 +607,10 @@ static int client_write(app_ur_session *elem) {
 
   if(!elem) return -1;
 
+  if(is_TCP_relay() && !(elem->pinfo.tcp_data_bound)) {
+    return 0;
+  }
+
   if(elem->state!=UR_STATE_READY) return -1;
 
   elem->ctime=current_time;
@@ -616,8 +620,8 @@ static int client_write(app_ur_session *elem) {
   mi->mstime=current_mstime;
 
   if(is_TCP_relay()) {
-	  memcpy(elem->out_buffer.buf,buffer_to_send,clmessage_length);
-	  elem->out_buffer.len = clmessage_length;
+    memcpy(elem->out_buffer.buf,buffer_to_send,clmessage_length);
+    elem->out_buffer.len = clmessage_length;
   } else if(!do_not_use_channel) {
     stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length);
     memcpy(elem->out_buffer.buf+4,buffer_to_send,clmessage_length);
