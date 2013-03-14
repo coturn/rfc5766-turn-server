@@ -445,13 +445,21 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 
 		const message_info *mi = NULL;
 
+		size_t buffers = 1;
+
 		 if(is_tcp_data) {
 			if (elem->in_buffer.len >= 0) {
-				if (elem->in_buffer.len != clmessage_length) {
+				if (elem->in_buffer.len > clmessage_length) {
 					TURN_LOG_FUNC(
-									TURN_LOG_LEVEL_INFO,
-									"ERROR: received buffer have wrong length: %d, must be %d\n",
-									rc, clmessage_length);
+						TURN_LOG_LEVEL_INFO,
+						"WARNING: received multiple buffers: length: %d, length of single buffer must be %d\n",
+						rc, clmessage_length);
+					buffers=elem->in_buffer.len/clmessage_length;
+				} else if (elem->in_buffer.len < clmessage_length) {
+					TURN_LOG_FUNC(
+						TURN_LOG_LEVEL_INFO,
+						"ERROR: received wrong buffer size: length: %d, must be %d\n",
+						rc, clmessage_length);
 					return 0;
 				}
 
@@ -565,8 +573,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 			elem->recvmsgnum = mi->msgnum;
 		}
 
-		++elem->rmsgnum;
-		++tot_recv_messages;
+		elem->rmsgnum+=buffers;
+		tot_recv_messages+=buffers;
 		elem->recvtimems=current_mstime;
 		elem->wait_cycles = 0;
 
@@ -978,7 +986,7 @@ static inline int client_timer_handler(app_ur_session* elem)
 				}
 			} else {
 				client_write(elem);
-				elem->finished_time = current_mstime + 1*1000;
+				elem->finished_time = current_mstime + 5*1000;
 			}
 		}
 	}

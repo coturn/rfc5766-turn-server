@@ -100,6 +100,7 @@ typedef struct
 	ioa_timer_handle conn_bind_timeout;
 	stun_tid tid;
 	void *owner; //a
+	int done;
 } tcp_connection;
 
 ////////////////////////////////

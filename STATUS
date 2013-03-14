@@ -38,6 +38,8 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 13) RFC 5780 STUN extension: NAT behavior discovery.
 
 14) C++ mapping implemented.
+
+15) RFC 6062 TCP relaying implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

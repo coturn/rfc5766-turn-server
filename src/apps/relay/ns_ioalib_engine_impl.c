@@ -1225,7 +1225,7 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,
-					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
+					(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
 					&(s->local_addr));
 		}
 
@@ -1560,7 +1560,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(blen>0) {
 				int mlen = 0;
 
-				if((s->st == TCP_SOCKET) &&((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
+				if(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
 					mlen = blen;
 				} else {
 					mlen = stun_get_message_len_str(elem->buf.buf, blen);

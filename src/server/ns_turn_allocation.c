@@ -395,6 +395,11 @@ tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *pe
 void delete_tcp_connection(tcp_connection *tc)
 {
 	if(tc) {
+		if(tc->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed tcp data connection: 0x%lx\n",__FUNCTION__);
+			return;
+		}
+		tc->done = 1;
 		IOA_EVENT_DEL(tc->peer_conn_timeout);
 		IOA_EVENT_DEL(tc->conn_bind_timeout);
 		allocation *a = (allocation*)(tc->owner);
