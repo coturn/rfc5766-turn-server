@@ -367,6 +367,9 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, in
 									"Unexpected error while reading: rc=%d, sslerr=%d\n",rc,sslerr);
 					return -1;
 				}
+
+				if(!sync)
+				  break;
 			}
 		}
 
@@ -460,7 +463,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 						TURN_LOG_LEVEL_INFO,
 						"ERROR: received wrong buffer size: length: %d, must be %d\n",
 						rc, clmessage_length);
-					return 0;
+					return rc;
 				}
 
 				mi = (message_info*)(elem->in_buffer.buf);
@@ -477,25 +480,25 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 						tcp_data_connect(elem);
 					}
 				}
-				return 0;
+				return rc;
 			} else if (method != STUN_METHOD_DATA) {
 				TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
 						"ERROR: received indication message has wrong method: 0x%x\n",
 						(int) method);
-				return 0;
+				return rc;
 			} else {
 
 				stun_attr_ref sar = stun_attr_get_first_by_type(&(elem->in_buffer), STUN_ATTRIBUTE_DATA);
 				if (!sar) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has no data, size=%d\n", rc);
-					return 0;
+					return rc;
 				}
 
 				int rlen = stun_attr_get_len(sar);
 				if (rlen != clmessage_length) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen, clmessage_length);
-					return 0;
+					return rc;
 				}
 
 				const u08bits* data = stun_attr_get_value(sar);
@@ -512,7 +515,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 					tcp_data_connect(elem);
 				}
 			}
-			return 0;
+			return rc;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
 							clnet_info->realm,clnet_info->nonce)) {
@@ -524,7 +527,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"ERROR: received message has wrong channel: %d\n",
 						(int) chnumber);
-				return 0;
+				return rc;
 			}
 
 			if (elem->in_buffer.len >= 0) {
@@ -533,7 +536,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 							TURN_LOG_LEVEL_INFO,
 							"ERROR: received buffer have wrong length: %d, must be %d\n",
 							rc, clmessage_length + 4);
-					return 0;
+					return rc;
 				}
 
 				mi = (message_info*)(elem->in_buffer.buf + 4);
@@ -541,7 +544,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 					"ERROR: Unknown message received of size: %d\n",(int)(elem->in_buffer.len));
-			return 0;
+			return rc;
 		}
 
 		if(mi) {
@@ -584,7 +587,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data) {
 		return -1;
 	}
 
-	return 0;
+	return rc;
 }
 
 static int client_shutdown(app_ur_session *elem) {
@@ -674,11 +677,10 @@ void client_input_handler(evutil_socket_t fd, short what, void* arg) {
   case UR_STATE_READY:
   {
 	  int is_tcp_data = (fd==elem->pinfo.tcp_data_fd) && (elem->pinfo.tcp_data_bound);
-	  if(is_tcp_data) {
-		  while(client_read(elem, 1));
-	  } else {
-		  client_read(elem, 0);
-	  }
+	  do {
+	    int rc = client_read(elem, is_tcp_data);
+	    if(rc<=0) break;
+	  } while(1);
   }
     break;
   default:
@@ -1088,6 +1090,8 @@ void start_mclient(const char *remote_address, int port,
 
 	total_clients = tot_clients;
 
+	__turn_getMSTime();
+
 	for(i=0;i<total_clients;i++) {
 
 		if(is_TCP_relay() && (i%2 == 0)) {
@@ -1095,6 +1099,8 @@ void start_mclient(const char *remote_address, int port,
 				exit(-1);
 			}
 		}
+		timer_handler();
+		run_events();
 		__turn_getMSTime();
 		elems[i]->to_send_timems = current_mstime + ((u32bits)random())%500;
 	}

@@ -127,6 +127,20 @@ Flags:
 			authentication-related options are set.
 			By default, no credential mechanism is used -
 			any user is allowed.
+
+--no-udp			Do not start UDP client listeners.
+
+--no-tcp			Do not start TCP client listeners.
+
+--no-tls			Do not start TLS client listeners.
+
+--no-dtls			Do not start DTLS client listeners.
+
+--no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.
+
+--no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay option.
+
+-h				Help.
     
 Options with required values:  
 
@@ -218,20 +232,6 @@ Options with required values:
 				file. If both --no-tls and --no-dtls options 
 				are specified, then this parameter is not needed.
 				Default value is turn_server_pkey.pem.
-
---no-udp			Do not start UDP client listeners.
-
---no-tcp			Do not start TCP client listeners.
-
---no-tls			Do not start TLS client listeners.
-
---no-dtls			Do not start DTLS client listeners.
-
---no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.
-
---no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay option.
-
--h				Help.
 
 ===============================================================================
 

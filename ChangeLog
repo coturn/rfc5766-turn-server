@@ -1,9 +1,8 @@
-03/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+03/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.0 'Whirrun':
-	- pure TCP relaying (RFC 6062).
+	- "Pure" TCP relaying (RFC 6062) implemented.
 	- Network interactions fixes.
-	- TLS ports de-allocation leak fixed.
-	- RFC 6062 scripts added.
+	- RFC 6062 test scripts added.
 	
 03/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.8 'Iosiv Lestek':

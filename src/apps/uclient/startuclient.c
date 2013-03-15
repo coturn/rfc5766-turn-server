@@ -992,9 +992,9 @@ void tcp_data_connect(app_ur_session *elem)
 		}
 	}
 
-	evutil_make_socket_nonblocking(clnet_fd);
-
 	turn_tcp_connection_bind(clnet_verbose, &(elem->pinfo));
+
+	evutil_make_socket_nonblocking(clnet_fd);
 
 	struct event* ev = event_new(client_event_base,clnet_fd,
 					EV_READ|EV_PERSIST,client_input_handler,
