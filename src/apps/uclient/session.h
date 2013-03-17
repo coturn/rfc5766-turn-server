@@ -58,6 +58,16 @@ typedef enum _UR_STATE UR_STATE;
 
 //////////////// session info //////////////////////
 
+typedef struct
+{
+	/* RFC 6062 */
+	u32bits cid;
+	ioa_addr tcp_data_local_addr;
+	ioa_socket_raw tcp_data_fd;
+	SSL *tcp_data_ssl;
+	int tcp_data_bound;
+} app_tcp_conn_info;
+
 typedef struct {
   ioa_addr local_addr;
   ioa_addr remote_addr;
@@ -68,11 +78,8 @@ typedef struct {
   u08bits nonce[STUN_MAX_NONCE_SIZE+1];
   u08bits realm[STUN_MAX_REALM_SIZE+1];
   /* RFC 6062 */
-  u32bits cid;
-  ioa_addr tcp_data_local_addr;
-  ioa_socket_raw tcp_data_fd;
-  SSL *tcp_data_ssl;
-  int tcp_data_bound;
+  app_tcp_conn_info **tcp_conn;
+  size_t tcp_conn_number;
 } app_ur_conn_info;
 
 typedef struct {
