@@ -71,7 +71,7 @@ extern s08bits global_realm[1025];
 
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname);
+u08bits *get_user_key(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
 

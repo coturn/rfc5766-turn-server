@@ -92,6 +92,9 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 
 static void accept_tcp_connection(ioa_socket_handle s, void *arg);
 
+static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
+				  ts_ur_super_session *ss, ioa_net_data *in_buffer);
+
 /////////////////// RFC 5780 ///////////////////////
 
 void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb)
@@ -1701,11 +1704,28 @@ static int create_challenge_response(turn_turnserver *server,
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
+static void resume_processing_after_username_check(void *ctx, ioa_net_data *in_buffer)
+{
+
+	if(ctx && in_buffer && in_buffer->nbh) {
+
+		ts_ur_super_session *ss = (ts_ur_super_session*)ctx;
+		turn_turnserver *server = (turn_turnserver *)ss->server;
+		ts_ur_session *elem = &(ss->client_session);
+
+		read_client_connection(server,elem,ss,in_buffer);
+
+		ioa_network_buffer_delete(server->e, in_buffer->nbh);
+		in_buffer->nbh=NULL;
+	}
+}
+
 static int check_stun_auth(turn_turnserver *server,
 			ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			int *err_code, 	const u08bits **reason,
 			ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
-			u16bits method, int *message_integrity)
+			u16bits method, int *message_integrity,
+			int *postpone_reply)
 {
 	u08bits uname[STUN_MAX_USERNAME_SIZE+1];
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
@@ -1787,7 +1807,9 @@ static int check_stun_auth(turn_turnserver *server,
 
 	/* Password */
 	if(ss->hmackey[0] == 0) {
-		ur_string_map_value_type ukey = (server->userkeycb)(uname);
+		ur_string_map_value_type ukey = (server->userkeycb)(uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
+		if(*postpone_reply)
+			return 0;
 		if(!ukey) {
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
@@ -1835,8 +1857,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		if(method != STUN_METHOD_BINDING)
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity);
+		if(method != STUN_METHOD_BINDING) {
+			int postpone_reply = 0;
+			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply);
+		}
 
 		if (!err_code && !(*resp_constructed)) {
 
@@ -2369,6 +2393,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			return ret;
 		} else {
 			ioa_network_buffer_delete(server->e, nbh);
+			return 0;
 		}
 
 	}
@@ -2413,8 +2438,17 @@ int open_client_connection_session(turn_turnserver* server,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nbh) {
-		ioa_net_data nd = { &(sm->remote_addr), sm->nbh, sm->chnum, TTL_IGNORE, TOS_IGNORE };
+		ioa_net_data nd;
+
+		ns_bzero(&nd,sizeof(nd));
+		addr_cpy(&(nd.src_addr),&(sm->remote_addr));
+		nd.nbh = sm->nbh;
+		nd.chnum = sm->chnum;
+		nd.recv_ttl = TTL_IGNORE;
+		nd.recv_tos = TOS_IGNORE;
+
 		sm->nbh=NULL;
+
 		client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
 		ioa_network_buffer_delete(server->e, nd.nbh);
 	}
@@ -2474,9 +2508,9 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				 * we do not need to go through this expensive block.
 				 */
 				turn_permission_info* tinfo = allocation_get_permission(a,
-								in_buffer->remote_addr);
+								&(in_buffer->src_addr));
 					if (tinfo)
-					chnum = get_turn_channel_number(tinfo, in_buffer->remote_addr);
+					chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
 			}
 
 			if (chnum) {
@@ -2498,7 +2532,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 								ioa_network_buffer_data(in_buffer->nbh), (size_t)ilen);
 				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 						STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
-						in_buffer->remote_addr);
+						&(in_buffer->src_addr));
 				ioa_network_buffer_set_size(nbh,len);
 			}
 			if (server->verbose) {

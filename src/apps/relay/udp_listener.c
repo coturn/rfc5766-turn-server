@@ -88,7 +88,16 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
 	  ioa_network_buffer_allocate(server->e);
-	ioa_net_data nd = { &client_addr, elem, 0, TTL_IGNORE, TOS_IGNORE };
+
+	ioa_net_data nd;;
+
+	ns_bzero(&nd,sizeof(nd));
+	addr_cpy(&(nd.src_addr),&client_addr);
+	nd.nbh = elem;
+	nd.chnum = 0;
+	nd.recv_ttl = TTL_IGNORE;
+	nd.recv_tos = TOS_IGNORE;
+
 	ioa_addr si_other;
 	int slen = get_ioa_addr_len(&(server->addr));
 	ssize_t bsize = 0;

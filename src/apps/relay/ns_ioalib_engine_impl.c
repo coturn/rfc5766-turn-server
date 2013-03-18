@@ -1624,11 +1624,18 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(ioa_socket_check_bandwidth(s,(size_t)len)) {
 			elem->buf.len = len;
 			if(s->read_cb) {
-				ioa_net_data event_data = {&remote_addr, elem, 0, ttl, tos };
+				ioa_net_data nd;
 
-				s->read_cb(s, IOA_EV_READ, &event_data, s->read_ctx);
+				ns_bzero(&nd,sizeof(nd));
+				addr_cpy(&(nd.src_addr),&remote_addr);
+				nd.nbh = elem;
+				nd.chnum = 0;
+				nd.recv_ttl = ttl;
+				nd.recv_tos = tos;
 
-				if(event_data.nbh)
+				s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
+
+				if(nd.nbh)
 					free_blist_elem(s->e,elem);
 
 				elem = NULL;

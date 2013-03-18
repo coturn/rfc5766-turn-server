@@ -109,7 +109,7 @@ typedef void *ioa_network_buffer_handle;
 
 /* event data for net event */
 typedef struct _ioa_net_data {
-	ioa_addr			*remote_addr;
+	ioa_addr			src_addr;
 	ioa_network_buffer_handle	nbh;
 	u16bits				chnum;
 	int				recv_ttl;

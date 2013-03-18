@@ -64,7 +64,8 @@ typedef enum {
 	TURN_CREDENTIALS_SHORT_TERM
 } turn_credential_type;
 
-typedef u08bits *(*get_user_key_cb)(u08bits *uname);
+typedef void (*get_username_resume_cb)(void *ctx, ioa_net_data *in_buffer);
+typedef u08bits *(*get_user_key_cb)(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
 

@@ -99,7 +99,14 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 							&(server->addr));
 
 	if (ioas) {
-		ioa_net_data nd = { &client_addr, NULL, 0, TTL_IGNORE, TOS_IGNORE };
+		ioa_net_data nd;
+
+		ns_bzero(&nd,sizeof(nd));
+		addr_cpy(&(nd.src_addr),&client_addr);
+		nd.chnum = 0;
+		nd.recv_ttl = TTL_IGNORE;
+		nd.recv_tos = TOS_IGNORE;
+
 		int rc = server->connect_cb(server->e, ioas, &nd);
 
 		if (rc < 0) {

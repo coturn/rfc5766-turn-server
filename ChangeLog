@@ -1,4 +1,9 @@
 03/17/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.6.0.2 'Whirrun':
+	- working on userdb
+	- c++ compilation fix
+	
+03/17/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.1 'Whirrun':
 	- uclient performance improved
 	- TurnNetworks.pdf document added

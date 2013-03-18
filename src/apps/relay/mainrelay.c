@@ -244,7 +244,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	struct message_to_relay sm;
 	sm.t = RMT_SOCKET;
-	addr_cpy(&(sm.m.sm.remote_addr),nd->remote_addr);
+	addr_cpy(&(sm.m.sm.remote_addr),&(nd->src_addr));
 	sm.m.sm.nbh = nd->nbh;
 	nd->nbh = NULL;
 	sm.m.sm.s = s;

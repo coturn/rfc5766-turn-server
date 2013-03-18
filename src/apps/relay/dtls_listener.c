@@ -315,7 +315,15 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	{
 		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
 		if(ioas) {
-			ioa_net_data nd = { &((*ndc)->info.remote_addr), NULL, 0, TTL_IGNORE, TOS_IGNORE };
+			ioa_net_data nd;
+
+			ns_bzero(&nd,sizeof(nd));
+			addr_cpy(&(nd.src_addr),&((*ndc)->info.remote_addr));
+			nd.nbh = NULL;
+			nd.chnum = 0;
+			nd.recv_ttl = TTL_IGNORE;
+			nd.recv_tos = TOS_IGNORE;
+
 			server->connect_cb(server->e, ioas, &nd);
 			(*ndc)->info.ssl = NULL;
 			(*ndc)->info.fd = -1;

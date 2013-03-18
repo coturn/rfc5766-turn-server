@@ -73,8 +73,15 @@ s08bits global_realm[1025];
 
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname)
+u08bits *get_user_key(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply)
 {
+	UNUSED_ARG(uname);
+	UNUSED_ARG(resume);
+	UNUSED_ARG(in_buffer);
+	UNUSED_ARG(ctx);
+
+	*postpone_reply = 0;
+
 	ur_string_map_value_type ukey = NULL;
 	ur_string_map_lock(users->static_accounts);
 	if(!ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
