@@ -64,8 +64,8 @@ typedef enum {
 	TURN_CREDENTIALS_SHORT_TERM
 } turn_credential_type;
 
-typedef void (*get_username_resume_cb)(void *ctx, ioa_net_data *in_buffer);
-typedef u08bits *(*get_user_key_cb)(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
+typedef void (*get_username_resume_cb)(int success, u08bits *hmackey, void *ctx, ioa_net_data *in_buffer);
+typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
 
@@ -84,7 +84,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    release_allocation_quota_cb raqcb,
 				    ioa_addr *external_addr,
 				    int no_tcp_relay,
-				    int no_udp_relay);
+				    int no_udp_relay,
+				    int stale_nonce);
 
 void delete_turn_server(turn_turnserver* server);
 

@@ -647,7 +647,7 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
     return -1;
   }
 
-  if(addr_connect(pinfo->fd,&pinfo->remote_addr)<0) {
+  if(addr_connect(pinfo->fd,&pinfo->remote_addr,NULL)<0) {
     evutil_closesocket(pinfo->fd);
     pinfo->fd=-1;
     return -1;

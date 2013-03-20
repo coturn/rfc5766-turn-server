@@ -54,6 +54,7 @@ struct _turn_turnserver {
 	int verbose;
 	int fingerprint;
 	int rfc5780;
+	int stale_nonce;
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
 	dont_fragment_option_t dont_fragment;
@@ -1679,19 +1680,11 @@ static int create_challenge_response(turn_turnserver *server,
 				ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 				int *err_code, 	const u08bits **reason,
 				ioa_network_buffer_handle nbh,
-				u16bits method, int regenerate_nonce)
+				u16bits method)
 {
-	int i = 0;
 	size_t len = ioa_network_buffer_get_size(nbh);
 	stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
 	*resp_constructed = 1;
-	if(regenerate_nonce) {
-		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
-			u08bits *s = ss->nonce + 8*i;
-			sprintf((s08bits*)s,"%08x",(u32bits)random());
-		}
-		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
-	}
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE,
 					ss->nonce, (int)(sizeof(ss->nonce)-1));
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM,
@@ -1704,7 +1697,7 @@ static int create_challenge_response(turn_turnserver *server,
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(void *ctx, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success, u08bits *hmackey, void *ctx, ioa_net_data *in_buffer)
 {
 
 	if(ctx && in_buffer && in_buffer->nbh) {
@@ -1712,6 +1705,10 @@ static void resume_processing_after_username_check(void *ctx, ioa_net_data *in_b
 		ts_ur_super_session *ss = (ts_ur_super_session*)ctx;
 		turn_turnserver *server = (turn_turnserver *)ss->server;
 		ts_ur_session *elem = &(ss->client_session);
+
+		if(success && hmackey) {
+			ns_bcopy(hmackey,ss->hmackey,16);
+		}
 
 		read_client_connection(server,elem,ss,in_buffer);
 
@@ -1735,7 +1732,28 @@ static int check_stun_auth(turn_turnserver *server,
 	if(!need_stun_authentication(server))
 		return 0;
 
-	int regenerate_nonce = turn_time_before(ss->nonce_expiration_time,turn_time()) || (ss->nonce[0]==0);
+	int new_nonce = 0;
+
+	if(ss->nonce[0]==0) {
+		int i = 0;
+		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
+			u08bits *s = ss->nonce + 8*i;
+			sprintf((s08bits*)s,"%08x",(u32bits)random());
+		}
+		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
+		new_nonce = 1;
+	}
+
+	if(server->stale_nonce) {
+		if(turn_time_before(ss->nonce_expiration_time,turn_time())) {
+			int i = 0;
+			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
+				u08bits *s = ss->nonce + 8*i;
+				sprintf((s08bits*)s,"%08x",(u32bits)random());
+			}
+			ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
+		}
+	}
 
 	/* MESSAGE_INTEGRITY ATTR: */
 
@@ -1746,7 +1764,7 @@ static int check_stun_auth(turn_turnserver *server,
 	if(!sar) {
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	/* REALM ATTR: */
@@ -1799,21 +1817,28 @@ static int check_stun_auth(turn_turnserver *server,
 
 	/* Stale Nonce check: */
 
-	if(regenerate_nonce || strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
+	if(new_nonce) {
+		*err_code = 401;
+		*reason = (u08bits*)"Unauthorized";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+	}
+
+	if(strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
 		*err_code = 438;
-		*reason = (u08bits*)"Stale Nonce";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+		*reason = (u08bits*)"Stale nonce";
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	/* Password */
 	if(ss->hmackey[0] == 0) {
-		ur_string_map_value_type ukey = (server->userkeycb)(uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
-		if(*postpone_reply)
+		ur_string_map_value_type ukey = (server->userkeycb)(server->id, uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
+		if(*postpone_reply) {
 			return 0;
+		}
 		if(!ukey) {
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
-			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}
 		ns_bcopy(ukey,ss->hmackey,16);
 	}
@@ -1824,7 +1849,7 @@ static int check_stun_auth(turn_turnserver *server,
 					  ss->hmackey)<1) {
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method,regenerate_nonce);
+		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 	}
 
 	*message_integrity = 1;
@@ -1860,9 +1885,11 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		if(method != STUN_METHOD_BINDING) {
 			int postpone_reply = 0;
 			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply);
+			if(postpone_reply)
+				no_response = 1;
 		}
 
-		if (!err_code && !(*resp_constructed)) {
+		if (!err_code && !(*resp_constructed) && !no_response) {
 
 			switch (method){
 
@@ -2623,7 +2650,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		release_allocation_quota_cb raqcb,
 		ioa_addr *external_ip,
 		int no_tcp_relay,
-		int no_udp_relay) {
+		int no_udp_relay,
+		int stale_nonce) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2643,6 +2671,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
+
+	server->stale_nonce = stale_nonce;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;

@@ -1,4 +1,10 @@
-03/17/2013 Oleg Moskalenko <mom040267@gmail.com>
+03/19/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.6.1.0 'Whirrun':
+	- --stale-nonce option 
+	- working on userdb
+	- "hang on" option fixed in uclient
+	
+03/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.2 'Whirrun':
 	- working on userdb
 	- c++ compilation fix

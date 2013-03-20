@@ -90,6 +90,7 @@ typedef struct {
   int wait_cycles;
   int timer_cycle;
   int known_mtu;
+  int completed;
   struct event *input_ev;
   struct event *input_tcp_data_ev;
   stun_buffer in_buffer;

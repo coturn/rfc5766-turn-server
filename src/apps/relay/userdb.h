@@ -50,6 +50,16 @@ extern "C" {
 
 //////////// USER DB //////////////////////////////
 
+struct auth_message {
+	turnserver_id id;
+	u08bits username[1025];
+	u08bits key[16];
+	get_username_resume_cb resume_func;
+	ioa_net_data in_buffer;
+	void *ctx;
+	int success;
+};
+
 struct _turn_user_db {
 	turn_credential_type ct;
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
@@ -69,9 +79,12 @@ extern int anon_credentials;
 extern turn_user_db *users;
 extern s08bits global_realm[1025];
 
+extern void send_auth_message_to_auth_server(struct auth_message *am);
+
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
+u08bits *get_user_key(u08bits *uname);
+u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
 

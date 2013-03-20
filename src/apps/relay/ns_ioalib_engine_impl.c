@@ -1127,7 +1127,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 		return NULL;
 	}
 
-	if (addr_connect(cs->fd, &(chn->peer_addr)) < 0) {
+	if (addr_connect(cs->fd, &(chn->peer_addr),NULL) < 0) {
 		IOA_CLOSE_SOCKET(cs);
 		return NULL;
 	}

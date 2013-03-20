@@ -395,41 +395,59 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 
 	} else if(!use_secure && use_tcp && fd>=0){
 
-		/* Plain TCP */
+	  /* Plain TCP */
 
+	  do {
+	    rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
+	    if((rc<0) && (errno==EAGAIN) && sync) {
+	      errno=EINTR;
+	    }
+	  } while (rc < 0 && (errno == EINTR));
+	    
+	  if(rc>0) {
+	    int mlen = rc;
+	    if(!atc) {
+	      mlen = stun_get_message_len_str(message->buf, rc);
+	    } else {
+	      if(!sync)
+		mlen = clmessage_length;
+
+	      if(mlen>clmessage_length)
+		mlen = clmessage_length;
+	    }
+	      
+	    if(mlen>0) {
+
+	      int rcr = 0;
+	      int rsf = 0;
+	      int cycle = 0;
+	      while(rsf<mlen && cycle++<128) {
 		do {
-			rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
-			if((rc<0) && (errno==EAGAIN) && sync) {
-				errno=EINTR;
-			}
-		} while (rc < 0 && (errno == EINTR));
+		  rcr = recv(fd, message->buf+rsf, (size_t)mlen-(size_t)rsf, 0);
+		  if(rcr<0 && errno==EAGAIN && sync)
+		    errno=EINTR;
+		} while (rcr < 0 && (errno == EINTR));
+	      
+		if (rcr > 0)
+		  rsf+= rcr;
 
-		if(rc>0) {
-			int mlen = rc;
-
-			if(!atc) {
-				mlen = stun_get_message_len_str(message->buf, rc);
-			} else {
-				if(mlen>clmessage_length)
-					mlen = clmessage_length;
-			}
-
-			if(mlen>0 && mlen<=rc) {
-				do {
-					rc = recv(fd, message->buf, (size_t)mlen, 0);
-					if(rc<0 && errno==EAGAIN && sync)
-						errno=EINTR;
-				} while (rc < 0 && (errno == EINTR));
-
-				if (rc < 0) {
-					return -1;
-				}
-
-				message->len = rc;
-			} else {
-				rc = 0;
-			}
+		if(atc && rsf!=clmessage_length && rsf!=80 && rsf!=112) {
+		  usleep(1000);
 		}
+	      
+	      }
+
+	      if(rsf<1)
+		return -1;
+
+	      message->len = rsf;
+
+	      rc = rsf;
+
+	    } else {
+	      rc = 0;
+	    }
+	  }
 	}
 
 	return rc;
@@ -1022,6 +1040,9 @@ static inline int client_timer_handler(app_ur_session* elem)
 			refresh_channel(elem, 0);
 		}
 
+		if(hang_on && elem->completed)
+			return 0;
+
 		if (!turn_time_before(current_mstime, elem->to_send_timems)) {
 			if (elem->wmsgnum >= elem->tot_msgnum) {
 				if (!turn_time_before(current_mstime, elem->finished_time) ||
@@ -1041,10 +1062,13 @@ static inline int client_timer_handler(app_ur_session* elem)
 					elem->latency=0;
 					total_jitter += elem->jitter;
 					elem->jitter=0;
+					elem->completed = 1;
 					if (!hang_on) {
 						client_shutdown(elem);
+						return 1;
+					} else {
+						return 0;
 					}
-					return 1;
 				}
 			} else {
 				client_write(elem);

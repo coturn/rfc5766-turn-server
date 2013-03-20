@@ -85,6 +85,7 @@ static void openssl_cleanup(void);
 
 static int verbose=0;
 static int turn_daemon = 0;
+static int stale_nonce = 0;
 
 static int do_not_use_config_file = 0;
 
@@ -180,7 +181,8 @@ static size_t relay_servers_number = 0;
 
 enum _MESSAGE_TO_RELAY_TYPE {
 	RMT_UNKNOWN,
-	RMT_SOCKET
+	RMT_SOCKET,
+	RMT_USER_HMACKEY
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
@@ -188,6 +190,7 @@ struct message_to_relay {
 	MESSAGE_TO_RELAY_TYPE t;
 	union {
 		struct socket_message sm;
+		struct auth_message am;
 	} m;
 };
 
@@ -203,6 +206,19 @@ struct relay_server {
 #endif
 };
 static struct relay_server **relay_servers = NULL;
+
+////////////// Auth server ////////////////////////////////////////////////
+
+struct auth_server {
+	struct event_base* event_base;
+	struct bufferevent *in_buf;
+	struct bufferevent *out_buf;
+#if !defined(TURN_NO_THREADS)
+	pthread_t thr;
+#endif
+};
+
+static struct auth_server authserver;
 
 ////////////// Configuration functionality ////////////////////////////////
 
@@ -231,6 +247,49 @@ static void add_relay_addr(const char* addr) {
 //////////////////////////////////////////////////
 
 // communications between listener and relays ==>>
+
+void send_auth_message_to_auth_server(struct auth_message *am)
+{
+	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
+	if(evbuffer_add(output,am,sizeof(*am))<0) {
+		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
+	}
+	bufferevent_flush(authserver.out_buf, EV_WRITE, BEV_FLUSH);
+}
+
+static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
+{
+	UNUSED_ARG(ptr);
+
+	struct auth_message am;
+	int n = 0;
+	struct evbuffer *input = bufferevent_get_input(bev);
+	while ((n = evbuffer_remove(input, &am, sizeof(am))) > 0) {
+		if (n != sizeof(am)) {
+			fprintf(stderr,"%s: Weird buffer error: size=%d\n",__FUNCTION__,n);
+			continue;
+		}
+
+		u08bits *key = get_user_key(am.username);
+		if(key) {
+			ns_bcopy(key,am.key,16);
+			am.success = 1;
+		} else {
+			am.success = 0;
+		}
+
+		struct message_to_relay sm;
+		sm.t = RMT_USER_HMACKEY;
+
+		size_t dest = am.id;
+
+		ns_bcopy(&am,&(sm.m.am),sizeof(am));
+
+		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
+		evbuffer_add(output,&sm,sizeof(sm));
+		bufferevent_flush(relay_servers[dest]->out_buf, EV_WRITE, BEV_FLUSH);
+	}
+}
 
 static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
@@ -271,46 +330,57 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
-		if (sm.t != RMT_SOCKET) {
-			perror("Weird buffer type\n");
-			continue;
-		}
 		struct relay_server *rs = (struct relay_server *)ptr;
-		if (sm.m.sm.s->defer_nbh) {
-			if (!sm.m.sm.nbh) {
-				sm.m.sm.nbh = sm.m.sm.s->defer_nbh;
-				sm.m.sm.s->defer_nbh = NULL;
-			} else {
-				ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.s->defer_nbh);
-				sm.m.sm.s->defer_nbh = NULL;
-			}
-		}
-
-		ioa_socket_handle s = sm.m.sm.s;
-
-		if (s->read_event || s->bev) {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
-				__FUNCTION__, (long) s->read_event,
-				(long) s->bev);
-			IOA_CLOSE_SOCKET(sm.m.sm.s);
-			return;
-		}
-
-		s->e = rs->ioa_eng;
-
-		open_client_connection_session(rs->server, &(sm.m.sm));
-		ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
-
-		if (ioa_socket_tobeclosed(s)) {
-		  ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-			if (ss) {
-			  turn_turnserver *server = (turn_turnserver *)ss->server;
-				if (server) {
-					shutdown_client_connection(server, ss);
+		switch(sm.t) {
+		case RMT_SOCKET: {
+			if (sm.m.sm.s->defer_nbh) {
+				if (!sm.m.sm.nbh) {
+					sm.m.sm.nbh = sm.m.sm.s->defer_nbh;
+					sm.m.sm.s->defer_nbh = NULL;
+				} else {
+					ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.s->defer_nbh);
+					sm.m.sm.s->defer_nbh = NULL;
 				}
 			}
+
+			ioa_socket_handle s = sm.m.sm.s;
+
+			if (s->read_event || s->bev) {
+				TURN_LOG_FUNC(
+								TURN_LOG_LEVEL_ERROR,
+								"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
+								__FUNCTION__, (long) s->read_event,
+								(long) s->bev);
+				IOA_CLOSE_SOCKET(sm.m.sm.s);
+				return;
+			}
+
+			s->e = rs->ioa_eng;
+
+			open_client_connection_session(rs->server, &(sm.m.sm));
+			ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
+
+			if (ioa_socket_tobeclosed(s)) {
+				ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
+				if (ss) {
+					turn_turnserver *server = (turn_turnserver *)ss->server;
+					if (server) {
+						shutdown_client_connection(server, ss);
+					}
+				}
+			}
+		}
+		break;
+		case RMT_USER_HMACKEY: {
+			sm.m.am.resume_func(sm.m.am.success, sm.m.am.key, sm.m.am.ctx, &(sm.m.am.in_buffer));
+			if(sm.m.am.in_buffer.nbh) {
+				ioa_network_buffer_delete(rs->ioa_eng, sm.m.am.in_buffer.nbh);
+			}
+		}
+		break;
+		default: {
+			perror("Weird buffer type\n");
+		}
 		}
 	}
 }
@@ -564,7 +634,10 @@ static void run_listener_server(struct event_base *eb)
 
 		run_events(eb);
 
+#if defined(TURN_NO_THREADS)
+		/* If there are no threads, then we run it here */
 		read_userdb_file();
+#endif
 	}
 }
 
@@ -597,12 +670,13 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
 					users->realm,
-					get_user_key,
+					start_user_check,
 					check_new_allocation_quota,
 					release_allocation_quota,
 					external_ip,
 					no_tcp_relay,
-					no_udp_relay);
+					no_udp_relay,
+					stale_nonce);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
@@ -657,6 +731,57 @@ static void setup_relay_servers(void)
 	}
 }
 
+#if !defined(TURN_NO_THREADS)
+
+static int run_auth_server_flag = 1;
+
+static void* run_auth_server_thread(void *arg)
+{
+	struct event_base *eb = (struct event_base*)arg;
+
+	while(run_auth_server_flag) {
+		run_events(eb);
+		read_userdb_file();
+	}
+
+	return arg;
+}
+
+#endif
+
+static void setup_auth_server(void)
+{
+	ns_bzero(&authserver,sizeof(authserver));
+
+#if defined(TURN_NO_THREADS)
+	authserver.event_base = listener.event_base;
+#else
+	authserver.event_base = event_base_new();
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(authserver.event_base));
+#endif
+
+	struct bufferevent *pair[2];
+	int opts = 0;
+
+#if !defined(TURN_NO_THREADS)
+	opts = BEV_OPT_THREADSAFE;
+#endif
+
+	bufferevent_pair_new(authserver.event_base, opts, pair);
+	authserver.in_buf = pair[0];
+	authserver.out_buf = pair[1];
+	bufferevent_setcb(authserver.in_buf, auth_server_receive_message, NULL, NULL, &authserver);
+	bufferevent_enable(authserver.in_buf, EV_READ);
+
+#if !defined(TURN_NO_THREADS)
+	if(pthread_create(&(authserver.thr), NULL, run_auth_server_thread, authserver.event_base)<0) {
+		perror("Cannot create auth thread\n");
+		exit(-1);
+	}
+	pthread_detach(authserver.thr);
+#endif
+}
+
 static void setup_server(void)
 {
 #if !defined(TURN_NO_THREADS)
@@ -666,6 +791,8 @@ static void setup_server(void)
 	setup_listener_servers();
 
 	setup_relay_servers();
+
+	setup_auth_server();
 }
 
 ///////////////////////////////////////////////////////////////
@@ -936,6 +1063,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	    --no-dtls			Do not start DTLS client listeners.\n"
 	"	    --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.\n"
 	"	    --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay options.\n"
+	"	    --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs).\n"
 	"	-h				Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -967,7 +1095,8 @@ enum EXTRA_OPTS {
 	CERT_FILE_OPT,
 	PKEY_FILE_OPT,
 	MIN_PORT_OPT,
-	MAX_PORT_OPT
+	MAX_PORT_OPT,
+	STALE_NONCE_OPT
 };
 
 static struct option long_options[] = {
@@ -1000,6 +1129,7 @@ static struct option long_options[] = {
 				{ "no-dtls", optional_argument, NULL, NO_DTLS_OPT },
 				{ "no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT },
 				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
+				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
@@ -1045,7 +1175,7 @@ static void set_option(int c, char *value)
 #elif defined(OPENSSL_THREADS)
 		relay_servers_number = atoi(value);
 #else
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
 #endif
 		break;
 	case 'd':
@@ -1068,6 +1198,9 @@ static void set_option(int c, char *value)
 		break;
 	case MAX_PORT_OPT:
 		max_port = atoi(value);
+		break;
+	case STALE_NONCE_OPT:
+		stale_nonce = get_bool_value(value);
 		break;
 	case 'L':
 		add_listener_addr(value);

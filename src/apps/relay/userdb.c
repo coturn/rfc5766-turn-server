@@ -73,15 +73,8 @@ s08bits global_realm[1025];
 
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply)
+u08bits *get_user_key(u08bits *uname)
 {
-	UNUSED_ARG(uname);
-	UNUSED_ARG(resume);
-	UNUSED_ARG(in_buffer);
-	UNUSED_ARG(ctx);
-
-	*postpone_reply = 0;
-
 	ur_string_map_value_type ukey = NULL;
 	ur_string_map_lock(users->static_accounts);
 	if(!ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
@@ -97,6 +90,29 @@ u08bits *get_user_key(u08bits *uname, get_username_resume_cb resume, ioa_net_dat
 	}
 
 	return (u08bits*)ukey;
+}
+
+u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply)
+{
+	UNUSED_ARG(uname);
+	UNUSED_ARG(resume);
+	UNUSED_ARG(in_buffer);
+	UNUSED_ARG(ctx);
+
+	*postpone_reply = 1;
+
+	struct auth_message am;
+	ns_bzero(&am,sizeof(am));
+	am.id = id;
+	STRCPY(am.username,uname);
+	am.resume_func = resume;
+	memcpy(&(am.in_buffer),in_buffer,sizeof(am.in_buffer));
+	in_buffer->nbh = NULL;
+	am.ctx = ctx;
+
+	send_auth_message_to_auth_server(&am);
+
+	return NULL;
 }
 
 int check_new_allocation_quota(u08bits *username)

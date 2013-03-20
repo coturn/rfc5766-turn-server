@@ -133,7 +133,7 @@ int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {
 	return 0;
 }
 
-int addr_connect(evutil_socket_t fd, const ioa_addr* addr)
+int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 {
 	if (!addr || fd < 0)
 		return -1;
@@ -148,6 +148,9 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr)
 				return -1;
 			}
 		} while (err < 0 && errno == EINTR);
+
+		if(out_errno)
+		  *out_errno = errno;
 
 		if (err < 0 && errno != EINPROGRESS)
 			perror("Connect");

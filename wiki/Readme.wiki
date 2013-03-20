@@ -57,6 +57,7 @@ TURN(06 Mar 2013)
    * *--no-dtls* Do not start DTLS	listeners.
    * *--no-udp-relay* Do not allow UDP relay endpoints, use only TCP relay option.
    * *--no-tcp-relay* Do not allow TCP relay endpoints, use only UDP relay option.
+   * *--stale-nonce* Use extra security with nonce value having limited lifetime (600 secs).
    * *-h*  Help.
 
 ====Config file setting:====

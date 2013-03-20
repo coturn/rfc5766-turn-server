@@ -148,9 +148,16 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		app_ur_conn_info *clnet_info) {
 
 	ioa_addr local_addr;
-	evutil_socket_t clnet_fd = -1;
+	evutil_socket_t clnet_fd;
+	int connect_err;
 
 	ioa_addr remote_addr;
+
+ start_socket:
+
+	clnet_fd = -1;
+	connect_err = 0;
+
 	memset((void *) &remote_addr, 0, sizeof(struct sockaddr_storage));
 	if (make_ioa_addr((const u08bits*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
@@ -164,6 +171,8 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		exit(-1);
 	}
 
+	socket_set_reusable(clnet_fd);
+
 	if (sock_bind_to_device(clnet_fd, ifname) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"Cannot bind client socket to device %s\n", ifname);
@@ -173,34 +182,20 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	if (strlen(local_address) > 0) {
 
-		uint16_t localport = random();
+	  if (make_ioa_addr((const u08bits*) local_address, 0,
+			    &local_addr) < 0)
+	    return -1;
 
-		while (1) {
-
-			while (localport < 1024) {
-				localport = (uint16_t) random();
-			}
-
-			if (make_ioa_addr((const u08bits*) local_address, localport,
-					&local_addr) < 0)
-				return -1;
-
-			int bindres = addr_bind(clnet_fd, &local_addr);
-			if (bindres >= 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: localport=%d\n",
-						__FUNCTION__, (int) localport);
-				break;
-			} else {
-				localport = 0;
-			}
-		}
+	  addr_bind(clnet_fd, &local_addr);
 	}
 
-	if (addr_connect(clnet_fd, &remote_addr) < 0) {
-		perror("connect");
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"%s: cannot connect to remote addr\n", __FUNCTION__);
-		exit(-1);
+	if (addr_connect(clnet_fd, &remote_addr, &connect_err) < 0) {
+	  if(connect_err == EADDRINUSE) 
+	    goto start_socket;
+	  perror("connect");
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+			"%s: cannot connect to remote addr\n", __FUNCTION__);
+	  exit(-1);
 	}
 
 	if (clnet_info) {
@@ -960,6 +955,9 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 		perror("socket");
 		exit(-1);
 	}
+
+	socket_set_reusable(clnet_fd);
+
 	if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"Cannot bind client socket to device %s\n", client_ifname);
@@ -983,11 +981,47 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
 
-	if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr)) < 0) {
+	{
+	  int cycle = 0;
+	  while(cycle++<1024) {
+	    int err = 0;
+	    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr),&err) < 0) {
+	      if(err == EADDRINUSE) {
+		close(clnet_fd);
+		clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
+		if (clnet_fd < 0) {
+		  perror("socket");
+		  exit(-1);
+		}
+		socket_set_reusable(clnet_fd);
+		if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				"Cannot bind client socket to device %s\n", client_ifname);
+		}
+		set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
+
+		elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
+
+		addr_cpy(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),&(elem->pinfo.local_addr));
+
+		addr_set_port(&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr),0);
+
+		addr_bind(clnet_fd, &(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
+
+		addr_get_from_sock(clnet_fd,&(elem->pinfo.tcp_conn[i]->tcp_data_local_addr));
+
+		continue;
+
+	      } else {
 		perror("connect");
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				"%s: cannot connect to remote addr\n", __FUNCTION__);
+			      "%s: cannot connect to remote addr\n", __FUNCTION__);
 		exit(-1);
+	      }
+	    } else {
+	      break;
+	    }
+	  }
 	}
 
 	if(use_secure) {

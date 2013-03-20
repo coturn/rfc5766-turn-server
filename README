@@ -140,6 +140,8 @@ Flags:
 
 --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay option.
 
+--stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
+
 -h				Help.
     
 Options with required values:  
