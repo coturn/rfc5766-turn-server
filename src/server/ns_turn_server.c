@@ -94,7 +94,8 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 static void accept_tcp_connection(ioa_socket_handle s, void *arg);
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
-				  ts_ur_super_session *ss, ioa_net_data *in_buffer);
+				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
+				  int success);
 
 /////////////////// RFC 5780 ///////////////////////
 
@@ -1710,7 +1711,7 @@ static void resume_processing_after_username_check(int success, u08bits *hmackey
 			ns_bcopy(hmackey,ss->hmackey,16);
 		}
 
-		read_client_connection(server,elem,ss,in_buffer);
+		read_client_connection(server,elem,ss,in_buffer,success);
 
 		ioa_network_buffer_delete(server->e, in_buffer->nbh);
 		in_buffer->nbh=NULL;
@@ -1722,7 +1723,8 @@ static int check_stun_auth(turn_turnserver *server,
 			int *err_code, 	const u08bits **reason,
 			ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
 			u16bits method, int *message_integrity,
-			int *postpone_reply)
+			int *postpone_reply,
+			int success)
 {
 	u08bits uname[STUN_MAX_USERNAME_SIZE+1];
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
@@ -1831,11 +1833,17 @@ static int check_stun_auth(turn_turnserver *server,
 
 	/* Password */
 	if(ss->hmackey[0] == 0) {
-		ur_string_map_value_type ukey = (server->userkeycb)(server->id, uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
-		if(*postpone_reply) {
-			return 0;
+		ur_string_map_value_type ukey = NULL;
+		if(success) {
+			ukey = (server->userkeycb)(server->id, uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
+			if(*postpone_reply) {
+				return 0;
+			}
 		}
 		if(!ukey) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: Cannot find user %s\n",
+					__FUNCTION__, (char*)uname);
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
 			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
@@ -1847,6 +1855,9 @@ static int check_stun_auth(turn_turnserver *server,
 	if(stun_check_message_integrity_by_key_str(ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
 					  ss->hmackey)<1) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"%s: user %s credentials are incorrect\n",
+				__FUNCTION__, (char*)uname);
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
 		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
@@ -1859,7 +1870,7 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
-static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed)
+static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int success)
 {
 
 	stun_tid tid;
@@ -1884,7 +1895,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(method != STUN_METHOD_BINDING) {
 			int postpone_reply = 0;
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply);
+			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, success);
 			if(postpone_reply)
 				no_response = 1;
 		}
@@ -2346,7 +2357,8 @@ static int refresh_relay_connection(turn_turnserver* server,
 }
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
-				  ts_ur_super_session *ss, ioa_net_data *in_buffer) {
+				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
+				  int success) {
 
 	FUNCSTART;
 
@@ -2400,7 +2412,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 
-		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed);
+		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, success);
 
 		if(resp_constructed) {
 
@@ -2602,7 +2614,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 
 	switch (elem->state) {
 	case UR_STATE_READY:
-		read_client_connection(server, elem, ss, data);
+		read_client_connection(server, elem, ss, data, 1);
 		break;
 	case UR_STATE_DONE:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

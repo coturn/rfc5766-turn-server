@@ -1,5 +1,5 @@
 
-TURN(06 Mar 2013)	
+TURN(18 Mar 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -245,7 +245,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(14 Feb 2013)
+							TURN(18 Feb 2013)
 
 
 

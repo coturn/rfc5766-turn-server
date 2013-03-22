@@ -310,7 +310,17 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	/* To support RFC 6062, we have to run all TCP connections
 	 * within the same relay server: */
-	size_t dest = (is_tcp && (!no_tcp_relay)) ? 0 : current_relay_server++;
+	size_t dest = 0;
+
+	if((no_tcp && no_tls) || (!no_tcp_relay) || !get_real_relay_servers_number()) {
+		dest = current_relay_server++;
+	} else if(is_tcp) {
+		dest = 0;
+	} else {
+		if(!current_relay_server) ++current_relay_server;
+		dest = current_relay_server++;
+	}
+
 	sm.m.sm.chnum = nd->chnum;
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
