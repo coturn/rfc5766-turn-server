@@ -312,7 +312,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	 * within the same relay server: */
 	size_t dest = 0;
 
-	if((no_tcp && no_tls) || no_tcp_relay || !get_real_relay_servers_number()) {
+	if((no_tcp && no_tls) || no_tcp_relay || (get_real_relay_servers_number()<2)) {
 		dest = current_relay_server++;
 	} else if(is_tcp) {
 		dest = 0;
