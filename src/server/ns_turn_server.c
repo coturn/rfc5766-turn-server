@@ -95,7 +95,7 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg);
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
-				  int success);
+				  int can_resume);
 
 /////////////////// RFC 5780 ///////////////////////
 
@@ -1711,7 +1711,7 @@ static void resume_processing_after_username_check(int success, u08bits *hmackey
 			ns_bcopy(hmackey,ss->hmackey,16);
 		}
 
-		read_client_connection(server,elem,ss,in_buffer,success);
+		read_client_connection(server,elem,ss,in_buffer,0);
 
 		ioa_network_buffer_delete(server->e, in_buffer->nbh);
 		in_buffer->nbh=NULL;
@@ -1724,7 +1724,7 @@ static int check_stun_auth(turn_turnserver *server,
 			ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
 			u16bits method, int *message_integrity,
 			int *postpone_reply,
-			int success)
+			int can_resume)
 {
 	u08bits uname[STUN_MAX_USERNAME_SIZE+1];
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
@@ -1834,7 +1834,7 @@ static int check_stun_auth(turn_turnserver *server,
 	/* Password */
 	if(ss->hmackey[0] == 0) {
 		ur_string_map_value_type ukey = NULL;
-		if(success) {
+		if(can_resume) {
 			ukey = (server->userkeycb)(server->id, uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
 			if(*postpone_reply) {
 				return 0;
@@ -1870,7 +1870,7 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
-static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int success)
+static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int can_resume)
 {
 
 	stun_tid tid;
@@ -1895,7 +1895,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(method != STUN_METHOD_BINDING) {
 			int postpone_reply = 0;
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, success);
+			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
 			if(postpone_reply)
 				no_response = 1;
 		}
@@ -2358,7 +2358,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
-				  int success) {
+				  int can_resume) {
 
 	FUNCSTART;
 
@@ -2412,7 +2412,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 
-		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, success);
+		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
 		if(resp_constructed) {
 

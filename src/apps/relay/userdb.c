@@ -43,6 +43,10 @@
 #include <pthread.h>
 #endif
 
+#if !defined(TURN_NO_PQ)
+#include <libpq-fe.h>
+#endif
+
 #include <signal.h>
 
 #include <sys/types.h>
@@ -64,32 +68,135 @@
 
 //////////// USER DB //////////////////////////////
 
-char userdb_file[1025]="\0";
+char userdb_uri[1025]="\0";
+
+#if !defined(TURN_NO_THREADS)
+char sql_userdb_uri[1025]="\0";
+#endif
+
 size_t users_number = 0;
 int use_lt_credentials = 0;
 int anon_credentials = 0;
 turn_user_db *users = NULL;
 s08bits global_realm[1025];
 
+#if !defined(TURN_NO_PQ)
+static PGconn *dbconnection = NULL;
+#endif
+
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname)
+static int convert_string_key_to_binary(char* keysource, hmackey_t key) {
+	if(strlen(keysource)!=(2*sizeof(hmackey_t))) {
+		return -1;
+	} else {
+		char is[3];
+		size_t i;
+		unsigned int v;
+		is[2]=0;
+		for(i=0;i<sizeof(hmackey_t);i++) {
+			is[0]=keysource[i*2];
+			is[1]=keysource[i*2+1];
+			sscanf(is,"%02x",&v);
+			key[i]=(unsigned char)v;
+		}
+		return 0;
+	}
+}
+
+
+int is_sql_userdb(void)
 {
+#if !defined(TURN_NO_PQ)
+	return (sql_userdb_uri[0]!=0);
+#else
+	return 0;
+#endif
+}
+
+#if !defined(TURN_NO_PQ)
+static PGconn *get_db_connection(void)
+{
+	if(dbconnection) {
+		ConnStatusType status = PQstatus(dbconnection);
+		if(status != CONNECTION_OK) {
+			PQfinish(dbconnection);
+			dbconnection = NULL;
+		}
+	}
+	if(!dbconnection && is_sql_userdb()) {
+		char *errmsg=NULL;
+		PQconninfoOption *co = PQconninfoParse(sql_userdb_uri, &errmsg);
+		if(!co) {
+			if(errmsg) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection %s, connection string format error: %s\n",sql_userdb_uri,errmsg);
+				free(errmsg);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: %s, unknown connection string format error\n",sql_userdb_uri);
+			}
+		} else {
+			PQconninfoFree(co);
+			dbconnection = PQconnectdb(sql_userdb_uri);
+			if(!dbconnection) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: %s, runtime error\n",sql_userdb_uri);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",sql_userdb_uri);
+			}
+		}
+	}
+	return dbconnection;
+}
+#endif
+
+int get_user_key(u08bits *uname, hmackey_t key)
+{
+	int ret = -1;
 	ur_string_map_value_type ukey = NULL;
 	ur_string_map_lock(users->static_accounts);
-	if(!ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
-		ur_string_map_unlock(users->static_accounts);
+	if(ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
+		ret = 0;
+	} else {
 		ur_string_map_lock(users->dynamic_accounts);
-		if(!ur_string_map_get(users->dynamic_accounts, (ur_string_map_key_type)uname, &ukey)) {
-			ur_string_map_unlock(users->dynamic_accounts);
-			return (u08bits*)NULL;
+		if(ur_string_map_get(users->dynamic_accounts, (ur_string_map_key_type)uname, &ukey)) {
+			ret = 0;
 		}
 		ur_string_map_unlock(users->dynamic_accounts);
+	}
+	ur_string_map_unlock(users->static_accounts);
+
+	if(ret==0) {
+		ns_bcopy(ukey,key,sizeof(hmackey_t));
+		return 0;
 	} else {
-		ur_string_map_unlock(users->static_accounts);
+#if !defined(TURN_NO_PQ)
+	if(get_db_connection()) {
+		char statement[1025];
+		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
+		PGresult *res = PQexec(get_db_connection(), statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(get_db_connection()));
+		} else {
+			char *kval = PQgetvalue(res,0,0);
+			if(kval) {
+				if(convert_string_key_to_binary(kval, key)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+				} else {
+					ret = 0;
+				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: %s\n",uname,kval);
+			}
+		}
+
+		if(res) {
+			PQclear(res);
+		}
+	}
+#endif
 	}
 
-	return (u08bits*)ukey;
+	return ret;
 }
 
 u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply)
@@ -167,6 +274,9 @@ void read_userdb_file(void)
 	static int first_read = 1;
 	static turn_time_t mtime = 0;
 
+	if(is_sql_userdb())
+		return;
+
 	FILE *f = NULL;
 
 	if(full_path_to_userdb_file) {
@@ -183,7 +293,7 @@ void read_userdb_file(void)
 	}
 
 	if (!full_path_to_userdb_file)
-		full_path_to_userdb_file = find_config_file(userdb_file, first_read);
+		full_path_to_userdb_file = find_config_file(userdb_uri, first_read);
 
 	if (full_path_to_userdb_file)
 		f = fopen(full_path_to_userdb_file, "r");
@@ -216,7 +326,7 @@ void read_userdb_file(void)
 		fclose(f);
 
 	} else if (first_read)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb_file);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb_uri);
 
 	first_read = 0;
 }
@@ -238,35 +348,25 @@ int add_user_account(char *user, int dynamic)
 				return -1;
 			}
 			s = skip_blanks(s+1);
-			unsigned char *key = (unsigned char*)malloc(16);
+			hmackey_t *key = (hmackey_t*)malloc(sizeof(hmackey_t));
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
-				if(strlen(keysource)!=32) {
+				if(convert_string_key_to_binary(keysource, *key)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
 					free(uname);
 					free(key);
 					return -1;
 				}
-				char is[3];
-				int i;
-				unsigned int v;
-				is[2]=0;
-				for(i=0;i<16;i++) {
-					is[0]=keysource[i*2];
-					is[1]=keysource[i*2+1];
-					sscanf(is,"%02x",&v);
-					key[i]=(unsigned char)v;
-				}
 			} else {
-				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, key);
+				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, *key);
 			}
 			if(dynamic) {
 				ur_string_map_lock(users->dynamic_accounts);
-				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
+				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)*key);
 				ur_string_map_unlock(users->dynamic_accounts);
 			} else {
 				ur_string_map_lock(users->static_accounts);
-				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)key);
+				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)*key);
 				ur_string_map_unlock(users->static_accounts);
 			}
 			users_number++;
@@ -277,5 +377,161 @@ int add_user_account(char *user, int dynamic)
 
 	return -1;
 }
+
+////////////////// Admin /////////////////////////
+
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand)
+{
+	hmackey_t key;
+	char skey[sizeof(hmackey_t)*2+1];
+
+	if(!dcommand) {
+		stun_produce_integrity_key_str(user, realm, pwd, key);
+		size_t i = 0;
+		char *s=skey;
+		for(i=0;i<sizeof(hmackey_t);i++) {
+			sprintf(s,"%02x",(unsigned int)key[i]);
+			s+=2;
+		}
+	}
+
+	if(kcommand) {
+
+		printf("0x%s\n",skey);
+
+	} else if(is_sql_userdb()){
+#if !defined(TURN_NO_PQ)
+		char statement[1025];
+
+		if(dcommand) {
+			sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+			PGresult *res = PQexec(get_db_connection(), statement);
+			if(res) {
+				PQclear(res);
+			}
+		}
+
+		if(acommand) {
+			sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+			PGresult *res = PQexec(get_db_connection(), statement);
+			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+				if(res) {
+					PQclear(res);
+				}
+				sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+				PGresult *res = PQexec(get_db_connection(), statement);
+				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",PQerrorMessage(get_db_connection()));
+				}
+			}
+			if(res) {
+				PQclear(res);
+			}
+		}
+#endif
+	} else {
+
+		char *full_path_to_userdb_file = find_config_file(userdb_uri, 1);
+		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
+		int found = 0;
+		char us[1025];
+		size_t i = 0;
+		char **content = NULL;
+		size_t csz = 0;
+
+		strcpy(us, (char*) user);
+		strcpy(us + strlen(us), ":");
+
+		if (!f) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",userdb_uri);
+		} else {
+
+			char sarg[1025];
+			char sbuf[1025];
+
+			for (;;) {
+				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
+				if (!s0)
+					break;
+
+				size_t slen = strlen(s0);
+				while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
+					s0[--slen] = 0;
+
+				char *s = skip_blanks(s0);
+
+				if (s[0] == '#')
+					goto add_and_cont;
+				if (!s[0])
+					goto add_and_cont;
+
+				strcpy(sarg, s);
+				if (strstr(sarg, us) == sarg) {
+					if (dcommand)
+						continue;
+
+					if (found)
+						continue;
+					found = 1;
+					strcpy(us, (char*) user);
+					strcpy(us + strlen(us), ":0x");
+					for (i = 0; i < sizeof(key); i++) {
+						sprintf(
+										us + strlen(us),
+										"%02x",
+										(unsigned int) key[i]);
+					}
+
+					s0 = us;
+				}
+
+				add_and_cont:
+				content = (char**)realloc(content, sizeof(char*) * (++csz));
+				content[csz - 1] = strdup(s0);
+			}
+
+			fclose(f);
+		}
+
+		if(!found && acommand) {
+			strcpy(us,(char*)user);
+			strcpy(us+strlen(us),":0x");
+			for(i=0;i<sizeof(key);i++) {
+				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
+			}
+			content = (char**)realloc(content,sizeof(char*)*(++csz));
+			content[csz-1]=strdup(us);
+		}
+
+		if(!full_path_to_userdb_file)
+			full_path_to_userdb_file=strdup(userdb_uri);
+
+		char *dir = (char*)malloc(strlen(full_path_to_userdb_file)+21);
+		strcpy(dir,full_path_to_userdb_file);
+		size_t dlen = strlen(dir);
+		while(dlen) {
+			if(dir[dlen-1]=='/')
+				break;
+			dir[--dlen]=0;
+		}
+		strcpy(dir+strlen(dir),".tmp_userdb");
+
+		f = fopen(dir,"w");
+		if(!f) {
+			perror("file open");
+			exit(-1);
+		}
+
+		for(i=0;i<csz;i++)
+			fprintf(f,"%s\n",content[i]);
+
+		fclose(f);
+
+		rename(dir,full_path_to_userdb_file);
+	}
+
+	return 0;
+}
+
 
 ///////////////////////////////

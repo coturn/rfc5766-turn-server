@@ -1,5 +1,5 @@
 
-TURN(18 Mar 2013)	
+TURN(23 Mar 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -40,7 +40,7 @@ TURN(18 Mar 2013)
 
 ====Usage:====
 {{{
-       $ turnserver [-vfao] [-n | -c <config-file>] [-b <user-db-file> | --userdb=<user-db-file>] [options]
+       $ turnserver [-vfao] [-n | -c <config-file>] [-b <userdb-file> | --userdb=<userdb-file> | -e <db-conn-string> | --sql-userdb=<db-conn-string> ] [options]
        $ turnserver -h
 }}}
 
@@ -74,6 +74,19 @@ TURN(18 Mar 2013)
 	      This  user  database  is	being  dynamically  checked  while the
 	      _turnserver_ is working, and the  user  accounts  can  be  changed
 	      dynamically by editing the file.
+   * *-e,* *--sql-userdb*
+   		  User database connection string for PostgreSQL. You can either use 
+		the flat file user database (-b option) or the PostgreSQL database (-e option).
+		The connection string format (for example) is like this:
+		 
+		"host=localhost dbname=turn user=turn password=turn connect_timeout=30" (for 8.x Postgres).
+		
+		Or:
+		
+		"postgresql://username:password@hostname:port/databasename" (for 9.x Postgres). 
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 
 ====Options:====
 
@@ -113,6 +126,7 @@ TURN(18 Mar 2013)
  ====Options:====
 
  * *-b,* *--userdb* 'Dynamic' user database file name (default - turnuserdb.conf).
+ * *-e,* *--sql-userdb* PostgreSQL database connection string.
  * *-u,* *--user*   User name.
  * *-r,* *--realm*    Realm.
  * *-p,* *--password* Password.
@@ -124,11 +138,11 @@ TURN(18 Mar 2013)
 }}}
 ====Add/update a user (and realm) in the userdb file:====
 {{{
-       $ turnadmin -a [-b <user-db-file>] -u <username>	-r <realm>  -p	<password>
+       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
 }}}
 ====Delete a user from the userdb file:====
 {{{
-       $ turnadmin -d [-c <user-db-file>] -u <username>
+       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> ] -u <username>
 }}}
 ====Help:====
 {{{
@@ -245,7 +259,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(18 Feb 2013)
+							TURN(23 Mar 2013)
 
 
 

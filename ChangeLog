@@ -1,3 +1,8 @@
+03/23/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.7.0.0 'Glokta':
+	- Authentication fix.
+	- PostgreSQL database can be used as the user keys repository.
+	
 03/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.1.3 'Whirrun':
 	- UDP segmentation fault fixed

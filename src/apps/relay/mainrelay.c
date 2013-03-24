@@ -270,12 +270,12 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 			continue;
 		}
 
-		u08bits *key = get_user_key(am.username);
-		if(key) {
-			ns_bcopy(key,am.key,16);
-			am.success = 1;
-		} else {
+		hmackey_t key;
+		if(get_user_key(am.username,key)<0) {
 			am.success = 0;
+		} else {
+			ns_bcopy(key,am.key,sizeof(key));
+			am.success = 1;
 		}
 
 		struct message_to_relay sm;
@@ -1057,7 +1057,13 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle.\n"
 	"					(input and output network streams combined).\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
-	"	-b, --userdb			'Dynamic' user database file name (default - turnuserdb.conf).\n"
+	"	-b, --userdb			User database file name (default - turnuserdb.conf).\n"
+#if !defined(TURN_NO_THREADS)
+	"	-e, --sql-userdb		PostgreSQL connection string, if used (default - empty, no connection).\n"
+	"					See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
+	"					versions format, see http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING\n"
+	"					for 9.x and newer connection string formats.\n"
+#endif
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
@@ -1082,15 +1088,18 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-a, --add		add/update a user\n"
 	"	-d, --delete		delete a user\n"
 	"Options:\n"
-	"	-b, --user-db-file	Dynamic user database file\n"
+	"	-b, --userdb		User database file, if flat DB file is used.\n"
+#if !defined(TURN_NO_THREADS)
+	"	-e, --sql-userdb	SQL user database connection string, if PostgreSQL DB is used.\n"
+#endif
 	"	-u, --user		Username\n"
 	"	-r, --realm		Realm\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:q:Q:s:vofhzna"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:q:Q:s:vofhzna"
 
-#define ADMIN_OPTIONS "kadb:u:r:p:h"
+#define ADMIN_OPTIONS "kadb:e:u:r:p:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1126,6 +1135,9 @@ static struct option long_options[] = {
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
 				{ "userdb", required_argument, NULL, 'b' },
+#if !defined(TURN_NO_THREADS)
+				{ "sql-userdb", required_argument, NULL, 'e' },
+#endif
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
@@ -1150,6 +1162,9 @@ static struct option admin_long_options[] = {
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
 				{ "userdb", required_argument, NULL, 'b' },
+#if !defined(TURN_NO_THREADS)
+				{ "sql-userdb", required_argument, NULL, 'e' },
+#endif
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
@@ -1258,8 +1273,13 @@ static void set_option(int c, char *value)
 		add_user_account(value,0);
 		break;
 	case 'b':
-		STRCPY(userdb_file, value);
+		STRCPY(userdb_uri, value);
 		break;
+#if !defined(TURN_NO_THREADS)
+	case 'e':
+		STRCPY(sql_userdb_uri, value);
+		break;
+#endif
 	case 'r':
 		STRCPY(global_realm,value);
 		STRCPY(users->realm, value);
@@ -1353,7 +1373,7 @@ static void read_config_file(int argc, char **argv, int pass)
 	static char config_file[1025] = DEFAULT_CONFIG_FILE;
 
 	if(pass == 0) {
-	  STRCPY(userdb_file,DEFAULT_USERDB_FILE);
+	  STRCPY(userdb_uri,DEFAULT_USERDB_FILE);
 
 	  if (argv) {
 	    int i = 0;
@@ -1437,8 +1457,6 @@ static int adminmain(int argc, char **argv)
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
 
-	strcpy(userdb_file,DEFAULT_USERDB_FILE);
-
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
 		case 'k':
@@ -1451,8 +1469,13 @@ static int adminmain(int argc, char **argv)
 			dcommand = 1;
 			break;
 		case 'b':
-			strcpy(userdb_file,optarg);
+			strcpy(userdb_uri,optarg);
 			break;
+#if !defined(TURN_NO_THREADS)
+		case 'e':
+			strcpy(sql_userdb_uri,optarg);
+			break;
+#endif
 		case 'u':
 			strcpy((char*)user,optarg);
 			if(SASLprep((u08bits*)user)<0) {
@@ -1484,123 +1507,25 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
+#if !defined(TURN_NO_THREADS)
+	if(strlen(userdb_uri) && strlen(sql_userdb_uri)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: you cannot use both flat file option and SQL DB option, choose one.\n");
+		exit(-1);
+	}
+#endif
+	if(!strlen(userdb_uri)
+#if !defined(TURN_NO_THREADS)
+&& !strlen(sql_userdb_uri)
+#endif
+				)
+		strcpy(userdb_uri,DEFAULT_USERDB_FILE);
+
 	if(!user[0] || (kcommand + acommand + dcommand != 1)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
 		exit(-1);
 	}
 
-	if(kcommand) {
-		u08bits key[16];
-		size_t i = 0;
-		stun_produce_integrity_key_str(user, realm, pwd, key);
-		printf("0x");
-		for(i=0;i<sizeof(key);i++) {
-			printf("%02x",(unsigned int)key[i]);
-		}
-		printf("\n");
-	} else {
-
-		char *full_path_to_userdb_file = find_config_file(userdb_file, 1);
-		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
-		int found = 0;
-		char us[1025];
-		size_t i = 0;
-		u08bits key[16];
-		char **content = NULL;
-		size_t csz = 0;
-
-		stun_produce_integrity_key_str(user, realm, pwd, key);
-
-		strcpy(us, (char*) user);
-		strcpy(us + strlen(us), ":");
-
-		if (f) {
-
-			char sarg[1025];
-			char sbuf[1025];
-
-			for (;;) {
-				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
-				if (!s0)
-					break;
-
-				size_t slen = strlen(s0);
-				while (slen && (s0[slen - 1] == 10 || s0[slen - 1] == 13))
-					s0[--slen] = 0;
-
-				char *s = skip_blanks(s0);
-
-				if (s[0] == '#')
-					goto add_and_cont;
-				if (!s[0])
-					goto add_and_cont;
-
-				strcpy(sarg, s);
-				if (strstr(sarg, us) == sarg) {
-					if (dcommand)
-						continue;
-
-					if (found)
-						continue;
-					found = 1;
-					strcpy(us, (char*) user);
-					strcpy(us + strlen(us), ":0x");
-					for (i = 0; i < sizeof(key); i++) {
-						sprintf(
-										us + strlen(us),
-										"%02x",
-										(unsigned int) key[i]);
-					}
-
-					s0 = us;
-				}
-
-				add_and_cont: 
-				content = (char**)realloc(content, sizeof(char*) * (++csz));
-				content[csz - 1] = strdup(s0);
-			}
-
-			fclose(f);
-		}
-
-		if(!found && acommand) {
-			strcpy(us,(char*)user);
-			strcpy(us+strlen(us),":0x");
-			for(i=0;i<sizeof(key);i++) {
-				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
-			}
-			content = (char**)realloc(content,sizeof(char*)*(++csz));
-			content[csz-1]=strdup(us);
-		}
-
-		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=strdup(userdb_file);
-
-		char *dir = (char*)malloc(strlen(full_path_to_userdb_file)+21);
-		strcpy(dir,full_path_to_userdb_file);
-		size_t dlen = strlen(dir);
-		while(dlen) {
-			if(dir[dlen-1]=='/')
-				break;
-			dir[--dlen]=0;
-		}
-		strcpy(dir+strlen(dir),".tmp_userdb");
-
-		f = fopen(dir,"w");
-		if(!f) {
-			perror("file open");
-			exit(-1);
-		}
-
-		for(i=0;i<csz;i++)
-			fprintf(f,"%s\n",content[i]);
-
-		fclose(f);
-
-		rename(dir,full_path_to_userdb_file);
-	}
-
-	return 0;
+	return adminuser(user, realm, pwd, kcommand, acommand, dcommand);
 }
 
 int main(int argc, char **argv)
@@ -1689,7 +1614,7 @@ int main(int argc, char **argv)
 	}
 
 	if(use_lt_credentials) {
-		if(!users_number) {
+		if(!users_number && !is_sql_userdb()) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		} else if(!global_realm[0]) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials\n	and user accounts (-a and -u options) \n	but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");

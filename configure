@@ -7,6 +7,8 @@ cleanup() {
 	rm -rf ${TMPCPROGB}
 	rm -rf ${TH_TMPCPROGC}
 	rm -rf ${TH_TMPCPROGB}
+	rm -rf ${PQ_TMPCPROGC}
+	rm -rf ${PQ_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
 	rm -rf ${E_TMPCPROGC}
@@ -32,6 +34,28 @@ testlibevent2() {
 	echo "Libevent2 development is not installed properly"
 	return 0
     else
+	return 1
+    fi
+}
+
+testlibpq() {
+    POSTCFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
+    POSTCFLAGS="${POSTCFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
+    POSTCFLAGS="${POSTCFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
+    POSTLIBS="${OSLIBS} -L${PREFIX}/pgsql/lib -L${PREFIX}/lib/pgsql -L/usr/local/pgsql/lib -L/usr/local/lib/pgsql -L/usr/pgsql/lib -L/usr/lib/pgsql"
+    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/postgres/lib -L/usr/lib/postgres"
+    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql"
+    POSTLIBS="${POSTLIBS} -lpq"
+    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${POSTCFLAGS} ${POSTLIBS} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo "POSTGRESQL DEVELOPMENT LIBRARY (libpg.a) AND/OR HEADER (libpq-fe.h) ARE NOT INSTALLED PROPERLY ON THIS SYSTEM"
+	echo "THE TURN SERVER IS BUILDING WITHOUT DATABASE SUPPORT"
+	echo "ONLY FLAT USERDB FILES CAN BE USED"
+	return 0
+    else
+	OSCFLAGS="${OSCFLAGS} ${POSTCFLAGS}"
+	OSLIBS="${OSLIBS} ${POSTLIBS}"
 	return 1
     fi
 }
@@ -102,9 +126,10 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
-OSLIBS="${LDFLAGS} -Llib -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
+OSLIBS="-Llib ${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
 TURN_NO_THREADS=
 TURN_NO_TLS=
+TURN_NO_PQ=
 
 MKDIR="mkdir -p"
 INSTALL_PROGRAM="cp -f"
@@ -190,6 +215,18 @@ cat > ${E_TMPCPROGC} <<!
 #include <event2/event.h>
 int main(int argc, char** argv) {
     return (int)(argv[argc][0]);
+}
+!
+
+PQ_TMPCPROG=__test__ccomp__libpq__$$
+PQ_TMPCPROGC=${TMPDIR}/${PQ_TMPCPROG}.c
+PQ_TMPCPROGB=${TMPDIR}/${PQ_TMPCPROG}
+
+cat > ${PQ_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <libpq-fe.h>
+int main(int argc, char** argv) {
+    return (argc+(PQprotocolVersion(NULL))+(int)(argv[0][0]));
 }
 !
 
@@ -353,13 +390,25 @@ if [ -z "${TURN_NO_THREADS}" ] ; then
 	fi
 fi
 
+###########################
+# Test PostgreSQL
+###########################
+
+testlibpq
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+  echo "PostgreSQL found."
+else
+  TURN_NO_PQ="-DTURN_NO_PQ"
+fi  
+
 ###############################
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} ${TURN_NO_PQ} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
-echo make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
+echo make PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
 
 ###############################
 # Make make:

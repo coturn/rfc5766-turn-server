@@ -104,16 +104,16 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 
 #include "ns_turn_msg.h"
 
-int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac)
+int stun_calculate_hmac(u08bits *buf, size_t len, hmackey_t key, u08bits *hmac)
 {
-	if (!HMAC(EVP_sha1(), key, 16, buf, len, hmac, NULL)) {
+	if (!HMAC(EVP_sha1(), key, sizeof(hmackey_t), buf, len, hmac, NULL)) {
 		return -1;
 	} else {
 		return 0;
 	}
 }
 
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key)
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key)
 {
 	MD5_CTX ctx;
 	size_t ulen = strlen((s08bits*)uname);

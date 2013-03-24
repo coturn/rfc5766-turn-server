@@ -1040,7 +1040,7 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 	printf("]\n");
 }
 
-int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key)
+int stun_attr_add_integrity_str(u08bits *buf, size_t *len, hmackey_t key)
 {
 	u08bits hmac[20];
 
@@ -1075,7 +1075,7 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *key)
+int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t key)
 {
 	int res = 0;
 	u08bits new_hmac[20];

@@ -4,7 +4,7 @@ Things to be added:
 2) Improve the man pages.
 3) User manual.
 4) Developer manual.
-5) MySQL user database support.
+5) Short-term credentials mechanism to be supported, too (?).
 6) MS Windows support.
 7) ACL support.
 8) HTTP status monitor.

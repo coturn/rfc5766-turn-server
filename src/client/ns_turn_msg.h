@@ -50,6 +50,11 @@ typedef struct {
   uint8_t tsx_id[12];
 } stun_tid;
 
+/**
+ * HMAC key
+ */
+typedef u08bits hmackey_t[16];
+
 ///////////////////////////////////
 
 typedef const void* stun_attr_ref;
@@ -156,17 +161,17 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, u08bits *key);
+int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t key);
 int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd);
-int stun_attr_add_integrity_str(u08bits *buf, size_t *len, u08bits *key);
+int stun_attr_add_integrity_str(u08bits *buf, size_t *len, hmackey_t key);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce);
 
 /*
- * To be implemented by application
+ * To be implemented in utilities
  */
 
-int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *key);
-int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, u08bits *hmac);
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key);
+int stun_calculate_hmac(u08bits *buf, size_t len, hmackey_t key, u08bits *hmac);
 
 /* RFC 5780 */
 int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port);

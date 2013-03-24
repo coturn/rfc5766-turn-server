@@ -72,7 +72,10 @@ struct _turn_user_db {
 };
 typedef struct _turn_user_db turn_user_db;
 
-extern char userdb_file[1025];
+extern char userdb_uri[1025];
+#if !defined(TURN_NO_THREADS)
+extern char sql_userdb_uri[1025];
+#endif
 extern size_t users_number;
 extern int use_lt_credentials;
 extern int anon_credentials;
@@ -83,15 +86,18 @@ extern void send_auth_message_to_auth_server(struct auth_message *am);
 
 /////////// USER DB CHECK //////////////////
 
-u08bits *get_user_key(u08bits *uname);
+int get_user_key(u08bits *uname, hmackey_t key);
 u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
 
 /////////// Handle user DB /////////////////
 
+int is_sql_userdb(void);
+
 void read_userdb_file(void);
 int add_user_account(char *user, int dynamic);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand);
 
 ////////////////////////////////////////////
 

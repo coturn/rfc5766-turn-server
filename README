@@ -82,7 +82,7 @@ turnserver application is a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-n | -c <config-file> ] [-vfao] [-b <user-db-file> | --userdb=<user-db-file> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [-vfao] [-b <userdb-file> | --userdb=<userdb-file> | -e <db-conn-string> | --sql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION						
@@ -105,9 +105,22 @@ Config file setting:
 		  * installation directory /etc
 				  
 -b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
-		This user database is being dynamically checked while the turnserver 
+		This user file database is being dynamically checked while the turnserver 
 		is working, and the user accounts can be changed dynamically by
-		editing the file.
+		editing the database.
+				  
+-e, --sql-userdb	User database connection string for PostgreSQL. You can either use 
+		the flat file user database (-b option) or the PostgreSQL database (-e option).
+		The connection string format (for example) is like this:
+		 
+		"host=localhost dbname=turn user=turn password=turn connect_timeout=30" (for 8.x Postgres).
+		
+		Or:
+		
+		"postgresql://username:password@hostname:port/databasename" (for 9.x Postgres). 
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 
 Flags:   
 
@@ -257,7 +270,10 @@ Commands:
   
 Options with required values:  
 
--b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
+-b, --userdb	File-based user database file name (default - turnuserdb.conf).
+		See the --userdb option in the turnserver section.
+-e, --sql-userdb	PostgreSQL user database connection string.
+		See the --sql-userdb option in the turnserver section.
 -u, --user	User name.
 -r, --realm	Realm.
 -p, --password	Password.
@@ -267,13 +283,13 @@ Generate a key:
 
 $ turnadmin -k -u <username> -r <realm> -p <password>
   
-Add/update a user (and realm) in the userdb file:  
+Add/update a user (and realm) in the userdb file or in the database:
 
-$ turnadmin -a [-b <user-db-file>] -u <username> -r <realm> -p <password>
+$ turnadmin -a [-b <userdb-file> | -e <db-connection-string> ] -u <username> -r <realm> -p <password>
   
-Delete a user from the userdb file:  
+Delete a user from the userdb file or from the database:
 
-$ turnadmin -d [-c <user-db-file>] -u <username>
+$ turnadmin -d [-b <userdb-file> | -e <db-connection-string> ] -u <username>
   
 Help:  
 
@@ -435,6 +451,10 @@ After installation, run the command:
 
 $ man turnserver
 
+or in the project root directory:
+
+$ man -M man turnserver
+
 to see the man page.
 
 In the docs/html subdirectory of the original archive tree, you will find the client library 
@@ -486,12 +506,14 @@ STANDARDS
 new STUN RFC 5389
 
 TURN RFC 5766
+
+TURN-TCP extention RFC 6062
  
-IPv6 extention RFC 6156
+TURN IPv6 extention RFC 6156
 
-test vectors RFC 5769
+STUN/TURN test vectors RFC 5769
 
-NAT behavior discovery RFC5780
+STUN NAT behavior discovery RFC 5780
 
 ===================================================================================
 
