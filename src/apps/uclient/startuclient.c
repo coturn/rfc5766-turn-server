@@ -300,6 +300,15 @@ static int clnet_allocate(int verbose,
 					if (stun_is_success_response(&message)) {
 						allocate_received = 1;
 						allocate_finished = 1;
+
+						if(clnet_info->nonce[0]) {
+							if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
+										clnet_info->realm, g_upwd)<0) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in allocate message received from server\n");
+								return -1;
+							}
+						}
+
 						if (verbose) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 						}
@@ -515,7 +524,17 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 				int err_code = 0;
 				u08bits err_msg[129];
 				if (stun_is_success_response(&message)) {
+
 					cb_received = 1;
+
+					if(clnet_info->nonce[0]) {
+						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
+									clnet_info->realm, g_upwd)<0) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in channel bind message received from server\n");
+							return -1;
+						}
+					}
+
 					if (verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success: 0x%x\n",
 								(int) (*chn));
@@ -601,7 +620,17 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 				int err_code = 0;
 				u08bits err_msg[129];
 				if (stun_is_success_response(&message)) {
+
 					cp_received = 1;
+
+					if(clnet_info->nonce[0]) {
+						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
+											clnet_info->realm, g_upwd)<0) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in create permission message received from server\n");
+							return -1;
+						}
+					}
+
 					if (verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");
 					}
@@ -918,6 +947,15 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				int err_code = 0;
 				u08bits err_msg[129];
 				if (stun_is_success_response(&message)) {
+
+					if(clnet_info->nonce[0]) {
+						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
+									clnet_info->realm, g_upwd)<0) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in connect bind message received from server\n");
+							return -1;
+						}
+					}
+
 					if(stun_get_method(&message)!=STUN_METHOD_CONNECTION_BIND)
 						continue;
 					cb_received = 1;

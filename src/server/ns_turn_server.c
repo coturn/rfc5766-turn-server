@@ -97,6 +97,8 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
 				  int can_resume);
 
+static int need_stun_authentication(turn_turnserver *server);
+
 /////////////////// RFC 5780 ///////////////////////
 
 void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb)
@@ -822,6 +824,11 @@ static void client_to_peer_connect_callback(int success, void *arg)
 		}
 
 		ioa_network_buffer_set_size(nbh,len);
+
+		if(need_stun_authentication(server)) {
+			stun_attr_add_integrity_str(ioa_network_buffer_data(nbh),&len,ss->hmackey);
+			ioa_network_buffer_set_size(nbh,len);
+		}
 
 		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 

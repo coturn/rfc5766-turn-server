@@ -545,6 +545,15 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			}
 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
+
+			if(elem->pinfo.nonce[0]) {
+				if(stun_check_message_integrity_str(elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
+									elem->pinfo.realm, g_upwd)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in success message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
+					return -1;
+				}
+			}
+
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
 				if(sar) {
@@ -552,6 +561,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 					tcp_data_connect(elem,cid);
 				}
 			}
+
 			return rc;
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
