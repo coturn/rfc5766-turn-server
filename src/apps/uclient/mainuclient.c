@@ -32,6 +32,7 @@
 #include "ns_turn_utils.h"
 #include "apputils.h"
 #include "session.h"
+#include "stun_buffer.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -222,6 +223,12 @@ int main(int argc, char **argv)
 
 	if (clmessage_length < (int) sizeof(message_info))
 		clmessage_length = (int) sizeof(message_info);
+
+	const int max_header = 100;
+	if(clmessage_length > (int)(STUN_BUFFER_SIZE-max_header)) {
+		fprintf(stderr,"Message length was corrected to %d\n",(STUN_BUFFER_SIZE-max_header));
+		clmessage_length = (int)(STUN_BUFFER_SIZE-max_header);
+	}
 
 	if (optind >= argc) {
 		fprintf(stderr, "%s\n", Usage);

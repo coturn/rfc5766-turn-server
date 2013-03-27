@@ -310,11 +310,11 @@ int decrease_mtu(SSL* ssl, int mtu, int verbose) {
   return mtu;
 }
 
-int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int verbose) {
+int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose) {
 
   if(fd<0) return 0;
 
-  int ret=set_socket_df(fd, family, 1);
+  int ret=set_socket_df(fd, family, df_value);
 
   if(!mtu) mtu=SOSO_MTU;
   else if(mtu<MIN_MTU) mtu=MIN_MTU;

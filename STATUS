@@ -42,6 +42,8 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 15) RFC 6062 TCP relaying implemented.
 
 16) Users can be stored in PostgreSQL database.
+
+17) Users can be stored in MySQL database.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

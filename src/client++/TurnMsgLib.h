@@ -921,7 +921,7 @@ public:
 	/**
 	 * Get transaction ID
 	 */
-	stun_tid getTid() throw(WrongStunBufferFormatException) {
+	virtual stun_tid getTid() const throw(WrongStunBufferFormatException) {
 		return _tid;
 	}
 

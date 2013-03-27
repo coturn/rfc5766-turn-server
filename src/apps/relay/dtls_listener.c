@@ -563,7 +563,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 			event_add(ndc->ev, NULL);
 
-			set_mtu_df(ndc->info.ssl, ndc->info.fd, ndc->info.local_addr.ss.ss_family, SOSO_MTU,
+			set_mtu_df(ndc->info.ssl, ndc->info.fd, ndc->info.local_addr.ss.ss_family, SOSO_MTU, 1,
 							server->verbose);
 
 			{

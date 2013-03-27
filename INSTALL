@@ -133,18 +133,19 @@ VI. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED
 
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
-or better) are required, and the PostgreSQL development setup is optional.
-For fully functional build, all three extra set of libraries must be installed
+or better) are required, the PostgreSQL C client development setup is optional, 
+and the MySQL C client development setup is optional.
+For fully functional build, the extra set of libraries must be installed
 in full version (the development headers and the libraries to link with). 
 For runtime, only runtime setup is required. If the build is modified for static 
 linking, then even runtime installation is not needed.
 
-OpenSSL, libevent2 and PostgreSQL can be downloaded from their web sites -
-http://www.openssl.org, http://www.libevent.org and http://www.postgresql.org. 
-The installations are pretty straightforward - the usual "./configure" and 
-"make install" commands. Install them into their default locations - the configure 
-script and the Makefile are assuming that they are installed in their default 
-locations. If not, then you will have to modify those.
+OpenSSL, libevent2, PostgreSQL and MySQL can be downloaded from their web sites -
+http://www.openssl.org, http://www.libevent.org, http://www.postgresql.org, and
+http://www.mysql.org. The installations are pretty straightforward - the usual 
+"./configure" and "make install" commands. Install them into their default 
+locations - the configure script and the Makefile are assuming that they are 
+installed in their default locations. If not, then you will have to modify those.
 
 FreeBSD, PC-BSD, Linux Ubuntu 11.10+ have even simpler way of the
 third party tools installation:      
@@ -157,40 +158,49 @@ third party tools installation:
 		$ sudo make install clean
 		$ cd /usr/ports/databases/postgresql84-client/ (or any other version)
 		$ sudo make install clean
+		$ cd /usr/ports/databases/mysql51-client/ (or any other version)
+		$ sudo make install clean
 
 	**) Linux Ubuntu 11.10 or later:
 		
 		$ sudo apt-get install libssl-dev
 		$ sudo apt-get install libevent-dev
 		$ sudo apt-get install libpq-dev
+		$ sudo apt-get install mysql-client
+		$ sudo apt-get install libmysqlclient-dev
 		
 		or you can use Synaptic or other software center.
 		
 	***) Debian Linux setup is similar to Ubuntu, although some packages may have
 		 different names in Squeeze and older versions.
+		 
+	****) On CentOS 6.3 you have to install libevent2 "manually", but everything else 
+	is usually preinstalled. 
 
 NOTE: If your tools are installed in non-standard locations, you will have to adjust CFLAGS 
-and LDFLAGS environment variables for ./configure script. For example, to compile 
-with Solaris 11 PostgreSQL 32-bits setup, you may use a command like this:
+and LDFLAGS environment variables for TURN server ./configure script. For example, to 
+configure the TURN server with Solaris 11 PostgreSQL 32-bits setup, you may use a command 
+like this:
 
   $ CFLAGS="${CFLAGS} -I/usr/postgres/9.2-pgdg/include/" LDFLAGS="${LDFLAGS} -L/usr/postgres/9.2-pgdg/lib/" ./configure
 
-You may also have to adjust the turn server start script, add PostgreSQL library path to LD_LIBRARY_PATH.
+You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL 
+runtime library path to LD_LIBRARY_PATH.
 
 See also the next section.
 
-NOTE: See "PostgreSQL setup" section below for more database setup information.
+NOTE: See "PostgreSQL setup" and "MySQL" setup sections below for more database setup information.
 
-NOTE: PostgreSQL must be installed as the last third-part package. 
-If you do not install PostgreSQL then you will
+NOTE: If you do not install PostgreSQL or MySQL then you will
 be limited to flat files for user database. It will work great for 
 smaller user databases (like 100 users) but for larger systems you 
-will need PostgreSQL.
+will need PostgreSQL or MySQL.
 
-NOTE: To run PostgreSQL server on the same system, you will also have to install 
-a corresponding PostgreSQL server package. Libpq package only provides development libraries. 
-Postresql-client only provides client access utilities and runtime libraries, and it usually 
-includes libpq. Postgresql-server package includes everything - client, libpq and server runtime.   
+NOTE: To run PostgreSQL or MySQL server on the same system, you will also have to install 
+a corresponding PostgreSQL or MySQL server package. C development packages only provide 
+development libraries, and client libraries only provide client access utilities and 
+runtime libraries. The server packages includes everything - client, C development and 
+server runtime.   
 
 NOTE: OpenSSL to be installed before libevent2. When libevent2 is building, it 
 is checking whether OpenSSL has been already installed, and which version of 
@@ -409,7 +419,7 @@ the user name is "turn", the user password is "turn". Of course, you can choose
 your own names.
 
 The database schema for the TURN server is very minimalistic and is located in project's 
-turndb/postgresql/schema.sql file:
+turndb/schema.sql file:
 
 CREATE TABLE turnusers_lt (
     name varchar(512) PRIMARY KEY,
@@ -428,15 +438,15 @@ modify the database with your favorite tools.
 
 Examples of database schema creation:
 
-psql -h <host> -U <db-user> -d <database-name>  < turndb/postgresql/schema.sql
+psql -h <host> -U <db-user> -d <database-name>  < turndb/schema.sql
 (old style for 8.4)
 
-psql postgresql://username:password@/databasename < turndb/postgresql/schema.sql
+psql postgresql://username:password@/databasename < turndb/schema.sql
 (newer style for 9.x, UNIX domain local sockets)
 
 Or:
 
-psql postgresql://username:password@hostname:port/databasename < turndb/postgresql/schema.sql
+psql postgresql://username:password@hostname:port/databasename < turndb/schema.sql
 (newer style for 9.x, TCP/IP access)
 
 Here, the string "postgresql://turn:turn@/turn" is the connection URI. 
@@ -449,3 +459,29 @@ turnserver ... --sql-userdb="host=localhost dbname=turn user=turn password=turn 
 Or, for 9.x PostgreSQL versions: 
 turnserver ... --sql-userdb=postgresql://username:password@/databasename ...
 
+
+XII. MySQL setup
+
+The MySQL setup is similar to PostgreSQL (same idea), and is well documented on their 
+site http://www.mysql.org. 
+
+If the TURN server was compiled with MySQL support, then we can use the TURN server 
+database parameter --mysql-userdb. The value of this parameter is a connection string 
+for the MySQL database. As "native" MySQL does not have such a feature as 
+"connection string", the TURN server parses the connection string and converts it into 
+MySQL database access parameter. The format of the MySQL connection string is:
+
+"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>"
+
+(all parameters are optional)
+
+So, an example of the MySQL database parameter in the TURN server command line would be:
+
+--mysql-userdb="host=localhost dbname=turn user=turn password=turn"
+
+Or in the turnserver.conf file:
+
+mysql-userdb="host=localhost dbname=turn user=turn password=turn"
+
+
+  

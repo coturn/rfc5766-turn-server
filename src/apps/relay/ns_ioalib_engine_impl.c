@@ -1112,7 +1112,7 @@ void refresh_ioa_socket_channel(void *socket_channel)
 
 void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 {
-  ch_info *chn = (ch_info*)channel_info;
+	ch_info *chn = (ch_info*)channel_info;
 
 	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
 	if (cs == NULL) {

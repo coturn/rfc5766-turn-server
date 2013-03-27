@@ -40,7 +40,7 @@ TURN(23 Mar 2013)
 
 ====Usage:====
 {{{
-       $ turnserver [-vfao] [-n | -c <config-file>] [-b <userdb-file> | --userdb=<userdb-file> | -e <db-conn-string> | --sql-userdb=<db-conn-string> ] [options]
+       $ turnserver [-vfao] [-n | -c <config-file>] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [options]
        $ turnserver -h
 }}}
 
@@ -76,7 +76,8 @@ TURN(23 Mar 2013)
 	      dynamically by editing the file.
    * *-e,* *--sql-userdb*
    		  User database connection string for PostgreSQL. You can either use 
-		the flat file user database (-b option) or the PostgreSQL database (-e option).
+		flat file user database (-b option) or PostgreSQL database (-e option) or
+		MySQL database (-M option).
 		The connection string format (for example) is like this:
 		 
 		"host=localhost dbname=turn user=turn password=turn connect_timeout=30" (for 8.x Postgres).
@@ -87,6 +88,17 @@ TURN(23 Mar 2013)
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
+   * *-M,* *--mysql-userdb*
+   		  User database connection string for MySQL. You can either use 
+		flat file user database (-b option) or PostgreSQL database (-e option) or
+		MySQL database (-M option).
+		The connection string format (for example) is like this:
+		 
+		"host=localhost dbname=turn user=turn password=turn".
+		
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://www.mysql.org for full MySQL documentation.
 
 ====Options:====
 
@@ -127,6 +139,7 @@ TURN(23 Mar 2013)
 
  * *-b,* *--userdb* 'Dynamic' user database file name (default - turnuserdb.conf).
  * *-e,* *--sql-userdb* PostgreSQL database connection string.
+ * *-M,* *--mysql-userdb* MySQL database connection string.
  * *-u,* *--user*   User name.
  * *-r,* *--realm*    Realm.
  * *-p,* *--password* Password.
@@ -138,11 +151,11 @@ TURN(23 Mar 2013)
 }}}
 ====Add/update a user (and realm) in the userdb file:====
 {{{
-       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
+       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
 }}}
 ====Delete a user from the userdb file:====
 {{{
-       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> ] -u <username>
+       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>
 }}}
 ====Help:====
 {{{

@@ -9,6 +9,8 @@ cleanup() {
 	rm -rf ${TH_TMPCPROGB}
 	rm -rf ${PQ_TMPCPROGC}
 	rm -rf ${PQ_TMPCPROGB}
+	rm -rf ${MYSQL_TMPCPROGC}
+	rm -rf ${MYSQL_TMPCPROGB}
 	rm -rf ${D_TMPCPROGC}
 	rm -rf ${D_TMPCPROGB}
 	rm -rf ${E_TMPCPROGC}
@@ -42,21 +44,45 @@ testlibpq() {
     POSTCFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
     POSTCFLAGS="${POSTCFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
     POSTCFLAGS="${POSTCFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
-    POSTLIBS="${OSLIBS} -L${PREFIX}/pgsql/lib -L${PREFIX}/lib/pgsql -L/usr/local/pgsql/lib -L/usr/local/lib/pgsql -L/usr/pgsql/lib -L/usr/lib/pgsql"
-    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/postgres/lib -L/usr/lib/postgres"
-    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql"
+    POSTLIBS="-L${PREFIX}/pgsql/lib -L${PREFIX}/lib/pgsql -L${PREFIX}/lib64/pgsql -L/usr/local/pgsql/lib -L/usr/local/lib/pgsql -L/usr/local/lib64/pgsql -L/usr/pgsql/lib -L/usr/lib/pgsql -L/usr/lib64/pgsql"
+    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L${PREFIX}/lib64/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/local/lib64/postgres -L/usr/postgres/lib -L/usr/lib/postgres -L/usr/lib64/postgres"
+    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L${PREFIX}/lib64/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/local/lib64/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql -L/usr/lib64/postgresql"
     POSTLIBS="${POSTLIBS} -lpq"
     ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${POSTCFLAGS} ${POSTLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "POSTGRESQL DEVELOPMENT LIBRARY (libpg.a) AND/OR HEADER (libpq-fe.h) ARE NOT INSTALLED PROPERLY ON THIS SYSTEM"
-	echo "THE TURN SERVER IS BUILDING WITHOUT DATABASE SUPPORT"
-	echo "ONLY FLAT USERDB FILES CAN BE USED"
-	return 0
+    	echo
+		echo "POSTGRESQL DEVELOPMENT LIBRARY (libpg.a) AND/OR HEADER (libpq-fe.h) ARE NOT INSTALLED PROPERLY ON THIS SYSTEM"
+		echo "THE TURN SERVER IS BUILDING WITHOUT POSTGRESQL DATABASE SUPPORT"
+		echo
+		return 0
     else
-	OSCFLAGS="${OSCFLAGS} ${POSTCFLAGS}"
-	OSLIBS="${OSLIBS} ${POSTLIBS}"
-	return 1
+		OSCFLAGS="${OSCFLAGS} ${POSTCFLAGS}"
+		OSLIBS="${OSLIBS} ${POSTLIBS}"
+		return 1
+    fi
+}
+
+testlibmysql() {
+    MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
+    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
+    MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
+    MYSQL_LIBS="-L${PREFIX}/mysql/lib -L${PREFIX}/lib/mysql -L${PREFIX}/lib64/mysql"
+    MYSQL_LIBS="${MYSQL_LIBS} -L/usr/local/mysql/lib -L/usr/local/lib/mysql -L/usr/local/lib64/mysql"
+    MYSQL_LIBS="${MYSQL_LIBS} -L/usr/mysql/lib -L/usr/lib/mysql -L/usr/lib64/mysql"
+    MYSQL_LIBS="${MYSQL_LIBS} -lmysqlclient"
+    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+    	echo
+		echo "MYSQL DEVELOPMENT LIBRARY (libmysqlclient) AND/OR HEADER (mysql.h) ARE NOT INSTALLED PROPERLY ON THIS SYSTEM"
+		echo "THE TURN SERVER IS BUILDING WITHOUT MYSQL DATABASE SUPPORT"
+		echo
+		return 0
+    else
+		OSCFLAGS="${OSCFLAGS} ${MYSQL_CFLAGS}"
+		OSLIBS="${OSLIBS} ${MYSQL_LIBS}"
+		return 1
     fi
 }
 
@@ -126,10 +152,11 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
-OSLIBS="-Llib ${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/"
+OSLIBS="-Llib ${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
 TURN_NO_THREADS=
 TURN_NO_TLS=
 TURN_NO_PQ=
+TURN_NO_MYSQL=
 
 MKDIR="mkdir -p"
 INSTALL_PROGRAM="cp -f"
@@ -227,6 +254,20 @@ cat > ${PQ_TMPCPROGC} <<!
 #include <libpq-fe.h>
 int main(int argc, char** argv) {
     return (argc+(PQprotocolVersion(NULL))+(int)(argv[0][0]));
+}
+!
+
+MYSQL_TMPCPROG=__test__ccomp__libmysql__$$
+MYSQL_TMPCPROGC=${TMPDIR}/${MYSQL_TMPCPROG}.c
+MYSQL_TMPCPROGB=${TMPDIR}/${MYSQL_TMPCPROG}
+
+cat > ${MYSQL_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <mysql.h>
+int main(int argc, char** argv) {
+    return (argc+
+    	(int)(mysql_real_connect(NULL, NULL, NULL, NULL, NULL, 0, NULL, 0)!=0)+
+    	(int)(argv[0][0]));
 }
 !
 
@@ -400,13 +441,25 @@ if ! [ ${ER} -eq 0 ] ; then
   echo "PostgreSQL found."
 else
   TURN_NO_PQ="-DTURN_NO_PQ"
-fi  
+fi
+
+###########################
+# Test MySQL
+###########################
+
+testlibmysql
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+  echo "MySQL found."
+else
+  TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+fi    
 
 ###############################
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} ${TURN_NO_PQ} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
 echo make PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
 

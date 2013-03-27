@@ -47,6 +47,10 @@
 #include <libpq-fe.h>
 #endif
 
+#if !defined(TURN_NO_MYSQL)
+#include <mysql.h>
+#endif
+
 #include <signal.h>
 
 #include <sys/types.h>
@@ -68,21 +72,14 @@
 
 //////////// USER DB //////////////////////////////
 
-char userdb_uri[1025]="\0";
-
-#if !defined(TURN_NO_THREADS)
-char sql_userdb_uri[1025]="\0";
-#endif
+TURN_USERDB_TYPE userdb_type=TURN_USERDB_TYPE_FILE;
+char userdb[1025]="\0";
 
 size_t users_number = 0;
 int use_lt_credentials = 0;
 int anon_credentials = 0;
 turn_user_db *users = NULL;
 s08bits global_realm[1025];
-
-#if !defined(TURN_NO_PQ)
-static PGconn *dbconnection = NULL;
-#endif
 
 /////////// USER DB CHECK //////////////////
 
@@ -105,46 +102,217 @@ static int convert_string_key_to_binary(char* keysource, hmackey_t key) {
 }
 
 
-int is_sql_userdb(void)
+static int is_pqsql_userdb(void)
 {
 #if !defined(TURN_NO_PQ)
-	return (sql_userdb_uri[0]!=0);
+	return (userdb_type == TURN_USERDB_TYPE_PQ);
+#else
+	return 0;
+#endif
+}
+
+static int is_mysql_userdb(void)
+{
+#if !defined(TURN_NO_MYSQL)
+	return (userdb_type == TURN_USERDB_TYPE_MYSQL);
 #else
 	return 0;
 #endif
 }
 
 #if !defined(TURN_NO_PQ)
-static PGconn *get_db_connection(void)
+static PGconn *get_pqdb_connection(void)
 {
-	if(dbconnection) {
-		ConnStatusType status = PQstatus(dbconnection);
+	static PGconn *pqdbconnection = NULL;
+	if(pqdbconnection) {
+		ConnStatusType status = PQstatus(pqdbconnection);
 		if(status != CONNECTION_OK) {
-			PQfinish(dbconnection);
-			dbconnection = NULL;
+			PQfinish(pqdbconnection);
+			pqdbconnection = NULL;
 		}
 	}
-	if(!dbconnection && is_sql_userdb()) {
+	if(!pqdbconnection && is_pqsql_userdb()) {
 		char *errmsg=NULL;
-		PQconninfoOption *co = PQconninfoParse(sql_userdb_uri, &errmsg);
+		PQconninfoOption *co = PQconninfoParse(userdb, &errmsg);
 		if(!co) {
 			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection %s, connection string format error: %s\n",sql_userdb_uri,errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: %s, unknown connection string format error\n",sql_userdb_uri);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, unknown connection string format error\n",userdb);
 			}
 		} else {
 			PQconninfoFree(co);
-			dbconnection = PQconnectdb(sql_userdb_uri);
-			if(!dbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: %s, runtime error\n",sql_userdb_uri);
+			if(errmsg)
+				free(errmsg);
+			pqdbconnection = PQconnectdb(userdb);
+			if(!pqdbconnection) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",sql_userdb_uri);
+				ConnStatusType status = PQstatus(pqdbconnection);
+				if(status != CONNECTION_OK) {
+					PQfinish(pqdbconnection);
+					pqdbconnection = NULL;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",userdb);
+				}
 			}
 		}
 	}
-	return dbconnection;
+	return pqdbconnection;
+}
+#endif
+
+#if !defined(TURN_NO_MYSQL)
+
+struct _Myconninfo {
+	char *host;
+	char *dbname;
+	char *user;
+	char *password;
+	unsigned int port;
+};
+
+typedef struct _Myconninfo Myconninfo;
+
+static void MyconninfoFree(Myconninfo *co) {
+	if(co) {
+		if(co->host) free(co->host);
+		if(co->dbname) free(co->dbname);
+		if(co->user) free(co->user);
+		if(co->password) free(co->password);
+		ns_bzero(co,sizeof(Myconninfo));
+	}
+}
+
+static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
+{
+	Myconninfo *co = (Myconninfo*)malloc(sizeof(Myconninfo));
+	ns_bzero(co,sizeof(Myconninfo));
+	if(userdb) {
+		char *s0=strdup(userdb);
+		char *s = s0;
+
+		while(s && *s) {
+
+			while(*s && (*s==' ')) ++s;
+			char *snext = strstr(s," ");
+			if(snext) {
+				*snext = 0;
+				++snext;
+			}
+
+			char* seq = strstr(s,"=");
+			if(!seq) {
+				MyconninfoFree(co);
+				co = NULL;
+				if(errmsg) {
+					*errmsg = strdup(s);
+				}
+				break;
+			}
+
+			*seq = 0;
+			if(!strcmp(s,"host"))
+				co->host = strdup(seq+1);
+			else if(!strcmp(s,"ip"))
+				co->host = strdup(seq+1);
+			else if(!strcmp(s,"addr"))
+				co->host = strdup(seq+1);
+			else if(!strcmp(s,"ipaddr"))
+				co->host = strdup(seq+1);
+			else if(!strcmp(s,"dbname"))
+				co->dbname = strdup(seq+1);
+			else if(!strcmp(s,"db"))
+				co->dbname = strdup(seq+1);
+			else if(!strcmp(s,"database"))
+				co->dbname = strdup(seq+1);
+			else if(!strcmp(s,"user"))
+				co->user = strdup(seq+1);
+			else if(!strcmp(s,"uname"))
+				co->user = strdup(seq+1);
+			else if(!strcmp(s,"name"))
+				co->user = strdup(seq+1);
+			else if(!strcmp(s,"username"))
+				co->user = strdup(seq+1);
+			else if(!strcmp(s,"password"))
+				co->password = strdup(seq+1);
+			else if(!strcmp(s,"pwd"))
+				co->password = strdup(seq+1);
+			else if(!strcmp(s,"passwd"))
+				co->password = strdup(seq+1);
+			else if(!strcmp(s,"secret"))
+				co->password = strdup(seq+1);
+			else if(!strcmp(s,"port"))
+				co->port = (unsigned int)atoi(seq+1);
+			else {
+				MyconninfoFree(co);
+				co = NULL;
+				if(errmsg) {
+					*errmsg = strdup(s);
+				}
+				break;
+			}
+
+			s = snext;
+		}
+
+		free(s0);
+	}
+	return co;
+}
+
+static MYSQL *get_mydb_connection(void)
+{
+	static MYSQL *mydbconnection = NULL;
+
+	if(mydbconnection) {
+		if(mysql_ping(mydbconnection)) {
+			mysql_close(mydbconnection);
+			mydbconnection=NULL;
+		}
+	}
+
+	if(!mydbconnection && is_mysql_userdb()) {
+		char *errmsg=NULL;
+		Myconninfo *co=MyconninfoParse(userdb, &errmsg);
+		if(!co) {
+			if(errmsg) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
+				free(errmsg);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error\n",userdb);
+			}
+		} else if(errmsg) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
+			free(errmsg);
+			MyconninfoFree(co);
+		} else if(!(co->dbname)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Database name is not provided: <%s>\n",userdb);
+			MyconninfoFree(co);
+		} else {
+			mydbconnection = mysql_init(NULL);
+			if(!mydbconnection) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize DB connection\n");
+			} else {
+				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
+				if(!conn) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
+					mysql_close(mydbconnection);
+					mydbconnection=NULL;
+				} else if(mysql_select_db(mydbconnection, co->dbname)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to DB: %s\n",co->dbname);
+					mysql_close(mydbconnection);
+					mydbconnection=NULL;
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",userdb);
+				}
+			}
+			MyconninfoFree(co);
+		}
+	}
+	return mydbconnection;
 }
 #endif
 
@@ -169,13 +337,14 @@ int get_user_key(u08bits *uname, hmackey_t key)
 		return 0;
 	} else {
 #if !defined(TURN_NO_PQ)
-	if(get_db_connection()) {
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
 		char statement[1025];
 		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
-		PGresult *res = PQexec(get_db_connection(), statement);
+		PGresult *res = PQexec(pqc, statement);
 
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(get_db_connection()));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
 		} else {
 			char *kval = PQgetvalue(res,0,0);
 			if(kval) {
@@ -191,6 +360,45 @@ int get_user_key(u08bits *uname, hmackey_t key)
 
 		if(res) {
 			PQclear(res);
+		}
+	}
+#endif
+#if !defined(TURN_NO_MYSQL)
+	MYSQL * myc = get_mydb_connection();
+	if(myc) {
+		char statement[1025];
+		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
+		int res = mysql_query(myc, statement);
+		if(res) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+		} else {
+			MYSQL_RES *mres = mysql_store_result(myc);
+			if(!mres) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			} else if(mysql_field_count(myc)!=1) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving DB information: %s\n",statement);
+			} else {
+				MYSQL_ROW row = mysql_fetch_row(mres);
+				if(row && row[0]) {
+					unsigned long *lengths = mysql_fetch_lengths(mres);
+					if(lengths) {
+						size_t sz = sizeof(hmackey_t)*2;
+						if(lengths[0]!=sz) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in DB is %lu\n",uname,lengths[0]);
+						} else {
+							char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
+							ns_bcopy(row[0],kval,sz);
+							kval[sz]=0;
+							if(convert_string_key_to_binary(kval, key)<0) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+							} else {
+								ret = 0;
+							}
+						}
+					}
+				}
+				mysql_free_result(mres);
+			}
 		}
 	}
 #endif
@@ -274,7 +482,7 @@ void read_userdb_file(void)
 	static int first_read = 1;
 	static turn_time_t mtime = 0;
 
-	if(is_sql_userdb())
+	if(userdb_type != TURN_USERDB_TYPE_FILE)
 		return;
 
 	FILE *f = NULL;
@@ -293,7 +501,7 @@ void read_userdb_file(void)
 	}
 
 	if (!full_path_to_userdb_file)
-		full_path_to_userdb_file = find_config_file(userdb_uri, first_read);
+		full_path_to_userdb_file = find_config_file(userdb, first_read);
 
 	if (full_path_to_userdb_file)
 		f = fopen(full_path_to_userdb_file, "r");
@@ -326,7 +534,7 @@ void read_userdb_file(void)
 		fclose(f);
 
 	} else if (first_read)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb_uri);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without dynamic user database.\n", userdb);
 
 	first_read = 0;
 }
@@ -399,39 +607,67 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 
 		printf("0x%s\n",skey);
 
-	} else if(is_sql_userdb()){
+	} else if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
 		char statement[1025];
-
-		if(dcommand) {
-			sprintf(statement,"delete from turnusers_lt where name='%s'",user);
-			PGresult *res = PQexec(get_db_connection(), statement);
-			if(res) {
-				PQclear(res);
-			}
-		}
-
-		if(acommand) {
-			sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
-			PGresult *res = PQexec(get_db_connection(), statement);
-			if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+		PGconn *pqc = get_pqdb_connection();
+		if(pqc) {
+			if(dcommand) {
+				sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				PGresult *res = PQexec(pqc, statement);
 				if(res) {
 					PQclear(res);
 				}
-				sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
-				PGresult *res = PQexec(get_db_connection(), statement);
+			}
+
+			if(acommand) {
+				sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				PGresult *res = PQexec(pqc, statement);
 				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",PQerrorMessage(get_db_connection()));
+					if(res) {
+						PQclear(res);
+					}
+					sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					res = PQexec(pqc, statement);
+					if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",PQerrorMessage(pqc));
+					}
+				}
+				if(res) {
+					PQclear(res);
 				}
 			}
-			if(res) {
-				PQclear(res);
+		}
+	} else if(is_mysql_userdb()){
+#endif
+#if !defined(TURN_NO_MYSQL)
+		char statement[1025];
+		MYSQL * myc = get_mydb_connection();
+		if(myc) {
+			if(dcommand) {
+				sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				int res = mysql_query(myc, statement);
+				if(res) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting user key information: %s\n",mysql_error(myc));
+				}
+			}
+
+			if(acommand) {
+				sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				int res = mysql_query(myc, statement);
+				if(res) {
+					sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					res = mysql_query(myc, statement);
+					if(res) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",mysql_error(myc));
+					}
+				}
 			}
 		}
 #endif
 	} else {
 
-		char *full_path_to_userdb_file = find_config_file(userdb_uri, 1);
+		char *full_path_to_userdb_file = find_config_file(userdb, 1);
 		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
 		int found = 0;
 		char us[1025];
@@ -443,7 +679,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		strcpy(us + strlen(us), ":");
 
 		if (!f) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",userdb_uri);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",userdb);
 		} else {
 
 			char sarg[1025];
@@ -504,7 +740,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		}
 
 		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=strdup(userdb_uri);
+			full_path_to_userdb_file=strdup(userdb);
 
 		char *dir = (char*)malloc(strlen(full_path_to_userdb_file)+21);
 		strcpy(dir,full_path_to_userdb_file);

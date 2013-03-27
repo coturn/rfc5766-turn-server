@@ -1,3 +1,10 @@
+03/26/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.7.1.0 'Superior Glokta':
+	- MySQL support added for the user keys repository.
+	- PostgreSQL support improved.
+	- Docs fixed.
+	- 64 bits platform fixes.
+	
 03/23/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.0.0 'Glokta':
 	- Authentication fix.

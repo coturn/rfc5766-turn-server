@@ -72,10 +72,21 @@ struct _turn_user_db {
 };
 typedef struct _turn_user_db turn_user_db;
 
-extern char userdb_uri[1025];
-#if !defined(TURN_NO_THREADS)
-extern char sql_userdb_uri[1025];
+enum _TURN_USERDB_TYPE {
+	TURN_USERDB_TYPE_FILE=0
+#if !defined(TURN_NO_PQ)
+	,TURN_USERDB_TYPE_PQ
 #endif
+#if !defined(TURN_NO_MYSQL)
+	,TURN_USERDB_TYPE_MYSQL
+#endif
+};
+
+typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;
+
+extern TURN_USERDB_TYPE userdb_type;
+extern char userdb[1025];
+
 extern size_t users_number;
 extern int use_lt_credentials;
 extern int anon_credentials;
@@ -92,8 +103,6 @@ int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
 
 /////////// Handle user DB /////////////////
-
-int is_sql_userdb(void);
 
 void read_userdb_file(void);
 int add_user_account(char *user, int dynamic);

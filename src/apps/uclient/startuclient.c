@@ -88,7 +88,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 			BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 		}
 
-		set_mtu_df(ssl, fd, remote_addr->ss.ss_family, SOSO_MTU, clnet_verbose);
+		set_mtu_df(ssl, fd, remote_addr->ss.ss_family, SOSO_MTU, !use_tcp, clnet_verbose);
 #endif
 	}
 

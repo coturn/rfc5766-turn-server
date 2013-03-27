@@ -1058,11 +1058,17 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"					(input and output network streams combined).\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-b, --userdb			User database file name (default - turnuserdb.conf).\n"
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_PQ)
 	"	-e, --sql-userdb		PostgreSQL connection string, if used (default - empty, no connection).\n"
 	"					See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
 	"					versions format, see http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING\n"
 	"					for 9.x and newer connection string formats.\n"
+#endif
+#if !defined(TURN_NO_MYSQL)
+	"	-M, --mysql-userdb		MySQL connection string, if used (default - empty, no connection).\n"
+	"					The connection string my be space-separated list of parameters:\n"
+	"	                  		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
+	"	                  		All parameters are optional.\n"
 #endif
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
@@ -1089,17 +1095,20 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-d, --delete		delete a user\n"
 	"Options:\n"
 	"	-b, --userdb		User database file, if flat DB file is used.\n"
-#if !defined(TURN_NO_THREADS)
-	"	-e, --sql-userdb	SQL user database connection string, if PostgreSQL DB is used.\n"
+#if !defined(TURN_NO_PQ)
+	"	-e, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
+#endif
+#if !defined(TURN_NO_MYSQL)
+	"	-M, --mysql-userdb	MySQL user database connection string, if MySQL DB is used.\n"
 #endif
 	"	-u, --user		Username\n"
 	"	-r, --realm		Realm\n"
 	"	-p, --password		Password\n"
 	"	-h, --help		Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:q:Q:s:vofhzna"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vofhzna"
 
-#define ADMIN_OPTIONS "kadb:e:u:r:p:h"
+#define ADMIN_OPTIONS "kadb:e:M:u:r:p:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1135,8 +1144,11 @@ static struct option long_options[] = {
 				{ "no-auth", optional_argument, NULL, 'z' },
 				{ "user", required_argument, NULL, 'u' },
 				{ "userdb", required_argument, NULL, 'b' },
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_PQ)
 				{ "sql-userdb", required_argument, NULL, 'e' },
+#endif
+#if !defined(TURN_NO_MYSQL)
+				{ "mysql-userdb", required_argument, NULL, 'M' },
 #endif
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
@@ -1162,8 +1174,11 @@ static struct option admin_long_options[] = {
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
 				{ "userdb", required_argument, NULL, 'b' },
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_PQ)
 				{ "sql-userdb", required_argument, NULL, 'e' },
+#endif
+#if !defined(TURN_NO_MYSQL)
+				{ "mysql-userdb", required_argument, NULL, 'e' },
 #endif
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
@@ -1273,11 +1288,19 @@ static void set_option(int c, char *value)
 		add_user_account(value,0);
 		break;
 	case 'b':
-		STRCPY(userdb_uri, value);
+		STRCPY(userdb, value);
+		userdb_type = TURN_USERDB_TYPE_FILE;
 		break;
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_PQ)
 	case 'e':
-		STRCPY(sql_userdb_uri, value);
+		STRCPY(userdb, value);
+		userdb_type = TURN_USERDB_TYPE_PQ;
+		break;
+#endif
+#if !defined(TURN_NO_MYSQL)
+	case 'M':
+		STRCPY(userdb, value);
+		userdb_type = TURN_USERDB_TYPE_MYSQL;
 		break;
 #endif
 	case 'r':
@@ -1373,7 +1396,6 @@ static void read_config_file(int argc, char **argv, int pass)
 	static char config_file[1025] = DEFAULT_CONFIG_FILE;
 
 	if(pass == 0) {
-	  STRCPY(userdb_uri,DEFAULT_USERDB_FILE);
 
 	  if (argv) {
 	    int i = 0;
@@ -1469,11 +1491,19 @@ static int adminmain(int argc, char **argv)
 			dcommand = 1;
 			break;
 		case 'b':
-			strcpy(userdb_uri,optarg);
+			strcpy(userdb,optarg);
+			userdb_type = TURN_USERDB_TYPE_FILE;
 			break;
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_PQ)
 		case 'e':
-			strcpy(sql_userdb_uri,optarg);
+			strcpy(userdb,optarg);
+			userdb_type = TURN_USERDB_TYPE_PQ;
+			break;
+#endif
+#if !defined(TURN_NO_MYSQL)
+		case 'M':
+			strcpy(userdb,optarg);
+			userdb_type = TURN_USERDB_TYPE_MYSQL;
 			break;
 #endif
 		case 'u':
@@ -1507,18 +1537,8 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
-#if !defined(TURN_NO_THREADS)
-	if(strlen(userdb_uri) && strlen(sql_userdb_uri)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: you cannot use both flat file option and SQL DB option, choose one.\n");
-		exit(-1);
-	}
-#endif
-	if(!strlen(userdb_uri)
-#if !defined(TURN_NO_THREADS)
-&& !strlen(sql_userdb_uri)
-#endif
-				)
-		strcpy(userdb_uri,DEFAULT_USERDB_FILE);
+	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
+		strcpy(userdb,DEFAULT_USERDB_FILE);
 
 	if(!user[0] || (kcommand + acommand + dcommand != 1)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
@@ -1588,6 +1608,9 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
 	}
 
+	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
+			strcpy(userdb,DEFAULT_USERDB_FILE);
+
 	read_userdb_file();
 
 	argc -= optind;
@@ -1614,7 +1637,7 @@ int main(int argc, char **argv)
 	}
 
 	if(use_lt_credentials) {
-		if(!users_number && !is_sql_userdb()) {
+		if(!users_number && (userdb_type == TURN_USERDB_TYPE_FILE)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		} else if(!global_realm[0]) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials\n	and user accounts (-a and -u options) \n	but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
