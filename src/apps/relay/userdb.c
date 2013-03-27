@@ -638,8 +638,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 				}
 			}
 		}
-	} else if(is_mysql_userdb()){
 #endif
+	} else if(is_mysql_userdb()){
 #if !defined(TURN_NO_MYSQL)
 		char statement[1025];
 		MYSQL * myc = get_mydb_connection();

@@ -1207,10 +1207,15 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 				if (chnum) {
 					chnum = 0;
 					*err_code = 400;
-					*reason = (const u08bits *)"Channel number cannot be used in this request";
+					*reason = (const u08bits *)"Channel number cannot be duplicated in this request";
 					break;
 				}
 				chnum = stun_attr_get_channel_number(sar);
+				if (!chnum) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Channel number cannot be zero in this request";
+					break;
+				}
 			}
 				break;
 			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS:
@@ -1247,15 +1252,25 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 			;
 
-		} else if (chnum && !addr_any(&peer_addr)) {
+		} else if (!chnum || addr_any(&peer_addr)) {
+
+			*err_code = 400;
+			*reason = (const u08bits *)"Bad channel bind request";
+
+		} else if(!STUN_VALID_CHANNEL(chnum)) {
+
+			*err_code = 400;
+			*reason = (const u08bits *)"Bad channel number";
+
+		} else {
 
 			ch_info* chn = allocation_get_ch_info(a, chnum);
 			turn_permission_info* tinfo = NULL;
 
 			if (chn) {
 				if (!addr_eq(&peer_addr, &(chn->peer_addr))) {
-					*err_code = 403;
-					*reason = (const u08bits *)"Wrong Peer Addr";
+					*err_code = 400;
+					*reason = (const u08bits *)"You cannot use the same channel number with different peer";
 				} else {
 					tinfo = (turn_permission_info*) (chn->owner);
 					if (!tinfo) {
@@ -1275,23 +1290,26 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 			} else {
 
 				chn = allocation_get_ch_info_by_peer_addr(a, &peer_addr);
-				if(chn)
-					turn_channel_delete(chn);
-
-				chn = allocation_get_new_ch_info(a, chnum, &peer_addr);
-				if (!chn) {
-				  *err_code = 500;
-				  *reason = (const u08bits *)"Cannot find channel data";
+				if(chn) {
+					*err_code = 400;
+					*reason = (const u08bits *)"You cannot use the same peer with different channel number";
 				} else {
-				  tinfo = (turn_permission_info*) (chn->owner);
-				  if (!tinfo) {
-				    *err_code = 500;
-				    *reason = (const u08bits *)"Wrong turn permission info";
-				  }
-				  if(!(chn->socket_channel))
-				  	chn->socket_channel = create_ioa_socket_channel(get_relay_socket(a), chn);
+					chn = allocation_get_new_ch_info(a, chnum, &peer_addr);
+					if (!chn) {
+						*err_code = 500;
+						*reason = (const u08bits *) "Cannot find channel data";
+					} else {
+						tinfo = (turn_permission_info*) (chn->owner);
+						if (!tinfo) {
+							*err_code = 500;
+							*reason
+									= (const u08bits *) "Wrong turn permission info";
+						}
+						if (!(chn->socket_channel))
+							chn->socket_channel = create_ioa_socket_channel(
+									get_relay_socket(a), chn);
+					}
 				}
-
 			}
 
 			if (!(*err_code) && chn && tinfo) {

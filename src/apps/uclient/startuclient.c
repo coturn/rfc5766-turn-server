@@ -479,7 +479,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		stun_buffer message;
 
-		*chn = stun_set_channel_bind_request(&message, peer_addr, 0);
+		*chn = stun_set_channel_bind_request(&message, peer_addr, *chn);
 
 		if(clnet_info->nonce[0]) {
 			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
@@ -668,6 +668,13 @@ int start_connection(uint16_t clnet_remote_port,
 
 	ioa_addr relay_addr;
 	ioa_addr relay_addr_rtcp;
+	ioa_addr peer_addr_rtcp;
+
+	addr_cpy(&peer_addr_rtcp,&peer_addr);
+	addr_set_port(&peer_addr_rtcp,addr_get_port(&peer_addr_rtcp)+1);
+
+	*chn = 0;
+	if(chn_rtcp) *chn_rtcp=0;
 
 	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
 			verbose, clnet_info) < 0) {
@@ -681,38 +688,35 @@ int start_connection(uint16_t clnet_remote_port,
 	  }
 	}
 
+	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
+	  exit(-1);
+	}
+
 	if(!no_rtcp) {
-	  if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
-	    exit(-1);
-	  }
-	  
-	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr)) < 0) {
-	    exit(-1);
-	  }
-	} else {
-	  if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr_rtcp)) < 0) {
 	    exit(-1);
 	  }
 	}
 
 	if (!do_not_use_channel) {
-		ioa_addr some_addr;
-		addr_cpy(&some_addr,&peer_addr);
-		addr_set_port(&some_addr,addr_get_port(&some_addr)+1);
-		if (turn_channel_bind(verbose, chn, clnet_info, &some_addr) < 0) {
-			exit(-1);
-		}
-		if (turn_channel_bind(verbose, chn, clnet_info, &some_addr) < 0) {
-			exit(-1);
-		}
+
+		/* These multiple "channel bind" requests are here only because
+		 * we are playing with the TURN server trying to screw it */
 		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
 		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
+			exit(-1);
+		}
+		*chn = 0;
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
+			exit(-1);
+		}
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp) {
-		  if (turn_channel_bind(verbose, chn_rtcp, clnet_info_rtcp, &peer_addr) < 0) {
+		  if (turn_channel_bind(verbose, chn_rtcp, clnet_info_rtcp, &peer_addr_rtcp) < 0) {
 		    exit(-1);
 		  }
 		}
@@ -720,7 +724,14 @@ int start_connection(uint16_t clnet_remote_port,
 		if (turn_create_permission(verbose, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
+		if (turn_create_permission(verbose, clnet_info, &peer_addr_rtcp) < 0) {
+			exit(-1);
+		}
 		if(!no_rtcp) {
+		  if (turn_create_permission(verbose, clnet_info_rtcp, &peer_addr_rtcp)
+		      < 0) {
+		    exit(-1);
+		  }
 		  if (turn_create_permission(verbose, clnet_info_rtcp, &peer_addr)
 		      < 0) {
 		    exit(-1);
@@ -730,7 +741,7 @@ int start_connection(uint16_t clnet_remote_port,
 
 	addr_cpy(&(clnet_info->peer_addr), &peer_addr);
 	if(!no_rtcp) 
-	  addr_cpy(&(clnet_info_rtcp->peer_addr), &peer_addr);
+	  addr_cpy(&(clnet_info_rtcp->peer_addr), &peer_addr_rtcp);
 
 	return 0;
 }
@@ -750,6 +761,11 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 
 	ioa_addr relay_addr2;
 	ioa_addr relay_addr2_rtcp;
+
+	*chn1 = 0;
+	*chn2 = 0;
+	if(chn1_rtcp) *chn1_rtcp=0;
+	if(chn2_rtcp) *chn2_rtcp=0;
 
 	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
 			verbose, clnet_info1) < 0) {
