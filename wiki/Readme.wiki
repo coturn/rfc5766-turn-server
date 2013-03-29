@@ -40,7 +40,7 @@ TURN(26 Mar 2013)
 
 ====Usage:====
 {{{
-       $ turnserver [-vfao] [-n | -c <config-file>] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [options]
+       $ turnserver [flags] [-n | -c <config-file>] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [options]
        $ turnserver -h
 }}}
 
@@ -51,6 +51,7 @@ TURN(26 Mar 2013)
    * *-f,* *--fingerprint* Use fingerprints in the TURN messages. If an incoming request contains fingerprint, then TURN server will always add fingerprints to the messages in this session, regardless of the per-server setting.
    * *-a,* *--lt-cred-mech* Use long-term credential mechanism. By default, no credential mechanism is used - any user is allowed.
    * *-z,* *--no-auth* Do not use any credential mechanism, allow anonymous access. Opposite to *-a* option.
+   * *--use-auth-secret* Flag that sets a special authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. 
    * *--no-udp* Do not start 'plain' UDP listeners.
    * *--no-tcp* Do not start 'plain'TCP listeners.
    * *--no-tls* Do not start TLS listeners.
@@ -69,6 +70,9 @@ TURN(26 Mar 2013)
 	      *	 upper directory level etc/
 	      *	 /etc/
 	      *	 /usr/local/etc/
+	      
+====User database settings:====
+
    * *-b,* *--userdb*
 	      'Dynamic'	user database file name	(default  -  turnuserdb.conf).
 	      This  user  database  is	being  dynamically  checked  while the
@@ -118,6 +122,8 @@ TURN(26 Mar 2013)
     *   *-r,* *--realm* Realm to be used for all users.
     *   *-q,* *--user-quota* Per-user allocation quota: how many concurrent allocations a user can create.
     *   *-Q,* *--total-quota* Total allocations quota: global limit on concurrent allocations.
+    *   *--static-auth-secret* Static authentication secret value (a string). If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'.
+    *   *--secret-ts-exp-time* 	Expiration time for timestamp used with authentication secret, in seconds. The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf document.
     *	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
     *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
@@ -195,6 +201,9 @@ TURN(26 Mar 2013)
  *      *-e*     Peer address.
  *      *-r*     Peer port	(default 3480).
  *		*-z*     Per-session packet interval in milliseconds (default is 20 ms).
+ *		*-u*     STUN/TURN username.
+ *		*-w*     STUN/TURN user password.
+ *		*-W*     TURN REST API secret.
 
        See the _uclient_ usage examples	in the "examples/scripts" directory.
 

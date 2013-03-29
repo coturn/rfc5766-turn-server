@@ -1,3 +1,10 @@
+03/29/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.7.2.0 'Superior Glokta':
+	- Issue 9 fixed (uclient).
+	- Secret-based authentication implemented (see TURNServerRESTAPI.pdf).
+	- Uclient docs fixed.
+	- database schema extended (table for the secret added).
+	
 03/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.1.2 'Superior Glokta':
 	- CHANNEL BIND request handling fixed: now it produces an error 

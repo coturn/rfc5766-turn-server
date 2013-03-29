@@ -48,6 +48,8 @@ extern "C" {
 
 #define DEFAULT_USERDB_FILE "turnuserdb.conf"
 
+#define DEFAULT_AUTH_SECRET_EXPIRATION_TIME (3600*24)
+
 //////////// USER DB //////////////////////////////
 
 struct auth_message {
@@ -90,7 +92,13 @@ extern char userdb[1025];
 extern size_t users_number;
 extern int use_lt_credentials;
 extern int anon_credentials;
+
+extern int use_auth_secret_with_timestamp;
+extern char static_auth_secret[1025];
+extern turn_time_t auth_secret_timestamp_expiration_time;
+
 extern turn_user_db *users;
+
 extern s08bits global_realm[1025];
 
 extern void send_auth_message_to_auth_server(struct auth_message *am);

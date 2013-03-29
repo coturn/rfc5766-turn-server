@@ -68,34 +68,40 @@ unsigned char client_ifname[1025] = "\0";
 //////////////// local definitions /////////////////
 
 static char Usage[] =
-  "Usage: uclient [options] address\n"
-  "Options:\n"
-  "	-l	Message length (Default: 100 Bytes).\n"
+  "Usage: uclient [flags] [options] address\n"
+  "Flags:\n"
   "	-t	TCP (default - UDP).\n"
   "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"
   "		options -s, -e, -r and -g.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
+  "	-v	Verbose.\n"
+  "	-s	Use send method.\n"
+  "	-y	Use client-to-client connections.\n"
+  "	-h	Hang on indefinitely after the last sent packet.\n"
+  "	-c	No rtcp connections.\n"
+  "	-x	IPv6 relayed address requested.\n"
+  "	-g	Include DONT_FRAGMENT option.\n"
+  "Options:\n"
+  "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
   "	-k	Private key file (for secure connections only).\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
   "	-n	Number of messages to send (Default: 5).\n"
   "	-d	Local interface device (optional).\n"
   "	-L	Local address.\n"
-  "	-v	Verbose.\n"
   "	-m	Number of clients (default is 1).\n"
-  "	-s	Use send method.\n"
-  "	-y	Use client-to-client connections.\n"
-  "	-h	Hang on indefinitely after the last sent packet.\n"
   "	-e	Peer address.\n"
   "	-r	Peer port (default 3480).\n"
-  "	-c	No rtcp connections.\n"
-  "	-x	IPv6 relayed address requested.\n"
-  "	-g	Include DONT_FRAGMENT option\n."
   "	-z	Per-session packet interval in milliseconds (default is 20 ms).\n"
   "	-u	STUN/TURN user name.\n"
-  "	-w	STUN/TURN user password.\n";
+  "	-w	STUN/TURN user password.\n"
+  "	-W	TURN REST API authentication secret.\n";
 
 //////////////////////////////////////////////////
+
+#if !defined(SHA_DIGEST_LENGTH)
+#define SHA_DIGEST_LENGTH (20)
+#endif
 
 int main(int argc, char **argv)
 {
@@ -107,13 +113,16 @@ int main(int argc, char **argv)
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;
 
+	int use_auth_secret_with_timestamp = 0;
+	char auth_secret[1025]="\0";
+
 	set_execdir();
 
 	set_system_parameters(0);
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:vsyhcxgtTS")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:vsyhcxgtTS")) != -1) {
 		switch (c){
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
@@ -178,6 +187,10 @@ int main(int argc, char **argv)
 		case 'S':
 			use_secure = 1;
 			break;
+		case 'W':
+			use_auth_secret_with_timestamp = 1;
+			strcpy(auth_secret,optarg);
+			break;
 		case 'i':
 		{
 			char* fn = find_config_file(optarg,1);
@@ -203,6 +216,35 @@ int main(int argc, char **argv)
 		default:
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
+		}
+	}
+
+	if(use_auth_secret_with_timestamp) {
+		{
+			char new_uname[1025];
+			if(g_uname[0]) {
+				sprintf(new_uname,"%s:%lu", (char*)g_uname,(unsigned long)time(NULL));
+			} else {
+				sprintf(new_uname,"%lu", (unsigned long)time(NULL));
+			}
+			strcpy((char*)g_uname,new_uname);
+		}
+		{
+			u08bits hmac[1025]="\0";
+			unsigned int hmac_len = SHA_DIGEST_LENGTH;
+
+			if(calculate_hmac(g_uname, strlen((char*)g_uname), auth_secret, strlen(auth_secret), hmac, &hmac_len)>=0) {
+				size_t pwd_length = 0;
+				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
+
+				if(pwd) {
+					if(pwd_length>0) {
+						ns_bcopy(pwd,g_upwd,pwd_length);
+						g_upwd[pwd_length]=0;
+					}
+				}
+				free(pwd);
+			}
 		}
 	}
 

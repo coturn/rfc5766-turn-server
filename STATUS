@@ -44,6 +44,8 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 16) Users can be stored in PostgreSQL database.
 
 17) Users can be stored in MySQL database.
+
+18) TURN Server REST API implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

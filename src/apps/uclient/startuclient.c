@@ -702,17 +702,17 @@ int start_connection(uint16_t clnet_remote_port,
 
 		/* These multiple "channel bind" requests are here only because
 		 * we are playing with the TURN server trying to screw it */
-		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
 			exit(-1);
 		}
-		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
 			exit(-1);
 		}
 		*chn = 0;
-		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
-		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp) < 0) {
+		if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 			exit(-1);
 		}
 		if(!no_rtcp) {

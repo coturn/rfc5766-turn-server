@@ -537,6 +537,8 @@ void set_system_parameters(int max_resources)
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
 
+	build_base64_decoding_table();
+
 	/* Ignore SIGPIPE from TCP sockets */
 	signal(SIGPIPE, SIG_IGN);
 
@@ -552,5 +554,141 @@ void set_system_parameters(int max_resources)
 		}
 	}
 }
+
+////////////////////// Base 64 ////////////////////////////
+
+static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                                'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                                'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                                'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                                'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                                'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                                '4', '5', '6', '7', '8', '9', '+', '/'};
+static char *decoding_table = NULL;
+static size_t mod_table[] = {0, 2, 1};
+
+char *base64_encode(const unsigned char *data,
+                    size_t input_length,
+                    size_t *output_length) {
+
+    *output_length = 4 * ((input_length + 2) / 3);
+
+    char *encoded_data = (char*)malloc(*output_length+1);
+    if (encoded_data == NULL) return NULL;
+
+    size_t i,j;
+    for (i = 0, j = 0; i < input_length;) {
+
+        u32bits octet_a = i < input_length ? data[i++] : 0;
+        u32bits octet_b = i < input_length ? data[i++] : 0;
+        u32bits octet_c = i < input_length ? data[i++] : 0;
+
+        u32bits triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+
+        encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
+        encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
+        encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
+        encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+    }
+
+    for (i = 0; i < mod_table[input_length % 3]; i++)
+        encoded_data[*output_length - 1 - i] = '=';
+
+    encoded_data[*output_length]=0;
+
+    return encoded_data;
+}
+
+void build_base64_decoding_table() {
+
+    decoding_table = (char*)malloc(256);
+
+    int i;
+    for (i = 0; i < 256; i++)
+        decoding_table[(unsigned char) encoding_table[i]] = (char)i;
+}
+
+unsigned char *base64_decode(const char *data,
+                             size_t input_length,
+                             size_t *output_length) {
+
+    if (decoding_table == NULL) build_base64_decoding_table();
+
+    if (input_length % 4 != 0) return NULL;
+
+    *output_length = input_length / 4 * 3;
+    if (data[input_length - 1] == '=') (*output_length)--;
+    if (data[input_length - 2] == '=') (*output_length)--;
+
+    unsigned char *decoded_data = (unsigned char*)malloc(*output_length);
+    if (decoded_data == NULL) return NULL;
+
+    size_t i,j;
+    for (i = 0, j = 0; i < input_length;) {
+
+        u32bits sextet_a = 0;
+        if(data[i] != '=')
+        	sextet_a = (u32bits)decoding_table[(int)data[i]];
+        ++i;
+        u32bits sextet_b = 0;
+        if(data[i] != '=')
+        	sextet_b = (u32bits)decoding_table[(int)data[i]];
+        ++i;
+        u32bits sextet_c = 0;
+        if(data[i] != '=')
+        	sextet_c = (u32bits)decoding_table[(int)data[i]];
+        ++i;
+        u32bits sextet_d = 0;
+        if(data[i] != '=')
+        	sextet_c = (u32bits)decoding_table[(int)data[i]];
+
+        ++i;
+
+        u32bits triple = (sextet_a << 3 * 6)
+        + (sextet_b << 2 * 6)
+        + (sextet_c << 1 * 6)
+        + (sextet_d << 0 * 6);
+
+        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
+    }
+
+    return decoded_data;
+}
+
+/////////////////////////// HMAC ////////////////////////////
+
+#if defined(__USE_OPENSSL__)
+
+#include <openssl/md5.h>
+#include <openssl/hmac.h>
+#include <openssl/ssl.h>
+
+int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len)
+{
+	if (!HMAC(EVP_sha1(), key, key_len, buf, len, hmac, hmac_len)) {
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
+#else
+
+int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_ley, u08bits *hmac, unsigned int *hmac_len)
+{
+	UNUSED_ARG(buf);
+	UNUSED_ARG(len);
+	UNUSED_ARG(key);
+	UNUSED_ARG(key_len);
+	UNUSED_ARG(hmac);
+	UNUSED_ARG(hmac_len);
+
+	return -1;
+}
+
+#endif
 
 //////////////////////////////////////////////////////////////

@@ -82,12 +82,12 @@ turnserver application is a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-n | -c <config-file> ] [-vfao] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION						
   
-Config file setting:  
+Config file settings:  
 
 -n		Do not use configuration file, use only command line parameters.
 
@@ -103,7 +103,9 @@ Config file setting:
 		  * /etc/ 
 		  * /usr/local/etc/
 		  * installation directory /etc
-				  
+
+User database settings:  
+
 -b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
 		This user file database is being dynamically checked while the turnserver 
 		is working, and the user accounts can be changed dynamically by
@@ -151,6 +153,19 @@ Flags:
 			authentication-related options are set.
 			By default, no credential mechanism is used -
 			any user is allowed.
+
+--use-auth-secret	Flag that sets a special authorization option that is based upon authentication 
+			secret. This feature purpose is to support "TURN Server REST API" as described in
+			TURNServerRESTAPI.pdf in the docs .
+			This option uses timestamp as part of combined username:
+			usercombo -> "user_id:timestamp",
+			turn user -> usercombo,
+			turn password -> base64(hmac(secret key, usercombo)).
+			This allows TURN credentials to be accounted for a specific user id.
+			If you don't have a suitable id, the timestamp alone can be used.
+			This option is just turns on secret-based authentication.
+			The actual value of the secret is defined either by option static-auth-secret,
+			or can be found in the turn_secret table in the database.
 
 --no-udp			Do not start UDP client listeners.
 
@@ -242,7 +257,17 @@ Options with required values:
 				allocations a user can create.
 
 -Q, --total-quota		Total allocations quota: global limit on concurrent allocations.
- 
+
+--static-auth-secret	Static authentication secret value (a string).
+				If not set, then the turn server will try to use the 'dynamic' value 
+				in turn_secret table in user database (if present). The database-stored
+				value can be changed on-the-fly by a separate program, so this is why 
+				that other mode is 'dynamic'.
+
+--secret-ts-exp-time	Expiration time for timestamp used with authentication secret, in seconds.
+				The default value is 86400 (24 hours).
+				This is 'TTL' in terms of TURNServerRESTAPI.pdf document.
+
 -s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle
 				(input and output network streams combined). Anything above that limit
 				will be dropped.
@@ -316,7 +341,7 @@ uclient application is for test purposes only.
  
   SYNOPSIS  
 
-$ uclient [-tSvsyhcxg] [options] <TURN-Server-IP-address>
+$ uclient [-tTSvsyhcxg] [options] <TURN-Server-IP-address>
   
   DESCRIPTION
   
@@ -375,7 +400,13 @@ Options with required values:
 
 -r      Peer port (Default: 3480).
 
--z	Per-session packet interval in milliseconds (Default: 20).
+-z      Per-session packet interval in milliseconds (Default: 20).
+
+-u      STUN/TURN user name.
+
+-w      STUN/TURN user password.
+
+-W      TURN REST API authentication secret.
 
 See the examples in the "examples/scripts" directory.
 

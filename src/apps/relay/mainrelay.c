@@ -1070,6 +1070,14 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	                  		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
 	"	                  		All parameters are optional.\n"
 #endif
+	"		--use-auth-secret	Flag that sets a special authorization option that is based upon authentication secret\n"
+	"					(TURN Server RESt API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
+	"		--static-auth-secret	'Static' authentication secret value (a string). If not set, then the turn server\n"
+	"					will try to use the 'dynamic' value in turn_secret table\n"
+	"					in user database (if present). That value can be changed on-the-fly\n"
+	"					by a separate program, so this is why it is 'dynamic'.\n"
+	"		--secret-ts-exp-time 	Expiration time for timestamp used with authentication secret, in seconds.\n"
+	"					The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
 	"					applied as for the configuration file.\n"
@@ -1124,7 +1132,10 @@ enum EXTRA_OPTS {
 	PKEY_FILE_OPT,
 	MIN_PORT_OPT,
 	MAX_PORT_OPT,
-	STALE_NONCE_OPT
+	STALE_NONCE_OPT,
+	AUTH_SECRET_OPT,
+	STATIC_AUTH_SECRET_VAL_OPT,
+	AUTH_SECRET_TS_EXP
 };
 
 static struct option long_options[] = {
@@ -1150,6 +1161,9 @@ static struct option long_options[] = {
 #if !defined(TURN_NO_MYSQL)
 				{ "mysql-userdb", required_argument, NULL, 'M' },
 #endif
+				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
+				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
+				{ "secret-ts-exp-time", required_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
@@ -1303,6 +1317,16 @@ static void set_option(int c, char *value)
 		userdb_type = TURN_USERDB_TYPE_MYSQL;
 		break;
 #endif
+	case AUTH_SECRET_OPT:
+		use_auth_secret_with_timestamp = 1;
+		break;
+	case STATIC_AUTH_SECRET_VAL_OPT:
+		STRCPY(static_auth_secret,value);
+		use_auth_secret_with_timestamp = 1;
+		break;
+	case AUTH_SECRET_TS_EXP:
+		auth_secret_timestamp_expiration_time = (turn_time_t)atol(value);
+		break;
 	case 'r':
 		STRCPY(global_realm,value);
 		STRCPY(users->realm, value);
@@ -1637,10 +1661,10 @@ int main(int argc, char **argv)
 	}
 
 	if(use_lt_credentials) {
-		if(!users_number && (userdb_type == TURN_USERDB_TYPE_FILE)) {
+		if(!users_number && (userdb_type == TURN_USERDB_TYPE_FILE) && !use_auth_secret_with_timestamp) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified the long-term credentials option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		} else if(!global_realm[0]) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials\n	and user accounts (-a and -u options) \n	but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials usage\n but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		}
 	}
 

@@ -1190,7 +1190,7 @@ void start_mclient(const char *remote_address, int port,
 	struct timeval tv;
 
 	tv.tv_sec = 0;
-	tv.tv_usec = 10000;
+	tv.tv_usec = 1000;
 
 	evtimer_add(ev,&tv);
 

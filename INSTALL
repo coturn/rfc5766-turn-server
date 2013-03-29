@@ -421,9 +421,15 @@ your own names.
 The database schema for the TURN server is very minimalistic and is located in project's 
 turndb/schema.sql file:
 
+# Table for account-based authorization:
 CREATE TABLE turnusers_lt (
     name varchar(512) PRIMARY KEY,
     hmackey char(32)
+);
+
+#Table with single row and single value for secret-based authorization:
+CREATE TABLE turn_secret (
+    value varchar(512)
 );
 
 The field hmackey contains HEX string representation of the 128 bits key.

@@ -99,6 +99,22 @@ char *skip_blanks(char* s);
 char* find_config_file(const char *config_file, int print_file_name);
 void set_execdir(void);
 
+////////////////// Base64 /////////////////////////////
+
+char *base64_encode(const unsigned char *data,
+                    size_t input_length,
+                    size_t *output_length);
+
+void build_base64_decoding_table(void);
+
+unsigned char *base64_decode(const char *data,
+                             size_t input_length,
+                             size_t *output_length);
+
+//////////////////// HMAC ///////////////////////////
+
+int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len);
+
 ///////////////////////////////////////////////////////
 
 #ifdef __cplusplus

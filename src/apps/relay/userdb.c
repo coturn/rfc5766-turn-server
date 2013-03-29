@@ -78,8 +78,14 @@ char userdb[1025]="\0";
 size_t users_number = 0;
 int use_lt_credentials = 0;
 int anon_credentials = 0;
+
+int use_auth_secret_with_timestamp = 0;
+char static_auth_secret[1025]="\0";
+turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
+
 turn_user_db *users = NULL;
-s08bits global_realm[1025];
+
+s08bits global_realm[1025]="\0";
 
 /////////// USER DB CHECK //////////////////
 
@@ -246,6 +252,8 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 				co->password = strdup(seq+1);
 			else if(!strcmp(s,"port"))
 				co->port = (unsigned int)atoi(seq+1);
+			else if(!strcmp(s,"p"))
+				co->port = (unsigned int)atoi(seq+1);
 			else {
 				MyconninfoFree(co);
 				co = NULL;
@@ -316,9 +324,117 @@ static MYSQL *get_mydb_connection(void)
 }
 #endif
 
+static int get_auth_secret(char *auth_secret)
+{
+	int ret = -1;
+
+	if(static_auth_secret[0]) {
+		STRCPY(auth_secret,static_auth_secret);
+		ret=0;
+		return ret;
+	}
+
+#if !defined(TURN_NO_PQ)
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		char statement[1025];
+		STRCPY(statement,"select value from turn_secret");
+		PGresult *res = PQexec(pqc, statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
+		} else {
+			char *kval = PQgetvalue(res,0,0);
+			if(kval) {
+				STRCPY(auth_secret,kval);
+				ret = 0;
+			}
+		}
+
+		if(res) {
+			PQclear(res);
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_MYSQL)
+	MYSQL * myc = get_mydb_connection();
+	if(myc) {
+		char statement[1025];
+		STRCPY(statement,"select value from turn_secret");
+		int res = mysql_query(myc, statement);
+		if(res) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+		} else {
+			MYSQL_RES *mres = mysql_store_result(myc);
+			if(!mres) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			} else if(mysql_field_count(myc)==1) {
+				MYSQL_ROW row = mysql_fetch_row(mres);
+				if(row && row[0]) {
+					unsigned long *lengths = mysql_fetch_lengths(mres);
+					if(lengths) {
+						size_t sz = lengths[0];
+						ns_bcopy(row[0],auth_secret,sz);
+						auth_secret[sz]=0;
+						ret = 0;
+					}
+				}
+				mysql_free_result(mres);
+			}
+		}
+	}
+#endif
+
+	return ret;
+}
+
+#if !defined(SHA_DIGEST_LENGTH)
+#define SHA_DIGEST_LENGTH (20)
+#endif
+
 int get_user_key(u08bits *uname, hmackey_t key)
 {
 	int ret = -1;
+
+	if(use_auth_secret_with_timestamp) {
+
+		turn_time_t ctime = (turn_time_t) time(NULL);
+		turn_time_t ts = 0;
+		char auth_secret[1025]="\0";
+
+		if(get_auth_secret(auth_secret)<0 || !(auth_secret[0]))
+			return ret;
+
+		char *col = strstr((char*)uname,":");
+
+		if(col) {
+			ts = (turn_time_t)atol(col+1);
+		} else {
+			ts = (turn_time_t)atol((char*)uname);
+		}
+
+		if(!turn_time_before((ctime + auth_secret_timestamp_expiration_time), ts)) {
+
+			u08bits hmac[1025]="\0";
+			unsigned int hmac_len = SHA_DIGEST_LENGTH;
+
+			if(calculate_hmac(uname, strlen((char*)uname), auth_secret, strlen(auth_secret), hmac, &hmac_len)>=0) {
+				size_t pwd_length = 0;
+				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
+
+				if(pwd && pwd_length>0) {
+					if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
+						ret = 0;
+					}
+					free(pwd);
+				}
+			}
+		}
+
+		return ret;
+	}
+
 	ur_string_map_value_type ukey = NULL;
 	ur_string_map_lock(users->static_accounts);
 	if(ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
@@ -430,10 +546,22 @@ u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_
 	return NULL;
 }
 
-int check_new_allocation_quota(u08bits *username)
+static u08bits *get_real_username(u08bits *user) {
+	u08bits *ret = (u08bits*)strdup((char*)user);
+	if(use_auth_secret_with_timestamp) {
+		char *col=strstr((char*)ret,":");
+		if(col) {
+			*col=0;
+		}
+	}
+	return ret;
+}
+
+int check_new_allocation_quota(u08bits *user)
 {
 	int ret = 0;
-	if (username) {
+	if (user) {
+		u08bits *username = get_real_username(user);
 		ur_string_map_lock(users->alloc_counters);
 		if (users->total_quota && (users->total_current_allocs >= users->total_quota)) {
 			ret = -1;
@@ -453,14 +581,16 @@ int check_new_allocation_quota(u08bits *username)
 				}
 			}
 		}
+		free(username);
 		ur_string_map_unlock(users->alloc_counters);
 	}
 	return ret;
 }
 
-void release_allocation_quota(u08bits *username)
+void release_allocation_quota(u08bits *user)
 {
-	if (username) {
+	if (user) {
+		u08bits *username = get_real_username(user);
 		ur_string_map_lock(users->alloc_counters);
 		ur_string_map_value_type value = 0;
 		ur_string_map_get(users->alloc_counters, (ur_string_map_key_type) username, &value);
@@ -471,6 +601,7 @@ void release_allocation_quota(u08bits *username)
 		if (users->total_current_allocs)
 			--(users->total_current_allocs);
 		ur_string_map_unlock(users->alloc_counters);
+		free(username);
 	}
 }
 
@@ -483,6 +614,8 @@ void read_userdb_file(void)
 	static turn_time_t mtime = 0;
 
 	if(userdb_type != TURN_USERDB_TYPE_FILE)
+		return;
+	if(use_auth_secret_with_timestamp)
 		return;
 
 	FILE *f = NULL;
@@ -541,7 +674,7 @@ void read_userdb_file(void)
 
 int add_user_account(char *user, int dynamic)
 {
-	if(user) {
+	if(user && !use_auth_secret_with_timestamp) {
 		char *s = strstr(user, ":");
 		if(!s || (s==user) || (strlen(s)<2)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
