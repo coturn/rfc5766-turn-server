@@ -16,6 +16,7 @@
 # password "turn".
 # 7) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 8) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
+# 9) "--log-file=stdout" means that all log output will go to the stdout. 
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -24,4 +25,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 -r north.gov --mysql-userdb="host=localhost dbname=turn user=turn password=turn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 -r north.gov --mysql-userdb="host=localhost dbname=turn user=turn password=turn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 

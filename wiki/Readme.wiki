@@ -1,5 +1,5 @@
 
-TURN(26 Mar 2013)	
+TURN(29 Mar 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -59,6 +59,7 @@ TURN(26 Mar 2013)
    * *--no-udp-relay* Do not allow UDP relay endpoints, use only TCP relay option.
    * *--no-tcp-relay* Do not allow TCP relay endpoints, use only UDP relay option.
    * *--stale-nonce* Use extra security with nonce value having limited lifetime (600 secs).
+   * *--no-stdout-log* Flag to prevent stdout log messages. By default, all log messages are going to both stdout and to a log file. With this option everything will be going to the log file only (unless the log file itself is stdout).
    * *-h*  Help.
 
 ====Config file setting:====
@@ -127,6 +128,7 @@ TURN(26 Mar 2013)
     *	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
     *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
+    *   *-l*, *--log-file* Option to set the log file name. By default, the turnserver tries to open a log file in  /var/log, /var/tmp, /tmp and current directories directories (which open operation succeeds first that file will be used). With this option you can set the definite log file name. The special names are "stdout" and "-" - they will force everything to the stdout.
 
 === turnadmin application: a TURN relay administration tool===
 
@@ -281,7 +283,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(26 Mar 2013)
+							TURN(29 Mar 2013)
 
 
 

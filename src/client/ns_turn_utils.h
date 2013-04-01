@@ -50,6 +50,8 @@ typedef enum {
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
 
+void set_no_stdout_log(int val);
+
 void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
 
 void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
@@ -58,6 +60,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
 void rtpprintf(const char *format, ...);
 int vrtpprintf(const char *format, va_list args);
 void reset_rtpprintf(void);
+void set_logfile(const char *fn);
 
 ///////////////////////////////////////////////////////
 

@@ -181,6 +181,11 @@ Flags:
 
 --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
 
+--no-stdout-log		Flag to prevent stdout log messages.
+					By default, all log messages are going to both stdout and to
+					a log file. With this option everything will be going to the log file only
+					(unless the log file itself is stdout).
+
 -h				Help.
     
 Options with required values:  
@@ -283,6 +288,14 @@ Options with required values:
 				file. If both --no-tls and --no-dtls options 
 				are specified, then this parameter is not needed.
 				Default value is turn_server_pkey.pem.
+				
+-l, --log-file	Option to set the log file name.
+				By default, the turnserver tries to open a log file in 
+				/var/log, /var/tmp, /tmp and current directories directories
+				(which open operation succeeds first that file will be used).
+				With this option you can set the definite log file name.
+				The special names are "stdout" and "-" - they will force everything 
+				to the stdout.
 
 ===============================================================================
 

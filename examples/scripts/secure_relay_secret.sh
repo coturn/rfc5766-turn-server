@@ -20,6 +20,7 @@
 # 8) --realm=north.gov sets realm value as "north.gov".
 # 9) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 10) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
+# 11) "--log-file=stdout" means that all log output will go to the stdout. 
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -28,5 +29,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --use-auth-secret --static-auth-secret=logen --secret-ts-exp-time=3600 --realm=north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --use-auth-secret --static-auth-secret=logen --secret-ts-exp-time=3600 --realm=north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 
 

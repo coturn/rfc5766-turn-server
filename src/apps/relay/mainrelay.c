@@ -1093,6 +1093,17 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	    --no-dtls			Do not start DTLS client listeners.\n"
 	"	    --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.\n"
 	"	    --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay options.\n"
+	"	-l, --log-file			Option to set the log file name.\n"
+	"					By default, the turnserver tries to open a log file in\n"
+	"					/var/log, /var/tmp, /tmp and current directories directories\n"
+	"					(which open operation succeeds first that file will be used).\n"
+	"					With this option you can set the definite log file name.\n"
+	"					The special names are \"stdout\" and \"-\" - they will force everything\n"
+	"					to the stdout.\n"
+	"	    --no-stdout-log		Flag to prevent stdout log messages.\n"
+	"					By default, all log messages are going to both stdout and to\n"
+	"					a log file. With this option everything will be going to the log file only\n"
+	"					(unless the log file itself is stdout).\n"
 	"	    --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs).\n"
 	"	-h				Help\n";
 
@@ -1135,7 +1146,8 @@ enum EXTRA_OPTS {
 	STALE_NONCE_OPT,
 	AUTH_SECRET_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
-	AUTH_SECRET_TS_EXP
+	AUTH_SECRET_TS_EXP,
+	NO_STDOUT_LOG_OPT
 };
 
 static struct option long_options[] = {
@@ -1180,6 +1192,8 @@ static struct option long_options[] = {
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
+				{ "log-file", required_argument, NULL, 'l' },
+				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1376,6 +1390,8 @@ static void set_option(int c, char *value)
 		STRCPY(pkey_file,value);
 		break;
 	/* these options have been already taken care of before: */
+	case 'l':
+	case NO_STDOUT_LOG_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1477,6 +1493,10 @@ static void read_config_file(int argc, char **argv, int pass)
 							sarg);
 					} else if((pass == 0) && (c != 'u')) {
 					  set_option(c, value);
+					} else if((pass == 0) && (c == 'l')) {
+						set_logfile(value);
+					} else if((pass==0) && (c==NO_STDOUT_LOG_OPT)) {
+						set_no_stdout_log(get_bool_value(value));
 					} else if((pass > 0) && (c == 'u')) {
 					  set_option(c, value);
 					}
@@ -1577,6 +1597,21 @@ int main(int argc, char **argv)
 	int c = 0;
 
 	set_execdir();
+
+	while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
+		switch(c) {
+		case 'l':
+			set_logfile(optarg);
+			break;
+		case NO_STDOUT_LOG_OPT:
+			set_no_stdout_log(get_bool_value(optarg));
+			break;
+		default:
+			;
+		}
+	}
+
+	optind = 0;
 
 #if defined(TURN_NO_TLS)
 	no_tls = 1;

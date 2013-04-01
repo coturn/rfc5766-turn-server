@@ -1,3 +1,8 @@
+04/1/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.7.3.0 'Superior Glokta':
+	- Issue 10 fixed: log file control options.
+	  Two options added: --no-stdout-log and --log-file.
+	
 03/29/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.2.0 'Superior Glokta':
 	- Issue 9 fixed (uclient).
