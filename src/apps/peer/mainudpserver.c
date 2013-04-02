@@ -83,8 +83,10 @@ int main(int argc, char **argv)
 		}
 
 	if(las<1) {
-		fprintf(stderr, "%s\n", Usage);
-		exit(1);
+	  local_addr_list = (char**)realloc(local_addr_list,++las*sizeof(char*));
+	  local_addr_list[las-1]=strdup("0.0.0.0");
+	  local_addr_list = (char**)realloc(local_addr_list,++las*sizeof(char*));
+	  local_addr_list[las-1]=strdup("::");
 	}
 
 

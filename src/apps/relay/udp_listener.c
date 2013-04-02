@@ -51,7 +51,6 @@ typedef struct {
 struct udp_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
-  ioa_addr relay_addr;
   ioa_engine_handle e;
   int verbose;
   struct event *udp_listen_ev;

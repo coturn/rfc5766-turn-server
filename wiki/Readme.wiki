@@ -1,5 +1,5 @@
 
-TURN(29 Mar 2013)	
+TURN(1 Apr 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -220,7 +220,7 @@ Peer a simple UDP-only echo backend server. This application is used for the tes
 
  *      *-p*     Listening	UDP port (Default: 3480).
  *      *-d*     Listening	interface device (optional)
- *      *-L*     Listening	address	of _peer_	server. Multiple listening addresses can be used, IPv4 and IPv6.
+ *      *-L*     Listening	address	of _peer_	server. Multiple listening addresses can be used, IPv4 and IPv6. If no listener address(es) defined, then it listens on all IPv4 and IPv6 addresses.
  *      *-v*     Verbose
 
 === stunclient is a basic STUN client ===
@@ -283,7 +283,47 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-							TURN(29 Mar 2013)
+This behavior can be controlled by --sql-log and --no-stdout-log options (see turnserver help).
+
+== CLUSTERS ==
+
+TURN Server can be a part of the cluster installation. But, to support the "even port" functionality 
+(RTP/RTCP streams pairs) the client requests from a particular IP must be delivered to the same 
+TURN Server instance, so it requires some networking setup massaging for the cluster. The reason is that 
+the RTP and RTCP relaying endpoints must be allocated on the same relay IP. It would be possible 
+to design a scheme with the application-level requests forwarding (and we may do that later) but 
+it would affect the performance.
+
+== FILES ==
+
+/etc/turnserver.conf
+
+/etc/turnuserdb.conf
+
+/usr/local/etc/turnserver.conf
+
+/usr/local/etc/turnuserdb.conf
+
+== STANDARDS ==
+
+new STUN RFC 5389
+
+TURN RFC 5766
+
+TURN-TCP extention RFC 6062
+ 
+TURN IPv6 extention RFC 6156
+
+STUN/TURN test vectors RFC 5769
+
+STUN NAT behavior discovery RFC 5780
+
+== AUTHORS ==
+
+Oleg Moskalenko <mom040267@gmail.com>
+
+
+							TURN(1 Apr 2013)
 
 
 

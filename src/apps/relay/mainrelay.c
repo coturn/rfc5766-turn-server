@@ -176,7 +176,12 @@ static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
 
+#if defined(TURN_NO_THREADS)
 static size_t relay_servers_number = 0;
+#else
+static size_t relay_servers_number = 1;
+#endif
+
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
 
 enum _MESSAGE_TO_RELAY_TYPE {

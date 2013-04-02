@@ -235,9 +235,8 @@ Options with required values:
 				By default, this value is empty, and the real relay IP address is used.
 				
 -m, --relay-threads		number of extra threads to handle the 
-				established connections.
-				By default, everything in handled in single thread 
-				(the default number of extra threads is 0).
+				established connections. If set to zero (0) then everything is
+				handled in single thread. The default number of extra threads is 1.
 
 --min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.
@@ -444,6 +443,7 @@ Options with required values:
 -d  Listening interface device (optional)
 
 -L  Listening address of peer server. Multiple listening addresses can be used, IPv4 and IPv6.
+If no listener address(es) defined, then it listens on all IPv4 and IPv6 addresses.
 
 -v  Verbose
 
@@ -532,6 +532,8 @@ in the following directories:
 
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
+
+This behavior can be controlled by --sql-log and --no-stdout-log options (see turnserver help).
 
 ===================================================================================
 

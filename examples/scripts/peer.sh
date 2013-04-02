@@ -12,4 +12,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:bin/:../bin:${PATH} peer -L 127.0.0.1 -L ::1
+PATH=examples/bin/:bin/:../bin:${PATH} peer

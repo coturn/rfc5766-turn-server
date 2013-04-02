@@ -27,7 +27,7 @@ if [ -d examples ] ; then
        cd examples
 fi
 
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/postgres/9.2-pgdg/lib
 
 PATH=examples/bin/:../bin:./bin/:${PATH} uclient -T -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -y -g -u gorst -w hero ::1
 

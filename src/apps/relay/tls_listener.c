@@ -39,14 +39,6 @@
 
 ///////////////////////////////////////////////////
 
-typedef struct {
-  ioa_addr local_addr;
-  ioa_addr remote_addr;
-  ioa_socket_raw fd;
-} ur_conn_info;
-
-///////////////////////////////////////////////////
-
 #define FUNCSTART if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
 #define FUNCEND if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
 
@@ -54,7 +46,6 @@ struct tls_listener_relay_server_info
 {
 	char ifname[1025];
 	ioa_addr addr;
-	ioa_addr relay_addr;
 	ioa_engine_handle e;
 	int verbose;
 	struct evconnlistener *l;

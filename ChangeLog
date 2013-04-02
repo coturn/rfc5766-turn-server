@@ -1,3 +1,8 @@
+04/2/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.7.3.1 'Superior Glokta':
+	- Listeners code cleaned.
+	- The default number of extra relay threads changes from 0 to 1.
+	  
 04/1/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.3.0 'Superior Glokta':
 	- Issue 10 fixed: log file control options.
