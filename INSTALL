@@ -421,13 +421,23 @@ your own names.
 The database schema for the TURN server is very minimalistic and is located in project's 
 turndb/schema.sql file:
 
-# Table for account-based authorization:
+# Table for long-term credentials mechanism authorization:
+#
 CREATE TABLE turnusers_lt (
     name varchar(512) PRIMARY KEY,
     hmackey char(32)
 );
 
-#Table with single row and single value for secret-based authorization:
+# Table for short-term credentials mechanism authorisation:
+#
+CREATE TABLE turnusers_st (
+    name varchar(512) PRIMARY KEY,
+    password varchar(512)
+);
+
+# Table with single row and single value for secret-based authorization
+# that can be used with both long-term and short-term mechanisms:
+#
 CREATE TABLE turn_secret (
     value varchar(512)
 );
@@ -469,7 +479,8 @@ turnserver ... --sql-userdb=postgresql://username:password@/databasename ...
 XII. MySQL setup
 
 The MySQL setup is similar to PostgreSQL (same idea), and is well documented on their 
-site http://www.mysql.org. 
+site http://www.mysql.org. The TURN Server database schema is the same as for PostgreSQL
+and you can find it in turndb/schema.sql file.
 
 If the TURN server was compiled with MySQL support, then we can use the TURN server 
 database parameter --mysql-userdb. The value of this parameter is a connection string 

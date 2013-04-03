@@ -84,7 +84,7 @@ int main(int argc, const char **argv)
 		strcpy((char*) upwd, "TheMatrIX");
 		strcpy((char*)nonce,"f//499k954d6OL34oL9FSTvy64sA");
 
-		res = stun_check_message_integrity_str(buf, sizeof(reqltc) - 1, uname, realm,
+		res = stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, sizeof(reqltc) - 1, uname, realm,
 						upwd);
 
 		printf("RFC 5769 message structure, long-term credentials and integrity test result: ");
@@ -140,7 +140,7 @@ int main(int argc, const char **argv)
 
 		//Negative test:
 		buf[32] = 10;
-		res = stun_check_message_integrity_str(buf, sizeof(reqltc) - 1, uname, realm,
+		res = stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, sizeof(reqltc) - 1, uname, realm,
 						upwd);
 
 		printf("RFC 5769 NEGATIVE long-term credentials test result: ");

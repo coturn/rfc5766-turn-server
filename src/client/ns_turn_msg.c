@@ -35,6 +35,8 @@
 
 static u32bits ns_crc32(const u08bits *buffer, u32bits len);
 
+void print_hmac(const char *name, const void *s, size_t len);
+
 /////////////////////////////////////////////////////////////////
 
 int stun_get_command_message_len_str(const u08bits* buf, size_t len) {
@@ -1040,22 +1042,27 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 	printf("]\n");
 }
 
-int stun_attr_add_integrity_str(u08bits *buf, size_t *len, hmackey_t key)
+int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd)
 {
 	u08bits hmac[20];
 
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_MESSAGE_INTEGRITY, hmac, sizeof(hmac))<0)
 		return -1;
 
-	if(stun_calculate_hmac(buf, *len-4-sizeof(hmac), key, buf+*len-sizeof(hmac))<0)
-		return -1;
+	if(ct == TURN_CREDENTIALS_SHORT_TERM) {
+		if(stun_calculate_hmac(buf, *len-4-sizeof(hmac), pwd, strlen((char*)pwd), buf+*len-sizeof(hmac))<0)
+				return -1;
+	} else {
+		if(stun_calculate_hmac(buf, *len-4-sizeof(hmac), key, sizeof(hmackey_t), buf+*len-sizeof(hmac))<0)
+			return -1;
+	}
 
 	return 0;
 }
 
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce)
 {
-	u08bits key[16];
+	hmackey_t key;
 
 	if(stun_produce_integrity_key_str(uname, realm, upwd, key)<0)
 		return -1;
@@ -1069,13 +1076,33 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_REALM, realm, strlen((s08bits*)realm))<0)
 			return -1;
 
-	return stun_attr_add_integrity_str(buf, len, key);
+	st_password_t p;
+	return stun_attr_add_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, len, key, p);
+}
+
+int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd)
+{
+	if(stun_attr_add_str(buf, len, STUN_ATTRIBUTE_USERNAME, uname, strlen((s08bits*)uname))<0)
+			return -1;
+
+	hmackey_t key;
+	return stun_attr_add_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, len, key, pwd);
+}
+
+void print_hmac(const char *name, const void *s, size_t len)
+{
+	printf("%s:len=%d:[",name,(int)len);
+	size_t i;
+	for(i=0;i<len;i++) {
+		printf("%02x",(int)((const u08bits*)s)[i]);
+	}
+	printf("]\n");
 }
 
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t key)
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd)
 {
 	int res = 0;
 	u08bits new_hmac[20];
@@ -1096,7 +1123,12 @@ int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t 
 	if (stun_set_command_message_len_str(buf, new_len) < 0)
 		return -1;
 
-	res = stun_calculate_hmac(buf, (size_t) new_len - 4 - 20, key, new_hmac);
+	if(ct == TURN_CREDENTIALS_SHORT_TERM) {
+		res = stun_calculate_hmac(buf, (size_t) new_len - 4 - 20, pwd, strlen((char*)pwd), new_hmac);
+	} else {
+		res = stun_calculate_hmac(buf, (size_t) new_len - 4 - 20, key, sizeof(hmackey_t), new_hmac);
+	}
+
 	stun_set_command_message_len_str(buf, orig_len);
 	if(res<0)
 		return -1;
@@ -1117,14 +1149,17 @@ int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t 
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd)
+int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd)
 {
-	u08bits key[16];
+	hmackey_t key;
+	st_password_t pwd;
 
-	if (stun_produce_integrity_key_str(uname, realm, upwd, key) < 0)
+	if(ct == TURN_CREDENTIALS_SHORT_TERM)
+		strncpy((char*)pwd,(char*)upwd,sizeof(st_password_t));
+	else if (stun_produce_integrity_key_str(uname, realm, upwd, key) < 0)
 		return -1;
 
-	return stun_check_message_integrity_by_key_str(buf, len, key);
+	return stun_check_message_integrity_by_key_str(ct, buf, len, key, pwd);
 }
 
 /* RFC 5780 */

@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "1.7.3.1"
-#define TURN_SERVER_VERSION_NAME "Superior Glokta"
+#define TURN_SERVER_VERSION "1.8.0.0"
+#define TURN_SERVER_VERSION_NAME "Black Dow"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)

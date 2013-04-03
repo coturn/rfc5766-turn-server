@@ -3,10 +3,13 @@
 # This is an example how to start a TURN Server in
 # secure mode (when authentication is used) - see option -a
 # that means "use long-term credential mechanism".
+#
 # We start here a TURN Server listening on IPv4 address
 # 127.0.0.1 and on IPv6 address ::1. We use 127.0.0.1 as
 # IPv4 relay address, and we use ::1 as IPv6 relay address.
+#
 # Other options:
+#
 # 1) set bandwidth limit on client session 3000000 bytes per second (--max-bps).
 # 2) use fingerprints (-f)
 # 3) use 3 relay threads (-m 3)

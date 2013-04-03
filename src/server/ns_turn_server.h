@@ -58,13 +58,7 @@ typedef enum {
 	DONT_FRAGMENT_SUPPORT_EMULATED
 } dont_fragment_option_t;
 
-typedef enum {
-	TURN_CREDENTIALS_NONE = 0,
-	TURN_CREDENTIALS_LONG_TERM,
-	TURN_CREDENTIALS_SHORT_TERM
-} turn_credential_type;
-
-typedef void (*get_username_resume_cb)(int success, u08bits *hmackey, void *ctx, ioa_net_data *in_buffer);
+typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_password_t pwd, void *ctx, ioa_net_data *in_buffer);
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);

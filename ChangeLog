@@ -1,3 +1,7 @@
+04/3/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.0 'Black Dow':
+	- Short-term credentials mechanism implemented.
+	
 04/2/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.3.1 'Superior Glokta':
 	- Listeners code cleaned.

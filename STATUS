@@ -46,6 +46,8 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 17) Users can be stored in MySQL database.
 
 18) TURN Server REST API implemented.
+
+19) Short-term credentials mechanism implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

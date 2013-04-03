@@ -1,7 +1,10 @@
 #!/bin/sh
 #
-# This is an example of a script to run a "secure" TURN TCP client.
+# This is an example of a script to run a "secure" TURN TCP client
+# with the long-term credentials mechanism.
+#
 # Options:
+#
 # 1) -t is present, it means that TCP networking is used.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
 # are sent with interval of 20 milliseconds, to emulate an RTP stream.

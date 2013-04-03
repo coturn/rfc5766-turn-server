@@ -1,8 +1,11 @@
 #!/bin/sh
 #
 # This is an example of a script to run a "secure" TURN TLS client
-# with TCP relay endpoints (RFC 6062).
+# with the long-term credentials mechanism and with
+# TCP relay endpoints (RFC 6062).
+#
 # Options:
+#
 # 1) -T is present, it means that TCP networking is used,  with TCP 
 # relay endpoints (RFC 6062.
 # 2) -S means that "secure protocol", that is TLS in the case of TCP, 

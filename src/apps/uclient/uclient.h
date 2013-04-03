@@ -51,6 +51,7 @@ extern int do_not_use_channel;
 extern int clnet_verbose;
 extern int use_tcp;
 extern int use_secure;
+extern int use_short_term;
 extern char cert_file[1025];
 extern char pkey_file[1025];
 extern int hang_on;
@@ -60,7 +61,7 @@ extern int no_rtcp;
 extern int default_address_family;
 extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-extern u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
+extern st_password_t g_upwd;
 extern int use_fingerprints;
 extern SSL_CTX *root_tls_ctx;
 extern int RTP_PACKET_INTERVAL;
@@ -78,6 +79,10 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, app_tcp_conn_info *atc);
 
 void client_input_handler(evutil_socket_t fd, short what, void* arg);
+
+turn_credential_type get_turn_credentials_type(void);
+
+int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
 
 ////////////////////////////////////////////
 

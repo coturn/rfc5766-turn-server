@@ -1,7 +1,10 @@
 #!/bin/sh
 #
-# This is an example of a script to run a "secure" TURN TLS client.
+# This is an example of a script to run a "secure" TURN TLS client
+# with the long-term credentials mechanism.
+#
 # Options:
+#
 # 1) -t is present, it means that TCP networking is used.
 # 2) -S means "secure protocol", that is TLS in the case of TCP.
 # 3) -i sets certificate file for DTLS.

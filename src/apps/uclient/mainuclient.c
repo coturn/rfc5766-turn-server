@@ -51,6 +51,7 @@ int c2c=0;
 int clnet_verbose=0;
 int use_tcp=0;
 int use_secure=0;
+int use_short_term=0;
 char cert_file[1025]="\0";
 char pkey_file[1025]="\0";
 int hang_on=0;
@@ -59,7 +60,7 @@ int no_rtcp = 0;
 int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
-u08bits g_upwd[STUN_MAX_PWD_SIZE+1];
+st_password_t g_upwd;
 int use_fingerprints = 1;
 SSL_CTX *root_tls_ctx = NULL;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
@@ -93,9 +94,11 @@ static char Usage[] =
   "	-e	Peer address.\n"
   "	-r	Peer port (default 3480).\n"
   "	-z	Per-session packet interval in milliseconds (default is 20 ms).\n"
+  "	-A	Use short-term credentials mechanism. By default, the program uses\n"
+  "		the long-term credentials mechanism if authentication is required.\n"
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
-  "	-W	TURN REST API authentication secret.\n";
+  "	-W	TURN REST API authentication secret. Is not compatible with -A option\n";
 
 //////////////////////////////////////////////////
 
@@ -122,10 +125,13 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:vsyhcxgtTS")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:vsyhcxgtTSA")) != -1) {
 		switch (c){
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
+			break;
+		case 'A':
+			use_short_term = 1;
 			break;
 		case 'u':
 			STRCPY(g_uname, optarg);
@@ -220,6 +226,11 @@ int main(int argc, char **argv)
 	}
 
 	if(use_auth_secret_with_timestamp) {
+
+		if(use_short_term) {
+			fprintf(stderr,"ERROR: You cannot use authentication secret (REST API) with short-term credentials mechanism.\n");
+			exit(-1);
+		}
 		{
 			char new_uname[1025];
 			if(g_uname[0]) {

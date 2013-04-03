@@ -106,17 +106,18 @@ Config file settings:
 
 User database settings:  
 
--b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf).
+-b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf),
+		for long-term credentials mechanism only.
 		This user file database is being dynamically checked while the turnserver 
 		is working, and the user accounts can be changed dynamically by
 		editing the database.
 				  
--e, --sql-userdb	User database connection string for PostgreSQL. You can either use 
-		flat file user database (-b option) or PostgreSQL database (-e option)
-		or MySQL database (-M option).
-		The connection string format (for example) is like this:
+-e, --sql-userdb	User database connection string for PostgreSQL.
+		This database can be used for long-term and short-term credentials mechanisms,
+	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		The connection string format is like that:
 		 
-		"host=localhost dbname=turn user=turn password=turn connect_timeout=30" (for 8.x Postgres).
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=30" (for 8.x Postgres).
 		
 		Or:
 		
@@ -125,12 +126,12 @@ User database settings:
 		
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 				  
--M, --mysql-userdb	User database connection string for MySQL. You can either use 
-		flat file user database (-b option) or PostgreSQL database (-e option) or
-		MySQL database (-M option).
-		The connection string format (for example) is like this:
+-M, --mysql-userdb	User database connection string for MySQL. 
+		This database can be used for long-term and short-term credentials mechanisms,
+	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		The connection string format is like that:
 		 
-		"host=localhost dbname=turn user=turn password=turn"
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password>"
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.mysql.org for full MySQL documentation.
@@ -146,10 +147,13 @@ Flags:
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
 
--a, --lt-cred-mech	Use long-term credential mechanism.
+-a, --lt-cred-mech	Use long-term credentials mechanism. This option can be used with either
+	                flat file user database or PostgreSQL DB or MySQL DB for user keys storage.
+-A, --st-cred-mech	Use the short-term credentials mechanism. This option requires
+	                a PostgreSQL or MySQL DB for short term passwords storage.
 
--z, --no-auth		Do not use any credential mechanism, allow anonymous access. 
-			Opposite to -a option. This is default option when no 
+-z, --no-auth		Do not use any credentials mechanism, allow anonymous access. 
+			Opposite to -a and -A options. This is default option when no 
 			authentication-related options are set.
 			By default, no credential mechanism is used -
 			any user is allowed.
@@ -166,6 +170,8 @@ Flags:
 			This option is just turns on secret-based authentication.
 			The actual value of the secret is defined either by option static-auth-secret,
 			or can be found in the turn_secret table in the database.
+			This option can be used with long-term credentials mechanisms only -
+			it does not make much sense with the short-term mechanism.
 
 --no-udp			Do not start UDP client listeners.
 
@@ -246,8 +252,9 @@ Options with required values:
 				endpoints allocation.
 				Default value is 65535, according to RFC 5766.
 
--u, --user			User account, in the column-separated 
+-u, --user			Long-term credentials user account, in the column-separated 
 				form 'username:key'. 
+				Multiple user accounts may used in the command line.
 				The key is either the user password, or
 				the key is generated
 				by turnadmin command. In the second case,
@@ -255,7 +262,7 @@ Options with required values:
 				The key is calculated over the user name, 
 				the realm, and the user password.
 
--r, --realm			Realm to be used for all users.
+-r, --realm			Realm to be used for all users, with long-term credentials only
 
 -q, --user-quota		Per-user allocations quota: how many concurrent 
 				allocations a user can create.
@@ -312,9 +319,11 @@ $ turnadmin [ -h | --help]
   
 Commands:  
 
--k, --key	Generate key for a user.
--a, --add       Add or update a user.
--d, --delete	Delete a user.
+-k, --key			Generate key for a long-term credentials mechanism user.
+-a, --add       	Add or update a long-term user.
+-A, --add-st    	Add or update a short-term credentials mechanism user.
+-d, --delete		Delete a long-term user.
+-D, --delete-st		Delete a short-term user.
   
 Options with required values:  
 
@@ -325,7 +334,7 @@ Options with required values:
 -M, --mysql-userdb	MySQL user database connection string.
 		See the --mysql-userdb option in the turnserver section.
 -u, --user	User name.
--r, --realm	Realm.
+-r, --realm	Realm, for long-term credentials mechanism only.
 -p, --password	Password.
 -h, --help	Help.
   
@@ -390,6 +399,10 @@ Flags:
 
 -g      Set DONT_FRAGMENT parameter in TURN requests.
 
+-A		use short-term credentials mechanism for authentication. 
+		By default, the program uses the long-term credentials mechanism 
+		if authentication is required.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).
@@ -418,7 +431,7 @@ Options with required values:
 
 -w      STUN/TURN user password.
 
--W      TURN REST API authentication secret.
+-W      TURN REST API authentication secret. Is not compatible with -A flag.
 
 See the examples in the "examples/scripts" directory.
 

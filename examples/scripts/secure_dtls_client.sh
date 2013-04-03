@@ -1,7 +1,10 @@
 #!/bin/sh
 #
-# This is an example of a script to run a "secure" TURN DTLS client.
+# This is an example of a script to run a "secure" TURN DTLS client
+# with the long-term credentials mechanism.
+#
 # Options:
+#
 # 1) -t is absent, it means that UDP networking is used.
 # 2) -S means "secure protocol", that is DTLS in the case of UDP.
 # 3) -i sets certificate file for DTLS.

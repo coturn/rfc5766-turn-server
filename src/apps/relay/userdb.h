@@ -55,7 +55,8 @@ extern "C" {
 struct auth_message {
 	turnserver_id id;
 	u08bits username[1025];
-	u08bits key[16];
+	hmackey_t key;
+	st_password_t pwd;
 	get_username_resume_cb resume_func;
 	ioa_net_data in_buffer;
 	void *ctx;
@@ -91,6 +92,7 @@ extern char userdb[1025];
 
 extern size_t users_number;
 extern int use_lt_credentials;
+extern int use_st_credentials;
 extern int anon_credentials;
 
 extern int use_auth_secret_with_timestamp;
@@ -106,6 +108,7 @@ extern void send_auth_message_to_auth_server(struct auth_message *am);
 /////////// USER DB CHECK //////////////////
 
 int get_user_key(u08bits *uname, hmackey_t key);
+int get_user_pwd(u08bits *uname, st_password_t pwd);
 u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username);
 void release_allocation_quota(u08bits *username);
@@ -114,7 +117,7 @@ void release_allocation_quota(u08bits *username);
 
 void read_userdb_file(void);
 int add_user_account(char *user, int dynamic);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int is_st);
 
 ////////////////////////////////////////////
 

@@ -113,9 +113,9 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 
 #include "ns_turn_msg.h"
 
-int stun_calculate_hmac(u08bits *buf, size_t len, hmackey_t key, u08bits *hmac)
+int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, size_t keylen, u08bits *hmac)
 {
-	if (!HMAC(EVP_sha1(), key, sizeof(hmackey_t), buf, len, hmac, NULL)) {
+	if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, NULL)) {
 		return -1;
 	} else {
 		return 0;

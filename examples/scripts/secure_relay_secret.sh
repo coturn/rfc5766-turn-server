@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # This is an example how to start a TURN Server in
-# secure 'static' 'secret' mode (see TURNServerRESTAPI.pdf).
+# secure 'static' 'secret' mode (see TURNServerRESTAPI.pdf)
+# with the long-term credentials mechanism.
 #
 # We start here a TURN Server listening on IPv4 address
 # 127.0.0.1 and on IPv6 address ::1. We use 127.0.0.1 as

@@ -53,7 +53,8 @@ typedef struct {
   u08bits nonce[NONCE_LENGTH_32BITS*8+1];
   turn_time_t nonce_expiration_time;
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
-  u08bits hmackey[16];
+  hmackey_t hmackey;
+  st_password_t pwd;
   int enforce_fingerprints;
   int is_tcp_relay;
 } ts_ur_super_session;

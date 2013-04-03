@@ -50,10 +50,23 @@ typedef struct {
   uint8_t tsx_id[12];
 } stun_tid;
 
+typedef enum {
+	TURN_CREDENTIALS_NONE = 0,
+	TURN_CREDENTIALS_LONG_TERM,
+	TURN_CREDENTIALS_SHORT_TERM,
+	TURN_CREDENTIALS_UNDEFINED
+} turn_credential_type;
+
 /**
  * HMAC key
  */
 typedef u08bits hmackey_t[16];
+
+/**
+ * Short-term credentials password
+ */
+#define SHORT_TERM_PASSWORD_SIZE (512)
+typedef u08bits st_password_t[SHORT_TERM_PASSWORD_SIZE+1];
 
 ///////////////////////////////////
 
@@ -161,17 +174,18 @@ void print_bin_func(const char *name, size_t len, const void *s, const char *fun
 /*
  * Return -1 if failure, 0 if the integrity is not correct, 1 if OK
  */
-int stun_check_message_integrity_by_key_str(u08bits *buf, size_t len, hmackey_t key);
-int stun_check_message_integrity_str(u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd);
-int stun_attr_add_integrity_str(u08bits *buf, size_t *len, hmackey_t key);
+int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *buf, size_t len, hmackey_t key, st_password_t pwd);
+int stun_check_message_integrity_str(turn_credential_type ct, u08bits *buf, size_t len, u08bits *uname, u08bits *realm, u08bits *upwd);
+int stun_attr_add_integrity_str(turn_credential_type ct, u08bits *buf, size_t *len, hmackey_t key, st_password_t pwd);
 int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *uname, u08bits *realm, u08bits *upwd, u08bits *nonce);
+int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd);
 
 /*
  * To be implemented in utilities
  */
 
 int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key);
-int stun_calculate_hmac(u08bits *buf, size_t len, hmackey_t key, u08bits *hmac);
+int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, size_t sz, u08bits *hmac);
 
 /* RFC 5780 */
 int stun_attr_get_change_request_str(stun_attr_ref attr, int *change_ip, int *change_port);

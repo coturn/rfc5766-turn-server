@@ -254,13 +254,7 @@ static int clnet_allocate(int verbose,
 		  }
 		}
 
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-							clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -301,9 +295,10 @@ static int clnet_allocate(int verbose,
 						allocate_received = 1;
 						allocate_finished = 1;
 
-						if(clnet_info->nonce[0]) {
-							if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
-										clnet_info->realm, g_upwd)<0) {
+						if(clnet_info->nonce[0] || use_short_term) {
+							if(stun_check_message_integrity_str(get_turn_credentials_type(),
+											message.buf, (size_t)(message.len), g_uname,
+										clnet_info->realm, g_upwd)<1) {
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in allocate message received from server\n");
 								return -1;
 							}
@@ -397,13 +392,7 @@ static int clnet_allocate(int verbose,
 			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
 					4);
 
-			if(clnet_info->nonce[0]) {
-				if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-							clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-					return -1;
-				}
-			}
+			if(add_integrity(clnet_info, &message)<0) return -1;
 
 			stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -481,13 +470,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		*chn = stun_set_channel_bind_request(&message, peer_addr, *chn);
 
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -527,9 +510,10 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 					cb_received = 1;
 
-					if(clnet_info->nonce[0]) {
-						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
-									clnet_info->realm, g_upwd)<0) {
+					if(clnet_info->nonce[0] || use_short_term) {
+						if(stun_check_message_integrity_str(get_turn_credentials_type(),
+										message.buf, (size_t)(message.len), g_uname,
+									clnet_info->realm, g_upwd)<1) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in channel bind message received from server\n");
 							return -1;
 						}
@@ -576,13 +560,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 		stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -623,9 +601,10 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 					cp_received = 1;
 
-					if(clnet_info->nonce[0]) {
-						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
-											clnet_info->realm, g_upwd)<0) {
+					if(clnet_info->nonce[0] || use_short_term) {
+						if(stun_check_message_integrity_str(get_turn_credentials_type(),
+										message.buf, (size_t)(message.len), g_uname,
+											clnet_info->realm, g_upwd)<1) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in create permission message received from server\n");
 							return -1;
 						}
@@ -876,13 +855,7 @@ int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_a
 		stun_init_request(STUN_METHOD_CONNECT, &message);
 		stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -919,13 +892,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 		stun_init_request(STUN_METHOD_CONNECTION_BIND, &message);
 		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&(atc->cid),4);
 
-		if(clnet_info->nonce[0]) {
-			if(stun_attr_add_integrity_by_user_str(message.buf, (size_t*)&(message.len), g_uname,
-						clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 
 		stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
 
@@ -964,9 +931,10 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				u08bits err_msg[129];
 				if (stun_is_success_response(&message)) {
 
-					if(clnet_info->nonce[0]) {
-						if(stun_check_message_integrity_str(message.buf, (size_t)(message.len), g_uname,
-									clnet_info->realm, g_upwd)<0) {
+					if(clnet_info->nonce[0] || use_short_term) {
+						if(stun_check_message_integrity_str(get_turn_credentials_type(),
+										message.buf, (size_t)(message.len), g_uname,
+									clnet_info->realm, g_upwd)<1) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in connect bind message received from server\n");
 							return -1;
 						}

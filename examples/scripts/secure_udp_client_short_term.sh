@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # This is an example of a script to run a "secure" TURN UDP client
-# with the long-term credentials mechanism.
+# with short-term credential mechanism.
 #
 # Options:
 #
@@ -13,12 +13,11 @@
 # (like average audio RTP packet).
 # 8) -e 127.0.0.1 means that the clients will use peer address 127.0.0.1.
 # 9) -g means "set DONT_FRAGMENT parameter in TURN requests".
-# 10) -u ninefingers means that if the server challenges the client with 
-# authentication challenge, then we use account "ninefingers".
-# 11) -w youhavetoberealistic sets the password for the account as "youhavetoberealistic".
-# 12) -s option is absent - it means that the client will be using 
-# the "channel" mechanism for data.
-# 13) ::1 (the last parameter) is the TURN Server IP address. We use IPv6 here
+# 10) -A means that the short-term credentials mechanism is used.
+# 11) -u ninefingers sets the client user name.
+# 12) -w youhavetoberealistic sets the password for the user account as "youhavetoberealistic".
+# 13) -s option means that the client will be using "send" indication for data trasfer.
+# 14) ::1 (the last parameter) is the TURN Server IP address. We use IPv6 here
 # to illustrate how the TURN Server convert the traffic from IPv6 to IPv4 and back.
 #
 
@@ -28,5 +27,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} uclient -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic ::1
+PATH=examples/bin/:../bin/:./bin/:${PATH} uclient -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -A -u ninefingers -w youhavetoberealistic -s ::1
 

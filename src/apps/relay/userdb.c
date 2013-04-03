@@ -76,7 +76,9 @@ TURN_USERDB_TYPE userdb_type=TURN_USERDB_TYPE_FILE;
 char userdb[1025]="\0";
 
 size_t users_number = 0;
+
 int use_lt_credentials = 0;
+int use_st_credentials = 0;
 int anon_credentials = 0;
 
 int use_auth_secret_with_timestamp = 0;
@@ -470,7 +472,7 @@ int get_user_key(u08bits *uname, hmackey_t key)
 					ret = 0;
 				}
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: %s\n",uname,kval);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",uname);
 			}
 		}
 
@@ -510,6 +512,72 @@ int get_user_key(u08bits *uname, hmackey_t key)
 							} else {
 								ret = 0;
 							}
+						}
+					}
+				}
+				mysql_free_result(mres);
+			}
+		}
+	}
+#endif
+	}
+
+	return ret;
+}
+
+int get_user_pwd(u08bits *uname, st_password_t pwd)
+{
+	int ret = -1;
+
+	char statement[1025];
+	sprintf(statement,"select password from turnusers_st where name='%s'",uname);
+
+	{
+#if !defined(TURN_NO_PQ)
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		PGresult *res = PQexec(pqc, statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
+		} else {
+			char *kval = PQgetvalue(res,0,0);
+			if(kval) {
+				strncpy((char*)pwd,kval,sizeof(st_password_t));
+				ret = 0;
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",uname);
+			}
+		}
+
+		if(res) {
+			PQclear(res);
+		}
+	}
+#endif
+#if !defined(TURN_NO_MYSQL)
+	MYSQL * myc = get_mydb_connection();
+	if(myc) {
+		int res = mysql_query(myc, statement);
+		if(res) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+		} else {
+			MYSQL_RES *mres = mysql_store_result(myc);
+			if(!mres) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			} else if(mysql_field_count(myc)!=1) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving DB information: %s\n",statement);
+			} else {
+				MYSQL_ROW row = mysql_fetch_row(mres);
+				if(row && row[0]) {
+					unsigned long *lengths = mysql_fetch_lengths(mres);
+					if(lengths) {
+						if(lengths[0]<1) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in DB is zero(0)\n",uname);
+						} else {
+							ns_bcopy(row[0],pwd,lengths[0]);
+							pwd[lengths[0]]=0;
+							ret = 0;
 						}
 					}
 				}
@@ -721,24 +789,32 @@ int add_user_account(char *user, int dynamic)
 
 ////////////////// Admin /////////////////////////
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand)
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int is_st)
 {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t)*2+1];
 
+	st_password_t passwd;
+
 	if(!dcommand) {
-		stun_produce_integrity_key_str(user, realm, pwd, key);
-		size_t i = 0;
-		char *s=skey;
-		for(i=0;i<sizeof(hmackey_t);i++) {
-			sprintf(s,"%02x",(unsigned int)key[i]);
-			s+=2;
+		if(is_st) {
+			strncpy((char*)passwd,(char*)pwd,sizeof(st_password_t));
+		} else {
+			stun_produce_integrity_key_str(user, realm, pwd, key);
+			size_t i = 0;
+			char *s=skey;
+			for(i=0;i<sizeof(hmackey_t);i++) {
+				sprintf(s,"%02x",(unsigned int)key[i]);
+				s+=2;
+			}
 		}
 	}
 
 	if(kcommand) {
 
-		printf("0x%s\n",skey);
+		if(!is_st) {
+			printf("0x%s\n",skey);
+		}
 
 	} else if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
@@ -746,7 +822,11 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		PGconn *pqc = get_pqdb_connection();
 		if(pqc) {
 			if(dcommand) {
-				sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				if(is_st) {
+					sprintf(statement,"delete from turnusers_st where name='%s'",user);
+				} else {
+					sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				}
 				PGresult *res = PQexec(pqc, statement);
 				if(res) {
 					PQclear(res);
@@ -754,16 +834,24 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 			}
 
 			if(acommand) {
-				sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				if(is_st) {
+					sprintf(statement,"insert into turnusers_st values('%s','%s')",user,passwd);
+				} else {
+					sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				}
 				PGresult *res = PQexec(pqc, statement);
 				if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 					if(res) {
 						PQclear(res);
 					}
-					sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					if(is_st) {
+						sprintf(statement,"update turnusers_st set password='%s' where name='%s'",passwd,user);
+					} else {
+						sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					}
 					res = PQexec(pqc, statement);
 					if(!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",PQerrorMessage(pqc));
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user information: %s\n",PQerrorMessage(pqc));
 					}
 				}
 				if(res) {
@@ -778,7 +866,11 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			if(dcommand) {
-				sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				if(is_st) {
+					sprintf(statement,"delete from turnusers_st where name='%s'",user);
+				} else {
+					sprintf(statement,"delete from turnusers_lt where name='%s'",user);
+				}
 				int res = mysql_query(myc, statement);
 				if(res) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error deleting user key information: %s\n",mysql_error(myc));
@@ -786,10 +878,18 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 			}
 
 			if(acommand) {
-				sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				if(is_st) {
+					sprintf(statement,"insert into turnusers_st values('%s','%s')",user,passwd);
+				} else {
+					sprintf(statement,"insert into turnusers_lt values('%s','%s')",user,skey);
+				}
 				int res = mysql_query(myc, statement);
 				if(res) {
-					sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					if(is_st) {
+						sprintf(statement,"update turnusers_st set password='%s' where name='%s'",passwd,user);
+					} else {
+						sprintf(statement,"update turnusers_lt set hmackey='%s' where name='%s'",skey,user);
+					}
 					res = mysql_query(myc, statement);
 					if(res) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error inserting/updating user key information: %s\n",mysql_error(myc));
@@ -798,7 +898,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 			}
 		}
 #endif
-	} else {
+	} else if(!is_st) {
 
 		char *full_path_to_userdb_file = find_config_file(userdb, 1);
 		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
@@ -844,7 +944,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 					found = 1;
 					strcpy(us, (char*) user);
 					strcpy(us + strlen(us), ":0x");
-					for (i = 0; i < sizeof(key); i++) {
+					for (i = 0; i < sizeof(hmackey_t); i++) {
 						sprintf(
 										us + strlen(us),
 										"%02x",
@@ -865,7 +965,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		if(!found && acommand) {
 			strcpy(us,(char*)user);
 			strcpy(us+strlen(us),":0x");
-			for(i=0;i<sizeof(key);i++) {
+			for(i=0;i<sizeof(hmackey_t);i++) {
 				sprintf(us+strlen(us),"%02x",(unsigned int)key[i]);
 			}
 			content = (char**)realloc(content,sizeof(char*)*(++csz));

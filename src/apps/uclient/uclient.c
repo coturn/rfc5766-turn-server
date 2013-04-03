@@ -510,6 +510,15 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			}
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
+			if(use_short_term) {
+				if(stun_check_message_integrity_str(get_turn_credentials_type(),
+							elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
+							elem->pinfo.realm, g_upwd)<1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in indication message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
+					return -1;
+				}
+			}
+
 			uint16_t method = stun_get_method(&elem->in_buffer);
 
 			if((method == STUN_METHOD_CONNECTION_ATTEMPT)&& is_TCP_relay()) {
@@ -546,9 +555,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 
-			if(elem->pinfo.nonce[0]) {
-				if(stun_check_message_integrity_str(elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-									elem->pinfo.realm, g_upwd)<0) {
+			if(elem->pinfo.nonce[0] || use_short_term) {
+				if(stun_check_message_integrity_str(get_turn_credentials_type(),
+								elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
+								elem->pinfo.realm, g_upwd)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in success message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
 					return -1;
 				}
@@ -692,6 +702,11 @@ static int client_write(app_ur_session *elem) {
     stun_attr_add_addr(&(elem->out_buffer),STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
     if(dont_fragment)
 	    stun_attr_add(&(elem->out_buffer), STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
+
+    if (use_short_term) {
+	    if(add_integrity(&(elem->pinfo), &(elem->out_buffer))<0) return -1;
+    }
+
     if(use_fingerprints)
 	    stun_attr_add_fingerprint_str(elem->out_buffer.buf,(size_t*)&(elem->out_buffer.len));
   }
@@ -990,13 +1005,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		stun_init_request(STUN_METHOD_REFRESH, &message);
 		uint32_t lt = htonl(600);
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
-		if (clnet_info->nonce[0]) {
-			if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
-							clnet_info->realm, g_upwd, clnet_info->nonce) < 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
-				return -1;
-			}
-		}
+		if(add_integrity(clnet_info, &message)<0) return -1;
 		if(use_fingerprints)
 			    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 		send_buffer(clnet_info, &message, 0,0);
@@ -1007,13 +1016,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
 			stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
 			stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
-			if (clnet_info->nonce[0]) {
-				if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len), g_uname,
-								clnet_info->realm, g_upwd, clnet_info->nonce) < 0) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, " Cannot add integrity to the message\n");
-					return -1;
-				}
-			}
+			if(add_integrity(clnet_info, &message)<0) return -1;
 			if(use_fingerprints)
 				    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 			send_buffer(&(elem->pinfo), &message, 0,0);
@@ -1022,15 +1025,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {
 			if (STUN_VALID_CHANNEL(elem->chnum)) {
 				stun_set_channel_bind_request(&message, &(elem->pinfo.peer_addr), elem->chnum);
-				if (clnet_info->nonce[0]) {
-					if (stun_attr_add_integrity_by_user_str(message.buf, (size_t*) &(message.len),
-									g_uname, clnet_info->realm, g_upwd,
-									clnet_info->nonce) < 0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-										" Cannot add integrity to the message\n");
-						return -1;
-					}
-				}
+				if(add_integrity(clnet_info, &message)<0) return -1;
 				if(use_fingerprints)
 					    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
 				send_buffer(&(elem->pinfo), &message,1,0);
@@ -1286,4 +1281,31 @@ void start_mclient(const char *remote_address, int port,
 				(unsigned long)max_jitter);
 }
 
+///////////////////////////////////////////
 
+turn_credential_type get_turn_credentials_type(void)
+{
+	if(use_short_term)
+		return TURN_CREDENTIALS_SHORT_TERM;
+	return TURN_CREDENTIALS_LONG_TERM;
+}
+
+int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
+{
+	if(use_short_term) {
+		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd)<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+			return -1;
+		}
+	} else if(clnet_info->nonce[0]) {
+		if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
+					clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+///////////////////////////////////////////

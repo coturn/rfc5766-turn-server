@@ -826,7 +826,7 @@ static void client_to_peer_connect_callback(int success, void *arg)
 		ioa_network_buffer_set_size(nbh,len);
 
 		if(need_stun_authentication(server)) {
-			stun_attr_add_integrity_str(ioa_network_buffer_data(nbh),&len,ss->hmackey);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -963,6 +963,11 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 			stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
 			ioa_network_buffer_set_size(nbh,len);
+
+			if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
+				stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
+				ioa_network_buffer_set_size(nbh,len);
+			}
 
 			write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
@@ -1694,11 +1699,10 @@ static int need_stun_authentication(turn_turnserver *server)
 	switch(server->ct) {
 	case TURN_CREDENTIALS_LONG_TERM:
 		return 1;
-	case TURN_CREDENTIALS_NONE:
-		return 0;
+	case TURN_CREDENTIALS_SHORT_TERM:
+		return 1;
 	default:
-		fprintf(stderr,"Wrong credential mechanism used\n");
-		exit(-1);
+		return 0;
 	};
 }
 
@@ -1723,7 +1727,7 @@ static int create_challenge_response(turn_turnserver *server,
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success, u08bits *hmackey, void *ctx, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  hmackey_t hmackey, st_password_t pwd, void *ctx, ioa_net_data *in_buffer)
 {
 
 	if(ctx && in_buffer && in_buffer->nbh) {
@@ -1732,8 +1736,9 @@ static void resume_processing_after_username_check(int success, u08bits *hmackey
 		turn_turnserver *server = (turn_turnserver *)ss->server;
 		ts_ur_session *elem = &(ss->client_session);
 
-		if(success && hmackey) {
-			ns_bcopy(hmackey,ss->hmackey,16);
+		if(success) {
+			ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
+			ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 		}
 
 		read_client_connection(server,elem,ss,in_buffer,0);
@@ -1791,24 +1796,32 @@ static int check_stun_auth(turn_turnserver *server,
 	if(!sar) {
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+		} else {
+			return -1;
+		}
+
 	}
 
-	/* REALM ATTR: */
+	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
 
-	sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+		/* REALM ATTR: */
+
+		sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
 					  STUN_ATTRIBUTE_REALM);
 
-	if(!sar) {
-		*err_code = 400;
-		*reason = (u08bits*)"Bad request";
-		return -1;
-	}
+		if(!sar) {
+			*err_code = 400;
+			*reason = (u08bits*)"Bad request";
+			return -1;
+		}
 
-	alen = min((size_t)stun_attr_get_len(sar),sizeof(realm)-1);
-	ns_bcopy(stun_attr_get_value(sar),realm,alen);
-	realm[alen]=0;
+		alen = min((size_t)stun_attr_get_len(sar),sizeof(realm)-1);
+		ns_bcopy(stun_attr_get_value(sar),realm,alen);
+		realm[alen]=0;
+	}
 
 	/* USERNAME ATTR: */
 
@@ -1826,66 +1839,79 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),uname,alen);
 	uname[alen]=0;
 
-	/* NONCE ATTR: */
+	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+		/* NONCE ATTR: */
 
-	sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
+		sar = stun_attr_get_first_by_type_str(ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
 					  STUN_ATTRIBUTE_NONCE);
 
-	if(!sar) {
-		*err_code = 400;
-		*reason = (u08bits*)"Bad request";
-		return -1;
-	}
+		if(!sar) {
+			*err_code = 400;
+			*reason = (u08bits*)"Bad request";
+			return -1;
+		}
 
-	alen = min((size_t)stun_attr_get_len(sar),sizeof(nonce)-1);
-	ns_bcopy(stun_attr_get_value(sar),nonce,alen);
-	nonce[alen]=0;
+		alen = min((size_t)stun_attr_get_len(sar),sizeof(nonce)-1);
+		ns_bcopy(stun_attr_get_value(sar),nonce,alen);
+		nonce[alen]=0;
 
-	/* Stale Nonce check: */
+		/* Stale Nonce check: */
 
-	if(new_nonce) {
-		*err_code = 401;
-		*reason = (u08bits*)"Unauthorized";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-	}
+		if(new_nonce) {
+			*err_code = 401;
+			*reason = (u08bits*)"Unauthorized";
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 
-	if(strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
-		*err_code = 438;
-		*reason = (u08bits*)"Stale nonce";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+			if(strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
+				*err_code = 438;
+				*reason = (u08bits*)"Stale nonce";
+				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+			}
+		}
 	}
 
 	/* Password */
-	if(ss->hmackey[0] == 0) {
+	if((ss->hmackey[0] == 0) && (ss->pwd[0] == 0)) {
 		ur_string_map_value_type ukey = NULL;
 		if(can_resume) {
-			ukey = (server->userkeycb)(server->id, uname,resume_processing_after_username_check, in_buffer,ss,postpone_reply);
+			ukey = (server->userkeycb)(server->id, uname, resume_processing_after_username_check, in_buffer, ss, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
 		}
+		/* we always return NULL for short-term credentials here */
 		if(!ukey) {
+			/* direct user pattern is supported only for long-term credentials */
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"%s: Cannot find user %s\n",
 					__FUNCTION__, (char*)uname);
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
-			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+			if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+			} else {
+				return -1;
+			}
 		}
 		ns_bcopy(ukey,ss->hmackey,16);
 	}
 
 	/* Check integrity */
-	if(stun_check_message_integrity_by_key_str(ioa_network_buffer_data(in_buffer->nbh),
+	if(stun_check_message_integrity_by_key_str(server->ct,ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
-					  ss->hmackey)<1) {
+					  ss->hmackey,
+					  ss->pwd)<1) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect\n",
 				__FUNCTION__, (char*)uname);
 		*err_code = 401;
 		*reason = (u08bits*)"Unauthorised";
-		return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+		} else {
+			return -1;
+		}
 	}
 
 	*message_integrity = 1;
@@ -2014,24 +2040,32 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					  ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 		no_response = 1;
+		int postpone = 0;
 
-		switch (method){
+		if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
+			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone, can_resume);
+		}
 
-		case STUN_METHOD_SEND:
+		if (!postpone && !err_code) {
 
-		  handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
+			switch (method){
 
-		  break;
+			case STUN_METHOD_SEND:
 
-		case STUN_METHOD_DATA:
+				handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
-			err_code = 403;
+				break;
 
-			break;
+			case STUN_METHOD_DATA:
 
-		default:
-			if (server->verbose) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received\n");
+				err_code = 403;
+
+				break;
+
+			default:
+				if (server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received\n");
+				}
 			}
 		};
 
@@ -2082,7 +2116,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(message_integrity) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_attr_add_integrity_str(ioa_network_buffer_data(nbh),&len,ss->hmackey);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 	} else {
@@ -2598,6 +2632,11 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						STUN_ATTRIBUTE_XOR_PEER_ADDRESS,
 						&(in_buffer->src_addr));
 				ioa_network_buffer_set_size(nbh,len);
+
+				if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
+					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
+					ioa_network_buffer_set_size(nbh,len);
+				}
 			}
 			if (server->verbose) {
 				u16bits* t = (u16bits*) ioa_network_buffer_data(nbh);

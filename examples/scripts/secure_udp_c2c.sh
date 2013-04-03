@@ -1,8 +1,11 @@
 #!/bin/sh
 #
-# This is an example of a script to run a "secure" TURN UDP client,
+# This is an example of a script to run a "secure" TURN UDP client
+# with the long-term credentials mechanism,
 # in client-to-client communication patter.
+#
 # Options:
+#
 # 1) -t is absent, it means that UDP networking is used.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
 # are sent with interval of 20 milliseconds, to emulate an RTP stream.

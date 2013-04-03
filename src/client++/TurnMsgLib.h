@@ -735,18 +735,18 @@ public:
 	/**
 	 * Check message integrity, in secure communications.
 	 */
-	bool checkMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd) const
+	bool checkMessageIntegrity(turn_credential_type ct, std::string &uname, std::string &realm, std::string &upwd) const
 		throw(WrongStunBufferFormatException) {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
-		return (0 == stun_check_message_integrity_str(_buffer, _sz,
+		return (0< stun_check_message_integrity_str(ct,_buffer, _sz,
 				(u08bits *)uname.c_str(), (u08bits *)realm.c_str(), (u08bits *)upwd.c_str()));
 	}
 
 	/**
-	 * Adds message integrity data to the message.
+	 * Adds long-term message integrity data to the message.
 	 */
-	void addMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)
+	void addLTMessageIntegrity(std::string &uname, std::string &realm, std::string &upwd, std::string &nonce)
 		throw(WrongStunBufferFormatException) {
 
 		if(!_constructed || !isCommand())
@@ -754,6 +754,19 @@ public:
 
 		stun_attr_add_integrity_by_user_str(_buffer, &_sz,
 			(u08bits *)uname.c_str(), (u08bits *)realm.c_str(), (u08bits *)upwd.c_str(), (u08bits *)nonce.c_str());
+	}
+
+	/**
+	 * Adds short-term message integrity data to the message.
+	 */
+	void addSTMessageIntegrity(std::string &uname, std::string &upwd)
+		throw(WrongStunBufferFormatException) {
+
+		if(!_constructed || !isCommand())
+			throw WrongStunBufferFormatException();
+
+		stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz,
+			(u08bits *)uname.c_str(), (u08bits *)upwd.c_str());
 	}
 
 protected:

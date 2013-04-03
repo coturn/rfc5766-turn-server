@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # This is an example of a script to run a "secure" TURN UDP client
-# with secret-based authorization (see TURNServerRESTAPI.pdf document).
+# with the long-term credentials mechanism and with
+# secret-based authorization (see TURNServerRESTAPI.pdf document).
 #
 # Options:
 #
