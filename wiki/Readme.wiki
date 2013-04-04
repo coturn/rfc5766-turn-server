@@ -25,7 +25,7 @@ TURN(2 Apr 2013)
 }}}
  *	_*peer*_: a simple stateless UDP-only "echo" server, to be used as the final server in relay pattern ("_peer_"). For every incoming UDP packet, it simply echoes it back.  (this program is provided for the testing purposes only !)	When the test clients are communicating in the	client-to-client manner, this component	is not needed. The compiled binary image of this program is located in examples/bin/ subdirectory.
  *	_*stunclient*_: a simple STUN	client example.	 The  compiled	binary image of this program is located in examples/bin/ subdirectory.
- *	_*rfc5769check*_: a utility that checks the correctness of the STUN/TURN protocol implementation. This program will perform several checks and print the result on the screen. It will exit with 0 status if everything is OK, and with (-1) if there was an error in the protocol implementation.  
+ *	_*rfc5769check*_: a build utility that checks the correctness of the STUN/TURN protocol implementation. This program will perform several checks and print the result on the screen. It will exit with 0 status if everything is OK, and with (-1) if there was an error in the protocol implementation. It is called automatically in the end of the build process.  
 
        In the "examples/scripts"	subdirectory, you will find the	 examples  of  command
        lines to	be used	to run the programs. The scripts are meant to be run from examples/ subdirectory:
@@ -245,7 +245,7 @@ It tests the protocol implementation against the test vectors predefined in RFC 
   
 ====Usage:====  
 {{{
-$ rfc5769check
+$ build/bin/rfc5769check
 }}}
 
 == LIBRARIES ==

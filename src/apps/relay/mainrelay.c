@@ -259,7 +259,6 @@ void send_auth_message_to_auth_server(struct auth_message *am)
 	if(evbuffer_add(output,am,sizeof(*am))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
 	}
-	bufferevent_flush(authserver.out_buf, EV_WRITE, BEV_FLUSH);
 }
 
 static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
@@ -302,7 +301,6 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 		evbuffer_add(output,&sm,sizeof(sm));
-		bufferevent_flush(relay_servers[dest]->out_buf, EV_WRITE, BEV_FLUSH);
 	}
 }
 
@@ -340,7 +338,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 	evbuffer_add(output,&sm,sizeof(sm));
-	bufferevent_flush(relay_servers[dest]->out_buf, EV_WRITE, BEV_FLUSH);
 
 	return 0;
 }
@@ -424,7 +421,6 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 
 	struct evbuffer *output = bufferevent_get_output(listener.out_buf);
 	evbuffer_add(output,&mm,sizeof(mm));
-	bufferevent_flush(listener.out_buf, EV_WRITE, BEV_FLUSH);
 
 	return 0;
 }

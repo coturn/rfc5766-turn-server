@@ -163,7 +163,7 @@ static PGconn *get_pqdb_connection(void)
 					pqdbconnection = NULL;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
 				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PSQL DB connection success: %s\n",userdb);
 				}
 			}
 		}
@@ -229,6 +229,8 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 			else if(!strcmp(s,"addr"))
 				co->host = strdup(seq+1);
 			else if(!strcmp(s,"ipaddr"))
+				co->host = strdup(seq+1);
+			else if(!strcmp(s,"hostaddr"))
 				co->host = strdup(seq+1);
 			else if(!strcmp(s,"dbname"))
 				co->dbname = strdup(seq+1);
@@ -316,7 +318,7 @@ static MYSQL *get_mydb_connection(void)
 					mysql_close(mydbconnection);
 					mydbconnection=NULL;
 				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DB connection success: %s\n",userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",userdb);
 				}
 			}
 			MyconninfoFree(co);

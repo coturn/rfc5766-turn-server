@@ -51,6 +51,76 @@ int main(int argc, const char **argv)
 	set_system_parameters(0);
 
 	{
+		const unsigned char reqstc[] =
+					     "\x00\x01\x00\x58"
+					     "\x21\x12\xa4\x42"
+					     "\xb7\xe7\xa7\x01\xbc\x34\xd6\x86\xfa\x87\xdf\xae"
+					     "\x80\x22\x00\x10"
+					       "STUN test client"
+					     "\x00\x24\x00\x04"
+					       "\x6e\x00\x01\xff"
+					     "\x80\x29\x00\x08"
+					       "\x93\x2f\xf9\xb1\x51\x26\x3b\x36"
+					     "\x00\x06\x00\x09"
+					       "\x65\x76\x74\x6a\x3a\x68\x36\x76\x59\x20\x20\x20"
+					     "\x00\x08\x00\x14"
+					       "\x9a\xea\xa7\x0c\xbf\xd8\xcb\x56\x78\x1e\xf2\xb5"
+					       "\xb2\xd3\xf2\x49\xc1\xb5\x71\xa2"
+					     "\x80\x28\x00\x04"
+					       "\xe5\x7a\x3b\xcf";
+
+		u08bits buf[sizeof(reqstc)];
+		memcpy(buf, reqstc, sizeof(reqstc));
+
+		{//fingerprintfs etc
+
+			res = stun_is_command_message_full_check_str(buf, sizeof(reqstc) - 1, 1, NULL);
+			printf("RFC 5769 message fingerprint test(0) result: ");
+
+			if (res) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on fingerprint(0) check\n");
+				exit(-1);
+			}
+		}
+
+		{//short-term credentials
+			u08bits uname[33];
+			u08bits realm[33];
+			u08bits upwd[33];
+			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
+
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(reqstc) - 1, uname, realm, upwd);
+			printf("RFC 5769 simple request short-term credentials and integrity test result: ");
+
+			if (res > 0) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on integrity check\n");
+				exit(-1);
+			} else {
+				printf("failure on message structure check\n");
+				exit(-1);
+			}
+		}
+
+		{//negative fingerprint
+			buf[27] = 23;
+
+			res = stun_is_command_message_full_check_str(buf, sizeof(reqstc) - 1, 1, NULL);
+			printf("RFC 5769 NEGATIVE fingerprint test(0) result: ");
+
+			if (!res) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on NEGATIVE fingerprint check\n");
+				exit(-1);
+			}
+		}
+	}
+
+	{
 		const unsigned char reqltc[] = "\x00\x01\x00\x60"
 			"\x21\x12\xa4\x42"
 			"\x78\xad\x34\x33\xc6\xad\x72\xc0\x29\xda\x41\x2e"
@@ -170,29 +240,54 @@ int main(int argc, const char **argv)
 		u08bits buf[sizeof(respv4)];
 		memcpy(buf, respv4, sizeof(respv4));
 
-		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
-		printf("RFC 5769 message fingerprint test(1) result: ");
+		{//fingerprintfs etc
 
-		if (res) {
-			printf("success\n");
-		} else if (res == 0) {
-			printf("failure on fingerprint(1) check\n");
-			exit(-1);
+			res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
+			printf("RFC 5769 message fingerprint test(1) result: ");
+
+			if (res) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on fingerprint(1) check\n");
+				exit(-1);
+			}
 		}
 
-		buf[27] = 23;
+		{//short-term credentials
+			u08bits uname[33];
+			u08bits realm[33];
+			u08bits upwd[33];
+			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
-		res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
-		printf("RFC 5769 NEGATIVE fingerprint test(1) result: ");
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv4) - 1, uname, realm, upwd);
+			printf("RFC 5769 IPv4 response short-term credentials and integrity test result: ");
 
-		if (!res) {
-			printf("success\n");
-		} else if (res == 0) {
-			printf("failure on NEGATIVE fingerprint check\n");
-			exit(-1);
+			if (res > 0) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on integrity check\n");
+				exit(-1);
+			} else {
+				printf("failure on message structure check\n");
+				exit(-1);
+			}
 		}
 
-		{
+		{//negative fingerprint
+			buf[27] = 23;
+
+			res = stun_is_command_message_full_check_str(buf, sizeof(respv4) - 1, 1, NULL);
+			printf("RFC 5769 NEGATIVE fingerprint test(1) result: ");
+
+			if (!res) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on NEGATIVE fingerprint check\n");
+				exit(-1);
+			}
+		}
+
+		{//IPv4 addr
 			ioa_addr addr4;
 			ioa_addr addr4_test;
 
@@ -242,6 +337,26 @@ int main(int argc, const char **argv)
 				printf("success\n");
 			} else if (res == 0) {
 				printf("failure on fingerprint(2) check\n");
+				exit(-1);
+			}
+		}
+
+		{//short-term credentials test
+			u08bits uname[33];
+			u08bits realm[33];
+			u08bits upwd[33];
+			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
+
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv6) - 1, uname, realm, upwd);
+			printf("RFC 5769 IPv6 response short-term credentials and integrity test result: ");
+
+			if (res > 0) {
+				printf("success\n");
+			} else if (res == 0) {
+				printf("failure on integrity check\n");
+				exit(-1);
+			} else {
+				printf("failure on message structure check\n");
 				exit(-1);
 			}
 		}
