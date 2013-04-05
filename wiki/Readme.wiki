@@ -87,7 +87,7 @@ TURN(4 Apr 2013)
 	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 {{{
-"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=30"
+"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
 }}}
 (for 8.x Postgres), or:
 {{{
@@ -103,7 +103,7 @@ TURN(4 Apr 2013)
 	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format (for example) is like this:
 {{{
-"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password>".
+"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>".
 }}}
 		See the INSTALL file for more explanations and examples.
 		

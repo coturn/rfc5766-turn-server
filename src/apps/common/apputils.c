@@ -677,7 +677,7 @@ int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bi
 
 #else
 
-int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_ley, u08bits *hmac, unsigned int *hmac_len)
+int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len)
 {
 	UNUSED_ARG(buf);
 	UNUSED_ARG(len);

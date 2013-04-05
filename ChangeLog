@@ -1,6 +1,12 @@
 04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.4 'Black Dow':
+	- Minor compilation fixes.
+	- Minor docs fixes.
+	- "connect_timeout" option support for MySQL. 
+	
+04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.3 'Black Dow':
-	- Issue 11 (secret timestamp check) fixed..
+	- Issue 11 (secret timestamp check) fixed.
 	
 04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.2 'Black Dow':

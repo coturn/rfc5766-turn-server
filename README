@@ -117,7 +117,7 @@ User database settings:
 	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=30" (for 8.x Postgres).
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" (for 8.x Postgres).
 		
 		Or:
 		
@@ -131,7 +131,7 @@ User database settings:
 	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password>"
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.mysql.org for full MySQL documentation.

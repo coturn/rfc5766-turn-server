@@ -103,6 +103,7 @@ The following platforms have been used in the development:
 	- Solaris 11, x86_64
 	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64
 	- Linux Debian 'squeeze', i386
+	- Linux Mint 14.1 'Nadia', i386
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -171,8 +172,8 @@ third party tools installation:
 		
 		or you can use Synaptic or other software center.
 		
-	***) Debian Linux setup is similar to Ubuntu, although some packages may have
-		 different names in Squeeze and older versions.
+	***) Debian Linux and Linux Mint setups are similar to Ubuntu, although some packages may have
+		 different names. 
 		 
 	****) On CentOS 6.3 you have to install libevent2 "manually", but everything else 
 	is usually preinstalled. 
@@ -488,17 +489,17 @@ for the MySQL database. As "native" MySQL does not have such a feature as
 "connection string", the TURN server parses the connection string and converts it into 
 MySQL database access parameter. The format of the MySQL connection string is:
 
-"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>"
+"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port> connect_timeout=<seconds>"
 
 (all parameters are optional)
 
 So, an example of the MySQL database parameter in the TURN server command line would be:
 
---mysql-userdb="host=localhost dbname=turn user=turn password=turn"
+--mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
 
 Or in the turnserver.conf file:
 
-mysql-userdb="host=localhost dbname=turn user=turn password=turn"
+mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
 
 
   

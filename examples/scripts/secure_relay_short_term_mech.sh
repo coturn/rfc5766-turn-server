@@ -16,9 +16,9 @@
 # 2) use fingerprints (-f)
 # 3) use 3 relay threads (-m 3)
 # 4) use min UDP relay port 32355 and max UDP relay port 65535
-# 5) --mysql-userdb="host=localhost dbname=turn user=turn password=turn" 
+# 5) --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30" 
 # means that local MySQL database "turn" will be used, with database user "turn" and 
-# database user password "turn".
+# database user password "turn", and connection timeout 30 seconds.
 # 6) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 7) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
 # 8) "--log-file=stdout" means that all log output will go to the stdout. 
@@ -30,4 +30,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --mysql-userdb="host=localhost dbname=turn user=turn password=turn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 

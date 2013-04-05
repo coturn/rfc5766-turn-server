@@ -180,6 +180,7 @@ struct _Myconninfo {
 	char *user;
 	char *password;
 	unsigned int port;
+	unsigned int connect_timeout;
 };
 
 typedef struct _Myconninfo Myconninfo;
@@ -258,6 +259,10 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 				co->port = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"p"))
 				co->port = (unsigned int)atoi(seq+1);
+			else if(!strcmp(s,"connect_timeout"))
+				co->connect_timeout = (unsigned int)atoi(seq+1);
+			else if(!strcmp(s,"timeout"))
+				co->connect_timeout = (unsigned int)atoi(seq+1);
 			else {
 				MyconninfoFree(co);
 				co = NULL;
@@ -308,6 +313,8 @@ static MYSQL *get_mydb_connection(void)
 			if(!mydbconnection) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize DB connection\n");
 			} else {
+				if(co->connect_timeout)
+					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);

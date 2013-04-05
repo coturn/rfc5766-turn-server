@@ -21,9 +21,9 @@
 # 6) --secret-ts-exp-time=3600 means that the timestamp in secret authentication is expiring
 # in 3600 seconds (1 hour). This is 'TTL' in terms of TURNServerRESTAPI.pdf document.
 # 7) --realm=north.gov sets realm value as "north.gov".
-# 8) --mysql-userdb="host=localhost dbname=turn user=turn password=turn" 
+# 8) --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout" 
 # means that local MySQL database "turn" will be used, with database user "turn" and 
-# with database user password "turn".
+# with database user password "turn", and connection timeout 30 seconds.
 # 9) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 10) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
 # 11) "--log-file=stdout" means that all log output will go to the stdout. 
@@ -35,5 +35,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --use-auth-secret --secret-ts-exp-time=3600 --realm=north.gov --mysql-userdb="host=localhost dbname=turn user=turn password=turn" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --use-auth-secret --secret-ts-exp-time=3600 --realm=north.gov --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 
 
