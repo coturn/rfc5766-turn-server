@@ -352,6 +352,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
+
 		struct relay_server *rs = (struct relay_server *)ptr;
 		switch(sm.t) {
 		case RMT_SOCKET: {
@@ -409,7 +410,6 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 
 static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination)
 {
-
 	struct message_to_listener mm;
 	mm.t = LMT_TO_CLIENT;
 	addr_cpy(&(mm.m.tc.origin),origin);

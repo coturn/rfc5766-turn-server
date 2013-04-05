@@ -1,3 +1,7 @@
+04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.3 'Black Dow':
+	- Issue 11 (secret timestamp check) fixed..
+	
 04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.2 'Black Dow':
 	- TCP sockets flush removed.

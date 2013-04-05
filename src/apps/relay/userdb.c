@@ -418,7 +418,7 @@ int get_user_key(u08bits *uname, hmackey_t key)
 			ts = (turn_time_t)atol((char*)uname);
 		}
 
-		if(!turn_time_before((ctime + auth_secret_timestamp_expiration_time), ts)) {
+		if(!turn_time_before((ts + auth_secret_timestamp_expiration_time), ctime)) {
 
 			u08bits hmac[1025]="\0";
 			unsigned int hmac_len = SHA_DIGEST_LENGTH;

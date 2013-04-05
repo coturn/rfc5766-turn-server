@@ -489,22 +489,20 @@ requests with different parameters, to demonstrate the NAT discovery capabilitie
 
   NAME
   
-build/bin/rfc5769check build utility tests the correctness of STUN protocol implementation.   
+examples/bin/rfc5769check utility tests the correctness of STUN protocol implementation.   
   
   SYNOPSIS
   
-  $ build/bin/rfc5769check
+  $ examples/bin/rfc5769check
   
   DESCRIPTION
 
 rfc5769check tests the correctness of STUN protocol implementation 
 against the test vectors predefined in RFC 5769 and prints the results of the tests on the screen.
-It is called automatically in the end of the build process. If the test fails, 
-then the whole build will fail.
 	
 Usage:  
 
-$ build/bin/rfc5769check
+$ examples/bin/rfc5769check
 
 ===================================================================================
 
