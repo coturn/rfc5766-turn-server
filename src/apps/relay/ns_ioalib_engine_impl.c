@@ -1996,12 +1996,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 								s->tobeclosed = 1;
 								s->broken = 1;
 							} else {
-								bufferevent_flush(
-										s->bev,
-										EV_WRITE,
-										BEV_FLUSH);
-								ret = (int) ioa_network_buffer_get_size(
-																nbh);
+								ret = (int) ioa_network_buffer_get_size(nbh);
 							}
 						}
 					} else if (s->ssl) {

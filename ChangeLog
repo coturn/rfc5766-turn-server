@@ -1,4 +1,9 @@
 04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.2 'Black Dow':
+	- TCP sockets flush removed.
+	- rfc5769check utility removed from the Makefile.
+	
+04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.1 'Black Dow':
 	- Some short-term auth problems fixed.
 	- rfc5769check utility added to the Makefile and upgraded.

@@ -531,6 +531,8 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 {
 	int ret = -1;
 
+	UNUSED_ARG(pwd);
+
 	char statement[1025];
 	sprintf(statement,"select password from turnusers_st where name='%s'",uname);
 
