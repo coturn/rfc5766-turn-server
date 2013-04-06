@@ -1,8 +1,15 @@
+04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.5 'Black Dow':
+	- turnadmin MySQL connection fixed.
+	- minor cosmetic changes.
+	- Added "list" commands for long-term and short-term users,
+	 to turnadmin.
+	
 04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.4 'Black Dow':
 	- Minor compilation fixes.
 	- Minor docs fixes.
-	- "connect_timeout" option support for MySQL. 
+	- "connect_timeout" option support for MySQL.  
 	
 04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.3 'Black Dow':

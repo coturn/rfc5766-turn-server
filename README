@@ -319,24 +319,26 @@ $ turnadmin [ -h | --help]
   
 Commands:  
 
--k, --key			Generate key for a long-term credentials mechanism user.
+-k, --key		Generate key for a long-term credentials mechanism user.
 -a, --add       	Add or update a long-term user.
 -A, --add-st    	Add or update a short-term credentials mechanism user.
 -d, --delete		Delete a long-term user.
 -D, --delete-st		Delete a short-term user.
+-l, --list		List long-term users in the database.
+-L, --list-st		List short-term users in the database.
   
 Options with required values:  
 
--b, --userdb	File-based user database file name (default - turnuserdb.conf).
-		See the --userdb option in the turnserver section.
+-b, --userdb		File-based user database file name (default - turnuserdb.conf).
+			See the --userdb option in the turnserver section.
 -e, --sql-userdb	PostgreSQL user database connection string.
-		See the --sql-userdb option in the turnserver section.
+			See the --sql-userdb option in the turnserver section.
 -M, --mysql-userdb	MySQL user database connection string.
-		See the --mysql-userdb option in the turnserver section.
--u, --user	User name.
--r, --realm	Realm, for long-term credentials mechanism only.
--p, --password	Password.
--h, --help	Help.
+			See the --mysql-userdb option in the turnserver section.
+-u, --user		User name.
+-r, --realm		Realm, for long-term credentials mechanism only.
+-p, --password		Password.
+-h, --help		Help.
   
 Generate a key:  
 
@@ -349,6 +351,14 @@ $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection
 Delete a user from the userdb file or from the database:
 
 $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>
+
+List all long-term users in MySQL database:
+
+$ turnadmin -l --mysql-userdb="<db-connection-string>"
+
+List all short-term users in PostgreSQL database:
+
+$ turnadmin -L --sql-userdb="<db-connection-string>"
   
 Help:  
 

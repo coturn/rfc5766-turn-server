@@ -89,6 +89,8 @@ turn_user_db *users = NULL;
 
 s08bits global_realm[1025]="\0";
 
+static int donot_print_connection_success=0;
+
 /////////// USER DB CHECK //////////////////
 
 static int convert_string_key_to_binary(char* keysource, hmackey_t key) {
@@ -144,10 +146,10 @@ static PGconn *get_pqdb_connection(void)
 		PQconninfoOption *co = PQconninfoParse(userdb, &errmsg);
 		if(!co) {
 			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, unknown connection string format error\n",userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",userdb);
 			}
 		} else {
 			PQconninfoFree(co);
@@ -155,15 +157,15 @@ static PGconn *get_pqdb_connection(void)
 				free(errmsg);
 			pqdbconnection = PQconnectdb(userdb);
 			if(!pqdbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",userdb);
 			} else {
 				ConnStatusType status = PQstatus(pqdbconnection);
 				if(status != CONNECTION_OK) {
 					PQfinish(pqdbconnection);
 					pqdbconnection = NULL;
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PSQL DB connection success: %s\n",userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",userdb);
+				} else if(!donot_print_connection_success){
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL DB connection success: %s\n",userdb);
 				}
 			}
 		}
@@ -296,35 +298,35 @@ static MYSQL *get_mydb_connection(void)
 		Myconninfo *co=MyconninfoParse(userdb, &errmsg);
 		if(!co) {
 			if(errmsg) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
 				free(errmsg);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error\n",userdb);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",userdb);
 			}
 		} else if(errmsg) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
 			free(errmsg);
 			MyconninfoFree(co);
 		} else if(!(co->dbname)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Database name is not provided: <%s>\n",userdb);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",userdb);
 			MyconninfoFree(co);
 		} else {
 			mydbconnection = mysql_init(NULL);
 			if(!mydbconnection) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize DB connection\n");
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize MySQL DB connection\n");
 			} else {
 				if(co->connect_timeout)
 					mysql_options(mydbconnection,MYSQL_OPT_CONNECT_TIMEOUT,&(co->connect_timeout));
 				MYSQL *conn = mysql_real_connect(mydbconnection, co->host, co->user, co->password, co->dbname, co->port, NULL, CLIENT_IGNORE_SIGPIPE);
 				if(!conn) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open DB connection: <%s>, runtime error\n",userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection: <%s>, runtime error\n",userdb);
 					mysql_close(mydbconnection);
 					mydbconnection=NULL;
 				} else if(mysql_select_db(mydbconnection, co->dbname)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to DB: %s\n",co->dbname);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot connect to MySQL DB: %s\n",co->dbname);
 					mysql_close(mydbconnection);
 					mydbconnection=NULL;
-				} else {
+				} else if(!donot_print_connection_success) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL DB connection success: %s\n",userdb);
 				}
 			}
@@ -353,7 +355,7 @@ static int get_auth_secret(char *auth_secret)
 		PGresult *res = PQexec(pqc, statement);
 
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
 			char *kval = PQgetvalue(res,0,0);
 			if(kval) {
@@ -375,11 +377,11 @@ static int get_auth_secret(char *auth_secret)
 		STRCPY(statement,"select value from turn_secret");
 		int res = mysql_query(myc, statement);
 		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 		} else {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 			} else if(mysql_field_count(myc)==1) {
 				MYSQL_ROW row = mysql_fetch_row(mres);
 				if(row && row[0]) {
@@ -471,7 +473,7 @@ int get_user_key(u08bits *uname, hmackey_t key)
 		PGresult *res = PQexec(pqc, statement);
 
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
 			char *kval = PQgetvalue(res,0,0);
 			if(kval) {
@@ -497,13 +499,13 @@ int get_user_key(u08bits *uname, hmackey_t key)
 		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
 		int res = mysql_query(myc, statement);
 		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 		} else {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 			} else if(mysql_field_count(myc)!=1) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving DB information: %s\n",statement);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				MYSQL_ROW row = mysql_fetch_row(mres);
 				if(row && row[0]) {
@@ -511,7 +513,7 @@ int get_user_key(u08bits *uname, hmackey_t key)
 					if(lengths) {
 						size_t sz = sizeof(hmackey_t)*2;
 						if(lengths[0]!=sz) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in DB is %lu\n",uname,lengths[0]);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",uname,lengths[0]);
 						} else {
 							char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
 							ns_bcopy(row[0],kval,sz);
@@ -524,8 +526,9 @@ int get_user_key(u08bits *uname, hmackey_t key)
 						}
 					}
 				}
-				mysql_free_result(mres);
 			}
+			if(mres)
+				mysql_free_result(mres);
 		}
 	}
 #endif
@@ -550,7 +553,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 		PGresult *res = PQexec(pqc, statement);
 
 		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",PQerrorMessage(pqc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
 			char *kval = PQgetvalue(res,0,0);
 			if(kval) {
@@ -571,20 +574,20 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 	if(myc) {
 		int res = mysql_query(myc, statement);
 		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 		} else {
 			MYSQL_RES *mres = mysql_store_result(myc);
 			if(!mres) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving DB information: %s\n",mysql_error(myc));
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 			} else if(mysql_field_count(myc)!=1) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving DB information: %s\n",statement);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
 				MYSQL_ROW row = mysql_fetch_row(mres);
 				if(row && row[0]) {
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
 						if(lengths[0]<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in DB is zero(0)\n",uname);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MySQL DB is zero(0)\n",uname);
 						} else {
 							ns_bcopy(row[0],pwd,lengths[0]);
 							pwd[lengths[0]]=0;
@@ -592,8 +595,9 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 						}
 					}
 				}
-				mysql_free_result(mres);
 			}
+			if(mres)
+				mysql_free_result(mres);
 		}
 	}
 #endif
@@ -800,12 +804,91 @@ int add_user_account(char *user, int dynamic)
 
 ////////////////// Admin /////////////////////////
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int is_st)
+static int list_users(int is_st)
+{
+	if(is_pqsql_userdb()){
+#if !defined(TURN_NO_PQ)
+		char statement[1025];
+		PGconn *pqc = get_pqdb_connection();
+		if(pqc) {
+			if(is_st) {
+				sprintf(statement,"select name from turnusers_st order by name");
+			} else {
+				sprintf(statement,"select name from turnusers_lt order by name");
+			}
+			PGresult *res = PQexec(pqc, statement);
+			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+			} else {
+				int i = 0;
+				for(i=0;i<PQntuples(res);i++) {
+					char *kval = PQgetvalue(res,i,0);
+					if(kval) {
+						printf("%s\n",kval);
+					}
+				}
+			}
+			if(res) {
+				PQclear(res);
+			}
+		}
+#endif
+	} else if(is_mysql_userdb()){
+#if !defined(TURN_NO_MYSQL)
+		char statement[1025];
+		MYSQL * myc = get_mydb_connection();
+		if(myc) {
+			if(is_st) {
+				sprintf(statement,"select name from turnusers_st order by name");
+			} else {
+				sprintf(statement,"select name from turnusers_lt order by name");
+			}
+			int res = mysql_query(myc, statement);
+			if(res) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+			} else {
+				MYSQL_RES *mres = mysql_store_result(myc);
+				if(!mres) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+				} else if(mysql_field_count(myc)!=1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
+				} else {
+					for(;;) {
+						MYSQL_ROW row = mysql_fetch_row(mres);
+						if(!row) {
+							break;
+						} else {
+							if(row[0]) {
+								printf("%s\n",row[0]);
+							}
+						}
+					}
+				}
+				if(mres)
+					mysql_free_result(mres);
+			}
+		}
+#endif
+	} else {
+
+		printf("For the list of users in the flat file, open the flat file DB in any text viewer program\n");
+
+	}
+
+	return 0;
+}
+
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int lcommand, int is_st)
 {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t)*2+1];
 
 	st_password_t passwd;
+
+	if(lcommand) {
+		donot_print_connection_success=1;
+		return list_users(is_st);
+	}
 
 	if(!dcommand) {
 		if(is_st) {

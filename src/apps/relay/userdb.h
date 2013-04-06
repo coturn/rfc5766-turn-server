@@ -117,7 +117,7 @@ void release_allocation_quota(u08bits *username);
 
 void read_userdb_file(void);
 int add_user_account(char *user, int dynamic);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int is_st);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int lcommand, int is_st);
 
 ////////////////////////////////////////////
 

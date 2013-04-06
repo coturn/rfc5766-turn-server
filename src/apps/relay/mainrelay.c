@@ -1134,6 +1134,8 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-A, --add-st		add/update a short-term mechanism user\n"
 	"	-d, --delete		delete a long-term mechanism user\n"
 	"	-D, --delete-st		delete a short-term mechanism user\n"
+	"	-l, --list		list all long-term mechanism users\n"
+	"	-L, --list-st		list all short-term mechanism users\n"
 	"Options:\n"
 	"	-b, --userdb		User database file, if flat DB file is used.\n"
 #if !defined(TURN_NO_PQ)
@@ -1149,7 +1151,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vofhznaA"
 
-#define ADMIN_OPTIONS "kaADdb:e:M:u:r:p:h"
+#define ADMIN_OPTIONS "lLkaADdb:e:M:u:r:p:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1224,6 +1226,8 @@ static struct option admin_long_options[] = {
 				{ "key", no_argument, NULL, 'k' },
 				{ "add", no_argument, NULL, 'a' },
 				{ "delete", no_argument, NULL, 'd' },
+				{ "list", no_argument, NULL, 'l' },
+				{ "list-st", no_argument, NULL, 'L' },
 				{ "add-st", no_argument, NULL, 'A' },
 				{ "delete-st", no_argument, NULL, 'D' },
 				{ "userdb", required_argument, NULL, 'b' },
@@ -1231,7 +1235,7 @@ static struct option admin_long_options[] = {
 				{ "sql-userdb", required_argument, NULL, 'e' },
 #endif
 #if !defined(TURN_NO_MYSQL)
-				{ "mysql-userdb", required_argument, NULL, 'e' },
+				{ "mysql-userdb", required_argument, NULL, 'M' },
 #endif
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
@@ -1552,6 +1556,7 @@ static int adminmain(int argc, char **argv)
 	int kcommand = 0;
 	int acommand = 0;
 	int dcommand = 0;
+	int lcommand;
 	int is_st = 0;
 
 	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
@@ -1575,6 +1580,13 @@ static int adminmain(int argc, char **argv)
 			break;
 		case 'D':
 			dcommand = 1;
+			is_st = 1;
+			break;
+		case 'l':
+			lcommand = 1;
+			break;
+		case 'L':
+			lcommand = 1;
 			is_st = 1;
 			break;
 		case 'b':
@@ -1632,12 +1644,12 @@ static int adminmain(int argc, char **argv)
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
 		strcpy(userdb,DEFAULT_USERDB_FILE);
 
-	if(!user[0] || (kcommand + acommand + dcommand != 1)) {
+	if((!user[0] && !lcommand) || ((kcommand + acommand + dcommand + lcommand) != 1)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
 		exit(-1);
 	}
 
-	return adminuser(user, realm, pwd, kcommand, acommand, dcommand, is_st);
+	return adminuser(user, realm, pwd, kcommand, acommand, dcommand, lcommand, is_st);
 }
 
 int main(int argc, char **argv)

@@ -148,6 +148,8 @@ TURN(4 Apr 2013)
  * *-A,* *--add-st* Add or update a short-term credentials mechanism user.
  * *-d,* *--delete* Delete a long-term user.
  * *-D,* *--delete-st* Delete a short-term user.
+ * *-l,* *--list* List all long-term users.
+ * *-L,* *--list-st* List all short-term users.
 
  ====Options:====
 
@@ -170,6 +172,14 @@ TURN(4 Apr 2013)
 ====Delete a user from the userdb file:====
 {{{
        $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>
+}}}
+====List all long-term users in MySQL database:====
+{{{
+$ turnadmin -l --mysql-userdb="<db-connection-string>"
+}}}
+====List all short-term users in PostgreSQL database:====
+{{{
+$ turnadmin -L --sql-userdb="<db-connection-string>"
 }}}
 ====Help:====
 {{{
