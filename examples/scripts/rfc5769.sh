@@ -9,4 +9,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:bin/:../bin:${PATH} rfc5769check
+PATH=examples/bin/:bin/:../bin:${PATH} turnutils_rfc5769check

@@ -48,7 +48,7 @@ testlibpq() {
     POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L${PREFIX}/lib64/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/local/lib64/postgres -L/usr/postgres/lib -L/usr/lib/postgres -L/usr/lib64/postgres"
     POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L${PREFIX}/lib64/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/local/lib64/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql -L/usr/lib64/postgresql"
     POSTLIBS="${POSTLIBS} -lpq"
-    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${POSTCFLAGS} ${POSTLIBS} 2>/dev/null
+    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${OSLIBS} ${DBLIBS} ${POSTCFLAGS} ${POSTLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	echo
@@ -58,8 +58,8 @@ testlibpq() {
 		echo
 		return 0
     else
-		OSCFLAGS="${OSCFLAGS} ${POSTCFLAGS}"
-		OSLIBS="${OSLIBS} ${POSTLIBS}"
+		DBCFLAGS="${DBCFLAGS} ${POSTCFLAGS}"
+		DBLIBS="${DBLIBS} ${POSTLIBS}"
 		return 1
     fi
 }
@@ -72,7 +72,7 @@ testlibmysql() {
     MYSQL_LIBS="${MYSQL_LIBS} -L/usr/local/mysql/lib -L/usr/local/lib/mysql -L/usr/local/lib64/mysql"
     MYSQL_LIBS="${MYSQL_LIBS} -L/usr/mysql/lib -L/usr/lib/mysql -L/usr/lib64/mysql"
     MYSQL_LIBS="${MYSQL_LIBS} -lmysqlclient"
-    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} 2>/dev/null
+    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${OSLIBS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	echo
@@ -82,8 +82,8 @@ testlibmysql() {
 		echo
 		return 0
     else
-		OSCFLAGS="${OSCFLAGS} ${MYSQL_CFLAGS}"
-		OSLIBS="${OSLIBS} ${MYSQL_LIBS}"
+		DBCFLAGS="${DBCFLAGS} ${MYSQL_CFLAGS}"
+		DBLIBS="${DBLIBS} ${MYSQL_LIBS}"
 		return 1
     fi
 }
@@ -461,9 +461,9 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
-echo make PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" $@
+echo make PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
 ###############################
 # Make make:
@@ -476,7 +476,9 @@ echo "CC = ${CC}" >> Makefile
 echo "PREFIX = ${PREFIX}" >> Makefile
 echo "MANPREFIX = ${MANPREFIX}" >> Makefile
 echo "LDFLAGS += ${OSLIBS}" >> Makefile
+echo "DBLIBS += ${DBLIBS}" >> Makefile
 echo "CFLAGS += ${OSCFLAGS}" >> Makefile
+echo "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL}" >> Makefile
 echo "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
 echo "MKDIR = ${MKDIR}" >> Makefile
 echo "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
@@ -491,7 +493,7 @@ echo "################################" >> Makefile
 echo "" >> Makefile
 cat Makefile.in >> Makefile
 
-#make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" OSCFLAGS="${OSCFLAGS}" -f Makefile.all $@
+#make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" -f Makefile.all $@
 
 ###############################
 # End:

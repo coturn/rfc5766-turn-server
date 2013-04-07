@@ -27,5 +27,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} uclient -T -n 1000 -m 10 -l 170 -y -g -u gorst -w hero ::1
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -T -n 1000 -m 10 -l 170 -y -g -u gorst -w hero ::1
 

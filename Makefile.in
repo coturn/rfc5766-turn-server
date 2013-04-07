@@ -21,7 +21,7 @@ COMMON_MODS = src/apps/common/apputils.c src/apps/common/stun_buffer.c
 IMPL_DEPS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.h src/apps/relay/turn_ports.c
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/turnmutex.c 
 
-all:	examples/bin/stunclient examples/bin/rfc5769check examples/bin/uclient bin/turnserver examples/bin/peer lib/libturnclient.a include/src/ns_turn_defs.h
+all:	bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/src/ns_turn_defs.h
 	
 
 include/src/ns_turn_defs.h:
@@ -31,28 +31,28 @@ include/src/ns_turn_defs.h:
 	cp -pf src/client++/*.h include/turn/client/
 	cp -pf src/ns_turn_defs.h include/turn/
 
-examples/bin/uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
-	${MKDIR} examples/bin
+bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
+	${MKDIR} bin
 	${CC} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient 
 
-examples/bin/stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
+bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
 	pwd
-	${MKDIR} examples/bin
+	${MKDIR} bin
 	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient  
 
-examples/bin/rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
+bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
 	pwd
-	${MKDIR} examples/bin
+	${MKDIR} bin
 	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient
 
 bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/userdb.h src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
 	${MKDIR} bin
 	${RMCMD} bin/turnadmin
-	${CC} ${CFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LDFLAGS}
+	${CC} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LDFLAGS} ${DBLIBS}
 	cd bin; ln -s turnserver turnadmin  
 
-examples/bin/peer:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
-	${MKDIR} examples/bin
+bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
+	${MKDIR} bin
 	${CC} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient 
 
 ### Client Library:
@@ -98,14 +98,14 @@ build/obj/ns_turn_allocation.o:	src/server/ns_turn_allocation.c ${LUBTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin examples/bin build lib obj *~ */*~ */*/*~ */*/*/*~ *core include Makefile 
+	${RMCMD} bin build lib obj *~ */*~ */*/*~ */*/*/*~ *core include Makefile 
 
 ### Install all:
 
 install:	all ${MAKE_DEPS}
-	echo "${MKDIR} ${PREFIX}; ${MKDIR} ${PREFIX}/share/doc/turnserver; ${MKDIR} ${PREFIX}/bin; ${MKDIR} ${MANPREFIX}/man/man1; ${MKDIR} ${PREFIX}/etc; ${MKDIR} ${PREFIX}/lib; ${MKDIR} ${PREFIX}/examples/; ${RMCMD} ${PREFIX}/examples/turn/; ${INSTALL_PROGRAM} bin/turnserver ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnadmin ${PREFIX}/bin/; ${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/; ${INSTALL_STATIC_LIB} lib/libturnclient.a ${PREFIX}/lib/; ${INSTALL_DIR} examples ${PREFIX}/examples/turn/; ${INSTALL_DIR} docs/html ${PREFIX}/share/doc/turnserver/; ${INSTALL_DATA} examples/etc/turnserver.conf ${PREFIX}/etc; ${INSTALL_DATA} examples/etc/turnuserdb.conf ${PREFIX}/etc; ${INSTALL_DIR} include/* ${PREFIX}/include/" | sudo /bin/sh
+	echo "${MKDIR} ${PREFIX}; ${MKDIR} ${PREFIX}/share/doc/turnserver; ${MKDIR} ${PREFIX}/bin; ${MKDIR} ${MANPREFIX}/man/man1; ${MKDIR} ${PREFIX}/etc; ${MKDIR} ${PREFIX}/lib; ${MKDIR} ${PREFIX}/examples/; ${RMCMD} ${PREFIX}/examples/turn/; ${INSTALL_PROGRAM} bin/turnserver ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnadmin ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnutils_uclient ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnutils_peer ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnutils_stunclient ${PREFIX}/bin/; ${INSTALL_PROGRAM} bin/turnutils_rfc5769check ${PREFIX}/bin/; ${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/; ${INSTALL_MAN} man/man1/turnadmin.1 ${MANPREFIX}/man/man1/; ${INSTALL_MAN} man/man1/turnutils.1 ${MANPREFIX}/man/man1/; ${INSTALL_STATIC_LIB} lib/libturnclient.a ${PREFIX}/lib/; ${INSTALL_DIR} examples ${PREFIX}/examples/turn/; ${INSTALL_DIR} docs/html ${PREFIX}/share/doc/turnserver/; ${INSTALL_DATA} examples/etc/turnserver.conf ${PREFIX}/etc; ${INSTALL_DATA} examples/etc/turnuserdb.conf ${PREFIX}/etc; ${INSTALL_DIR} include/turn ${PREFIX}/include/" | sudo /bin/sh
 
 deinstall:	${MAKE_DEPS}
-	echo "${RMCMD} ${PREFIX}/share/doc/turnserver; ${RMCMD} ${PREFIX}/bin/turnserver; ${RMCMD} ${PREFIX}/bin/turnadmin; ${RMCMD} ${MANPREFIX}/man/man1/turnserver.1; ${RMCMD} ${PREFIX}/lib/libturnclient.a; ${RMCMD} ${PREFIX}/examples/turn/; ${RMCMD} ${PREFIX}/etc/turnserver.conf; ${RMCMD} ${PREFIX}/etc/turnuserdb.conf; ${RMCMD} ${PREFIX}/include/turn/" | sudo /bin/sh
+	echo "${RMCMD} ${PREFIX}/share/doc/turnserver; ${RMCMD} ${PREFIX}/bin/turnserver; ${RMCMD} ${PREFIX}/bin/turnadmin; ${RMCMD} ${PREFIX}/bin/turnutils_peer; ${RMCMD} ${PREFIX}/bin/turnutils_uclient; ${RMCMD} ${PREFIX}/bin/turnutils_rfc5769check; ${RMCMD} ${PREFIX}/bin/turnutils_stunclient; ${RMCMD} ${MANPREFIX}/man/man1/turnserver.1; ${RMCMD} ${MANPREFIX}/man/man1/turnadmin.1; ${RMCMD} ${MANPREFIX}/man/man1/turnutils.1; ${RMCMD} ${PREFIX}/lib/libturnclient.a; ${RMCMD} ${PREFIX}/examples/turn/; ${RMCMD} ${PREFIX}/etc/turnserver.conf; ${RMCMD} ${PREFIX}/etc/turnuserdb.conf; ${RMCMD} ${PREFIX}/include/turn/" | sudo /bin/sh
 
 uninstall:	deinstall

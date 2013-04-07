@@ -1,3 +1,10 @@
+04/7/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.1.0 'Black Dow':
+	- Compilation flags improved.
+	- utility programs renamed and moved to bin/ directory.
+	- README and turnserver man page separated into three sections - 
+	turnserver, turnadmin, turnutils.
+	
 04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.6 'Black Dow':
 	- Added option "--psql-userdb" for better visual separation
