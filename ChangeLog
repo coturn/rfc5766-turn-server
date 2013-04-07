@@ -1,4 +1,11 @@
 04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.0.6 'Black Dow':
+	- Added option "--psql-userdb" for better visual separation
+	between PostgreSQL and MySQL stuff.
+	- turnadmin flat files handling fixed.
+	- added set/show commands to turnadmin for secret key.
+	 
+04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.5 'Black Dow':
 	- turnadmin MySQL connection fixed.
 	- minor cosmetic changes.

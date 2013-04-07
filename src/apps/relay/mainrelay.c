@@ -762,7 +762,7 @@ static void* run_auth_server_thread(void *arg)
 
 	while(run_auth_server_flag) {
 		run_events(eb);
-		read_userdb_file();
+		read_userdb_file(0);
 	}
 
 	return arg;
@@ -1073,7 +1073,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-b, --userdb			User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
 #if !defined(TURN_NO_PQ)
-	"	-e, --sql-userdb		PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
+	"	-e, --psql-userdb, --sql-userdb		PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 	"	                                This database can be used for long-term and short-term credentials mechanisms,\n"
 	"	                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
 	"					See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
@@ -1139,7 +1139,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"Options:\n"
 	"	-b, --userdb		User database file, if flat DB file is used.\n"
 #if !defined(TURN_NO_PQ)
-	"	-e, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
+	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
 	"	-M, --mysql-userdb	MySQL user database connection string, if MySQL DB is used.\n"
@@ -1151,7 +1151,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vofhznaA"
 
-#define ADMIN_OPTIONS "lLkaADdb:e:M:u:r:p:h"
+#define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1193,6 +1193,7 @@ static struct option long_options[] = {
 				{ "user", required_argument, NULL, 'u' },
 				{ "userdb", required_argument, NULL, 'b' },
 #if !defined(TURN_NO_PQ)
+				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
 #endif
 #if !defined(TURN_NO_MYSQL)
@@ -1228,10 +1229,13 @@ static struct option admin_long_options[] = {
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
 				{ "list-st", no_argument, NULL, 'L' },
+				{ "set-secret", required_argument, NULL, 's' },
+				{ "show-secret", no_argument, NULL, 'S' },
 				{ "add-st", no_argument, NULL, 'A' },
 				{ "delete-st", no_argument, NULL, 'D' },
 				{ "userdb", required_argument, NULL, 'b' },
 #if !defined(TURN_NO_PQ)
+				{ "psql-userdb", required_argument, NULL, 'e' },
 				{ "sql-userdb", required_argument, NULL, 'e' },
 #endif
 #if !defined(TURN_NO_MYSQL)
@@ -1553,41 +1557,46 @@ static int adminmain(int argc, char **argv)
 {
 	int c = 0;
 
-	int kcommand = 0;
-	int acommand = 0;
-	int dcommand = 0;
-	int lcommand;
+	TURNADMIN_COMMAND_TYPE ct = TA_COMMAND_UNKNOWN;
 	int is_st = 0;
 
 	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
+	u08bits secret[AUTH_SECRET_SIZE+1];
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
 		case 'k':
-			kcommand = 1;
+			ct = TA_PRINT_KEY;
 			break;
 		case 'a':
-			acommand = 1;
+			ct = TA_UPDATE_USER;
 			break;
 		case 'd':
-			dcommand = 1;
+			ct = TA_DELETE_USER;
 			break;
 		case 'A':
-			acommand = 1;
+			ct = TA_UPDATE_USER;
 			is_st = 1;
 			break;
 		case 'D':
-			dcommand = 1;
+			ct = TA_DELETE_USER;
 			is_st = 1;
 			break;
 		case 'l':
-			lcommand = 1;
+			ct = TA_LIST_USERS;
 			break;
 		case 'L':
-			lcommand = 1;
+			ct = TA_LIST_USERS;
 			is_st = 1;
+			break;
+		case 's':
+			ct = TA_SET_SECRET;
+			STRCPY(secret,optarg);
+			break;
+		case 'S':
+			ct = TA_SHOW_SECRET;
 			break;
 		case 'b':
 			strcpy(userdb,optarg);
@@ -1644,12 +1653,12 @@ static int adminmain(int argc, char **argv)
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
 		strcpy(userdb,DEFAULT_USERDB_FILE);
 
-	if((!user[0] && !lcommand) || ((kcommand + acommand + dcommand + lcommand) != 1)) {
+	if(ct == TA_COMMAND_UNKNOWN) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
 		exit(-1);
 	}
 
-	return adminuser(user, realm, pwd, kcommand, acommand, dcommand, lcommand, is_st);
+	return adminuser(user, realm, pwd, secret, ct, is_st);
 }
 
 int main(int argc, char **argv)
@@ -1687,17 +1696,17 @@ int main(int argc, char **argv)
 
 	set_system_parameters(1);
 
-	if(strstr(argv[0],"turnadmin"))
-		return adminmain(argc,argv);
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
-
 	users = (turn_user_db*)malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->static_accounts = ur_string_map_create(free);
 	users->dynamic_accounts = ur_string_map_create(free);
 	users->alloc_counters = ur_string_map_create(NULL);
+
+	if(strstr(argv[0],"turnadmin"))
+		return adminmain(argc,argv);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
 
 	read_config_file(argc,argv,0);
 
@@ -1732,7 +1741,7 @@ int main(int argc, char **argv)
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
 			strcpy(userdb,DEFAULT_USERDB_FILE);
 
-	read_userdb_file();
+	read_userdb_file(0);
 
 	argc -= optind;
 	argv += optind;

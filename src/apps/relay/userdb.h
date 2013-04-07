@@ -50,6 +50,8 @@ extern "C" {
 
 #define DEFAULT_AUTH_SECRET_EXPIRATION_TIME (3600*24)
 
+#define AUTH_SECRET_SIZE (512)
+
 //////////// USER DB //////////////////////////////
 
 struct auth_message {
@@ -87,6 +89,18 @@ enum _TURN_USERDB_TYPE {
 
 typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;
 
+enum _TURNADMIN_COMMAND_TYPE {
+	TA_COMMAND_UNKNOWN,
+	TA_PRINT_KEY,
+	TA_UPDATE_USER,
+	TA_DELETE_USER,
+	TA_LIST_USERS,
+	TA_SET_SECRET,
+	TA_SHOW_SECRET
+};
+
+typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
+
 extern TURN_USERDB_TYPE userdb_type;
 extern char userdb[1025];
 
@@ -96,12 +110,12 @@ extern int use_st_credentials;
 extern int anon_credentials;
 
 extern int use_auth_secret_with_timestamp;
-extern char static_auth_secret[1025];
+extern char static_auth_secret[AUTH_SECRET_SIZE+1];
 extern turn_time_t auth_secret_timestamp_expiration_time;
 
 extern turn_user_db *users;
 
-extern s08bits global_realm[1025];
+extern s08bits global_realm[STUN_MAX_REALM_SIZE+1];
 
 extern void send_auth_message_to_auth_server(struct auth_message *am);
 
@@ -115,9 +129,9 @@ void release_allocation_quota(u08bits *username);
 
 /////////// Handle user DB /////////////////
 
-void read_userdb_file(void);
+void read_userdb_file(int to_print);
 int add_user_account(char *user, int dynamic);
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int lcommand, int is_st);
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURNADMIN_COMMAND_TYPE ct, int is_st);
 
 ////////////////////////////////////////////
 

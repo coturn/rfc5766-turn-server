@@ -82,7 +82,7 @@ turnserver application is a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --sql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION						
@@ -112,9 +112,9 @@ User database settings:
 		is working, and the user accounts can be changed dynamically by
 		editing the database.
 				  
--e, --sql-userdb	User database connection string for PostgreSQL.
+-e, --psql-userdb User database connection string for PostgreSQL.
 		This database can be used for long-term and short-term credentials mechanisms,
-	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" (for 8.x Postgres).
@@ -128,7 +128,7 @@ User database settings:
 				  
 -M, --mysql-userdb	User database connection string for MySQL. 
 		This database can be used for long-term and short-term credentials mechanisms,
-	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
@@ -326,13 +326,18 @@ Commands:
 -D, --delete-st		Delete a short-term user.
 -l, --list		List long-term users in the database.
 -L, --list-st		List short-term users in the database.
+-s, --set-secret	Set secret for TURN RESP API
+-S, --show-secret	Show secret for TURN REST API
+
+NOTE: if you are using the flat file for the user database, then you will have 
+to use a text editor to set or show the shared secret.
   
 Options with required values:  
 
 -b, --userdb		File-based user database file name (default - turnuserdb.conf).
 			See the --userdb option in the turnserver section.
--e, --sql-userdb	PostgreSQL user database connection string.
-			See the --sql-userdb option in the turnserver section.
+-e, --psql-userdb	PostgreSQL user database connection string.
+			See the --psql-userdb option in the turnserver section.
 -M, --mysql-userdb	MySQL user database connection string.
 			See the --mysql-userdb option in the turnserver section.
 -u, --user		User name.
@@ -358,7 +363,15 @@ $ turnadmin -l --mysql-userdb="<db-connection-string>"
 
 List all short-term users in PostgreSQL database:
 
-$ turnadmin -L --sql-userdb="<db-connection-string>"
+$ turnadmin -L --psql-userdb="<db-connection-string>"
+
+Set secret in MySQL database:
+
+$ turnadmin -s <secret> --mysql-userdb="<db-connection-string>"
+
+Show secret stored in PostgreSQL database:
+
+$ turnadmin -S --psql-userdb="<db-connection-string>"
   
 Help:  
 

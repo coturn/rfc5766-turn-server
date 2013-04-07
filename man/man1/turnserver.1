@@ -112,7 +112,7 @@ is equivalent to:
 .nf
 .fam C
 
-$ \fIturnserver\fP [\fB-n\fP | \fB-c\fP <config-file> ] [\fIflags\fP] [ \fB--userdb\fP=<userdb-file> | \fB--sql-userdb\fP=<db-conn-string> | \fB--mysql-userdb\fP=<db-conn-string> ] [\fB-z\fP | \fB--no-auth\fP | \fB-a\fP | \fB--lt-cred-mech\fP ] [\fIoptions\fP]
+$ \fIturnserver\fP [\fB-n\fP | \fB-c\fP <config-file> ] [\fIflags\fP] [ \fB--userdb\fP=<userdb-file> | \fB--psql-userdb\fP=<db-conn-string> | \fB--mysql-userdb\fP=<db-conn-string> ] [\fB-z\fP | \fB--no-auth\fP | \fB-a\fP | \fB--lt-cred-mech\fP ] [\fIoptions\fP]
 $ \fIturnserver\fP \fB-h\fP
 
 .fam T
@@ -162,10 +162,8 @@ for long-term credentials mechanism only.
 This user file database is being dynamically checked while the \fIturnserver\fP 
 is working, and the user accounts can be changed dynamically by
 editing the database.
-.TP
-.B
-\fB-e\fP, \fB--sql-userdb\fP
-User database connection string for PostgreSQL.
+.PP
+\fB-e\fP, \fB--psql-userdb\fP User database connection string for PostgreSQL.
 This database can be used for long-term and short-term credentials mechanisms,
 and it can store the secret value for secret-based timed authentication in TURN RESP API.
 The connection string format is like that:
@@ -486,6 +484,17 @@ List long-term users in the database.
 List short-term users in the database.
 .TP
 .B
+\fB-s\fP, \fB--set-secret\fP
+Set secret for TURN RESP API
+.TP
+.B
+\fB-S\fP, \fB--show-secret\fP
+Show secret for TURN REST API
+.PP
+NOTE: if you are using the flat file for the user database, then you will have 
+to use a text editor to set or show the shared secret.
+.TP
+.B
 Options with required values:
 .TP
 .B
@@ -494,9 +503,9 @@ File-based user database file name (default - turnuserdb.conf).
 See the \fB--userdb\fP option in the \fIturnserver\fP section.
 .TP
 .B
-\fB-e\fP, \fB--sql-userdb\fP
+\fB-e\fP, \fB--psql-userdb\fP
 PostgreSQL user database connection string.
-See the \fB--sql-userdb\fP option in the \fIturnserver\fP section.
+See the \fB--psql-userdb\fP option in the \fIturnserver\fP section.
 .TP
 .B
 \fB-M\fP, \fB--mysql-userdb\fP
@@ -538,7 +547,15 @@ $ \fIturnadmin\fP \fB-l\fP \fB--mysql-userdb\fP="<db-connection-string>"
 .PP
 List all short-term users in PostgreSQL database:
 .PP
-$ \fIturnadmin\fP \fB-L\fP \fB--sql-userdb\fP="<db-connection-string>"
+$ \fIturnadmin\fP \fB-L\fP \fB--psql-userdb\fP="<db-connection-string>"
+.PP
+Set secret in MySQL database:
+.PP
+$ \fIturnadmin\fP \fB-s\fP <secret> \fB--mysql-userdb\fP="<db-connection-string>"
+.PP
+Show secret stored in PostgreSQL database:
+.PP
+$ \fIturnadmin\fP \fB-S\fP \fB--psql-userdb\fP="<db-connection-string>"
 .TP
 .B
 Help:

@@ -82,12 +82,12 @@ int use_st_credentials = 0;
 int anon_credentials = 0;
 
 int use_auth_secret_with_timestamp = 0;
-char static_auth_secret[1025]="\0";
+char static_auth_secret[AUTH_SECRET_SIZE+1]="\0";
 turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
 
 turn_user_db *users = NULL;
 
-s08bits global_realm[1025]="\0";
+s08bits global_realm[STUN_MAX_REALM_SIZE+1]="\0";
 
 static int donot_print_connection_success=0;
 
@@ -690,7 +690,7 @@ void release_allocation_quota(u08bits *user)
 
 //////////////////////////////////
 
-void read_userdb_file(void)
+void read_userdb_file(int to_print)
 {
 	static char *full_path_to_userdb_file = NULL;
 	static int first_read = 1;
@@ -727,6 +727,7 @@ void read_userdb_file(void)
 		char sbuf[1025];
 
 		ur_string_map_lock(users->dynamic_accounts);
+
 		ur_string_map_clean(users->dynamic_accounts);
 
 		for (;;) {
@@ -741,8 +742,16 @@ void read_userdb_file(void)
 			size_t slen = strlen(s);
 			while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
 				s[--slen] = 0;
-			if (slen)
-				add_user_account(s,1);
+			if (slen) {
+				if(to_print) {
+					char* sc=strstr(s,":");
+					if(sc)
+						sc[0]=0;
+					printf("%s\n",s);
+				} else {
+					add_user_account(s,1);
+				}
+			}
 		}
 
 		ur_string_map_unlock(users->dynamic_accounts);
@@ -869,28 +878,144 @@ static int list_users(int is_st)
 			}
 		}
 #endif
-	} else {
+	} else if(!is_st) {
 
-		printf("For the list of users in the flat file, open the flat file DB in any text viewer program\n");
+		read_userdb_file(1);
 
 	}
 
 	return 0;
 }
 
-int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int acommand , int dcommand, int lcommand, int is_st)
+static int show_secret(void)
+{
+	char statement[1025];
+	sprintf(statement,"select value from turn_secret");
+
+	if(is_pqsql_userdb()){
+#if !defined(TURN_NO_PQ)
+		PGconn *pqc = get_pqdb_connection();
+		if(pqc) {
+			PGresult *res = PQexec(pqc, statement);
+			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+			} else {
+				int i = 0;
+				for(i=0;i<PQntuples(res);i++) {
+					char *kval = PQgetvalue(res,i,0);
+					if(kval) {
+						printf("%s\n",kval);
+					}
+				}
+			}
+			if(res) {
+				PQclear(res);
+			}
+		}
+#endif
+	} else if(is_mysql_userdb()){
+#if !defined(TURN_NO_MYSQL)
+		MYSQL * myc = get_mydb_connection();
+		if(myc) {
+			int res = mysql_query(myc, statement);
+			if(res) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+			} else {
+				MYSQL_RES *mres = mysql_store_result(myc);
+				if(!mres) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+				} else if(mysql_field_count(myc)!=1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
+				} else {
+					for(;;) {
+						MYSQL_ROW row = mysql_fetch_row(mres);
+						if(!row) {
+							break;
+						} else {
+							if(row[0]) {
+								printf("%s\n",row[0]);
+							}
+						}
+					}
+				}
+				if(mres)
+					mysql_free_result(mres);
+			}
+		}
+#endif
+	}
+
+	return 0;
+}
+
+static int set_secret(u08bits *secret) {
+	if (is_pqsql_userdb()) {
+#if !defined(TURN_NO_PQ)
+		char statement[1025];
+		PGconn *pqc = get_pqdb_connection();
+		if (pqc) {
+			sprintf(statement,"delete from turn_secret");
+			PGresult *res = PQexec(pqc, statement);
+			if (res) {
+				PQclear(res);
+			}
+			sprintf(statement,"insert into turn_secret values('%s')",secret);
+			res = PQexec(pqc, statement);
+			if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
+				TURN_LOG_FUNC(
+						TURN_LOG_LEVEL_ERROR,
+						"Error inserting/updating secret key information: %s\n",
+						PQerrorMessage(pqc));
+			}
+			if (res) {
+				PQclear(res);
+			}
+		}
+#endif
+	} else if (is_mysql_userdb()) {
+#if !defined(TURN_NO_MYSQL)
+		char statement[1025];
+		MYSQL * myc = get_mydb_connection();
+		if (myc) {
+			sprintf(statement,"delete from turn_secret");
+			int res = mysql_query(myc, statement);
+			sprintf(statement,"insert into turn_secret values('%s')",secret);
+			res = mysql_query(myc, statement);
+			if (res) {
+				TURN_LOG_FUNC(
+						TURN_LOG_LEVEL_ERROR,
+						"Error inserting/updating secret key information: %s\n",
+						mysql_error(myc));
+			}
+		}
+#endif
+	}
+
+	return 0;
+}
+
+int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURNADMIN_COMMAND_TYPE ct, int is_st)
 {
 	hmackey_t key;
 	char skey[sizeof(hmackey_t)*2+1];
 
 	st_password_t passwd;
 
-	if(lcommand) {
+	if(ct == TA_LIST_USERS) {
 		donot_print_connection_success=1;
 		return list_users(is_st);
 	}
 
-	if(!dcommand) {
+	if(ct == TA_SHOW_SECRET) {
+		donot_print_connection_success=1;
+		return show_secret();
+	}
+
+	if(ct == TA_SET_SECRET) {
+		return set_secret(secret);
+	}
+
+	if(ct != TA_DELETE_USER) {
 		if(is_st) {
 			strncpy((char*)passwd,(char*)pwd,sizeof(st_password_t));
 		} else {
@@ -904,7 +1029,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		}
 	}
 
-	if(kcommand) {
+	if(ct == TA_PRINT_KEY) {
 
 		if(!is_st) {
 			printf("0x%s\n",skey);
@@ -915,7 +1040,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		char statement[1025];
 		PGconn *pqc = get_pqdb_connection();
 		if(pqc) {
-			if(dcommand) {
+			if(ct == TA_DELETE_USER) {
 				if(is_st) {
 					sprintf(statement,"delete from turnusers_st where name='%s'",user);
 				} else {
@@ -927,7 +1052,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 				}
 			}
 
-			if(acommand) {
+			if(ct == TA_UPDATE_USER) {
 				if(is_st) {
 					sprintf(statement,"insert into turnusers_st values('%s','%s')",user,passwd);
 				} else {
@@ -959,7 +1084,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 		char statement[1025];
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
-			if(dcommand) {
+			if(ct == TA_DELETE_USER) {
 				if(is_st) {
 					sprintf(statement,"delete from turnusers_st where name='%s'",user);
 				} else {
@@ -971,7 +1096,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 				}
 			}
 
-			if(acommand) {
+			if(ct == TA_UPDATE_USER) {
 				if(is_st) {
 					sprintf(statement,"insert into turnusers_st values('%s','%s')",user,passwd);
 				} else {
@@ -1030,7 +1155,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 
 				strcpy(sarg, s);
 				if (strstr(sarg, us) == sarg) {
-					if (dcommand)
+					if (ct == TA_DELETE_USER)
 						continue;
 
 					if (found)
@@ -1056,7 +1181,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, int kcommand, int aco
 			fclose(f);
 		}
 
-		if(!found && acommand) {
+		if(!found && (ct == TA_UPDATE_USER)) {
 			strcpy(us,(char*)user);
 			strcpy(us+strlen(us),":0x");
 			for(i=0;i<sizeof(hmackey_t);i++) {
