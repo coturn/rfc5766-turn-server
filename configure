@@ -155,10 +155,6 @@ fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="-Llib ${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
-TURN_NO_THREADS=
-TURN_NO_TLS=
-TURN_NO_PQ=
-TURN_NO_MYSQL=
 
 MKDIR="mkdir -p"
 INSTALL_PROGRAM="cp -f"
@@ -343,11 +339,17 @@ testlib rt
 # Can we use multi-threading ?
 ###########################
 
+if [ -z ${TURN_NO_THREADS} ] ; then 
+
 pthread_testlib
 ER=$?
 if [ ${ER} -eq 0 ] ; then
 	echo "WARNING: Cannot find pthread library functions."
 	echo "Using single-thread mode."
+	TURN_NO_THREADS="-DTURN_NO_THREADS"
+fi
+
+else
 	TURN_NO_THREADS="-DTURN_NO_THREADS"
 fi
 
@@ -411,6 +413,8 @@ else
     exit
 fi
 
+if [ -z "${TURN_NO_TLS}" ] ; then
+
 testlib event_openssl
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
@@ -419,6 +423,11 @@ else
     echo "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
     echo "TLS will be disabled."
     TURN_NO_TLS="-DTURN_NO_TLS"
+fi
+
+else
+	TURN_NO_TLS="-DTURN_NO_TLS"
+
 fi
 
 if [ -z "${TURN_NO_THREADS}" ] ; then
@@ -437,6 +446,8 @@ fi
 # Test PostgreSQL
 ###########################
 
+if [ -z "${TURN_NO_PQ}" ] ; then
+
 testlibpq
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
@@ -445,9 +456,15 @@ else
   TURN_NO_PQ="-DTURN_NO_PQ"
 fi
 
+else
+	TURN_NO_PQ="-DTURN_NO_PQ"
+fi
+
 ###########################
 # Test MySQL
 ###########################
+
+if [ -z "${TURN_NO_MYSQL}" ] ; then
 
 testlibmysql
 ER=$?
@@ -455,7 +472,12 @@ if ! [ ${ER} -eq 0 ] ; then
   echo "MySQL found."
 else
   TURN_NO_MYSQL="-DTURN_NO_MYSQL"
-fi    
+fi
+
+else
+	TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+
+fi
 
 ###############################
 # So, what we have now:

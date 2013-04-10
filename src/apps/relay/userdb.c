@@ -949,6 +949,7 @@ static int show_secret(void)
 }
 
 static int set_secret(u08bits *secret) {
+	UNUSED_ARG(secret);
 	if (is_pqsql_userdb()) {
 #if !defined(TURN_NO_PQ)
 		char statement[1025];

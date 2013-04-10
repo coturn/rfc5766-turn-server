@@ -50,6 +50,12 @@ typedef enum {
   TURN_LOG_LEVEL_ERROR
 } TURN_LOG_LEVEL;
 
+#define TURN_VERBOSE_NONE (0)
+#define TURN_VERBOSE_NORMAL (1)
+#define TURN_VERBOSE_EXTRA (2)
+
+#define eve(v) ((v)==TURN_VERBOSE_EXTRA)
+
 void set_no_stdout_log(int val);
 
 void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);

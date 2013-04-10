@@ -60,9 +60,11 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 #if defined(TURN_LOG_FUNC_IMPL)
 		TURN_LOG_FUNC_IMPL(level,format,args);
 #else
-		if (level == TURN_LOG_LEVEL_ERROR)
-			vfprintf(stderr, format, args);
-		else if(!no_stdout_log) {
+		if (level == TURN_LOG_LEVEL_ERROR) {
+			printf("%lu: ERROR: ",(unsigned long)turn_time());
+			vprintf(format, args);
+		} else if(!no_stdout_log) {
+			printf("%lu: ",(unsigned long)turn_time());
 			vprintf(format, args);
 		}
 #endif
@@ -74,24 +76,24 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 {
 	if (verbose) {
 		if (!addr) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n%s: EMPTY\n", s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: EMPTY\n", s);
 		} else {
 			s08bits addrbuf[INET6_ADDRSTRLEN];
 			if (!s)
 				s = "";
 			if (addr->ss.ss_family == AF_INET) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nIPv4. %s: %s:%d\n", s, inet_ntop(AF_INET,
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IPv4. %s: %s:%d\n", s, inet_ntop(AF_INET,
 								&addr->s4.sin_addr, addrbuf, INET6_ADDRSTRLEN),
 								nswap16(addr->s4.sin_port));
 			} else if (addr->ss.ss_family == AF_INET6) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nIPv6. %s: %s:%d\n", s, inet_ntop(AF_INET6,
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "IPv6. %s: %s:%d\n", s, inet_ntop(AF_INET6,
 								&addr->s6.sin6_addr, addrbuf, INET6_ADDRSTRLEN),
 								nswap16(addr->s6.sin6_port));
 			} else {
 				if (addr_any_no_port(addr)) {
 					TURN_LOG_FUNC(
 									TURN_LOG_LEVEL_INFO,
-									"\nIP. %s: 0.0.0.0:%d\n",
+									"IP. %s: 0.0.0.0:%d\n",
 									s,
 									nswap16(addr->s4.sin_port));
 				} else {
@@ -206,6 +208,7 @@ static void set_rtpfile(void)
 void rtpprintf(const char *format, ...)
 {
 	set_rtpfile();
+	fprintf(_rtpfile,"%lu: ",(unsigned long)turn_time());
 	va_list args;
 	va_start (args, format);
 	vfprintf(_rtpfile,format, args);
@@ -216,6 +219,7 @@ void rtpprintf(const char *format, ...)
 int vrtpprintf(const char *format, va_list args)
 {
 	set_rtpfile();
+	fprintf(_rtpfile,"%lu: ",(unsigned long)turn_time());
 	vfprintf(_rtpfile,format, args);
 	fflush(_rtpfile);
 	return 0;

@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	int port = PEER_DEFAULT_PORT;
 	char **local_addr_list=NULL;
 	size_t las = 0;
-	int verbose = 0;
+	int verbose = TURN_VERBOSE_NONE;
 	char c;
 	char ifname[1025] = "\0";
 
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 		  local_addr_list[las-1]=strdup(optarg);
 		  break;
 		case 'v':
-			verbose = 1;
+			verbose = TURN_VERBOSE_NORMAL;
 			break;
 		default:
 			fprintf(stderr, "%s\n", Usage);

@@ -113,7 +113,9 @@ User database settings:
 
 Flags:   
 
--v, --verbose		Verbose.
+-v, --verbose		'Moderate' verbose mode.
+
+-V, --Verbose		'Extra' verbose mode, very annoying and not recommended.
 
 -o, --daemon		Run server as daemon.
 
@@ -148,13 +150,13 @@ Flags:
 			This option can be used with long-term credentials mechanisms only -
 			it does not make much sense with the short-term mechanism.
 
---no-udp			Do not start UDP client listeners.
+--no-udp		Do not start UDP client listeners.
 
---no-tcp			Do not start TCP client listeners.
+--no-tcp		Do not start TCP client listeners.
 
---no-tls			Do not start TLS client listeners.
+--no-tls		Do not start TLS client listeners.
 
---no-dtls			Do not start DTLS client listeners.
+--no-dtls		Do not start DTLS client listeners.
 
 --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.
 
@@ -163,9 +165,9 @@ Flags:
 --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
 
 --no-stdout-log		Flag to prevent stdout log messages.
-					By default, all log messages are going to both stdout and to
-					a log file. With this option everything will be going to the log file only
-					(unless the log file itself is stdout).
+			By default, all log messages are going to both stdout and to
+			a log file. With this option everything will be going to the log file only
+			(unless the log file itself is stdout).
 
 -h				Help.
     
@@ -215,9 +217,10 @@ Options with required values:
 				This value, if not empty, is returned in XOR-RELAYED-ADDRESS field.
 				By default, this value is empty, and the real relay IP address is used.
 				
--m, --relay-threads		number of extra threads to handle the 
-				established connections. If set to zero (0) then everything is
-				handled in single thread. The default number of extra threads is 1.
+-m, --relay-threads		Number of relay threads to handle the established connections
+				(in addition to authentication thread and the listener thread).
+				If set to 0 then application runs in single-threaded mode.
+				The default thread number is the number of CPUs.
 
 --min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.

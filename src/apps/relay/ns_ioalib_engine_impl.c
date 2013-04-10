@@ -339,7 +339,7 @@ static void timer_event_handler(evutil_socket_t fd, short what, void* arg)
 	if (!(what & EV_TIMEOUT))
 		return;
 
-	if(te->e->verbose)
+	if(eve(te->e->verbose))
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__,(long)te, te->txt);
 
 	ioa_timer_event_handler cb = te->cb;
@@ -1094,7 +1094,7 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 			stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
 			ioa_network_buffer_set_size(nbh,len);
 			in_buffer->nbh = NULL;
-			if (s->e->verbose) {
+			if (eve(s->e->verbose)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"%s: send channel 0x%x\n", __FUNCTION__,
 						(int) (chnum));
@@ -1335,7 +1335,7 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 int get_local_mtu_ioa_socket(ioa_socket_handle s)
 {
 	if(s) {
-		return get_socket_mtu(s->fd, s->family, s->e->verbose);
+		return get_socket_mtu(s->fd, s->family, eve(s->e->verbose));
 	}
 	return -1;
 }
@@ -1354,7 +1354,7 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 
 	int len = 0;
 
-	if (verbose) {
+	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before read...\n", __FUNCTION__);
 	}
 
@@ -1362,18 +1362,18 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 		len = SSL_read(ssl, buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
 
-	if (verbose) {
+	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__,len);
 	}
 
 	if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
-		if (verbose) {
+		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}
 		return 0;
 	}
 
-	if (verbose) {
+	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: read %d bytes\n", __FUNCTION__,(int) len);
 	}
 
@@ -1823,7 +1823,7 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 	if (!ssl || !buffer)
 		return -1;
 
-	if (verbose) {
+	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before write: buffer=0x%lx, len=%d\n", __FUNCTION__,(long)buffer,len);
 	}
 
@@ -1832,12 +1832,12 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 		rc = SSL_write(ssl, buffer, len);
 	} while (rc < 0 && errno == EINTR);
 
-	if (verbose) {
+	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after write: %d\n", __FUNCTION__,rc);
 	}
 
 	if (rc < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
-		if (verbose) {
+		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}
 		return 0;
@@ -1845,7 +1845,7 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 
 	if (rc >= 0) {
 
-		if (verbose) {
+		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote %d bytes\n", __FUNCTION__, (int) rc);
 		}
 
@@ -1853,14 +1853,14 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 
 	} else {
 
-		if (verbose) {
+		if (eve(verbose)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: failure: rc=%d, err=%d\n", __FUNCTION__, (int)rc,(int)SSL_get_error(ssl, rc));
 		}
 
 		switch (SSL_get_error(ssl, rc)){
 		case SSL_ERROR_NONE:
 			//???
-			if (verbose) {
+			if (eve(verbose)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int) rc);
 			}
 			return 0;

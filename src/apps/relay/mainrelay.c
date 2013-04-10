@@ -83,7 +83,7 @@ static void openssl_cleanup(void);
 
 //////////////// Common params ////////////////////
 
-static int verbose=0;
+static int verbose=TURN_VERBOSE_NONE;
 static int turn_daemon = 0;
 static int stale_nonce = 0;
 
@@ -646,7 +646,7 @@ static void run_listener_server(struct event_base *eb)
 	unsigned int cycle = 0;
 	for (;;) {
 
-		if (verbose) {
+		if (eve(verbose)) {
 			if ((cycle++ & 15) == 0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cycle=%u, stats=%lu\n", __FUNCTION__, cycle,
 								(unsigned long) stats);
@@ -1051,12 +1051,16 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"					that single relay address must be mapped by NAT to the 'external' IP.\n"
 	"					For this 'external' IP, NAT must forward ports directly (relayed port 12345\n"
 	"					must be always mapped to the same 'external' port 12345).\n"
-	"	-m, --relay-threads		Number of extra threads to handle established connections (default is 0).\n"
+	"	-m, --relay-threads		Number of relay threads to handle the established connections\n"
+	"					(in addition to authentication thread and the listener thread).\n"
+	"					If set to 0 then application runs in single-threaded mode.\n"
+	"					The default thread number is the number of CPUs.\n"
 	"	    --min-port			Lower bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 49152, according to RFC 5766.\n"
 	"	    --max-port			Upper bound of the UDP port range for relay endpoints allocation.\n"
 	"					Default value is 65535, according to RFC 5766.\n"
-	"	-v, --verbose			Verbose.\n"
+	"	-v, --verbose			'Moderate' verbose mode.\n"
+	"	-V, --Verbose			Extra verbose mode, very annoying (for debug purposes only).\n"
 	"	-o, --daemon			Start process as daemon (detach from current shell).\n"
 	"	-f, --fingerprint		Use fingerprints in the TURN messages.\n"
 	"	-a, --lt-cred-mech		Use the long-term credential mechanism. This option can be used with either\n"
@@ -1073,7 +1077,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	-c				Configuration file name (default - turnserver.conf).\n"
 	"	-b, --userdb			User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
 #if !defined(TURN_NO_PQ)
-	"	-e, --psql-userdb, --sql-userdb		PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
+	"	-e, --psql-userdb, --sql-userdb	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 	"	                                This database can be used for long-term and short-term credentials mechanisms,\n"
 	"	                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
 	"					See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
@@ -1129,27 +1133,29 @@ static char Usage[] = "Usage: turnserver [options]\n"
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"Commands:\n"
-	"	-k, --key		generate long-term credential mechanism key for a user\n"
-	"	-a, --add		add/update a long-term mechanism user\n"
-	"	-A, --add-st		add/update a short-term mechanism user\n"
-	"	-d, --delete		delete a long-term mechanism user\n"
-	"	-D, --delete-st		delete a short-term mechanism user\n"
-	"	-l, --list		list all long-term mechanism users\n"
-	"	-L, --list-st		list all short-term mechanism users\n"
+	"	-k, --key			generate long-term credential mechanism key for a user\n"
+	"	-a, --add			add/update a long-term mechanism user\n"
+	"	-A, --add-st			add/update a short-term mechanism user\n"
+	"	-d, --delete			delete a long-term mechanism user\n"
+	"	-D, --delete-st			delete a short-term mechanism user\n"
+	"	-l, --list			list all long-term mechanism users\n"
+	"	-L, --list-st			list all short-term mechanism users\n"
+	"	-s, --set-secret=<value>	Set secret for TURN RESP API\n"
+	"	-S, --show-secret		Show secret for TURN REST API\n"
 	"Options:\n"
-	"	-b, --userdb		User database file, if flat DB file is used.\n"
+	"	-b, --userdb			User database file, if flat DB file is used.\n"
 #if !defined(TURN_NO_PQ)
 	"	-e, --psql-userdb, --sql-userdb	PostgreSQL user database connection string, if PostgreSQL DB is used.\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
-	"	-M, --mysql-userdb	MySQL user database connection string, if MySQL DB is used.\n"
+	"	-M, --mysql-userdb		MySQL user database connection string, if MySQL DB is used.\n"
 #endif
-	"	-u, --user		Username\n"
-	"	-r, --realm		Realm for long-term mechanism only\n"
-	"	-p, --password		Password\n"
-	"	-h, --help		Help\n";
+	"	-u, --user			Username\n"
+	"	-r, --realm			Realm for long-term mechanism only\n"
+	"	-p, --password			Password\n"
+	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vofhznaA"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vVofhznaA"
 
 #define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:h"
 
@@ -1207,6 +1213,7 @@ static struct option long_options[] = {
 				{ "total-quota", required_argument, NULL, 'Q' },
 				{ "max-bps", required_argument, NULL, 's' },
 				{ "verbose", optional_argument, NULL, 'v' },
+				{ "Verbose", optional_argument, NULL, 'V' },
 				{ "daemon", optional_argument, NULL, 'o' },
 				{ "fingerprint", optional_argument, NULL, 'f' },
 				{ "no-udp", optional_argument, NULL, NO_UDP_OPT },
@@ -1319,7 +1326,16 @@ static void set_option(int c, char *value)
 		}
 		break;
 	case 'v':
-		verbose = get_bool_value(value);
+		if(get_bool_value(value)) {
+			verbose = TURN_VERBOSE_NORMAL;
+		} else {
+			verbose = TURN_VERBOSE_NONE;
+		}
+		break;
+	case 'V':
+		if(get_bool_value(value)) {
+			verbose = TURN_VERBOSE_EXTRA;
+		}
 		break;
 	case 'o':
 		turn_daemon = get_bool_value(value);
@@ -1412,7 +1428,6 @@ static void set_option(int c, char *value)
 	case NO_TLS_OPT:
 #if defined(TURN_NO_TLS)
 		no_tls = 1;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TLS is not supported\n");
 #else
 		no_tls = get_bool_value(value);
 #endif
@@ -1422,7 +1437,6 @@ static void set_option(int c, char *value)
 		no_dtls = get_bool_value(value);
 #else
 		no_dtls = 1;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: DTLS is not supported\n");
 #endif
 		break;
 	case CERT_FILE_OPT:
@@ -1686,15 +1700,26 @@ int main(int argc, char **argv)
 
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TLS is not supported\n");
 #endif
 
 #if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
 	no_dtls = 1;
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: OpenSSL version is too old, DTLS is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old, DTLS is not supported\n");
 #endif
 
 	set_system_parameters(1);
+
+#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS)
+
+	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
+
+	if(relay_servers_number<1)
+		relay_servers_number = 1;
+	else if(relay_servers_number>128)
+		relay_servers_number = 128;
+
+#endif
 
 	users = (turn_user_db*)malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));

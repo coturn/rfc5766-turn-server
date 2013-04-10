@@ -36,8 +36,8 @@
 
 ///////////////////////////////////////////
 
-#define FUNCSTART if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
-#define FUNCEND if(server && server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
+#define FUNCSTART if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:start\n",__FUNCTION__,__LINE__)
+#define FUNCEND if(server && eve(server->verbose)) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d:end\n",__FUNCTION__,__LINE__)
 
 ////////////////////////////////////////////////
 
@@ -207,8 +207,6 @@ static void client_ss_channel_timeout_handler(ioa_engine_handle e, void* arg) {
 	if (!arg)
 		return;
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", __FUNCTION__);
-
 	ch_info* chn = (ch_info*) arg;
 
 	turn_channel_delete(chn);
@@ -220,8 +218,6 @@ static void client_ss_perm_timeout_handler(ioa_engine_handle e, void* arg) {
 
 	if (!arg)
 		return;
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", __FUNCTION__);
 
 	turn_permission_info* tinfo = (turn_permission_info*) arg;
 
@@ -1884,7 +1880,7 @@ static int check_stun_auth(turn_turnserver *server,
 		if(!ukey) {
 			/* direct user pattern is supported only for long-term credentials */
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: Cannot find user %s\n",
+					"%s: Cannot find user <%s>\n",
 					__FUNCTION__, (char*)uname);
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
@@ -1959,12 +1955,25 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+
+				if(server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"%s: user <%s>: request ALLOCATE processed, error %d\n",
+									__FUNCTION__, (char*)ss->username, err_code);
+				}
+
 				break;
 
 			case STUN_METHOD_CONNECT:
 
 				handle_turn_connect(server, ss, &tid, &err_code, &reason,
 							unknown_attrs, &ua_num, in_buffer);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request CONNECT processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
 
 				if(!err_code)
 					no_response = 1;
@@ -1975,24 +1984,49 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request CONNECTION_BIND processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
+
 				break;
 
 			case STUN_METHOD_REFRESH:
 
 				handle_turn_refresh(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request REFRESH processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
 				break;
 
 			case STUN_METHOD_CHANNEL_BIND:
 
 				handle_turn_channel_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request CHANNEL_BIND processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
 				break;
 
 			case STUN_METHOD_CREATE_PERMISSION:
 
 				handle_turn_create_permission(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request CREATE_PERMISSION processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
 				break;
 
 			case STUN_METHOD_BINDING:
@@ -2007,6 +2041,12 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							unknown_attrs, &ua_num, in_buffer, nbh,
 							&origin_changed, &response_origin,
 							&dest_changed, &response_destination);
+
+				if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: request BINDING processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
 
@@ -2030,9 +2070,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				break;
 			}
 			default:
-				if (server->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN request received\n");
-				}
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unsupported STUN request received, method 0x%x\n",(unsigned int)method);
 			};
 		}
 
@@ -2054,17 +2092,29 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
+				if(eve(server->verbose)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: indication SEND processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
+
 				break;
 
 			case STUN_METHOD_DATA:
 
 				err_code = 403;
 
+				if(eve(server->verbose)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: user <%s>: indication SEND processed, error %d\n",
+										__FUNCTION__, (char*)ss->username, err_code);
+				}
+
 				break;
 
 			default:
 				if (server->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received\n");
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unsupported STUN indication received: method 0x%x\n",(unsigned int)method);
 				}
 			}
 		};
@@ -2119,6 +2169,15 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 			ioa_network_buffer_set_size(nbh,len);
 		}
+
+		if(err_code) {
+			if(server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"%s: user <%s>: message processed, error %d\n",
+								__FUNCTION__, (char*)ss->username, err_code);
+			}
+		}
+
 	} else {
 		*resp_constructed = 0;
 	}
@@ -2176,7 +2235,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 
 	ts_ur_session* elem = &(ss->client_session);
 
-	if (server->verbose) {
+	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"closing session 0x%lx, client socket 0x%lx in state %ld (socket session=0x%lx)\n",
 				(long) ss,
@@ -2186,7 +2245,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 	}
 
 	if (elem->state == UR_STATE_DONE) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"!!! closing session 0x%lx, socket 0x%lx in DONE state %ld\n",
 				(long)ss, (long) elem->s, (long) (elem->state));
 		return -1;
@@ -2200,11 +2259,11 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 	clear_ioa_socket_session_if(elem->s,ss);
 	IOA_CLOSE_SOCKET(elem->s);
 
-	turn_server_remove_all_from_ur_map_ss(ss);
-
 	if (server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN connection closed.\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN connection closed, user <%s>\n",(char*)ss->username);
 	}
+
+	turn_server_remove_all_from_ur_map_ss(ss);
 
 	FUNCEND;
 
@@ -2223,8 +2282,6 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 		return;
 
 	UNUSED_ARG(e);
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", __FUNCTION__);
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
@@ -2254,7 +2311,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		return -1;
 	} else {
 
-		if (server->verbose) {
+		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
 				(long) (elem->s));
@@ -2273,8 +2330,6 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
 	if (!arg)
 		return;
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", __FUNCTION__);
 
 	ts_ur_super_session* ss = (ts_ur_super_session*)arg;
 
@@ -2437,7 +2492,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		return -1;
 	}
 
-	if (server->verbose) {
+	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 			      "%s: data.buffer=0x%lx, data.len=%ld\n", __FUNCTION__,
 			      (long)ioa_network_buffer_data(in_buffer->nbh), 
@@ -2457,7 +2512,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		}
 		int rc = write_to_peerchannel(ss, chnum, in_buffer);
 
-		if (server->verbose) {
+		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote to peer %d bytes\n",
 					__FUNCTION__, (int) rc);
 		}
@@ -2618,7 +2673,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
 				ioa_network_buffer_set_size(nbh,len);
 				in_buffer->nbh = NULL;
-				if (server->verbose) {
+				if (eve(server->verbose)) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 							"%s: send channel 0x%x\n", __FUNCTION__,
 							(int) (chnum));
@@ -2638,7 +2693,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					ioa_network_buffer_set_size(nbh,len);
 				}
 			}
-			if (server->verbose) {
+			if (eve(server->verbose)) {
 				u16bits* t = (u16bits*) ioa_network_buffer_data(nbh);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Send data: 0x%x\n",
 						(int) (nswap16(t[0])));
@@ -2681,7 +2736,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 		read_client_connection(server, elem, ss, data, 1);
 		break;
 	case UR_STATE_DONE:
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"!!! %s: Trying to read from closed socket: s=0x%lx\n",
 				__FUNCTION__, (long) (elem->s));
 		return;
@@ -2690,7 +2745,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	}
 
 	if (ret < 0 && server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Error on client handler: s=0x%lx\n", (long) (elem->s));
 		set_ioa_socket_tobeclosed(s);
 	}

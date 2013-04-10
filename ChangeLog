@@ -1,3 +1,10 @@
+04/9/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.1.1 'Black Dow':
+	- Docs improvements. 
+	- Load balancing use case added to TurnNetworks.pdf. 
+	- Verbose mode split into 'normal' and 'extra' modes.
+	- Logging extended and fixed.
+	
 04/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.0 'Black Dow':
 	- Compilation flags improved.

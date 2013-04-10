@@ -35,10 +35,9 @@ that you can use to build the project:
 
 The make command without options will do the following:
  - compile the code.
- - create bin/ sub-directory and put the TURN server and TURN admin programs there.
+ - create bin/ sub-directory and put the TURN server, TURN admin and "utility" programs there.
  - create lib/ sub-directory and put the client library there.
  - create include/turn/ sub-directory and put include files there.
- - create examples/bin/ sub-directory and put all tests program there.
 
 The programs can be either called directly, or a shell scripts can be used. 
 The script examples are located in examples/scripts directory. These scripts are just 
@@ -102,8 +101,9 @@ The following platforms have been used in the development:
 	- PC-BSD 9.x, x86_64
 	- Solaris 11, x86_64
 	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64
-	- Linux Debian 'squeeze', i386
+	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
+	- Linux Debian 'Wheezy', x86_64 
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -148,7 +148,7 @@ http://www.mysql.org. The installations are pretty straightforward - the usual
 locations - the configure script and the Makefile are assuming that they are 
 installed in their default locations. If not, then you will have to modify those.
 
-FreeBSD, PC-BSD, Linux Ubuntu 11.10+ have even simpler way of the
+FreeBSD, PC-BSD, Linux Ubuntu 11.10+, Debian Wheezy have even simpler way of the
 third party tools installation:      
 
 	*) PC-BSD or FreeBSD (the ports database is assumed to be installed):
@@ -162,7 +162,7 @@ third party tools installation:
 		$ cd /usr/ports/databases/mysql51-client/ (or any other version)
 		$ sudo make install clean
 
-	**) Linux Ubuntu 11.10 or later:
+	**) Linux Ubuntu 11.10+ and Debian Wheezy:
 		
 		$ sudo apt-get install libssl-dev
 		$ sudo apt-get install libevent-dev
@@ -172,11 +172,11 @@ third party tools installation:
 		
 		or you can use Synaptic or other software center.
 		
-	***) Debian Linux and Linux Mint setups are similar to Ubuntu, although some packages may have
-		 different names. 
+	***) Other OS in Debian family (Squeeze, Mint, earlier Ubuntus) setups are similar, 
+	although some packages have different names. 
 		 
 	****) On CentOS 6.3 you have to install libevent2 "manually", but everything else 
-	is usually preinstalled. 
+	is usually pre-installed by the system installer. 
 
 NOTE: If your tools are installed in non-standard locations, you will have to adjust CFLAGS 
 and LDFLAGS environment variables for TURN server ./configure script. For example, to 
@@ -315,17 +315,17 @@ In shell number 3, run secure test client application:
  $ cd examples
  $ ./scripts/secure_udp_client.sh
   
- (or ./scripts/secure tcp_client.sh)
- (or ./scripts/secure tls_client.sh)
- (or ./scripts/secure dtls_client.sh)
- (or ./scripts/secure udp_c2c.sh for "peerless" client-to-client communications)
+ (or ./scripts/secure_tcp_client.sh)
+ (or ./scripts/secure_tls_client.sh)
+ (or ./scripts/secure_dtls_client.sh)
+ (or ./scripts/secure_udp_c2c.sh for "peerless" client-to-client communications)
 
 The provided scripts are set for the local loopback communications, as an example and 
 as a test environment. Real networking IPs must be used in real work environments. 
 
 Try wireshark to check the communications between client, turnserver and the peer. 
 
-Check the README file and the comments in the scripts relay.sh and secure_relay.sh 
+Check the README.* files and the comments in the scripts relay.sh and secure_relay.sh 
 as a guidance how to run the TURN server.
 
 IX. OSX compilation notes

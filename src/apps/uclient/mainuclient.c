@@ -48,7 +48,7 @@
 int clmessage_length=100;
 int do_not_use_channel=0;
 int c2c=0;
-int clnet_verbose=0;
+int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
 int use_secure=0;
 int use_short_term=0;
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
 			peer_port = atoi(optarg);
 			break;
 		case 'v':
-			clnet_verbose = 1;
+			clnet_verbose = TURN_VERBOSE_NORMAL;
 			break;
 		case 'h':
 			hang_on = 1;
