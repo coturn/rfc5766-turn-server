@@ -657,7 +657,7 @@ static void run_listener_server(struct event_base *eb)
 
 #if defined(TURN_NO_THREADS)
 		/* If there are no threads, then we run it here */
-		read_userdb_file();
+		read_userdb_file(0);
 #endif
 	}
 }
@@ -810,9 +810,7 @@ static void setup_server(void)
 #endif
 
 	setup_listener_servers();
-
 	setup_relay_servers();
-
 	setup_auth_server();
 }
 
@@ -972,6 +970,8 @@ static int make_local_listeners_list(void)
 				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
 								INET_ADDRSTRLEN))
 					continue;
+				if(strstr(saddr,"169.254.") == saddr)
+					continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
@@ -1014,6 +1014,8 @@ static int make_local_relays_list(int allow_local)
 			if (ifa ->ifa_addr->sa_family == AF_INET) {
 				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
 								INET_ADDRSTRLEN))
+					continue;
+				if(strstr(saddr,"169.254.") == saddr)
 					continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,

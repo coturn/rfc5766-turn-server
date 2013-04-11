@@ -22,7 +22,7 @@ IMPL_DEPS = src/apps/relay/ns_ioalib_impl.h src/apps/relay/ns_ioalib_engine_impl
 IMPL_MODS = src/apps/relay/ns_ioalib_engine_impl.c src/apps/relay/turn_ports.c src/apps/relay/turnmutex.c 
 
 all:	bin/turnutils_stunclient bin/turnutils_rfc5769check bin/turnutils_uclient bin/turnserver bin/turnutils_peer lib/libturnclient.a include/src/ns_turn_defs.h
-	
+
 
 include/src/ns_turn_defs.h:
 	${RMCMD} include
@@ -33,27 +33,27 @@ include/src/ns_turn_defs.h:
 
 bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
 	${MKDIR} bin
-	${CC} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient 
+	${CC} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
 bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
 	pwd
 	${MKDIR} bin
-	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient  
+	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}   
 
 bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
 	pwd
 	${MKDIR} bin
-	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient
+	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS} 
 
 bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/userdb.h src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
 	${MKDIR} bin
 	${RMCMD} bin/turnadmin
-	${CC} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${LDFLAGS} ${DBLIBS}
+	${CC} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${DBLIBS} ${LDFLAGS} 
 	cd bin; ln -s turnserver turnadmin  
 
 bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
 	${MKDIR} bin
-	${CC} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ ${LDFLAGS} -lturnclient 
+	${CC} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
 ### Client Library:
 

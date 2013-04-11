@@ -288,10 +288,10 @@ static inline khint_t __ac_X31_hash_string(const s08bits *s)
 }
 static inline khint_t __ac_X31_hash_cstring(const s08bits *s)
 {
-	khint_t h = tolower(*s);
+	khint_t h = tolower((int)*s);
 	if (h)
 		for (++s; *s; ++s)
-			h = (h << 5) - h + tolower(*s);
+			h = (h << 5) - h + tolower((int)*s);
 	return h;
 }
 static inline khint_t __ac_X31_hash_nstring(const str_chunk_t *s)
@@ -306,11 +306,11 @@ static inline khint_t __ac_X31_hash_nstring(const str_chunk_t *s)
 }
 static inline khint_t __ac_X31_hash_ncstring(const str_chunk_t *s)
 {
-	khint_t h = tolower(*(s->str));
+	khint_t h = tolower((int)(*(s->str)));
 	if (h) {
 		size_t i;
 		for (i = 0; i < s->len; i++)
-			h = (h << 5) - h + tolower(s->str[i]);
+			h = (h << 5) - h + tolower((int)(s->str[i]));
 	}
 	return h;
 }

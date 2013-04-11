@@ -499,20 +499,24 @@ char* find_config_file(const char *config_file, int print_file_name)
 					break;
 				}
 				free(fn);
-				if(config_file_search_dirs[i][0]!='/' && c_execdir && c_execdir[0]) {
+				if(config_file_search_dirs[i][0]!='/' && 
+				   config_file_search_dirs[i][0]!='.' &&
+				   c_execdir && c_execdir[0]) {
 					size_t celen = strlen(c_execdir);
 					fn = (char*)malloc(sizeof(char) * (dirlen + cflen + celen + 10));
 					strcpy(fn,c_execdir);
 					strcpy(fn+strlen(fn),"/");
 					strcpy(fn+strlen(fn), config_file_search_dirs[i]);
 					strcpy(fn+strlen(fn), config_file);
-					f = fopen(fn, "r");
-					if (f) {
-						fclose(f);
-						if (print_file_name)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
-						full_path_to_config_file = fn;
-						break;
+					if(strstr(fn,"//")!=fn) {
+					  f = fopen(fn, "r");
+					  if (f) {
+					    fclose(f);
+					    if (print_file_name)
+					      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
+					    full_path_to_config_file = fn;
+					    break;
+					  }
 					}
 					free(fn);
 				}

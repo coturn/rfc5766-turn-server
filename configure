@@ -47,12 +47,12 @@ testlibpq() {
     POSTLIBS="-L${PREFIX}/pgsql/lib -L${PREFIX}/lib/pgsql -L${PREFIX}/lib64/pgsql -L/usr/local/pgsql/lib -L/usr/local/lib/pgsql -L/usr/local/lib64/pgsql -L/usr/pgsql/lib -L/usr/lib/pgsql -L/usr/lib64/pgsql"
     POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L${PREFIX}/lib64/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/local/lib64/postgres -L/usr/postgres/lib -L/usr/lib/postgres -L/usr/lib64/postgres"
     POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L${PREFIX}/lib64/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/local/lib64/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql -L/usr/lib64/postgresql"
-    POSTLIBS="${POSTLIBS} -lpq"
-    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${OSLIBS} ${DBLIBS} ${POSTCFLAGS} ${POSTLIBS} 2>/dev/null
+    POSTLIBS="${OSLIBS} ${POSTLIBS} -lpq"
+    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>/dev/null 
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	echo
-		echo "POSTGRESQL DEVELOPMENT LIBRARY (libpg.a) AND/OR HEADER (libpq-fe.h)"
+		echo "POSTGRESQL DEVELOPMENT LIBRARY (libpq.a) AND/OR HEADER (libpq-fe.h)"
 		echo "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
 		echo "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT POSTGRESQL DATABASE SUPPORT."
 		echo
@@ -71,8 +71,8 @@ testlibmysql() {
     MYSQL_LIBS="-L${PREFIX}/mysql/lib -L${PREFIX}/lib/mysql -L${PREFIX}/lib64/mysql"
     MYSQL_LIBS="${MYSQL_LIBS} -L/usr/local/mysql/lib -L/usr/local/lib/mysql -L/usr/local/lib64/mysql"
     MYSQL_LIBS="${MYSQL_LIBS} -L/usr/mysql/lib -L/usr/lib/mysql -L/usr/lib64/mysql"
-    MYSQL_LIBS="${MYSQL_LIBS} -lmysqlclient"
-    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${OSLIBS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} 2>/dev/null
+    MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
+    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	echo
@@ -94,30 +94,43 @@ testlib() {
 
 pthread_testlib() {
 
-	if [ -z "${PTHREAD_LIBS}" ] ; then
-    	testlibraw pthread
+    if [ -z "${PTHREAD_LIBS}" ] ; then
+    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
-    		testlib pthread
+    		return 1
+    	else
+    		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>/dev/null
+    		ER=$?
+    		if ! [ ${ER} -eq 0 ] ; then
+    			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>/dev/null
+    			ER=$?
+    			if [ ${ER} -eq 0 ] ; then
+    				OSLIBS="${OSLIBS} -lpthread"
+			fi
+    		else
+    			OSLIBS="${OSLIBS} -pthread"
+    		fi
     	fi
     else
     	OSLIBS="${OSLIBS} ${PTHREAD_LIBS}"
     fi
+		
 
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
-	    	echo "Do not use pthreads"
+    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
+    	ER=$?
+    	if ! [ ${ER} -eq 0 ] ; then
+    		echo "Do not use pthreads"
 	    	return 0
-		else 
+	else 
 	    	echo "Older GNU pthread library found"
 	    	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
 	    	return 1
-		fi
-    	else
+	fi
+    else
 		return 1
     fi
 }
@@ -154,7 +167,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
-OSLIBS="-Llib ${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
+OSLIBS="${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
 
 MKDIR="mkdir -p"
 INSTALL_PROGRAM="cp -f"
@@ -334,6 +347,14 @@ testlib socket
 testlib nsl
 testlib dl
 testlib rt
+testlib wldap32
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    #CYGWIN ?
+    TURN_NO_THREADS="-DTURN_NO_THREADS"
+fi
+testlib wldap64
+testlib intl
 
 ###########################
 # Can we use multi-threading ?
@@ -418,7 +439,7 @@ if [ -z "${TURN_NO_TLS}" ] ; then
 testlib event_openssl
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2-openssl found."
+    echo "Libevent2 openssl found."
 else
     echo "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
     echo "TLS will be disabled."
@@ -431,15 +452,15 @@ else
 fi
 
 if [ -z "${TURN_NO_THREADS}" ] ; then
-	testlib event_pthreads
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
+    testlib event_pthreads
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
     	echo "Libevent2 pthreads found."
-	else
+    else
     	echo "WARNING: Libevent2 development libraries are not compiled with threads support."
     	echo "Using single-thread mode."
-		TURN_NO_THREADS="-DTURN_NO_THREADS"
-	fi
+	TURN_NO_THREADS="-DTURN_NO_THREADS"
+    fi
 fi
 
 ###########################
