@@ -1,3 +1,11 @@
+04/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.1.3 'Black Dow':
+	- Maintenance (docs, etc).
+	- Added partial support for Cygwin. Only TCP & TLS protocols
+	are support for client-to-server communications (as in RFC 5766 and
+	RFC 6062). UDP supported only for relay communications. DTLS is not 
+	supported at all. The problem is in Winsock UDP sockets implementation.
+	
 04/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.2 'Black Dow':
 	- Work on configuration and build.

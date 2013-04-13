@@ -1,5 +1,5 @@
 
-TURN(6 Apr 2013)	
+TURN(12 Apr 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -50,10 +50,10 @@ TURN(6 Apr 2013)
    * *-V,* *--Verbose* 'Extra' verbose mode, very annoying and not recommended.
    * *-o,* *--daemon* Run server process as daemon.
    * *-f,* *--fingerprint* Use fingerprints in the TURN messages. If an incoming request contains fingerprint, then TURN server will always add fingerprints to the messages in this session, regardless of the per-server setting.
-   * *-a,* *--lt-cred-mech* Use long-term credentials mechanism. This option can be used with either flat file user database or PostgreSQL DB or MySQL DB for user keys storage.
+   * *-a,* *--lt-cred-mech* Use long-term credentials mechanism (this one you need for WebRTC usage). This option can be used with either flat file user database or PostgreSQL DB or MySQL DB for user keys storage.
    * *-A,* *--st-cred-mech* Use short-term credentials mechanism. This option requires a PostgreSQL or MySQL DB for short term passwords storage.
    * *-z,* *--no-auth* Do not use any credentials mechanism, allow anonymous access. Opposite to *-a* and *-A* options.
-   * *--use-auth-secret* Flag that sets a special authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. This option can be used with long-term credentials mechanism only - it does not make much sense with the short-term mechanism. 
+   * *--use-auth-secret* Flag that sets a special WebRTC authorization option that is based upon authentication secret. This feature purpose is to support "TURN Server REST API" as described in TURNServerRESTAPI.pdf in the docs. This option can be used with long-term credentials mechanism only - it does not make much sense with the short-term mechanism. 
    * *--no-udp* Do not start 'plain' UDP listeners.
    * *--no-tcp* Do not start 'plain'TCP listeners.
    * *--no-tls* Do not start TLS listeners.
@@ -84,26 +84,22 @@ TURN(6 Apr 2013)
 	      dynamically by editing the file.
    * *-e,* *--psql-userdb,* *--sql-userdb*
    		  User database connection string for PostgreSQL. 
-		This database can be used for long-term and short-term credentials mechanisms,
-	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
-		The connection string format is like that:
+		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The connection string format is like that:
 {{{
 "host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
 }}}
-(for 8.x Postgres), or:
+(for 8.x or newer Postgres), or:
 {{{
 "postgresql://username:password@hostname:port/databasename"
 }}}
- (for 9.x Postgres). 
+ (for 9.x or newer Postgres). 
 	See the INSTALL file for more explanations and examples.
 
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
    * *-M,* *--mysql-userdb*
    		  User database connection string for MySQL. 
-		This database can be used for long-term and short-term credentials mechanisms,
-	    and it can store the secret value for secret-based timed authentication in TURN RESP API.
-		The connection string format (for example) is like this:
-{{{
+		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like this:
+		{{{
 "host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>".
 }}}
 		See the INSTALL file for more explanations and examples.
@@ -352,7 +348,7 @@ STUN NAT behavior discovery RFC 5780
 Oleg Moskalenko <mom040267@gmail.com>
 
 
-							TURN(6 Apr 2013)
+							TURN(12 Apr 2013)
 
 
 

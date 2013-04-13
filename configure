@@ -352,6 +352,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     #CYGWIN ?
     TURN_NO_THREADS="-DTURN_NO_THREADS"
+    OSCFLAGS="-DTURN_UDP_SOCKET_CONNECT_BUG ${OSCFLAGS}"
 fi
 testlib wldap64
 testlib intl

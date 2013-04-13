@@ -92,11 +92,12 @@ User database settings:
 		and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
 		 
-		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" (for 8.x Postgres).
+		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" 
+		(for 8.x or newer Postgres).
 		
 		Or:
 		
-		"postgresql://username:password@hostname:port/databasename" (for 9.x Postgres). 
+		"postgresql://username:password@hostname:port/databasename" (for 9.x or newer Postgres). 
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
@@ -124,8 +125,9 @@ Flags:
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
 
--a, --lt-cred-mech	Use long-term credentials mechanism. This option can be used with either
-	                flat file user database or PostgreSQL DB or MySQL DB for user keys storage.
+-a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage). 
+					This option can be used with either flat file user database or 
+					PostgreSQL DB or MySQL DB for user keys storage.
 -A, --st-cred-mech	Use the short-term credentials mechanism. This option requires
 	                a PostgreSQL or MySQL DB for short term passwords storage.
 
@@ -135,9 +137,10 @@ Flags:
 			By default, no credential mechanism is used -
 			any user is allowed.
 
---use-auth-secret	Flag that sets a special authorization option that is based upon authentication 
-			secret. This feature purpose is to support "TURN Server REST API" as described in
-			TURNServerRESTAPI.pdf in the docs .
+--use-auth-secret	Flag that sets a special WebRTC authorization option 
+			that is based upon authentication secret. This feature purpose 
+			is to support "TURN Server REST API" as described in
+			TURNServerRESTAPI.pdf in the docs.
 			This option uses timestamp as part of combined username:
 			usercombo -> "user_id:timestamp",
 			turn user -> usercombo,

@@ -1827,6 +1827,12 @@ int main(int argc, char **argv)
 
 	openssl_setup();
 
+#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
+	no_dtls = 1;
+	no_udp = 1;
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nWARNING: on this platform, we cannot support\n\tclient-to-TURN-server UDP & DTLS protocols\n\tdue to the UDP sockets system implementation bug.\n\tWe support only TCP & TLS as client-to-server protocols.\n\tUDP is still supported as the relay protocol.\n");
+#endif
+
 	int local_listeners = 0;
 	if (!listener.addrs_number) {
 		make_local_listeners_list();
