@@ -255,6 +255,7 @@ Options with required values:
 				in turn_secret table in user database (if present). The database-stored
 				value can be changed on-the-fly by a separate program, so this is why 
 				that other mode is 'dynamic'.
+				Multiple shared secrets can be used (both in the database and in the "static" fashion).
 
 --secret-ts-exp-time	Expiration time for timestamp used with authentication secret, in seconds.
 				The default value is 86400 (24 hours).

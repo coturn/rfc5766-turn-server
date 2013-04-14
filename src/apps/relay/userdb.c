@@ -81,15 +81,66 @@ int use_lt_credentials = 0;
 int use_st_credentials = 0;
 int anon_credentials = 0;
 
-int use_auth_secret_with_timestamp = 0;
-char static_auth_secret[AUTH_SECRET_SIZE+1]="\0";
-turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
-
 turn_user_db *users = NULL;
 
 s08bits global_realm[STUN_MAX_REALM_SIZE+1]="\0";
 
 static int donot_print_connection_success=0;
+
+/////////// SHARED SECRETS /////////////////
+
+int use_auth_secret_with_timestamp = 0;
+secrets_list_t static_auth_secrets;
+turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
+
+void init_secrets_list(secrets_list_t *sl)
+{
+	if(sl) {
+		ns_bzero(sl,sizeof(secrets_list_t));
+	}
+}
+
+void clean_secrets_list(secrets_list_t *sl)
+{
+	if(sl) {
+		if(sl->secrets) {
+			while(sl->sz>0) {
+				if(sl->secrets[sl->sz-1]) {
+					free(sl->secrets[sl->sz-1]);
+				}
+				sl->sz -= 1;
+			}
+			free(sl->secrets);
+			sl->secrets = NULL;
+			sl->sz = 0;
+		}
+	}
+}
+
+size_t get_secrets_list_size(secrets_list_t *sl)
+{
+	if(sl && sl->secrets) {
+		return sl->sz;
+	}
+	return 0;
+}
+
+const char* get_secrets_list_elem(secrets_list_t *sl, size_t i)
+{
+	if(get_secrets_list_size(sl)>i) {
+		return sl->secrets[i];
+	}
+	return NULL;
+}
+
+void add_to_secrets_list(secrets_list_t *sl, const char* elem)
+{
+	if(sl && elem) {
+		sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
+		sl->secrets[sl->sz] = strdup(elem);
+		sl->sz += 1;
+	}
+}
 
 /////////// USER DB CHECK //////////////////
 
@@ -337,14 +388,18 @@ static MYSQL *get_mydb_connection(void)
 }
 #endif
 
-static int get_auth_secret(char *auth_secret)
+static int get_auth_secrets(secrets_list_t *sl)
 {
 	int ret = -1;
 
-	if(static_auth_secret[0]) {
-		STRCPY(auth_secret,static_auth_secret);
+	clean_secrets_list(sl);
+
+	if(get_secrets_list_size(&static_auth_secrets)) {
+		size_t i = 0;
+		for(i=0;i<get_secrets_list_size(&static_auth_secrets);++i) {
+			add_to_secrets_list(sl,get_secrets_list_elem(&static_auth_secrets,i));
+		}
 		ret=0;
-		return ret;
 	}
 
 #if !defined(TURN_NO_PQ)
@@ -354,14 +409,17 @@ static int get_auth_secret(char *auth_secret)
 		STRCPY(statement,"select value from turn_secret");
 		PGresult *res = PQexec(pqc, statement);
 
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 		} else {
-			char *kval = PQgetvalue(res,0,0);
-			if(kval) {
-				STRCPY(auth_secret,kval);
-				ret = 0;
+			int i = 0;
+			for(i=0;i<PQntuples(res);i++) {
+				char *kval = PQgetvalue(res,i,0);
+				if(kval) {
+					add_to_secrets_list(sl,kval);
+				}
 			}
+			ret = 0;
 		}
 
 		if(res) {
@@ -383,16 +441,24 @@ static int get_auth_secret(char *auth_secret)
 			if(!mres) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
 			} else if(mysql_field_count(myc)==1) {
-				MYSQL_ROW row = mysql_fetch_row(mres);
-				if(row && row[0]) {
-					unsigned long *lengths = mysql_fetch_lengths(mres);
-					if(lengths) {
-						size_t sz = lengths[0];
-						ns_bcopy(row[0],auth_secret,sz);
-						auth_secret[sz]=0;
-						ret = 0;
+				for(;;) {
+					MYSQL_ROW row = mysql_fetch_row(mres);
+					if(!row) {
+						break;
+					} else {
+						if(row[0]) {
+							unsigned long *lengths = mysql_fetch_lengths(mres);
+							if(lengths) {
+								size_t sz = lengths[0];
+								char auth_secret[1025];
+								ns_bcopy(row[0],auth_secret,sz);
+								auth_secret[sz]=0;
+								add_to_secrets_list(sl,auth_secret);
+							}
+						}
 					}
 				}
+				ret = 0;
 				mysql_free_result(mres);
 			}
 		}
@@ -406,7 +472,10 @@ static int get_auth_secret(char *auth_secret)
 #define SHA_DIGEST_LENGTH (20)
 #endif
 
-int get_user_key(u08bits *uname, hmackey_t key)
+/*
+ * Long-term mechanism password retrieval
+ */
+int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 {
 	int ret = -1;
 
@@ -414,9 +483,12 @@ int get_user_key(u08bits *uname, hmackey_t key)
 
 		turn_time_t ctime = (turn_time_t) time(NULL);
 		turn_time_t ts = 0;
-		char auth_secret[1025]="\0";
+		secrets_list_t sl;
+		size_t sll = 0;
 
-		if(get_auth_secret(auth_secret)<0 || !(auth_secret[0]))
+		init_secrets_list(&sl);
+
+		if(get_auth_secrets(&sl)<0)
 			return ret;
 
 		char *col = strstr((char*)uname,":");
@@ -431,19 +503,40 @@ int get_user_key(u08bits *uname, hmackey_t key)
 
 			u08bits hmac[1025]="\0";
 			unsigned int hmac_len = SHA_DIGEST_LENGTH;
+			st_password_t pwdtmp;
 
-			if(calculate_hmac(uname, strlen((char*)uname), auth_secret, strlen(auth_secret), hmac, &hmac_len)>=0) {
-				size_t pwd_length = 0;
-				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
+			for(sll=0;sll<get_secrets_list_size(&sl);++sll) {
 
-				if(pwd && pwd_length>0) {
-					if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
-						ret = 0;
+				const char* secret = get_secrets_list_elem(&sl,sll);
+
+				if(secret) {
+					if(calculate_hmac(uname, strlen((char*)uname), secret, strlen(secret), hmac, &hmac_len)>=0) {
+						size_t pwd_length = 0;
+						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
+
+						if(pwd && pwd_length>0) {
+							if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
+
+								if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
+										ioa_network_buffer_data(nbh),
+										ioa_network_buffer_get_size(nbh),
+										key,
+										pwdtmp)>0) {
+
+									ret = 0;
+								}
+							}
+							free(pwd);
+
+							if(ret==0)
+								break;
+						}
 					}
-					free(pwd);
 				}
 			}
 		}
+
+		clean_secrets_list(&sl);
 
 		return ret;
 	}
@@ -537,6 +630,9 @@ int get_user_key(u08bits *uname, hmackey_t key)
 	return ret;
 }
 
+/*
+ * Short-term mechanism password retrieval
+ */
 int get_user_pwd(u08bits *uname, st_password_t pwd)
 {
 	int ret = -1;
@@ -948,20 +1044,57 @@ static int show_secret(void)
 	return 0;
 }
 
-static int set_secret(u08bits *secret) {
+static int del_secret(u08bits *secret) {
+
 	UNUSED_ARG(secret);
+
 	if (is_pqsql_userdb()) {
 #if !defined(TURN_NO_PQ)
 		char statement[1025];
 		PGconn *pqc = get_pqdb_connection();
 		if (pqc) {
-			sprintf(statement,"delete from turn_secret");
+			if(!secret || (secret[0]==0))
+				sprintf(statement,"delete from turn_secret");
+			else
+				sprintf(statement,"delete from turn_secret where value='%s'",secret);
+
 			PGresult *res = PQexec(pqc, statement);
 			if (res) {
 				PQclear(res);
 			}
+		}
+#endif
+	} else if (is_mysql_userdb()) {
+#if !defined(TURN_NO_MYSQL)
+		char statement[1025];
+		MYSQL * myc = get_mydb_connection();
+		if (myc) {
+			if(!secret || (secret[0]==0))
+				sprintf(statement,"delete from turn_secret");
+			else
+				sprintf(statement,"delete from turn_secret where value='%s'",secret);
+			mysql_query(myc, statement);
+		}
+#endif
+	}
+
+	return 0;
+}
+
+static int set_secret(u08bits *secret) {
+
+	if(!secret || (secret[0]==0))
+		return 0;
+
+	del_secret(secret);
+
+	if (is_pqsql_userdb()) {
+#if !defined(TURN_NO_PQ)
+		char statement[1025];
+		PGconn *pqc = get_pqdb_connection();
+		if (pqc) {
 			sprintf(statement,"insert into turn_secret values('%s')",secret);
-			res = PQexec(pqc, statement);
+			PGresult *res = PQexec(pqc, statement);
 			if (!res || (PQresultStatus(res) != PGRES_COMMAND_OK)) {
 				TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_ERROR,
@@ -978,10 +1111,8 @@ static int set_secret(u08bits *secret) {
 		char statement[1025];
 		MYSQL * myc = get_mydb_connection();
 		if (myc) {
-			sprintf(statement,"delete from turn_secret");
-			int res = mysql_query(myc, statement);
 			sprintf(statement,"insert into turn_secret values('%s')",secret);
-			res = mysql_query(myc, statement);
+			int res = mysql_query(myc, statement);
 			if (res) {
 				TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_ERROR,
@@ -1014,6 +1145,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 
 	if(ct == TA_SET_SECRET) {
 		return set_secret(secret);
+	}
+
+	if(ct == TA_DEL_SECRET) {
+		return del_secret(secret);
 	}
 
 	if(ct != TA_DELETE_USER) {

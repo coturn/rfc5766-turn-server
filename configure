@@ -7,6 +7,8 @@ cleanup() {
 	rm -rf ${TMPCPROGB}
 	rm -rf ${TH_TMPCPROGC}
 	rm -rf ${TH_TMPCPROGB}
+	rm -rf ${DTLS_TMPCPROGC}
+	rm -rf ${DTLS_TMPCPROGB}
 	rm -rf ${PQ_TMPCPROGC}
 	rm -rf ${PQ_TMPCPROGB}
 	rm -rf ${MYSQL_TMPCPROGC}
@@ -135,6 +137,21 @@ pthread_testlib() {
     fi
 }
 
+dtls_testlib() {
+
+    if [ -z "${TURN_NO_DTLS}" ] ; then
+    	${CC} ${DTLS_TMPCPROGC} -o ${DTLS_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    	ER=$?
+    	if [ ${ER} -eq 0 ] ; then
+    	    return 1
+    	else
+    	    return 0
+	fi
+    else
+	return 0
+    fi
+}
+
 testdaemon() {
 
 	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
@@ -229,6 +246,19 @@ cat > ${TH_TMPCPROGC} <<!
 int main(int argc, char** argv) {
     pthread_mutexattr_settype(0,PTHREAD_MUTEX_RECURSIVE);
     return (int)pthread_create(0,0,0,0)+(int)(argv[argc][0]);
+}
+!
+
+DTLS_TMPCPROG=__test__ccomp__dtls__$$
+DTLS_TMPCPROGC=${TMPDIR}/${DTLS_TMPCPROG}.c
+DTLS_TMPCPROGB=${TMPDIR}/${DTLS_TMPCPROG}
+
+cat > ${DTLS_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+int main(int argc, char** argv) {
+    return (((int)(BIO_CTRL_DGRAM_QUERY_MTU)) + argc + (int)(argv[argc][0]) + DTLSv1_listen(NULL,NULL));
 }
 !
 
@@ -408,6 +438,24 @@ else
 fi
 
 ###########################
+# Can we use DTLS ?
+###########################
+
+if [ -z ${TURN_NO_DTLS} ] ; then 
+
+dtls_testlib
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+	echo "WARNING: Cannot find DTLS support."
+	echo "Turning DTLS off."
+	TURN_NO_DTLS="-DTURN_NO_DTLS"
+fi
+
+else
+	TURN_NO_DTLS="-DTURN_NO_DTLS"
+fi
+
+###########################
 # Test Libevent2 setup
 ###########################
 testlibevent2
@@ -505,9 +553,9 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
-echo make PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+echo PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
 ###############################
 # Make make:
@@ -536,8 +584,6 @@ echo "RMCMD = ${RMCMD}" >> Makefile
 echo "################################" >> Makefile
 echo "" >> Makefile
 cat Makefile.in >> Makefile
-
-#make PREFIX=${PREFIX} OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" -f Makefile.all $@
 
 ###############################
 # End:

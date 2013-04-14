@@ -284,7 +284,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 			}
 		} else {
 			hmackey_t key;
-			if(get_user_key(am.username,key)<0) {
+			if(get_user_key(am.username,key,am.in_buffer.nbh)<0) {
 				am.success = 0;
 			} else {
 				ns_bcopy(key,am.key,sizeof(hmackey_t));
@@ -1102,6 +1102,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"					will try to use the 'dynamic' value in turn_secret table\n"
 	"					in user database (if present). That database value can be changed on-the-fly\n"
 	"					by a separate program, so this is why it is 'dynamic'.\n"
+	"                   Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
 	"		--secret-ts-exp-time 	Expiration time for timestamp used with authentication secret, in seconds.\n"
 	"					The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
 	"	-n				Do not use configuration file.\n"
@@ -1142,8 +1143,12 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-D, --delete-st			delete a short-term mechanism user\n"
 	"	-l, --list			list all long-term mechanism users\n"
 	"	-L, --list-st			list all short-term mechanism users\n"
-	"	-s, --set-secret=<value>	Set secret for TURN RESP API\n"
-	"	-S, --show-secret		Show secret for TURN REST API\n"
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
+	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
+	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
+	"	-X, --delete-secret		Delete a shared secret\n"
+	"	    --delete-all-secrets	Delete all shared secrets for REST API\n"
+#endif
 	"Options:\n"
 	"	-b, --userdb			User database file, if flat DB file is used.\n"
 #if !defined(TURN_NO_PQ)
@@ -1159,7 +1164,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vVofhznaA"
 
-#define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:h"
+#define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:X:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1177,6 +1182,7 @@ enum EXTRA_OPTS {
 	MAX_PORT_OPT,
 	STALE_NONCE_OPT,
 	AUTH_SECRET_OPT,
+	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
 	AUTH_SECRET_TS_EXP,
 	NO_STDOUT_LOG_OPT
@@ -1238,8 +1244,12 @@ static struct option admin_long_options[] = {
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
 				{ "list-st", no_argument, NULL, 'L' },
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
 				{ "set-secret", required_argument, NULL, 's' },
 				{ "show-secret", no_argument, NULL, 'S' },
+				{ "delete-secret", required_argument, NULL, 'X' },
+				{ "delete-all-secrets", no_argument, NULL, DEL_ALL_AUTH_SECRETS_OPT },
+#endif
 				{ "add-st", no_argument, NULL, 'A' },
 				{ "delete-st", no_argument, NULL, 'D' },
 				{ "userdb", required_argument, NULL, 'b' },
@@ -1395,7 +1405,7 @@ static void set_option(int c, char *value)
 		use_auth_secret_with_timestamp = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
-		STRCPY(static_auth_secret,value);
+		add_to_secrets_list(&static_auth_secrets,value);
 		use_auth_secret_with_timestamp = 1;
 		break;
 	case AUTH_SECRET_TS_EXP:
@@ -1435,7 +1445,7 @@ static void set_option(int c, char *value)
 #endif
 		break;
 	case NO_DTLS_OPT:
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
 		no_dtls = get_bool_value(value);
 #else
 		no_dtls = 1;
@@ -1579,7 +1589,7 @@ static int adminmain(int argc, char **argv)
 	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
 	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
 	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
-	u08bits secret[AUTH_SECRET_SIZE+1];
+	u08bits secret[AUTH_SECRET_SIZE+1]="\0";
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
@@ -1607,6 +1617,7 @@ static int adminmain(int argc, char **argv)
 			ct = TA_LIST_USERS;
 			is_st = 1;
 			break;
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
 		case 's':
 			ct = TA_SET_SECRET;
 			STRCPY(secret,optarg);
@@ -1614,6 +1625,15 @@ static int adminmain(int argc, char **argv)
 		case 'S':
 			ct = TA_SHOW_SECRET;
 			break;
+		case 'X':
+			ct = TA_DEL_SECRET;
+			if(optarg)
+				STRCPY(secret,optarg);
+			break;
+		case DEL_ALL_AUTH_SECRETS_OPT:
+			ct = TA_DEL_SECRET;
+			break;
+#endif
 		case 'b':
 			strcpy(userdb,optarg);
 			userdb_type = TURN_USERDB_TYPE_FILE;
@@ -1674,6 +1694,14 @@ static int adminmain(int argc, char **argv)
 		exit(-1);
 	}
 
+	argc -= optind;
+	argv += optind;
+
+	if(argc != 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
+		exit(-1);
+	}
+
 	return adminuser(user, realm, pwd, secret, ct, is_st);
 }
 
@@ -1682,6 +1710,8 @@ int main(int argc, char **argv)
 	int c = 0;
 
 	set_execdir();
+
+	init_secrets_list(&static_auth_secrets);
 
 	if (!strstr(argv[0], "turnadmin")) {
 		while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
@@ -1705,9 +1735,9 @@ int main(int argc, char **argv)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TLS is not supported\n");
 #endif
 
-#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if defined(TURN_NO_DTLS)
 	no_dtls = 1;
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old, DTLS is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: DTLS is not supported\n");
 #endif
 
 	set_system_parameters(1);
@@ -2077,7 +2107,7 @@ static void openssl_setup(void)
 	}
 
 	if(!no_dtls) {
-#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if defined(TURN_NO_DTLS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {

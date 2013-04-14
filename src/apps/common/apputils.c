@@ -268,7 +268,7 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
 
 static int get_mtu_from_ssl(SSL* ssl) {
   int ret = SOSO_MTU;
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
   ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 #else
   UNUSED_ARG(ssl);
@@ -302,7 +302,7 @@ int decrease_mtu(SSL* ssl, int mtu, int verbose) {
   set_query_mtu(ssl);
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"1. mtu to use: %d\n",mtu);
 
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
   SSL_set_mtu(ssl,mtu);
   BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
 #endif
@@ -323,7 +323,7 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
   set_query_mtu(ssl);
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"3. mtu to use: %d\n",mtu);
 
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
   SSL_set_mtu(ssl,mtu);
   BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
 #endif

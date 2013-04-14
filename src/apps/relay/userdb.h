@@ -96,7 +96,8 @@ enum _TURNADMIN_COMMAND_TYPE {
 	TA_DELETE_USER,
 	TA_LIST_USERS,
 	TA_SET_SECRET,
-	TA_SHOW_SECRET
+	TA_SHOW_SECRET,
+	TA_DEL_SECRET
 };
 
 typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
@@ -109,19 +110,33 @@ extern int use_lt_credentials;
 extern int use_st_credentials;
 extern int anon_credentials;
 
-extern int use_auth_secret_with_timestamp;
-extern char static_auth_secret[AUTH_SECRET_SIZE+1];
-extern turn_time_t auth_secret_timestamp_expiration_time;
-
 extern turn_user_db *users;
 
 extern s08bits global_realm[STUN_MAX_REALM_SIZE+1];
 
 extern void send_auth_message_to_auth_server(struct auth_message *am);
 
+/////////// SHARED SECRETS //////////////////
+
+struct _secrets_list {
+	char **secrets;
+	size_t sz;
+};
+typedef struct _secrets_list secrets_list_t;
+
+extern int use_auth_secret_with_timestamp;
+extern secrets_list_t static_auth_secrets;
+extern turn_time_t auth_secret_timestamp_expiration_time;
+
+void init_secrets_list(secrets_list_t *sl);
+void clean_secrets_list(secrets_list_t *sl);
+size_t get_secrets_list_size(secrets_list_t *sl);
+const char* get_secrets_list_elem(secrets_list_t *sl, size_t i);
+void add_to_secrets_list(secrets_list_t *sl, const char* elem);
+
 /////////// USER DB CHECK //////////////////
 
-int get_user_key(u08bits *uname, hmackey_t key);
+int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh);
 int get_user_pwd(u08bits *uname, st_password_t pwd);
 u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 int check_new_allocation_quota(u08bits *username);

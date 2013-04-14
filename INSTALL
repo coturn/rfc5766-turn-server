@@ -447,8 +447,8 @@ CREATE TABLE turnusers_st (
     password varchar(512)
 );
 
-# Table with single row and single value for secret-based authorization
-# that can be used with both long-term and short-term mechanisms:
+# Table holding shared secrets for secret-based authorization
+# (REST API). It can be used together with the long-term mechanism:
 #
 CREATE TABLE turn_secret (
     value varchar(512)

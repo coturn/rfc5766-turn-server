@@ -107,7 +107,7 @@ int is_dtls_cipher_change_message(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
   long rv=(long)ssl;
@@ -478,7 +478,7 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
 
 static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
-#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if defined(TURN_NO_DTLS)
   UNUSED_ARG(fd);
   UNUSED_ARG(what);
   UNUSED_ARG(arg);
@@ -604,7 +604,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 ///////////////////// operations //////////////////////////
 
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
 
 static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
 
@@ -757,7 +757,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
 
-#if defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if !defined(TURN_NO_DTLS)
   SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
   SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
 #endif

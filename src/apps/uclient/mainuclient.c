@@ -303,7 +303,7 @@ int main(int argc, char **argv)
 		if(use_tcp) {
 			root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
 		} else {
-#if !defined(BIO_CTRL_DGRAM_QUERY_MTU)
+#if defined(TURN_NO_DTLS)
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
 		  exit(-1);
 #else

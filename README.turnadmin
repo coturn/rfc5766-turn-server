@@ -45,17 +45,29 @@ $ turnadmin [ -h | --help]
 Commands:  
 
 -k, --key		Generate key for a long-term credentials mechanism user.
+
 -a, --add       	Add or update a long-term user.
+
 -A, --add-st    	Add or update a short-term credentials mechanism user.
+
 -d, --delete		Delete a long-term user.
+
 -D, --delete-st		Delete a short-term user.
+
 -l, --list		List long-term users in the database.
+
 -L, --list-st		List short-term users in the database.
--s, --set-secret	Set secret for TURN RESP API
--S, --show-secret	Show secret for TURN REST API
+
+-s, --set-secret=<value> Add shared secret for TURN RESP API
+
+-S, --show-secret	Show stored shared secrets for TURN REST API
+
+-X, --delete-secret=<value> Delete a shared secret.
+ 
+--delete-all_secrets	Delete all shared secrets for REST API.
 
 NOTE: if you are using the flat file for the user database, then you will have 
-to use a text editor to set or show the shared secret.
+to use a text editor to set or show the shared secrets.
   
 Options with required values:  
 

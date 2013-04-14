@@ -124,7 +124,7 @@ TURN(12 Apr 2013)
     *   *-r,* *--realm* Realm to be used for all users, with long term credentials only.
     *   *-q,* *--user-quota* Per-user allocation quota: how many concurrent allocations a user can create.
     *   *-Q,* *--total-quota* Total allocations quota: global limit on concurrent allocations.
-    *   *--static-auth-secret* Static authentication secret value (a string). If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'.
+    *   *--static-auth-secret* Static authentication secret value (a string). If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'. Multiple shared secrets can be used (both in the database and in the "static" fashion).
     *   *--secret-ts-exp-time* 	Expiration time for timestamp used with authentication secret, in seconds. The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf document.
     *	*-s,* *--max-bps* Max bytes-per-second bandwidth a TURN session is allowed to handle (input and output network streams combined). Anything above that limit will be dropped.
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
@@ -147,8 +147,10 @@ TURN(12 Apr 2013)
  * *-D,* *--delete-st* Delete a short-term user.
  * *-l,* *--list* List all long-term users.
  * *-L,* *--list-st* List all short-term users.
- * *-s,* *--set-secret* Set secret in the database.
+ * *-s,* *--set-secret=<value>* Set secret in the database.
  * *-S,* *--show-secret* Show secret stored in database.
+ * *-X,* *--delete-secret=<value>*	Delete a shared secret.
+ * *--delete-all-secrets*	Delete all shared secrets for REST API.
 
  ====Options:====
 
