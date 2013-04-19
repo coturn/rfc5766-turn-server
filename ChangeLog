@@ -1,3 +1,7 @@
+04/19/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.2.1 'Black Dow':
+	- Misc docs fixes.
+	
 04/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.2.0 'Black Dow':
 	- Multiple database shared secrets supported for REST API.

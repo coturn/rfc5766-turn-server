@@ -121,7 +121,7 @@ Flags:
 -o, --daemon		Run server as daemon.
 
 -f, --fingerprint	Use fingerprints in the TURN messages. If an incoming request
-			contains fingerprint, then TURN server will always add 
+			contains a fingerprint, then TURN server will always add 
 			fingerprints to the messages in this session, regardless of the
 			per-server setting.
 
@@ -284,6 +284,36 @@ Options with required values:
 				With this option you can set the definite log file name.
 				The special names are "stdout" and "-" - they will force everything 
 				to the stdout.
+
+===============================================================================
+
+WEBRTC USAGE
+
+This is a set of notes for the WebRTC users:
+
+1) WebRTC uses long-term authentication, so you have to use -a option (or --lt-cred-mech).
+WebRTC relaying will not work with anonymous access or with short-term authentication.
+With -a option, do not forget to set the realm (-r option). You will also have to set up
+the user accounts, for that you have a number of options:
+
+	a) command-line options (-u).
+	
+	b) userdb config file.
+	
+	c) a database table (PostgreSQL or MySQL).
+	
+	d) You also can use the TURN REST API (see docs). You will need shared secret(s) set
+	either	through the command line option, or through the config file, or through
+	the database table.  
+
+2) Usually WebRTC uses fingerprinting (-f).
+
+3) -v option may be nice to see the connected clients.
+
+4) -X is needed if you are running your TURN server behind a NAT.
+
+5) --min-port and --max-port may be needed if you want to limit the relay endpoints ports 
+number range.
 
 ===============================================================================
 
