@@ -69,7 +69,7 @@ unsigned char client_ifname[1025] = "\0";
 //////////////// local definitions /////////////////
 
 static char Usage[] =
-  "Usage: uclient [flags] [options] address\n"
+  "Usage: uclient [flags] [options] turn-server-ip-address\n"
   "Flags:\n"
   "	-t	TCP (default - UDP).\n"
   "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"

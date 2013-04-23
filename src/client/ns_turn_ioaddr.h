@@ -71,6 +71,7 @@ int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_a
 void addr_set_port(ioa_addr* addr, int port);
 int addr_get_port(const ioa_addr* addr);
 int addr_to_string(const ioa_addr* addr, u08bits* saddr);
+int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr);
 
 ///////////////////////////////////////////
 

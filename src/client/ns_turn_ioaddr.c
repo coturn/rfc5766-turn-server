@@ -261,6 +261,29 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 	return -1;
 }
 
+int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr)
+{
+
+	if (addr && saddr) {
+
+		s08bits addrtmp[129];
+
+		if (addr->ss.ss_family == AF_INET) {
+			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
+			strcpy((s08bits*)saddr, addrtmp);
+		} else if (addr->ss.ss_family == AF_INET6) {
+			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
+			strcpy((s08bits*)saddr, addrtmp);
+		} else {
+			return -1;
+		}
+
+		return 0;
+	}
+
+	return -1;
+}
+
 void addr_set_port(ioa_addr* addr, int port) {
   if(addr) {
     if(addr->s4.sin_family == AF_INET) {

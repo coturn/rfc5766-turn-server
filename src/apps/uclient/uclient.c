@@ -803,6 +803,10 @@ static int start_client(const char *remote_address, int port,
   if(!no_rtcp)
     ss_rtcp = create_new_ss();
 
+  app_ur_conn_info clnet_info_probe; /* for load balancing probe */
+  memset(&clnet_info_probe,0,sizeof(clnet_info_probe));
+  clnet_info_probe.fd = -1;
+
   app_ur_conn_info *clnet_info=&(ss->pinfo);
   app_ur_conn_info *clnet_info_rtcp=NULL;
 
@@ -815,6 +819,7 @@ static int start_client(const char *remote_address, int port,
   start_connection(port, remote_address, 
 		   ifname, local_address, 
 		   clnet_verbose,
+		   &clnet_info_probe,
 		   clnet_info, &chnum,
 		   clnet_info_rtcp, &chnum_rtcp);
   
@@ -884,6 +889,10 @@ static int start_c2c(const char *remote_address, int port,
   if(!no_rtcp)
     ss2_rtcp = create_new_ss();
 
+  app_ur_conn_info clnet_info_probe; /* for load balancing probe */
+  memset(&clnet_info_probe,0,sizeof(clnet_info_probe));
+  clnet_info_probe.fd = -1;
+
   app_ur_conn_info *clnet_info1=&(ss1->pinfo);
   app_ur_conn_info *clnet_info1_rtcp=NULL;
 
@@ -904,6 +913,7 @@ static int start_c2c(const char *remote_address, int port,
   start_c2c_connection(port, remote_address, 
 		       ifname, local_address, 
 		       clnet_verbose,
+		       &clnet_info_probe,
 		       clnet_info1, &chnum1,
 		       clnet_info1_rtcp, &chnum1_rtcp,
 		       clnet_info2, &chnum2,
@@ -1143,7 +1153,7 @@ void start_mclient(const char *remote_address, int port,
 	      usleep(SLEEP_INTERVAL);
 	      if (start_c2c(remote_address, port, ifname, local_address,
 			    messagenumber, i << 2) < 0) {
-		exit(-1);
+	    	  exit(-1);
 	      }
 	      tot_clients+=4;
 	    }
@@ -1152,7 +1162,7 @@ void start_mclient(const char *remote_address, int port,
 	      usleep(SLEEP_INTERVAL);
 	      if (start_c2c(remote_address, port, ifname, local_address,
 			    messagenumber, i << 1) < 0) {
-		exit(-1);
+	    	  exit(-1);
 	      }
 	      tot_clients+=2;
 	    }
@@ -1162,7 +1172,7 @@ void start_mclient(const char *remote_address, int port,
 	      usleep(SLEEP_INTERVAL);
 	      if (start_client(remote_address, port, ifname, local_address,
 			       messagenumber, i << 1) < 0) {
-		exit(-1);
+	    	  exit(-1);
 	      }
 	      tot_clients+=2;
 	    }
@@ -1171,7 +1181,7 @@ void start_mclient(const char *remote_address, int port,
 	      usleep(SLEEP_INTERVAL);
 	      if (start_client(remote_address, port, ifname, local_address,
 			       messagenumber, i) < 0) {
-		exit(-1);
+	    	  exit(-1);
 	      }
 	      tot_clients++;
 	    }

@@ -224,7 +224,8 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 static int clnet_allocate(int verbose,
 		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
-		int af) {
+		int af,
+		char *turn_addr, u16bits *turn_port) {
 
 	int af_cycle = 0;
 
@@ -335,7 +336,30 @@ static int clnet_allocate(int verbose,
 									clnet_info->realm,clnet_info->nonce)) {
 						goto beg_allocate;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
+
 						allocate_received = 1;
+
+						if(err_code == 300) {
+
+							if(clnet_info->nonce[0] || use_short_term) {
+								if(stun_check_message_integrity_str(get_turn_credentials_type(),
+											message.buf, (size_t)(message.len), g_uname,
+											clnet_info->realm, g_upwd)<1) {
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in allocate message received from server\n");
+									return -1;
+								}
+							}
+
+							ioa_addr alternate_server;
+							if(stun_attr_get_first_addr(&message, STUN_ATTRIBUTE_ALTERNATE_SERVER, &alternate_server, NULL)==-1) {
+								//error
+							} else if(turn_addr && turn_port){
+								addr_to_string_no_port(&alternate_server, (u08bits*)turn_addr);
+								*turn_port = (u16bits)addr_get_port(&alternate_server);
+							}
+
+						}
+
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
 								      err_code,(char*)err_msg);
 						if (err_code != 437) {
@@ -636,10 +660,11 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 	return 0;
 }
 
-int start_connection(uint16_t clnet_remote_port,
-		     const char *remote_address, 
+int start_connection(uint16_t clnet_remote_port0,
+		     const char *remote_address0,
 		     const unsigned char* ifname, const char *local_address,
 		     int verbose,
+		     app_ur_conn_info *clnet_info_probe,
 		     app_ur_conn_info *clnet_info,
 		     uint16_t *chn,
 		     app_ur_conn_info *clnet_info_rtcp,
@@ -651,6 +676,21 @@ int start_connection(uint16_t clnet_remote_port,
 
 	addr_cpy(&peer_addr_rtcp,&peer_addr);
 	addr_set_port(&peer_addr_rtcp,addr_get_port(&peer_addr_rtcp)+1);
+
+	/* Probe: */
+
+	if (clnet_connect(clnet_remote_port0, remote_address0, ifname, local_address,
+			verbose, clnet_info_probe) < 0) {
+		exit(-1);
+	}
+
+	uint16_t clnet_remote_port = clnet_remote_port0;
+	char remote_address[1025];
+	strcpy(remote_address,remote_address0);
+
+	clnet_allocate(verbose, clnet_info_probe, &relay_addr, default_address_family, remote_address, &clnet_remote_port);
+
+	/* Real: */
 
 	*chn = 0;
 	if(chn_rtcp) *chn_rtcp=0;
@@ -667,12 +707,12 @@ int start_connection(uint16_t clnet_remote_port,
 	  }
 	}
 
-	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr)) < 0) {
+	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr),NULL,NULL) < 0) {
 	  exit(-1);
 	}
 
 	if(!no_rtcp) {
-	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr_rtcp)) < 0) {
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr_rtcp),NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	}
@@ -726,9 +766,11 @@ int start_connection(uint16_t clnet_remote_port,
 }
 
 
-int start_c2c_connection(uint16_t clnet_remote_port,
-		const char *remote_address, const unsigned char* ifname,
-		const char *local_address, int verbose, app_ur_conn_info *clnet_info1,
+int start_c2c_connection(uint16_t clnet_remote_port0,
+		const char *remote_address0, const unsigned char* ifname,
+		const char *local_address, int verbose,
+		app_ur_conn_info *clnet_info_probe,
+		app_ur_conn_info *clnet_info1,
 		uint16_t *chn1, app_ur_conn_info *clnet_info1_rtcp,
 		uint16_t *chn1_rtcp,
 		app_ur_conn_info *clnet_info2, uint16_t *chn2,
@@ -745,6 +787,21 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 	*chn2 = 0;
 	if(chn1_rtcp) *chn1_rtcp=0;
 	if(chn2_rtcp) *chn2_rtcp=0;
+
+	/* Probe: */
+
+	if (clnet_connect(clnet_remote_port0, remote_address0, ifname, local_address,
+			verbose, clnet_info_probe) < 0) {
+		exit(-1);
+	}
+
+	uint16_t clnet_remote_port = clnet_remote_port0;
+	char remote_address[1025];
+	strcpy(remote_address,remote_address0);
+
+	clnet_allocate(verbose, clnet_info_probe, &relay_addr1, default_address_family, remote_address, &clnet_remote_port);
+
+	/* Real: */
 
 	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
 			verbose, clnet_info1) < 0) {
@@ -769,31 +826,31 @@ int start_c2c_connection(uint16_t clnet_remote_port,
 	  }
 
 	if(!no_rtcp) {
-	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
 	  if (clnet_allocate(verbose, clnet_info1_rtcp,
-			   &relay_addr1_rtcp, default_address_family) < 0) {
+			   &relay_addr1_rtcp, default_address_family,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	  
-	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
 	  
 	  if (clnet_allocate(verbose, clnet_info2_rtcp,
-			   &relay_addr2_rtcp, default_address_family) < 0) {
+			   &relay_addr2_rtcp, default_address_family,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	} else {
-	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }	  
-	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family)
+	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
 	  }
