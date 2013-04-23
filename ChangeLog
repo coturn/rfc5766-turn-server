@@ -3,6 +3,7 @@ Version 1.8.3.0 'Black Dow':
 	- STUN stand-alone functionality improved according to RFC 5389.
 	- ALTERNATE-SERVER implemented as "light" load balancing feature.
 	- stun-only option implemented. 
+	- scripts directory reorganized.
 	
 04/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.2.1 'Black Dow':

@@ -822,6 +822,9 @@ static int start_client(const char *remote_address, int port,
 		   &clnet_info_probe,
 		   clnet_info, &chnum,
 		   clnet_info_rtcp, &chnum_rtcp);
+		   
+	if(clnet_info_probe.fd != -1)
+		close(clnet_info_probe.fd);
   
   evutil_make_socket_nonblocking(clnet_info->fd);
   
@@ -918,6 +921,9 @@ static int start_c2c(const char *remote_address, int port,
 		       clnet_info1_rtcp, &chnum1_rtcp,
 		       clnet_info2, &chnum2,
 		       clnet_info2_rtcp, &chnum2_rtcp);
+		       
+  if(clnet_info_probe.fd != -1)
+		close(clnet_info_probe.fd);
   
   evutil_make_socket_nonblocking(clnet_info1->fd);
   
