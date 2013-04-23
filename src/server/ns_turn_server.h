@@ -63,6 +63,15 @@ typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_userna
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
 
+//////////// ALTERNATE-SERVER /////////////
+
+struct _alternate_servers_list {
+	ioa_addr *addrs;
+	size_t size;
+};
+
+typedef struct _alternate_servers_list alternate_servers_list_t;
+
 ///////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose,
@@ -79,7 +88,10 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    ioa_addr *external_addr,
 				    int no_tcp_relay,
 				    int no_udp_relay,
-				    int stale_nonce);
+				    int stale_nonce,
+				    int stun_only,
+					alternate_servers_list_t *alternate_servers_list,
+					alternate_servers_list_t *tls_alternate_servers_list);
 
 void delete_turn_server(turn_turnserver* server);
 

@@ -55,6 +55,7 @@ struct _turn_turnserver {
 	int fingerprint;
 	int rfc5780;
 	int stale_nonce;
+	int stun_only;
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
 	dont_fragment_option_t dont_fragment;
@@ -74,6 +75,12 @@ struct _turn_turnserver {
 	int no_tcp_relay;
 	ur_map *tcp_relay_connections;
 	/* <<== RFC 6062 */
+
+	/* Alternate servers ==>> */
+	alternate_servers_list_t *alternate_servers_list;
+	size_t as_counter;
+	alternate_servers_list_t *tls_alternate_servers_list;
+	size_t tls_as_counter;
 };
 
 ///////////////////////////////////////////
@@ -1917,6 +1924,32 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
+static void set_alternate_server(alternate_servers_list_t *asl, int af, size_t *counter, u16bits method, stun_tid *tid, int *resp_constructed, int *err_code, const u08bits **reason, ioa_network_buffer_handle nbh)
+{
+	if(asl && asl->size) {
+		size_t i ;
+		for(i=0;i<asl->size;++i) {
+			if(*counter>=asl->size)
+				*counter = 0;
+			ioa_addr *addr = &(asl->addrs[*counter]);
+			*counter +=1;
+			if(addr->ss.ss_family == af) {
+
+				*err_code = 300;
+				*reason = (const u08bits *)"Redirect";
+
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
+				*resp_constructed = 1;
+				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_ALTERNATE_SERVER, addr);
+				ioa_network_buffer_set_size(nbh,len);
+
+				return;
+			}
+		}
+	}
+}
+
 static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int can_resume)
 {
 
@@ -1941,10 +1974,19 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
 		if(method != STUN_METHOD_BINDING) {
-			int postpone_reply = 0;
-			check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
-			if(postpone_reply)
+			if(server->stun_only) {
 				no_response = 1;
+				if(server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+										"%s: STUN method 0x%x ignored\n",
+										__FUNCTION__, (unsigned int)method);
+				}
+			} else {
+				int postpone_reply = 0;
+				check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
+				if(postpone_reply)
+					no_response = 1;
+			}
 		}
 
 		if (!err_code && !(*resp_constructed) && !no_response) {
@@ -1953,8 +1995,24 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			case STUN_METHOD_ALLOCATE:
 
-				handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
+				if((server->ct == TURN_CREDENTIALS_LONG_TERM)||
+					 (server->ct == TURN_CREDENTIALS_SHORT_TERM)) {
+
+					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+					int af = get_ioa_socket_address_family(ss->client_session.s);
+					alternate_servers_list_t *asl = server->alternate_servers_list;
+
+					if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
+						asl = server->tls_alternate_servers_list;
+					}
+
+					set_alternate_server(asl,af,&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+				}
+
+				if(!err_code && !(*resp_constructed) && !no_response) {
+					handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
 								unknown_attrs, &ua_num, in_buffer, nbh);
+				}
 
 				if(server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2782,7 +2840,10 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		ioa_addr *external_ip,
 		int no_tcp_relay,
 		int no_udp_relay,
-		int stale_nonce) {
+		int stale_nonce,
+		int stun_only,
+		alternate_servers_list_t *alternate_servers_list,
+		alternate_servers_list_t *tls_alternate_servers_list) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2803,7 +2864,11 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
 
+	server->alternate_servers_list = alternate_servers_list;
+	server->tls_alternate_servers_list = tls_alternate_servers_list;
+
 	server->stale_nonce = stale_nonce;
+	server->stun_only = stun_only;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;

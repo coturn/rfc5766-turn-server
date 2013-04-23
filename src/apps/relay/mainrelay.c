@@ -86,6 +86,7 @@ static void openssl_cleanup(void);
 static int verbose=TURN_VERBOSE_NONE;
 static int turn_daemon = 0;
 static int stale_nonce = 0;
+static int stun_only = 0;
 
 static int do_not_use_config_file = 0;
 
@@ -228,6 +229,39 @@ static struct auth_server authserver;
 ////////////// Configuration functionality ////////////////////////////////
 
 static void read_config_file(int argc, char **argv, int pass);
+
+/////////////// ALTERNATE SERVERS ////////////////
+
+static alternate_servers_list_t alternate_servers_list = {NULL,0};
+static alternate_servers_list_t tls_alternate_servers_list = {NULL,0};
+
+static void add_alt_server(const char *saddr, int default_port, alternate_servers_list_t *list)
+{
+	if(saddr && list) {
+		ioa_addr addr;
+		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
+		} else {
+			list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
+			addr_cpy(&(list->addrs[(list->size)++]),&addr);
+			{
+				u08bits s[1025];
+				addr_to_string(&addr, s);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server: %s\n",s);
+			}
+		}
+	}
+}
+
+static void add_alternate_server(const char *saddr)
+{
+	add_alt_server(saddr,DEFAULT_STUN_PORT,&alternate_servers_list);
+}
+
+static void add_tls_alternate_server(const char *saddr)
+{
+	add_alt_server(saddr,DEFAULT_STUN_TLS_PORT,&tls_alternate_servers_list);
+}
 
 //////////////////////////////////////////////////
 
@@ -697,7 +731,10 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					external_ip,
 					no_tcp_relay,
 					no_udp_relay,
-					stale_nonce);
+					stale_nonce,
+					stun_only,
+					&alternate_servers_list,
+					&tls_alternate_servers_list);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
@@ -1094,16 +1131,16 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	                  		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
 	"	                  		All parameters are optional.\n"
 #endif
-	"		--use-auth-secret	Flag that sets a special authorization option that is based upon authentication secret\n"
+	"	    --use-auth-secret		Flag that sets a special authorization option that is based upon authentication secret\n"
 	"					(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
 	"					This option can be used with long-term credentials mechanisms only -\n"
 	"					it does not make much sense with the short-term mechanism.\n"
-	"		--static-auth-secret	'Static' authentication secret value (a string). If not set, then the turn server\n"
+	"	    --static-auth-secret	'Static' authentication secret value (a string). If not set, then the turn server\n"
 	"					will try to use the 'dynamic' value in turn_secret table\n"
 	"					in user database (if present). That database value can be changed on-the-fly\n"
 	"					by a separate program, so this is why it is 'dynamic'.\n"
-	"                   Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
-	"		--secret-ts-exp-time 	Expiration time for timestamp used with authentication secret, in seconds.\n"
+	"					Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
+	"	    --secret-ts-exp-time 	Expiration time for timestamp used with authentication secret, in seconds.\n"
 	"					The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
 	"	-n				Do not use configuration file.\n"
 	"	    --cert			Certificate file, PEM format. Same file search rules\n"
@@ -1132,6 +1169,13 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"					a log file. With this option everything will be going to the log file only\n"
 	"					(unless the log file itself is stdout).\n"
 	"	    --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs).\n"
+	"	-S, --stun-only			Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
+	"	    --alternate-server		TURN server to redirect the allocate requests (UDP and TCP services).\n"
+	"					Multiple alternate-server options can be set for load balancing purposes.\n"
+	"					See the docs for more information.\n"
+	"	    --tls-alternate-server	TURN server to redirect the allocate requests (DTLS and TLS services).\n"
+	"					Multiple alternate-server options can be set for load balancing purposes.\n"
+	"					See the docs for more information.\n"
 	"	-h				Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1162,7 +1206,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password			Password\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vVofhznaA"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vVofhznaAS"
 
 #define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:X:h"
 
@@ -1185,7 +1229,9 @@ enum EXTRA_OPTS {
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
 	AUTH_SECRET_TS_EXP,
-	NO_STDOUT_LOG_OPT
+	NO_STDOUT_LOG_OPT,
+	ALTERNATE_SERVER_OPT,
+	TLS_ALTERNATE_SERVER_OPT
 };
 
 static struct option long_options[] = {
@@ -1231,10 +1277,13 @@ static struct option long_options[] = {
 				{ "no-udp-relay", optional_argument, NULL, NO_UDP_RELAY_OPT },
 				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
+				{ "stun-only", optional_argument, NULL, 'S' },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ "log-file", required_argument, NULL, 'l' },
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
+				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
+				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1321,6 +1370,9 @@ static void set_option(int c, char *value)
 		break;
 	case STALE_NONCE_OPT:
 		stale_nonce = get_bool_value(value);
+		break;
+	case 'S':
+		stun_only = get_bool_value(value);
 		break;
 	case 'L':
 		add_listener_addr(value);
@@ -1457,6 +1509,12 @@ static void set_option(int c, char *value)
 	case PKEY_FILE_OPT:
 		STRCPY(pkey_file,value);
 		break;
+	case ALTERNATE_SERVER_OPT:
+		add_alternate_server(value);
+		break;
+	case TLS_ALTERNATE_SERVER_OPT:
+		add_tls_alternate_server(value);
+		break;
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
@@ -1574,7 +1632,7 @@ static void read_config_file(int argc, char **argv, int pass)
 			fclose(f);
 
 		} else
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default settings will be used.\n",
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find config file: %s. Default and command-line settings will be used.\n",
 				config_file);
 	}
 }

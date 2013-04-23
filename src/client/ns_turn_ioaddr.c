@@ -182,6 +182,56 @@ int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
   return 0;
 }
 
+static char* get_addr_string_and_port(char* s0, int *port)
+{
+	char *s = s0;
+	while(*s && (*s==' ')) ++s;
+	if(*s == '[') {
+		++s;
+		char *tail = strstr(s,"]");
+		if(tail) {
+			*tail=0;
+			++tail;
+			while(*tail && (*tail==' ')) ++tail;
+			if(*tail==':') {
+				++tail;
+				*port = atoi(tail);
+				return s;
+			} else if(*tail == 0) {
+				*port = 0;
+				return s;
+			}
+		}
+	} else {
+		char *tail = strstr(s,":");
+		if(tail) {
+			*tail = 0;
+			++tail;
+			*port = atoi(tail);
+			return s;
+		} else {
+			*port = 0;
+			return s;
+		}
+	}
+	return NULL;
+}
+
+int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr)
+{
+	int ret = -1;
+	int port = 0;
+	char* s = strdup((const char*)saddr);
+	char *sa = get_addr_string_and_port(s,&port);
+	if(sa) {
+		if(port<1)
+			port = default_port;
+		ret = make_ioa_addr((u08bits*)sa,port,addr);
+	}
+	free(s);
+	return ret;
+}
+
 int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 {
 
@@ -191,13 +241,19 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 
 		if (addr->ss.ss_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
+			if(addr_get_port(addr)>0)
+				sprintf((s08bits*)saddr, "%s:%d", addrtmp, addr_get_port(addr));
+			else
+				strcpy((s08bits*)saddr, addrtmp);
 		} else if (addr->ss.ss_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
+			if(addr_get_port(addr)>0)
+				sprintf((s08bits*)saddr, "[%s]:%d", addrtmp, addr_get_port(addr));
+			else
+				strcpy((s08bits*)saddr, addrtmp);
 		} else {
 			return -1;
 		}
-
-		sprintf((s08bits*)saddr, "%s:%d", addrtmp, addr_get_port(addr));
 
 		return 0;
 	}

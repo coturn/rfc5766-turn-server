@@ -78,30 +78,38 @@ int is_channel_msg_str(const u08bits* buf, size_t blen) {
 
 /////////////// message types /////////////////////////////////
 
-int stun_is_command_message_str(const u08bits* buf, size_t blen) {
-  if(buf && blen>=STUN_HEADER_LENGTH) {
-    if(!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
-      if((((u08bits)buf[0]) & ((u08bits)(0xC0)))==0) {
-	if(nswap32(((const u32bits*)(buf))[1]) == STUN_MAGIC_COOKIE) {
-	  u16bits len=nswap16(((const u16bits*)(buf))[1]);
-	  if((len & 0x0003) == 0) {
-	    if((size_t)(len+STUN_HEADER_LENGTH) == blen) {
-	      return 1;
-	    }
-	  }
+int stun_is_command_message_str(const u08bits* buf, size_t blen)
+{
+	if (buf && blen >= STUN_HEADER_LENGTH) {
+		if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
+			if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
+				if (nswap32(((const u32bits*)(buf))[1])
+						== STUN_MAGIC_COOKIE) {
+					u16bits len = nswap16(((const u16bits*)(buf))[1]);
+					if ((len & 0x0003) == 0) {
+						if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
+							return 1;
+						}
+					}
+				}
+			}
+		}
 	}
-      }
-    }
-  }
-  return 0;
+	return 0;
 }
 
 int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present) {
 	if(!stun_is_command_message_str(buf,blen))
 		return 0;
 	stun_attr_ref sar = stun_attr_get_first_by_type_str(buf, blen, STUN_ATTRIBUTE_FINGERPRINT);
-	if(!sar)
+	if(!sar) {
+		if(fingerprint_present)
+			*fingerprint_present = 0;
+		if(stun_get_method_str(buf,blen) == STUN_METHOD_BINDING) {
+			return 1;
+		}
 		return !must_check_fingerprint;
+	}
 	if(stun_attr_get_len(sar) != 4)
 		return 0;
 	const u32bits* fingerprint = (const u32bits*)stun_attr_get_value(sar);
@@ -677,6 +685,7 @@ int stun_attr_is_addr(stun_attr_ref attr) {
     case STUN_ATTRIBUTE_XOR_PEER_ADDRESS:
     case STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS:
     case STUN_ATTRIBUTE_MAPPED_ADDRESS:
+    case STUN_ATTRIBUTE_ALTERNATE_SERVER:
     case STUN_ATTRIBUTE_RESPONSE_ADDRESS:
     case STUN_ATTRIBUTE_SOURCE_ADDRESS:
     case STUN_ATTRIBUTE_CHANGED_ADDRESS:

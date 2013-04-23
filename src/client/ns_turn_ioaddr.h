@@ -67,6 +67,7 @@ void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src);
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2);
 int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2);
 int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr);
+int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr);
 void addr_set_port(ioa_addr* addr, int port);
 int addr_get_port(const ioa_addr* addr);
 int addr_to_string(const ioa_addr* addr, u08bits* saddr);

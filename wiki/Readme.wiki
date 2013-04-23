@@ -62,6 +62,7 @@ TURN(19 Apr 2013)
    * *--no-tcp-relay* Do not allow TCP relay endpoints, use only UDP relay option.
    * *--stale-nonce* Use extra security with nonce value having limited lifetime (600 secs).
    * *--no-stdout-log* Flag to prevent stdout log messages. By default, all log messages are going to both stdout and to a log file. With this option everything will be going to the log file only (unless the log file itself is stdout).
+   * *-S,* *--stun-only* Run as STUN server only, all TURN requests will be ignored.
    * *-h*  Help.
 
 ====Config file setting:====
@@ -130,12 +131,24 @@ TURN(19 Apr 2013)
     *   *--cert* Certificate file, PEM format. Same file search rules applied  as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_cert.pem.
     *   *--pkey* Private key file, PEM format. Same file search rules applied as for the configuration file. If both *--no-tls* and *--no-dtls* options are specified, then this parameter is not needed. Default value is turn_server_pkey.pem.
     *   *-l*, *--log-file* Option to set the log file name. By default, the turnserver tries to open a log file in  /var/log, /var/tmp, /tmp and current directories directories (which open operation succeeds first that file will be used). With this option you can set the definite log file name. The special names are "stdout" and "-" - they will force everything to the stdout.
+    *   *--alternate-server* Option to set the "redirection" mode. The value of this option will be the address of the alternate server for UDP & TCP service in form of  <ip>[:<port>]. The server will send this value in the attribute ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client. Client will receive only values with the same address family as the client network endpoint address family. This functionality can be used only with authentication mode. See RFC 5389 and RFC 5766 for ALTERNATE-SERVER functionality description. The client must use the obtained value for subsequent TURN communications. If more than one --alternate-server options are provided, then the functionality can be more accurately described as "load-balancing" than a mere "redirection". If the port number is omitted, then the default port number 3478 for the UDP/TCP protocols will be used. Colon (:) characters in IPv6 addresses may conflict with the syntax of the option. To alleviate this conflict, literal IPv6 addresses are enclosed in square brackets in such resource identifiers, for example: [2001:db8:85a3:8d3:1319:8a2e:370:7348]:3478 . Multiple alternate servers can be set. They will be used in the round-robin manner. All servers in the pool are considered of equal weight and the load will be distributed equally. For example, if we have 4 alternate servers, then each server will receive 25% of ALLOCATE requests. A alternate TURN server address can be used more than one time with the alternate-server option, so this can emulate "weighting" of the servers.
+    *   *--tls-alternate-server*	Option to set alternative server for TLS & DTLS services in form of <ip>:<port>. If the port number is omitted, then the default port number 5349 for the TLS/DTLS protocols will be used. See the previous option for the functionality description.
 
+==== LOAD BALANCE ====
+
+To set a load balancing scheme, you have three options:
+
+	# Set a complex networking load-balancing equipment that redirects the requests to a member of the TURN servers group. It must take care about redirecting the requests to the same server from the same client - because some TURN sessions from the same client must share the information.
+	
+	# Set a less complex scheme with round-robin DNS. The same precaution must be taken as in the first case.
+	
+	# Use build-in balancing capability with ALTERNATE-SERVER option (--*-alternate-server options). In this case, the shared information in the session will be taken care of automatically by the "master" TURN server.
+	
 ==== WEBRTC USAGE ====
 
 This is a set of notes for the WebRTC users:
 
-  * WebRTC uses long-term authentication, so you have to use -a option (or --lt-cred-mech).
+  * WebRTC uses long-term authentication mechanism, so you have to use -a option (or --lt-cred-mech).
 WebRTC relaying will not work with anonymous access or with short-term authentication.
 With -a option, do not forget to set the realm (-r option). You will also have to set up
 the user accounts, for that you have a number of options:
