@@ -125,6 +125,7 @@ struct _secrets_list {
 typedef struct _secrets_list secrets_list_t;
 
 extern int use_auth_secret_with_timestamp;
+extern char rest_api_separator;
 extern secrets_list_t static_auth_secrets;
 extern turn_time_t auth_secret_timestamp_expiration_time;
 

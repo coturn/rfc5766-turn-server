@@ -316,6 +316,9 @@ Options with required values:
 				number 5349 for the TLS/DTLS protocols will be used. See the previous option for the 
 				functionality description.
 
+-C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.
+				The default value is ':'.
+
 ===============================================================================
 
 LOAD BALANCE

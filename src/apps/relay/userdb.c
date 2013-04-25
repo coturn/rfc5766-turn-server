@@ -90,6 +90,7 @@ static int donot_print_connection_success=0;
 /////////// SHARED SECRETS /////////////////
 
 int use_auth_secret_with_timestamp = 0;
+char rest_api_separator=':';
 secrets_list_t static_auth_secrets;
 turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
 
@@ -491,7 +492,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		if(get_auth_secrets(&sl)<0)
 			return ret;
 
-		char *col = strstr((char*)uname,":");
+		char *col = strchr((char*)uname,rest_api_separator);
 
 		if(col) {
 			ts = (turn_time_t)atol(col+1);
@@ -728,7 +729,7 @@ u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_
 static u08bits *get_real_username(u08bits *user) {
 	u08bits *ret = (u08bits*)strdup((char*)user);
 	if(use_auth_secret_with_timestamp) {
-		char *col=strstr((char*)ret,":");
+		char *col=strchr((char*)ret,rest_api_separator);
 		if(col) {
 			*col=0;
 		}

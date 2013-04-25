@@ -98,7 +98,8 @@ static char Usage[] =
   "		the long-term credentials mechanism if authentication is required.\n"
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
-  "	-W	TURN REST API authentication secret. Is not compatible with -A option\n";
+  "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
+  "	-C	TURN REST API username/timestamp separator symbol (character). The default value is ':'.\n";
 
 //////////////////////////////////////////////////
 
@@ -117,6 +118,7 @@ int main(int argc, char **argv)
 	int peer_port = PEER_DEFAULT_PORT;
 
 	int use_auth_secret_with_timestamp = 0;
+	char rest_api_separator = ':';
 	char auth_secret[1025]="\0";
 
 	set_execdir();
@@ -125,8 +127,11 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:vsyhcxgtTSA")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSA")) != -1) {
 		switch (c){
+		case 'C':
+			rest_api_separator=*optarg;
+			break;
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
 			break;
@@ -234,7 +239,7 @@ int main(int argc, char **argv)
 		{
 			char new_uname[1025];
 			if(g_uname[0]) {
-				sprintf(new_uname,"%s:%lu", (char*)g_uname,(unsigned long)time(NULL));
+				sprintf(new_uname,"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
 			} else {
 				sprintf(new_uname,"%lu", (unsigned long)time(NULL));
 			}

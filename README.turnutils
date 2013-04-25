@@ -116,6 +116,8 @@ Options with required values:
 
 -W      TURN REST API authentication secret. Is not compatible with -A flag.
 
+-C		This is the username/timestamp separator symbol (character) in TURN REST API. The default value is ':'.
+
 See the examples in the "examples/scripts" directory.
 
 ====================================================================================

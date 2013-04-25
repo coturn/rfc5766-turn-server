@@ -133,6 +133,7 @@ TURN(23 Apr 2013)
     *   *-l*, *--log-file* Option to set the log file name. By default, the turnserver tries to open a log file in  /var/log, /var/tmp, /tmp and current directories directories (which open operation succeeds first that file will be used). With this option you can set the definite log file name. The special names are "stdout" and "-" - they will force everything to the stdout.
     *   *--alternate-server* Option to set the "redirection" mode. The value of this option will be the address of the alternate server for UDP & TCP service in form of  {{{<ip>[:<port>]}}}. The server will send this value in the attribute ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client. Client will receive only values with the same address family as the client network endpoint address family. This functionality can be used only with authentication mode. See RFC 5389 and RFC 5766 for ALTERNATE-SERVER functionality description. The client must use the obtained value for subsequent TURN communications. If more than one --alternate-server options are provided, then the functionality can be more accurately described as "load-balancing" than a mere "redirection". If the port number is omitted, then the default port number 3478 for the UDP/TCP protocols will be used. Colon (:) characters in IPv6 addresses may conflict with the syntax of the option. To alleviate this conflict, literal IPv6 addresses are enclosed in square brackets in such resource identifiers, for example: [2001:db8:85a3:8d3:1319:8a2e:370:7348]:3478 . Multiple alternate servers can be set. They will be used in the round-robin manner. All servers in the pool are considered of equal weight and the load will be distributed equally. For example, if we have 4 alternate servers, then each server will receive 25% of ALLOCATE requests. A alternate TURN server address can be used more than one time with the alternate-server option, so this can emulate "weighting" of the servers.
     *   *--tls-alternate-server*	Option to set alternative server for TLS & DTLS services in form of {{{<ip>[:<port>]}}}. If the port number is omitted, then the default port number 5349 for the TLS/DTLS protocols will be used. See the previous option for the functionality description.
+    *   *-C*, *--rest-api-separator*	This is the username/timestamp separator symbol (character) in TURN REST API. The default value is ':'.
 
 ==== LOAD BALANCE ====
 
@@ -264,6 +265,7 @@ $ turnadmin -S --psql-userdb="<db-connection-string>"
  *		*-u*     STUN/TURN username.
  *		*-w*     STUN/TURN user password.
  *		*-W*     TURN REST API secret. Is not compatible with -A flag.
+ *		*-C*     This is the username/timestamp separator symbol (character) in TURN REST API. The default value is ':'.
 
        See the _turnutils_uclient_ usage examples	in the "examples/scripts" directory.
 

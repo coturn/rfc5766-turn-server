@@ -1176,6 +1176,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	    --tls-alternate-server	TURN server to redirect the allocate requests (DTLS and TLS services).\n"
 	"					Multiple alternate-server options can be set for load balancing purposes.\n"
 	"					See the docs for more information.\n"
+	"	-C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.\n"
+	"					The default value is ':'.\n"
 	"	-h				Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1206,7 +1208,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-p, --password			Password\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:C:vVofhznaAS"
 
 #define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:X:h"
 
@@ -1284,6 +1286,7 @@ static struct option long_options[] = {
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
 				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
+				{ "rest-api-separator", required_argument, NULL, 'C' },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1514,6 +1517,11 @@ static void set_option(int c, char *value)
 		break;
 	case TLS_ALTERNATE_SERVER_OPT:
 		add_tls_alternate_server(value);
+		break;
+	case 'C':
+		if(value && *value) {
+			rest_api_separator=*value;
+		}
 		break;
 	/* these options have been already taken care of before: */
 	case 'l':

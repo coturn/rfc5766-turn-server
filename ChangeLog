@@ -1,6 +1,7 @@
 04/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.1 'Black Dow':
-	- Stale Nonce bug fixed.
+	- Configurable REST API separator symbol (Issue 16).
+	- Stale Nonce bug fixed (Issue 17).
 	- Minor client fix.
 	
 04/21/2013 Oleg Moskalenko <mom040267@gmail.com>
