@@ -1865,12 +1865,12 @@ static int check_stun_auth(turn_turnserver *server,
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorized";
 			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+		}
 
-			if(strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
-				*err_code = 438;
-				*reason = (u08bits*)"Stale nonce";
-				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-			}
+		if(strcmp((s08bits*)ss->nonce,(s08bits*)nonce)) {
+			*err_code = 438;
+			*reason = (u08bits*)"Stale nonce";
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
 		}
 	}
 

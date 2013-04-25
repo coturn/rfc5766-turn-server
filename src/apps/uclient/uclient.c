@@ -823,8 +823,14 @@ static int start_client(const char *remote_address, int port,
 		   clnet_info, &chnum,
 		   clnet_info_rtcp, &chnum_rtcp);
 		   
-	if(clnet_info_probe.fd != -1)
-		close(clnet_info_probe.fd);
+  if(clnet_info_probe.ssl) {
+  	SSL_free(clnet_info_probe.ssl);
+  	clnet_info_probe.ssl = NULL;
+  	clnet_info_probe.fd = -1;
+  } else if(clnet_info_probe.fd != -1) {
+  	close(clnet_info_probe.fd);
+  	clnet_info_probe.fd = -1;
+  }
   
   evutil_make_socket_nonblocking(clnet_info->fd);
   
@@ -922,8 +928,14 @@ static int start_c2c(const char *remote_address, int port,
 		       clnet_info2, &chnum2,
 		       clnet_info2_rtcp, &chnum2_rtcp);
 		       
-  if(clnet_info_probe.fd != -1)
-		close(clnet_info_probe.fd);
+  if(clnet_info_probe.ssl) {
+	SSL_free(clnet_info_probe.ssl);
+	clnet_info_probe.ssl = NULL;
+	clnet_info_probe.fd = -1;
+  } else if(clnet_info_probe.fd != -1) {
+	close(clnet_info_probe.fd);
+	clnet_info_probe.fd = -1;
+  }
   
   evutil_make_socket_nonblocking(clnet_info1->fd);
   

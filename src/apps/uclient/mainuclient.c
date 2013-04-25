@@ -291,6 +291,9 @@ int main(int argc, char **argv)
 	if (!c2c) {
 		if (make_ioa_addr((const u08bits*) peer_address, peer_port, &peer_addr) < 0)
 			return -1;
+		if(peer_addr.ss.ss_family == AF_INET6)
+			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+
 	}
 
 	/* SSL Init ==>> */

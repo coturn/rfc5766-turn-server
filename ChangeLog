@@ -1,3 +1,8 @@
+04/25/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.3.1 'Black Dow':
+	- Stale Nonce bug fixed.
+	- Minor client fix.
+	
 04/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.0 'Black Dow':
 	- STUN stand-alone functionality improved according to RFC 5389.
