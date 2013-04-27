@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 	char c;
 	char ifname[1025] = "\0";
 
+	set_logfile("stdout");
 	set_system_parameters(0);
 
 	while ((c = getopt(argc, argv, "d:p:L:v")) != -1)

@@ -1,3 +1,7 @@
+04/26/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.3.2 'Black Dow':
+	- Log file midnight rollover implemented (Issue 15).
+	
 04/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.1 'Black Dow':
 	- Configurable REST API separator symbol (Issue 16).

@@ -121,6 +121,8 @@ int main(int argc, char **argv)
 	char rest_api_separator = ':';
 	char auth_secret[1025]="\0";
 
+	set_logfile("stdout");
+
 	set_execdir();
 
 	set_system_parameters(0);

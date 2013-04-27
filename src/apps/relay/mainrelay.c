@@ -689,6 +689,8 @@ static void run_listener_server(struct event_base *eb)
 
 		run_events(eb);
 
+		rollover_logfile();
+
 #if defined(TURN_NO_THREADS)
 		/* If there are no threads, then we run it here */
 		read_userdb_file(0);
@@ -1157,7 +1159,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"	    --no-dtls			Do not start DTLS client listeners.\n"
 	"	    --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.\n"
 	"	    --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay options.\n"
-	"	-l, --log-file			Option to set the log file name.\n"
+	"	-l, --log-file			Option to set the full path name of the log file.\n"
 	"					By default, the turnserver tries to open a log file in\n"
 	"					/var/log, /var/tmp, /tmp and current directories directories\n"
 	"					(which open operation succeeds first that file will be used).\n"

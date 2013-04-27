@@ -31,6 +31,47 @@
 #include "ns_turn_msg.h"
 #include "ns_turn_msg_addr.h"
 
+#if defined(__USE_OPENSSL__)
+
+///////////// Security functions implementation from ns_turn_msg.h ///////////
+
+#include <openssl/md5.h>
+#include <openssl/hmac.h>
+#include <openssl/ssl.h>
+
+int stun_calculate_hmac(u08bits *buf, size_t len, u08bits *key, size_t keylen, u08bits *hmac)
+{
+	if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, NULL)) {
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
+int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key)
+{
+	MD5_CTX ctx;
+	size_t ulen = strlen((s08bits*)uname);
+	size_t rlen = strlen((s08bits*)realm);
+	size_t plen = strlen((s08bits*)upwd);
+	u08bits *str = (u08bits*)malloc(ulen+1+rlen+1+plen+1);
+
+	strcpy((s08bits*)str,(s08bits*)uname);
+	str[ulen]=':';
+	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
+	str[ulen+1+rlen]=':';
+	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
+
+	MD5_Init(&ctx);
+	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);
+	MD5_Final(key,&ctx);
+	free(str);
+
+	return 0;
+}
+
+#endif
+
 /////////////////////////////////////////////////////////////////
 
 static u32bits ns_crc32(const u08bits *buffer, u32bits len);

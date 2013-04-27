@@ -48,6 +48,7 @@ int main(int argc, const char **argv)
 	UNUSED_ARG(argc);
 	UNUSED_ARG(argv);
 
+	set_logfile("stdout");
 	set_system_parameters(0);
 
 	{

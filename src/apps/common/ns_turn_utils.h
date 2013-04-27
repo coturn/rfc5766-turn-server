@@ -67,6 +67,7 @@ void rtpprintf(const char *format, ...);
 int vrtpprintf(const char *format, va_list args);
 void reset_rtpprintf(void);
 void set_logfile(const char *fn);
+void rollover_logfile(void);
 
 ///////////////////////////////////////////////////////
 
