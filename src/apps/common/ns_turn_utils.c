@@ -245,7 +245,7 @@ static void get_date(char *s, size_t sz) {
     curtm = time(NULL);
     tm_info = localtime(&curtm);
 
-    strftime(s, sz, "%M", tm_info);
+    strftime(s, sz, "%F", tm_info);
 }
 
 void set_logfile(const char *fn)
