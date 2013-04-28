@@ -1,7 +1,8 @@
 ==================================================================
 
-1) To enable turnserver as an automatically started system service, 
-you have to:
+1) If you system supports automatic start-up system daemon services, 
+the, to enable the turnserver as an automatically started system 
+service, you have to:
 
 	a) Create and edit /usr/local/etc/turnserver.conf file.
 	Use /usr/local/etc/turnserver.conf.default as an example.

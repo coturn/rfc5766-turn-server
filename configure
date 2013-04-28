@@ -214,7 +214,7 @@ OSLIBS="${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/eve
 # Install shell commands
 ###########################
 
-type ginstall
+type ginstall 2>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
 	INSTALL_PROGRAM="ginstall"
@@ -225,7 +225,7 @@ if [ ${ER} -eq 0 ] ; then
 	INSTALL_DATA="ginstall"
 	MKDIR="ginstall -d"
 else
-	type install
+	type install 2>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 		INSTALL_PROGRAM="install"
@@ -249,7 +249,20 @@ fi
 INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
-MORECMD="more"
+
+type more 2>/dev/null
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+    MORECMD="more"
+else
+    type less 2>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+	MORECMD="less"
+    else
+	MORECMD="cat"
+    fi
+fi
 
 #############################
 # Adjustments for Solaris
