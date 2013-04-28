@@ -1,3 +1,7 @@
+04/27/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.3.4 'Black Dow':
+	- Installation fixes.
+	
 04/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.3 'Black Dow':
 	- Log file midnight rollover implemented (Issue 15).

@@ -46,13 +46,13 @@ you will have to change the script parameters for your real environment.
 
 The command:
 
-	$ make install 
+	$ sudo make install 
 
 will install everything into the system file structure (see below).
 
 The command:
 
-	$ make deinstall
+	$ sudo make deinstall
 	
 will remove all installed TURN Server files from your system.
 
@@ -73,20 +73,34 @@ accordingly, the Makefile.in template file.
 III. INSTALL
 
 This step is optional. You can run the turnserver from the original build 
-directory, successfully, without installing the TURN server. 
-You have to install the turnserver only if you 
-want to integrate the turnserver in your system.
+directory, successfully, without installing the TURN server into the system. 
+You have to install the turnserver only if you want to integrate the turnserver 
+in your system.
 
 Run the command:
 
 $ make install
 
 It will install turnserver in /usr/local/ directory (or to whatever directory
-was set in the PREFIX variable). You will have to change 
-/usr/local/etc/turnserver.conf file to adjust your runtime configuration.
+was set in the PREFIX variable). You will have to copy 
+/usr/local/etc/turnserver.conf.default to /usr/local/etc/turnserver.conf file 
+and adjust your runtime configuration.
 
-This command will also copy the content of examples subdirectory into 
-PREFIX/examples/turn/ directory.
+This command will also:
+
+ - copy the content of examples subdirectory into 
+ PREFIX/share/examples/turnserver/ directory;
+ - copy the content of include/turn subdirectory into
+ PREFIX/include/turn/ directory;
+ - copy the database schema file turndb/schema.sql into PREFIX/share/turnserver/ 
+ directory;
+ - copy all docs into PREFIX/share/doc/turnserver/ directory.
+
+After the installation, you may want to adjust the system-wide shared library search 
+path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris). Your system must be 
+able to find the libevent2, openssl and (optionally) PostgreSQL and/or MySQL shared 
+libraries, either with the help of the system-wide library search configuration or 
+by using LD_LIBRARY_PATH.
 
 IV. PLATFORMS
 
@@ -187,7 +201,8 @@ like this:
   $ CFLAGS="${CFLAGS} -I/usr/postgres/9.2-pgdg/include/" LDFLAGS="${LDFLAGS} -L/usr/postgres/9.2-pgdg/lib/" ./configure
 
 You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL 
-runtime library path to LD_LIBRARY_PATH.
+runtime library path to LD_LIBRARY_PATH. Or you can adjust the system-wide shared library 
+search path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris).
 
 See also the next section.
 
@@ -262,6 +277,9 @@ After that, you can either use it locally, or install it into /opt.
 But remember that to run it, you have to adjust your LD_LIBRARY_PATH, like that:
 
     $ LD_LIBRARY_PATH=/opt/lib ./bin/turnserver
+
+An alternative would be adjusting the system-wide shared library search path by using "ldconfig" 
+(Linux & FreeBSD) or "crle" (Solaris).
 
 VIII. TEST SCRIPT SETS
 
@@ -431,7 +449,8 @@ the user name is "turn", the user password is "turn". Of course, you can choose
 your own names.
 
 The database schema for the TURN server is very minimalistic and is located in project's 
-turndb/schema.sql file:
+turndb/schema.sql file, or in the system's PREFIX/share/turnserver/schema.sql file after
+the turnserver installation:
 
 # Table for long-term credentials mechanism authorization:
 #
@@ -448,7 +467,8 @@ CREATE TABLE turnusers_st (
 );
 
 # Table holding shared secrets for secret-based authorization
-# (REST API). It can be used together with the long-term mechanism:
+# (REST API). It can only be used together with the long-term 
+# mechanism:
 #
 CREATE TABLE turn_secret (
     value varchar(512)
