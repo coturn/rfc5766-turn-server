@@ -4,13 +4,13 @@
 the, to enable the turnserver as an automatically started system 
 service, you have to:
 
-	a) Create and edit /usr/local/etc/turnserver.conf file.
-	Use /usr/local/etc/turnserver.conf.default as an example.
+	a) Create and edit /etc/turnserver.conf file.
+	Use /etc/turnserver.conf.default as an example.
 
 	b) For user accounts settings, if using the turnserver 
-	with authentication: create and edit /usr/local/etc/turnuserdb.conf 
+	with authentication: create and edit /etc/turnuserdb.conf 
 	file, or set up PostgreSQL or MySQL database for user accounts.
-	Use /usr/local/etc/turnuserdb.conf.default as example for flat file DB,
+	Use /etc/turnuserdb.conf.default as example for flat file DB,
 	or use /usr/local/share/turnserver/schema.sql as database schema.
 
 	c) add whatever is necessary to enable start-up daemon for the /usr/local/bin/turnserver.

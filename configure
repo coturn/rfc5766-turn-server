@@ -636,6 +636,7 @@ echo "CC = ${CC}" >> Makefile
 echo "LDFLAGS += ${OSLIBS}" >> Makefile
 echo "DBLIBS += ${DBLIBS}" >> Makefile
 echo "CFLAGS += ${OSCFLAGS}" >> Makefile
+echo "CPPFLAGS = ${CPPFLAGS}" >> Makefile
 echo "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL}" >> Makefile
 echo "#" >> Makefile
 echo "PORTNAME = ${PORTNAME}" >> Makefile

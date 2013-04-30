@@ -27,7 +27,7 @@ test:	check
 
 check:	bin/turnutils_rfc5769check
 	bin/turnutils_rfc5769check
-	
+
 include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
 	${RMCMD} include
 	${MKBUILDDIR} include/turn/client
@@ -37,27 +37,27 @@ include/turn/ns_turn_defs.h:	src/ns_turn_defs.h
 
 bin/turnutils_uclient:	${COMMON_DEPS} src/apps/uclient/session.h lib/libturnclient.a src/apps/uclient/mainuclient.c src/apps/uclient/uclient.c src/apps/uclient/uclient.h src/apps/uclient/startuclient.c src/apps/uclient/startuclient.h
 	${MKBUILDDIR} bin
-	${CC} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/uclient/uclient.c src/apps/uclient/startuclient.c src/apps/uclient/mainuclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
 bin/turnutils_stunclient:	${COMMON_DEPS} lib/libturnclient.a src/apps/stunclient/stunclient.c 
 	pwd
 	${MKBUILDDIR} bin
-	${CC} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}   
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/stunclient/stunclient.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}   
 
 bin/turnutils_rfc5769check:	${COMMON_DEPS} lib/libturnclient.a src/apps/rfc5769/rfc5769check.c 
 	pwd
 	${MKBUILDDIR} bin
-	${CC} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS} 
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/rfc5769/rfc5769check.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS} 
 
 bin/turnserver:	${COMMON_DEPS} ${IMPL_DEPS} ${LIBSERVERTURN_OBJS} ${LIBSERVERTURN_DEPS} lib/libturnclient.a src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/userdb.h src/apps/relay/udp_listener.h src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.h src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.h src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.h src/apps/relay/dtls_listener.c
 	${MKBUILDDIR} bin
 	${RMCMD} bin/turnadmin
-	${CC} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${DBLIBS} ${LDFLAGS} 
+	${CC} ${CPPFLAGS} ${CFLAGS} ${DBCFLAGS} ${IMPL_MODS} -Ilib src/apps/relay/mainrelay.c src/apps/relay/userdb.c src/apps/relay/udp_listener.c src/apps/relay/tcp_listener.c src/apps/relay/tls_listener.c src/apps/relay/dtls_listener.c ${COMMON_MODS} ${LIBSERVERTURN_OBJS} -o $@ ${DBLIBS} ${LDFLAGS} 
 	cd bin; ln -s turnserver turnadmin  
 
 bin/turnutils_peer:	${COMMON_DEPS} ${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS} lib/libturnclient.a src/apps/peer/mainudpserver.c src/apps/peer/udpserver.h src/apps/peer/udpserver.c
 	${MKBUILDDIR} bin
-	${CC} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
+	${CC} ${CPPFLAGS} ${CFLAGS} src/apps/peer/mainudpserver.c src/apps/peer/udpserver.c ${COMMON_MODS} -o $@ -Llib -lturnclient -Llib ${LDFLAGS}  
 
 ### Client Library:
 
@@ -67,33 +67,33 @@ lib/libturnclient.a:	${LIBCLIENTTURN_OBJS} ${LIBCLIENTTURN_DEPS}
 
 build/obj/ns_turn_ioaddr.o:	src/client/ns_turn_ioaddr.c ${LUBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_ioaddr.c -o $@
 
 build/obj/ns_turn_msg_addr.o:	src/client/ns_turn_msg_addr.c ${LUBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg_addr.c -o $@
 
 build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/client/ns_turn_msg.c -o $@
 
 ### Server Obj:
 
 build/obj/ns_turn_server.o:	src/server/ns_turn_server.c ${LUBTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/server/ns_turn_server.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/server/ns_turn_server.c -o $@
 
 build/obj/ns_turn_maps_rtcp.o:	src/server/ns_turn_maps_rtcp.c ${LUBTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/server/ns_turn_maps_rtcp.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/server/ns_turn_maps_rtcp.c -o $@
 
 build/obj/ns_turn_maps.o:	src/server/ns_turn_maps.c ${LUBTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/server/ns_turn_maps.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/server/ns_turn_maps.c -o $@
 
 build/obj/ns_turn_allocation.o:	src/server/ns_turn_allocation.c ${LUBTURN_DEPS}
 	${MKBUILDDIR} build/obj
-	${CC} ${CFLAGS} -c src/server/ns_turn_allocation.c -o $@
+	${CC} ${CPPFLAGS} ${CFLAGS} -c src/server/ns_turn_allocation.c -o $@
 
 ### Clean all:
 

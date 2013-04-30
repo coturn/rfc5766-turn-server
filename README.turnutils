@@ -41,7 +41,7 @@ $ ./scripts/secure_relay.sh
     
   NAME
   
-turnutils_uclient application is supplied for the test purposes only.
+turnutils_uclient - this client emulation application is supplied for the test purposes only.
  
   SYNOPSIS  
 
@@ -124,7 +124,7 @@ See the examples in the "examples/scripts" directory.
   
   NAME
     
-turnutils_peer application is a simple UDP-only echo backend server.  
+turnutils_peer - a simple UDP-only echo backend server.  
   
   SYNOPSYS
 
@@ -149,7 +149,7 @@ If no listener address(es) defined, then it listens on all IPv4 and IPv6 address
 
   NAME
   
-turnutils_stunclient is a basic STUN client. 
+turnutils_stunclient -  a basic STUN client. 
   
   SYNOPSIS
 
@@ -174,7 +174,7 @@ requests with different parameters, to demonstrate the NAT discovery capabilitie
 
   NAME
   
-turnutils_rfc5769check utility tests the correctness of STUN protocol implementation.   
+turnutils_rfc5769check - a utility that tests the correctness of STUN protocol implementation.   
   
   SYNOPSIS
   

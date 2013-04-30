@@ -53,7 +53,7 @@ is equivalent to:
 
   NAME
   
-turnserver application is a TURN relay server implementation.
+turnserver - a TURN relay server implementation.
   
   SYNOPSIS
   
