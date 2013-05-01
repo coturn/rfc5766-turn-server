@@ -1365,12 +1365,28 @@ static int handle_turn_binding(turn_turnserver *server,
 		switch (attr_type) {
 		SKIP_ATTRIBUTES;
 		case STUN_ATTRIBUTE_CHANGE_REQUEST:
-			if(!is_rfc5780(server)) {
+/*
+ * This fix allows the client program from the Stuntman source to make STUN binding requests
+ * to this server.
+ *
+ * It was provided by  John Selbie, from STUNTMAN project:
+ *
+ * "Here's the gist of the change. Stuntman comes with a STUN client library
+ * and client program. The client program displays the mapped IP address and
+ * port if it gets back a successful binding response.
+ * It also interops with JSTUN, a Java implementation of STUN.
+ * However, the JSTUN server refuses to respond to any binding request that
+ * doesn't have a CHANGE-REQUEST attribute in it.
+ * ... workaround is for the client to make a request with an empty CHANGE-REQUEST
+ * attribute (neither the ip or port bit are set)."
+ *
+ */
+			stun_attr_get_change_request_str(sar, &change_ip, &change_port);
+			if( (!is_rfc5780(server)) && (change_ip || change_port)) {
 				*err_code = 420;
 				*reason = (const u08bits *)"Unknown attribute: TURN server was configured without RFC 5780 support";
 				break;
 			}
-			stun_attr_get_change_request_str(sar, &change_ip, &change_port);
 			if(change_ip || change_port) {
 				if(st != UDP_SOCKET) {
 					*err_code = 400;

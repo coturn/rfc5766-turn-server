@@ -1831,7 +1831,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/5780/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
 
 	read_config_file(argc,argv,0);
 

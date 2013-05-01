@@ -123,6 +123,10 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnadmin.1 ${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils.1 ${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_uclient.1 ${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_rfc5769check.1 ${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_peer.1 ${MANPREFIX}/man/man1/
 	${INSTALL_STATIC_LIB} lib/libturnclient.a ${LIBDIR}
 	${INSTALL_DIR} docs/html ${DOCSDIR}
 	${INSTALL_DATA} docs/TURNServerRESTAPI.pdf ${DOCSDIR}

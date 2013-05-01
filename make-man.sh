@@ -13,7 +13,3 @@ cd man/man1; ln -s turnutils.1 turnutils_peer.1;cd ../..
 cd man/man1; ln -s turnutils.1 turnutils_rfc5769check.1;cd ../..
 cd man/man1; ln -s turnutils.1 turnutils_stunclient.1;cd ../..
 
-cd man/man1; ln -s turnutils.1 uclient.1;cd ../..
-cd man/man1; ln -s turnutils.1 peer.1;cd ../..
-cd man/man1; ln -s turnutils.1 rfc5769check.1;cd ../..
-cd man/man1; ln -s turnutils.1 stunclient.1;cd ../..
