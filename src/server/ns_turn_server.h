@@ -90,10 +90,12 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    int no_udp_relay,
 				    int stale_nonce,
 				    int stun_only,
-					alternate_servers_list_t *alternate_servers_list,
-					alternate_servers_list_t *tls_alternate_servers_list);
+				    alternate_servers_list_t *alternate_servers_list,
+				    alternate_servers_list_t *tls_alternate_servers_list);
 
 void delete_turn_server(turn_turnserver* server);
+
+ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
 ////////// RFC 5780 ///////////////////////
 

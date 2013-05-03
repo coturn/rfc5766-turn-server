@@ -133,6 +133,13 @@ void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len);
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh);
 
 /*
+ * Status reporting functions
+ */
+void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh);
+void turn_report_allocation_delete(void *a);
+void turn_report_session_usage(void *session);
+
+/*
  * Network event handler callback
  * chnum parameter is just an optimisation hint -
  * the function must work correctly when chnum=0

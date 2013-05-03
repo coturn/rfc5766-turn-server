@@ -31,6 +31,7 @@
 #include "ns_turn_utils.h"
 #include "ns_turn_session.h"
 #include "ns_turn_server.h"
+#include "ns_turn_khash.h"
 
 #include "stun_buffer.h"
 #include "apputils.h"
@@ -1099,6 +1100,10 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 						"%s: send channel 0x%x\n", __FUNCTION__,
 						(int) (chnum));
 			}
+
+			++(ss->sent_packets);
+			ss->sent_bytes += (u32bits)len;
+			turn_report_session_usage(ss);
 
 			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 		}
@@ -2189,4 +2194,67 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 free_blist_elem(e,elem);
 }
 
+/////////// REPORTING STATUS /////////////////////
 
+static inline u32bits get_allocation_id(allocation *a)
+{
+	return (u32bits)(kh_int64_hash_func((u64bits)a));
+}
+
+void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
+{
+	if(a) {
+		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
+		if(ss) {
+			turn_turnserver *server = ss->server;
+			if(server) {
+				ioa_engine_handle e = turn_server_get_engine(server);
+				if(e && e->verbose) {
+					const char* status="New";
+					if(refresh)
+						status="Refresh";
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id(a), (char*)ss->username, (unsigned long)lifetime);
+				}
+			}
+		}
+	}
+}
+
+void turn_report_allocation_delete(void *a)
+{
+	if(a) {
+		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
+		if(ss) {
+			turn_turnserver *server = ss->server;
+			if(server) {
+				ioa_engine_handle e = turn_server_get_engine(server);
+				if(e && e->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=0x%lx, username=<%s>\n", get_allocation_id(a), (char*)ss->username);
+				}
+			}
+		}
+	}
+}
+
+void turn_report_session_usage(void *session)
+{
+	if(session) {
+		ts_ur_super_session *ss = (ts_ur_super_session *)session;
+		turn_turnserver *server = ss->server;
+		if(server) {
+			ioa_engine_handle e = turn_server_get_engine(server);
+			allocation *a = &(ss->alloc);
+			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
+				if(e && e->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Session allocation id=0x%lx, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", get_allocation_id(a), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+				}
+				ss->received_packets=0;
+				ss->received_bytes=0;
+				ss->sent_packets=0;
+				ss->sent_bytes=0;
+			}
+		}
+	}
+}
+
+//////////////////////////////////////////////////

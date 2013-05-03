@@ -165,7 +165,7 @@ void turn_channel_delete(ch_info* chn);
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections);
 void clean_allocation(allocation *a);
 
-void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
+void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time_interval, ioa_timer_handle ev);
 int is_allocation_valid(const allocation* a);
 void set_allocation_valid(allocation* a, int value);
 turn_permission_info* allocation_get_permission(const allocation* a, const ioa_addr *addr);

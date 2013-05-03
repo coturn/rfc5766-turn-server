@@ -2385,6 +2385,10 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 		return -1;
 	} else {
 
+		++(ss->sent_packets);
+		ss->sent_bytes += (u32bits)ioa_network_buffer_get_size(nbh);
+		turn_report_session_usage(ss);
+
 		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: prepare to write to s 0x%lx\n", __FUNCTION__,
@@ -2503,7 +2507,7 @@ static int create_relay_connection(turn_turnserver* server,
 			ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 					client_ss_allocation_timeout_handler, ss, 0,
 					"client_ss_allocation_timeout_handler");
-			set_allocation_lifetime_ev(a, turn_time() + lifetime, ev);
+			set_allocation_lifetime_ev(a, lifetime, ev);
 		}
 
 		set_ioa_socket_session(newelem->s, ss);
@@ -2535,7 +2539,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 				client_ss_allocation_timeout_handler, ss, 0,
 				"refresh_client_ss_allocation_timeout_handler");
 
-		set_allocation_lifetime_ev(a, turn_time() + lifetime, ev);
+		set_allocation_lifetime_ev(a, lifetime, ev);
 
 		return 0;
 
@@ -2565,6 +2569,10 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		FUNCEND;
 		return -1;
 	}
+
+	++(ss->received_packets);
+	ss->received_bytes += (u32bits)ioa_network_buffer_get_size(in_buffer->nbh);
+	turn_report_session_usage(ss);
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2910,6 +2918,12 @@ void delete_turn_server(turn_turnserver* server) {
 		clean_server(server);
 		turn_free(server,sizeof(turn_turnserver));
 	}
+}
+
+ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {
+	if(s)
+		return s->e;
+	return NULL;
 }
 
 void set_disconnect_cb(turn_turnserver* server, int(*disconnect)(

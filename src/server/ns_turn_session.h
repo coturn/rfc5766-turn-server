@@ -57,6 +57,11 @@ typedef struct {
   st_password_t pwd;
   int enforce_fingerprints;
   int is_tcp_relay;
+  /* Stats */
+  u32bits received_packets;
+  u32bits sent_packets;
+  u32bits received_bytes;
+  u32bits sent_bytes;
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////
