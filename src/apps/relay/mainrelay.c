@@ -64,8 +64,6 @@
 
 #include "userdb.h"
 
-#include "udp_listener.h"
-#include "tcp_listener.h"
 #include "tls_listener.h"
 #include "dtls_listener.h"
 
@@ -100,10 +98,10 @@ static int alt_listener_port = DEFAULT_ALT_STUN_PORT;
 static int alt_tls_listener_port = DEFAULT_ALT_STUN_TLS_PORT;
 static int rfc5780 = 1;
 
-static int no_udp = 0;
-static int no_tcp = 0;
-static int no_tls = 0;
-static int no_dtls = 0;
+int no_udp = 0;
+int no_tcp = 0;
+int no_tls = 0;
+int no_dtls = 0;
 
 static int no_tcp_relay = 0;
 static int no_udp_relay = 0;
@@ -152,8 +150,8 @@ struct listener_server {
 	ioa_addr **encaddrs;
 	size_t addrs_number;
 	size_t services_number;
-	udp_listener_relay_server_type **udp_services;
-	tcp_listener_relay_server_type **tcp_services;
+	dtls_listener_relay_server_type **udp_services;
+	tls_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
 	dtls_listener_relay_server_type **dtls_services;
 };
@@ -342,7 +340,9 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	static size_t current_relay_server = 0;
 
-	int is_tcp = ((get_ioa_socket_type(s) == TCP_SOCKET)||(get_ioa_socket_type(s) == TLS_SOCKET));
+	int is_tcp = ((get_ioa_socket_type(s) == TCP_SOCKET)||
+					(get_ioa_socket_type(s) == TLS_SOCKET)||
+					(get_ioa_socket_type(s) == TENTATIVE_TCP_SOCKET));
 
 	UNUSED_ARG(e);
 
@@ -568,32 +568,32 @@ static void setup_listener_servers(void)
 		}
 	}
 
-	listener.udp_services = (udp_listener_relay_server_type**)realloc(listener.udp_services, sizeof(udp_listener_relay_server_type*)*listener.services_number);
-	listener.tcp_services = (tcp_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tcp_listener_relay_server_type*)*listener.services_number);
+	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+	listener.tcp_services = (tls_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
 	listener.tls_services = (tls_listener_relay_server_type**)realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
 	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
 
 	for(i=0; i<listener.addrs_number; i++) {
 		int index = rfc5780 ? i*2 : i;
 		if(!no_udp) {
-			listener.udp_services[index] = create_udp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_listener_port>=0)
-				listener.udp_services[index+1] = create_udp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.udp_services[index] = NULL;
 			if(rfc5780)
 				listener.udp_services[index+1] = NULL;
 		}
 		if(!no_tcp) {
-			listener.tcp_services[index] = create_tcp_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.tcp_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_listener_port>=0)
-				listener.tcp_services[index+1] = create_tcp_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.tcp_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.tcp_services[index] = NULL;
 			if(rfc5780)
 				listener.tcp_services[index+1] = NULL;
 		}
-		if(!no_tls) {
+		if(!no_tls && (no_tcp || (listener_port != tls_listener_port))) {
 			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_tls_listener_port>=0)
 				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
@@ -602,7 +602,7 @@ static void setup_listener_servers(void)
 			if(rfc5780)
 				listener.tls_services[index+1] = NULL;
 		}
-		if(!no_dtls) {
+		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 			if(rfc5780 && alt_tls_listener_port>=0)
 				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
@@ -885,7 +885,7 @@ static void clean_server(void)
 	if(listener.udp_services) {
 		for(i=0;i<listener.services_number; i++) {
 			if (listener.udp_services[i]) {
-				delete_udp_listener_server(listener.udp_services[i],0);
+				delete_dtls_listener_server(listener.udp_services[i],0);
 				listener.udp_services[i] = NULL;
 			}
 		}
@@ -896,7 +896,7 @@ static void clean_server(void)
 	if(listener.tcp_services) {
 		for(i=0;i<listener.services_number; i++) {
 			if (listener.tcp_services[i]) {
-				delete_tcp_listener_server(listener.tcp_services[i],0);
+				delete_tls_listener_server(listener.tcp_services[i],0);
 				listener.tcp_services[i] = NULL;
 			}
 		}
@@ -1080,10 +1080,14 @@ static char Usage[] = "Usage: turnserver [options]\n"
 	"Options:\n"
 	"	-d, --listening-device		Listener interface device (optional, Linux only).\n"
 	"	-p, --listening-port		TURN listener port (Default: 3478).\n"
-	"	    --tls-listening-port	TURN listener port for TLS and DTLS listeners\n"
+	"					Note: actually, TLS & DTLS sessions can connect to the \"plain\" TCP & UDP port(s), too,\n"
+	"					if allowed by configuration.\n"
+	"	    --tls-listening-port	TURN listener port for TLS & DTLS listeners\n"
 	"					(Default: 5349).\n"
-	"	    --alt-listening-port	Alternative listening port (in RFC 5780 sense, default 24378)\n"
-	"	    --alt-tls-listening-port	Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 23549)\n"
+	"					Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
+	"					if allowed by configuration.\n"
+	"	    --alt-listening-port	Alternative listening port (in RFC 5780 sense, default 3479).\n"
+	"	    --alt-tls-listening-port	Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 5350).\n"
 	"	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.\n"
 	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
 	"	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).\n"

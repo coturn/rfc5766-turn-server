@@ -79,13 +79,20 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	ioa_addr client_addr;
 	ns_bcopy(sa,&client_addr,socklen);
 
-	addr_debug_print(server->verbose, &client_addr,"tls connected to");
+	addr_debug_print(server->verbose, &client_addr,"tcp or tls connected to");
+
+	SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
+
+	if(no_tls)
+		st = TCP_SOCKET;
+	else if(no_tcp)
+		st = TLS_SOCKET;
 
 	ioa_socket_handle ioas =
 				create_ioa_socket_from_fd(
 							server->e,
 							fd,
-							TLS_SOCKET,
+							st,
 							CLIENT_SOCKET,
 							&client_addr,
 							&(server->addr));
@@ -103,7 +110,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"Cannot create tls session\n");
+					"Cannot create tcp or tls session\n");
 			IOA_CLOSE_SOCKET(ioas);
 		}
 	} else {
@@ -155,7 +162,12 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
     return -1;
   }
 
-  addr_debug_print(server->verbose, &server->addr,"TLS listener opened on ");
+  if(!no_tcp && !no_tls)
+	  addr_debug_print(server->verbose, &server->addr,"TCP/TLS listener opened on ");
+  else if(!no_tls)
+	  addr_debug_print(server->verbose, &server->addr,"TLS listener opened on ");
+  else if(!no_tcp)
+	  addr_debug_print(server->verbose, &server->addr,"TCP listener opened on ");
 
   FUNCEND;
   

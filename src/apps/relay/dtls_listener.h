@@ -43,6 +43,13 @@ extern "C" {
 
 ///////////////////////////////////////////
 
+extern int no_udp;
+extern int no_tcp;
+extern int no_tls;
+extern int no_dtls;
+
+///////////////////////////////////////////
+
 struct dtls_listener_relay_server_info;
 typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 
@@ -56,6 +63,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     uint32_t *stats,
 							     ioa_engine_new_connection_event_handler send_socket);
 void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int delete_engine);
+
+void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 
 ///////////////////////////////////////////
 

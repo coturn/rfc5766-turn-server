@@ -211,9 +211,9 @@ new STUN RFC 5389
 
 TURN RFC 5766
 
-TURN-TCP extention RFC 6062
+TURN-TCP extension RFC 6062
  
-TURN IPv6 extention RFC 6156
+TURN IPv6 extension RFC 6156
 
 STUN/TURN test vectors RFC 5769
 

@@ -21,8 +21,8 @@ The compiled binary image of the TURN Server program is located in bin/ sub-dire
   
 6.	turnutils_rfc5769check. See README.turnutils and turnutils man page.
 
-In the "examples/scripts" subdirectory, you will find the examples of command lines to be used 
-to run the programs. The scripts are meant to be run from examples/ subdirectory, for example:
+In the "examples/scripts" sub-directory, you will find the examples of command lines to be used 
+to run the programs. The scripts are meant to be run from examples/ sub-directory, for example:
 
 $ cd examples
 $ ./scripts/secure_relay.sh
@@ -73,7 +73,7 @@ Config file settings:
 		items names in the file. If not an absolute path is supplied, 
 		then the file is searched in the following directories: 
 		  * current directory
-		  * current directory etc/ subdirectory
+		  * current directory etc/ sub-directory
 		  * upper directory level etc/
 		  * /etc/ 
 		  * /usr/local/etc/
@@ -191,8 +191,12 @@ Options with required values:
 				The same ip(s) can be used as both listening and relay ip(s).
 
 -p, --listening-port		TURN listener port for UDP and TCP listeners (Default: 3478).
+				Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP
+				port(s), too - if allowed by configuration.
 
 --tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
+				Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS
+				port(s), too - if allowed by configuration.
 
 --alt-listening-port		Alternative listening port for UDP and TCP listeners
 				(default value is 3479). This is needed for RFC 5780 support
@@ -409,7 +413,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-This behavior can be controlled by --sql-log and --no-stdout-log options (see turnserver help).
+This behavior can be controlled by --log-file and --no-stdout-log options (see turnserver help).
 
 ===================================================================================
 
@@ -442,9 +446,9 @@ new STUN RFC 5389
 
 TURN RFC 5766
 
-TURN-TCP extention RFC 6062
+TURN-TCP extension RFC 6062
  
-TURN IPv6 extention RFC 6156
+TURN IPv6 extension RFC 6156
 
 STUN/TURN test vectors RFC 5769
 

@@ -1235,7 +1235,7 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		if(s->bound && s->e && s->e->tp) {
 			turnipports_release(s->e->tp,
-					(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
+					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
 					&(s->local_addr));
 		}
 
@@ -1529,6 +1529,24 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	return len;
 }
 
+static int check_tentative_tls(ioa_socket_raw fd)
+{
+	char s[6];
+	int len = 0;
+
+	do {
+		len = (int)recv(fd, s, sizeof(s), MSG_PEEK);
+	} while (len < 0 && (errno == EINTR));
+
+	if(len>0 && ((size_t)len == sizeof(s))) {
+		if((s[0]==22)&&(s[1]==3)&&(s[2]==1)&&(s[5]==1)) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 static int socket_input_worker(ioa_socket_handle s)
 {
 	int len = 0;
@@ -1562,6 +1580,32 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
 	len = -1;
+
+	if(s->st == TENTATIVE_TCP_SOCKET) {
+		EVENT_DEL(s->read_event);
+		if(check_tentative_tls(s->fd)) {
+			s->st = TLS_SOCKET;
+			SSL *tls_ssl = SSL_new(s->e->tls_ctx);
+			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+								s->fd,
+								tls_ssl,
+								BUFFEREVENT_SSL_ACCEPTING,
+								BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+					eventcb_bev, s);
+			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+		} else {
+			s->st = TCP_SOCKET;
+			s->bev = bufferevent_socket_new(s->e->event_base,
+							s->fd,
+							BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+					eventcb_bev, s);
+			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+		}
+	}
 
 	if(s->bev) { /* TCP & TLS */
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
@@ -2065,6 +2109,24 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						event_add(s->read_event,NULL);
 					}
 					break;
+				case TENTATIVE_TCP_SOCKET:
+					if(s->bev) {
+						if(!clean_preexisting) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"%s: software error: buffer preset 2\n", __FUNCTION__);
+							return -1;
+						}
+					} else if(s->read_event) {
+						if(!clean_preexisting) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"%s: software error: buffer preset 1\n", __FUNCTION__);
+							return -1;
+						}
+					} else {
+						s->read_event = event_new(s->e->event_base,s->fd, EV_READ|EV_PERSIST, socket_input_handler, s);
+						event_add(s->read_event,NULL);
+					}
+					break;
 				case TCP_SOCKET:
 					if(s->bev) {
 						if(!clean_preexisting) {
@@ -2206,14 +2268,14 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 	if(a) {
 		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
 		if(ss) {
-			turn_turnserver *server = ss->server;
+			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					const char* status="New";
 					if(refresh)
 						status="Refresh";
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id(a), (char*)ss->username, (unsigned long)lifetime);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
 				}
 			}
 		}
@@ -2225,11 +2287,11 @@ void turn_report_allocation_delete(void *a)
 	if(a) {
 		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
 		if(ss) {
-			turn_turnserver *server = ss->server;
+			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=0x%lx, username=<%s>\n", get_allocation_id(a), (char*)ss->username);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=0x%lx, username=<%s>\n", get_allocation_id((allocation*)a), (char*)ss->username);
 				}
 			}
 		}
@@ -2240,7 +2302,7 @@ void turn_report_session_usage(void *session)
 {
 	if(session) {
 		ts_ur_super_session *ss = (ts_ur_super_session *)session;
-		turn_turnserver *server = ss->server;
+		turn_turnserver *server = (turn_turnserver*)ss->server;
 		if(server) {
 			ioa_engine_handle e = turn_server_get_engine(server);
 			allocation *a = &(ss->alloc);

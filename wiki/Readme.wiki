@@ -1,5 +1,5 @@
 
-TURN(23 Apr 2013)	
+TURN(04 May 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -111,8 +111,8 @@ TURN(23 Apr 2013)
 
     *   *-d,* *--listening-device* Listener interface device (optional functionality, Linux only). The turnserver process must have root privileges to bind the	listening endpoint to a device. If turnserver must run as a	process without root privileges, then just do not use this setting.
     *   *-L,* *--listening-ip* Listener IP address of relay server.  Multiple listeners can  be specified.  If no *IP*(s) specified, then all IPv4 and IPv6 system IPs will be used for listening.
-    *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478).
-    *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349).
+    *   *-p,* *--listening-port* TURN listener port for UDP and TCP listeners (Default: 3478). Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP port(s), too - if allowed by configuration.
+    *   *--tls-listening-port*   TURN listener port for TLS and DTLS listeners (Default: 5349). Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS port(s), too - if allowed by configuration.
     *   *--alt-listening-port*   Alternative listener port for UDP and TCP listeners. Default value is 3479. This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6).
     *   *--alt-tls-listening-port*   Alternative listener port for TLS and DTLS listeners (Default: 5350).
     *   *-i,* *--relay-device* Relay interface device for relay sockets (optional, Linux	only).
@@ -343,7 +343,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-This behavior can be controlled by --sql-log and --no-stdout-log options (see turnserver help).
+This behavior can be controlled by --log-file and --no-stdout-log options (see turnserver help).
 
 == CLUSTERS ==
 
@@ -370,9 +370,9 @@ new STUN RFC 5389
 
 TURN RFC 5766
 
-TURN-TCP extention RFC 6062
+TURN-TCP extension RFC 6062
  
-TURN IPv6 extention RFC 6156
+TURN IPv6 extension RFC 6156
 
 STUN/TURN test vectors RFC 5769
 
@@ -383,4 +383,4 @@ STUN NAT behavior discovery RFC 5780
 Oleg Moskalenko <mom040267@gmail.com>
 
 
-							TURN(23 Apr 2013)
+							TURN(04 May 2013)

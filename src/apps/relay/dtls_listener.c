@@ -476,6 +476,96 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
 
 #endif
 
+static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
+{
+
+	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
+
+	if(!(server->connect_cb)) {
+		return;
+	}
+
+	FUNCSTART;
+
+	if (!server)
+		return;
+
+	if (!(what & EV_READ))
+		return;
+
+	if (server->stats)
+		++(*(server->stats));
+
+	ioa_addr client_addr;
+
+	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
+	  ioa_network_buffer_allocate(server->e);
+
+	ioa_net_data nd;;
+
+	ns_bzero(&nd,sizeof(nd));
+	addr_cpy(&(nd.src_addr),&client_addr);
+	nd.nbh = elem;
+	nd.chnum = 0;
+	nd.recv_ttl = TTL_IGNORE;
+	nd.recv_tos = TOS_IGNORE;
+
+	ioa_addr si_other;
+	int slen = get_ioa_addr_len(&(server->addr));
+	ssize_t bsize = 0;
+
+	int flags = MSG_DONTWAIT;
+
+	do {
+		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
+	} while (bsize < 0 && (errno == EINTR));
+
+	if (bsize > 0) {
+
+		ioa_network_buffer_set_size(elem, (size_t)bsize);
+
+		if (stun_is_request_str(ioa_network_buffer_data(elem), ioa_network_buffer_get_size(elem))) {
+
+			addr_cpy(&client_addr, &si_other);
+
+			ur_conn_info info;
+
+			memset(&info, 0, sizeof(info));
+			info.fd = -1;
+			addr_cpy(&(info.remote_addr), &client_addr);
+			addr_cpy(&(info.local_addr), &(server->addr));
+
+			if (open_client_connection_socket(server, &info) >= 0) {
+
+				ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e,
+								info.fd, UDP_SOCKET, CLIENT_SOCKET,
+								&info.remote_addr, &info.local_addr);
+
+				if (ioas) {
+
+					int rc = server->connect_cb(server->e, ioas, &nd);
+
+					if(rc < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
+						IOA_CLOSE_SOCKET(ioas);
+					}
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from FD\n");
+					close(info.fd);
+				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open socket from FD\n");
+			}
+
+		}
+
+	}
+
+	ioa_network_buffer_delete(server->e, nd.nbh);
+
+	FUNCEND	;
+}
+
 static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 #if defined(TURN_NO_DTLS)
@@ -517,7 +607,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	addr_cpy(&client_addr, &si_other);
 
-	if (is_dtls_handshake_message(buf, rc)) {
+	if (!no_dtls && is_dtls_handshake_message(buf, rc)) {
 
 		SSL* connecting_ssl = NULL;
 
@@ -586,6 +676,10 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 				free_ndc(ndc);
 			}
 		}
+	} else if(!no_udp) {
+
+		udp_server_input_handler(fd, what, arg);
+
 	} else {
 
 		flags = MSG_DONTWAIT;
@@ -703,7 +797,12 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
     return -1;
   }
 
-  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on ");
+  if(!no_udp && !no_dtls)
+	  addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on ");
+  else if(!no_dtls)
+	  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on ");
+  else if(!no_udp)
+	  addr_debug_print(server->verbose, &server->addr,"UDP listener opened on ");
 
   FUNCEND;
   
@@ -750,17 +849,20 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
   
+  if(server->dtls_ctx) {
+
 #if defined(REQUEST_CLIENT_CERT)
-  /* If client has to authenticate, then  */
-  SSL_CTX_set_verify(server->dtls_ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
+	  /* If client has to authenticate, then  */
+	  SSL_CTX_set_verify(server->dtls_ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
 #endif
   
-  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
+	  SSL_CTX_set_read_ahead(server->dtls_ctx, 1);
 
 #if !defined(TURN_NO_DTLS)
-  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
-  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
+	  SSL_CTX_set_cookie_generate_cb(server->dtls_ctx, generate_cookie);
+	  SSL_CTX_set_cookie_verify_cb(server->dtls_ctx, verify_cookie);
 #endif
+  }
 
   return create_server_socket(server);
 }
@@ -803,6 +905,13 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   } else {
     return server;
   }
+}
+
+void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest)
+{
+	if(server && dest && nbh && (server->udp_listen_fd > -1)) {
+		udp_send(server->udp_listen_fd, dest, (s08bits*)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
+	}
 }
 
 void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int delete_engine) {

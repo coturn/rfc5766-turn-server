@@ -43,6 +43,13 @@ extern "C" {
 
 ///////////////////////////////////////////
 
+extern int no_udp;
+extern int no_tcp;
+extern int no_tls;
+extern int no_dtls;
+
+///////////////////////////////////////////
+
 struct tls_listener_relay_server_info;
 typedef struct tls_listener_relay_server_info tls_listener_relay_server_type;
 
