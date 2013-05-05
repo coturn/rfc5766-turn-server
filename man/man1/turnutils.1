@@ -10,10 +10,10 @@ for testing and for setting up the TURN server.
 \fIturnutils_uclient\fP: emulates multiple UDP,TCP,TLS or DTLS clients. 
 (this program is provided for the testing purposes only !)
 The compiled binary image of this program is located in bin/ 
-sub-directory.
+sub\-directory.
 .PP
 WARNING: the \fIturnutils_uclient\fP program is a primitive client application. 
-It does not implement the re-transmission pattern that is necessary for 
+It does not implement the re\-transmission pattern that is necessary for 
 a correct TURN client implementation. In TURN, the retransmission burden 
 is lying almost entirely on the client application. We provide the messaging 
 functionality in the client library, but the client must implement 
@@ -21,12 +21,12 @@ the correct Networking IO processing in the client program code.
 .TP
 .B
 2.
-\fIturnutils_peer\fP: a simple stateless UDP-only "echo" server, 
+\fIturnutils_peer\fP: a simple stateless UDP\-only "echo" server, 
 to be used as the final server in relay pattern ("peer"). For every incoming 
 UDP packet, it simply echoes it back.
 (this program is provided for the testing purposes only !) 
-When the test clients are communicating in the client-to-client manner 
-(when the "\fIturnutils_uclient\fP" program is used with "\fB-y\fP" option) then the 
+When the test clients are communicating in the client\-to\-client manner 
+(when the "\fIturnutils_uclient\fP" program is used with "\fB\-y\fP" option) then the 
 \fIturnutils_peer\fP is not needed.
 .PP
 The compiled binary image of this program is located in bin/ subdirectory.
@@ -50,11 +50,11 @@ $ ./scripts/secure_relay.sh
 =====================================
 .SS  NAME
 \fB
-\fBturnutils_uclient \fP- this client emulation application is supplied for the test purposes only.
+\fBturnutils_uclient \fP\- this client emulation application is supplied for the test purposes only.
 \fB
 .SS  SYNOPSIS  
 
-$ \fIturnutils_uclient\fP [\fB-tTSvsyhcxg\fP] [options] <TURN-Server-IP-address>
+$ \fIturnutils_uclient\fP [\fB\-tTSvsyhcxg\fP] [options] <TURN\-Server\-IP\-address>
 .SS  DESCRIPTION
 
 It was designed to simulate multiple clients. It uses asynch IO API in 
@@ -68,116 +68,116 @@ The number of the messages to send is configurable.
 Flags:
 .TP
 .B
-\fB-t\fP
+\fB\-t\fP
 Use TCP for communications between client and TURN server (default is UDP).
 .TP
 .B
-\fB-T\fP
-Use TCP for the relay transport (default - UDP). Implies options \fB-t\fP, \fB-y\fP, \fB-c\fP, 
-and ignores flags and options \fB-s\fP, \fB-e\fP, \fB-r\fP and \fB-g\fP.
+\fB\-T\fP
+Use TCP for the relay transport (default \- UDP). Implies options \fB\-t\fP, \fB\-y\fP, \fB\-c\fP, 
+and ignores flags and options \fB\-s\fP, \fB\-e\fP, \fB\-r\fP and \fB\-g\fP.
 .TP
 .B
-\fB-S\fP
+\fB\-S\fP
 Secure connection: TLS for TCP, DTLS for UDP.
 .TP
 .B
-\fB-v\fP
+\fB\-v\fP
 Verbose.
 .TP
 .B
-\fB-s\fP
+\fB\-s\fP
 Use "Send" method in TURN; by default, it uses TURN Channels.
 .TP
 .B
-\fB-y\fP
-Use client-to-client connections: 
+\fB\-y\fP
+Use client\-to\-client connections: 
 RTP/RTCP pair of channels to another RTP/RTCP pair of channels.
 with this option the \fIturnutils_peer\fP application is not used,
 as the allocated relay endpoints are talking to each other.
 .TP
 .B
-\fB-h\fP
+\fB\-h\fP
 Hang on indefinitely after the last sent packet.
 .TP
 .B
-\fB-c\fP
+\fB\-c\fP
 Do not create rtcp connections.
 .TP
 .B
-\fB-x\fP
+\fB\-x\fP
 Request IPv6 relayed address (RFC6156).
 .TP
 .B
-\fB-g\fP
+\fB\-g\fP
 Set DONT_FRAGMENT parameter in TURN requests.
 .TP
 .B
-\fB-A\fP
-use short-term credentials mechanism for authentication. 
-By default, the program uses the long-term credentials mechanism 
+\fB\-A\fP
+use short\-term credentials mechanism for authentication. 
+By default, the program uses the long\-term credentials mechanism 
 if authentication is required.
 .TP
 .B
 Options with required values:
 .TP
 .B
-\fB-l\fP
+\fB\-l\fP
 Message length (Default: 100 Bytes).
 .TP
 .B
-\fB-i\fP
+\fB\-i\fP
 Certificate file (for secure connections only).
 .TP
 .B
-\fB-k\fP
+\fB\-k\fP
 Private key file (for secure connections only).
 .TP
 .B
-\fB-p\fP
+\fB\-p\fP
 \fBTURN Server\fP port (Defaults: 3478 unsecure, 5349 secure).
 .TP
 .B
-\fB-n\fP
+\fB\-n\fP
 Number of messages to send (Default: 5).
 .TP
 .B
-\fB-d\fP
+\fB\-d\fP
 Local interface device (optional, Linux only).
 .TP
 .B
-\fB-L\fP
+\fB\-L\fP
 Local IP address (optional).
 .TP
 .B
-\fB-m\fP
+\fB\-m\fP
 Number of clients (Default: 1, 2 or 4, depending on options).
 .TP
 .B
-\fB-e\fP
+\fB\-e\fP
 Peer address.
 .TP
 .B
-\fB-r\fP
+\fB\-r\fP
 Peer port (Default: 3480).
 .TP
 .B
-\fB-z\fP
-Per-session packet interval in milliseconds (Default: 20).
+\fB\-z\fP
+Per\-session packet interval in milliseconds (Default: 20).
 .TP
 .B
-\fB-u\fP
+\fB\-u\fP
 STUN/TURN user name.
 .TP
 .B
-\fB-w\fP
+\fB\-w\fP
 STUN/TURN user password.
 .TP
 .B
-\fB-W\fP
-TURN REST API authentication secret. Is not compatible with \fB-A\fP flag.
+\fB\-W\fP
+TURN REST API authentication secret. Is not compatible with \fB\-A\fP flag.
 .TP
 .B
-\fB-C\fP
+\fB\-C\fP
 This is the username/timestamp separator symbol (character) in TURN REST API. The default value is :.
 .PP
 See the examples in the "examples/scripts" directory.
@@ -185,11 +185,11 @@ See the examples in the "examples/scripts" directory.
 ======================================
 .SS  NAME
 \fB
-\fBturnutils_peer \fP- a simple UDP-only echo backend server.
+\fBturnutils_peer \fP\- a simple UDP\-only echo backend server.
 \fB
 .SS  SYNOPSYS
 
-$ \fIturnutils_peer\fP [\fB-v\fP] [options]
+$ \fIturnutils_peer\fP [\fB\-v\fP] [options]
 .SS  DESCRIPTION
 
 This application is used for the test purposes only, as a peer for the \fIturnutils_uclient\fP application.
@@ -198,32 +198,32 @@ This application is used for the test purposes only, as a peer for the \fIturnut
 Options with required values:
 .TP
 .B
-\fB-p\fP
+\fB\-p\fP
 Listening UDP port (Default: 3480).
 .TP
 .B
-\fB-d\fP
+\fB\-d\fP
 Listening interface device (optional)
 .TP
 .B
-\fB-L\fP
+\fB\-L\fP
 Listening address of \fIturnutils_peer\fP server. Multiple listening addresses can be used, IPv4 and IPv6.
 If no listener \fBaddress\fP(es) defined, then it listens on all IPv4 and IPv6 addresses.
 .TP
 .B
-\fB-v\fP
+\fB\-v\fP
 Verbose
 .PP
 ========================================
 .SS  NAME
 \fB
-\fBturnutils_stunclient \fP- a basic STUN client.
+\fBturnutils_stunclient \fP\- a basic STUN client.
 \fB
 .SS  SYNOPSIS
 .nf
 .fam C
 
-$ \fIturnutils_stunclient\fP [\fIoptions\fP] <STUN-Server-IP-address>
+$ \fIturnutils_stunclient\fP [\fIoptions\fP] <STUN\-Server\-IP\-address>
 
 .fam T
 .fi
@@ -237,11 +237,11 @@ It sends a STUN request (over UDP) and shows the reply information.
 Options with required values:
 .TP
 .B
-\fB-p\fP
+\fB\-p\fP
 STUN server port (Default: 3478).
 .TP
 .B
-\fB-L\fP
+\fB\-L\fP
 Local address to use (optional).
 .PP
 The \fIturnutils_stunclient\fP program checks the results of the first request, 
@@ -252,7 +252,7 @@ requests with different parameters, to demonstrate the NAT discovery capabilitie
 =====================================
 .SS  NAME
 \fB
-\fBturnutils_rfc5769check \fP- a utility that tests the correctness of STUN protocol implementation.
+\fBturnutils_rfc5769check \fP\- a utility that tests the correctness of STUN protocol implementation.
 \fB
 .SS  SYNOPSIS
 .nf
@@ -283,7 +283,7 @@ $ man \fIturnutils\fP
 .PP
 or in the project root directory:
 .PP
-$ man \fB-M\fP man \fIturnutils\fP
+$ man \fB\-M\fP man \fIturnutils\fP
 .PP
 to see the man page.
 .PP
@@ -294,7 +294,7 @@ new STUN RFC 5389
 .PP
 TURN RFC 5766
 .PP
-TURN-TCP extension RFC 6062
+TURN\-TCP extension RFC 6062
 .PP
 TURN IPv6 extension RFC 6156
 .PP

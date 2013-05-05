@@ -3,7 +3,7 @@
 .SH GENERAL INFORMATION
 
 The \fBTURN Server\fP project contains the source code of a TURN server and TURN client 
-messaging library. Also, some extra programs provided, for testing-only 
+messaging library. Also, some extra programs provided, for testing\-only 
 purposes. 
 .PP
 See the INSTALL file for the building instructions.
@@ -13,7 +13,7 @@ After the build, you will have the following binary images:
 .B
 1.
 \fIturnserver\fP: \fBTURN Server\fP relay. 
-The compiled binary image of the \fBTURN Server\fP program is located in bin/ sub-directory.
+The compiled binary image of the \fBTURN Server\fP program is located in bin/ sub\-directory.
 .TP
 .B
 2.
@@ -35,8 +35,8 @@ turnutils_stunclient. See README.turnutils and \fIturnutils\fP man page.
 6.
 turnutils_rfc5769check. See README.turnutils and \fIturnutils\fP man page.
 .PP
-In the "examples/scripts" sub-directory, you will find the examples of command lines to be used 
-to run the programs. The scripts are meant to be run from examples/ sub-directory, for example:
+In the "examples/scripts" sub\-directory, you will find the examples of command lines to be used 
+to run the programs. The scripts are meant to be run from examples/ sub\-directory, for example:
 .PP
 $ cd examples
 $ ./scripts/secure_relay.sh
@@ -50,7 +50,7 @@ The short form must be used as this (for example):
 .PP
 .nf
 .fam C
-  $ turnserver -L 12.34.56.78
+  $ turnserver \-L 12.34.56.78
 
 .fam T
 .fi
@@ -58,7 +58,7 @@ The long form equivalent must use the "=" character:
 .PP
 .nf
 .fam C
-  $ turnserver --listening-ip=12.34.56.78
+  $ turnserver \-\-listening\-ip=12.34.56.78
 
 .fam T
 .fi
@@ -66,7 +66,7 @@ If this is a flag option (no argument required) then their usage are the same, f
 .PP
 .nf
 .fam C
- $ turnserver -a
+ $ turnserver \-a
 
 .fam T
 .fi
@@ -74,21 +74,21 @@ is equivalent to:
 .PP
 .nf
 .fam C
- $ turnserver --lt-cred-mech
+ $ turnserver \-\-lt\-cred\-mech
 
 .fam T
 .fi
 =====================================
 .SS  NAME
 \fB
-\fBturnserver \fP- a TURN relay server implementation.
+\fBturnserver \fP\- a TURN relay server implementation.
 \fB
 .SS  SYNOPSIS
 .nf
 .fam C
 
-$ \fIturnserver\fP [\fB-n\fP | \fB-c\fP <config-file> ] [\fIflags\fP] [ \fB--userdb\fP=<userdb-file> | \fB--psql-userdb\fP=<db-conn-string> | \fB--mysql-userdb\fP=<db-conn-string> ] [\fB-z\fP | \fB--no-auth\fP | \fB-a\fP | \fB--lt-cred-mech\fP ] [\fIoptions\fP]
-$ \fIturnserver\fP \fB-h\fP
+$ \fIturnserver\fP [\fB\-n\fP | \fB\-c\fP <config\-file> ] [\fIflags\fP] [ \fB\-\-userdb\fP=<userdb\-file> | \fB\-\-psql\-userdb\fP=<db\-conn\-string> | \fB\-\-mysql\-userdb\fP=<db\-conn\-string> ] [\fB\-z\fP | \fB\-\-no\-auth\fP | \fB\-a\fP | \fB\-\-lt\-cred\-mech\fP ] [\fIoptions\fP]
+$ \fIturnserver\fP \fB\-h\fP
 
 .fam T
 .fi
@@ -101,12 +101,12 @@ $ \fIturnserver\fP \fB-h\fP
 Config file settings:
 .TP
 .B
-\fB-n\fP
+\fB\-n\fP
 Do not use configuration file, use only command line parameters.
 .TP
 .B
-\fB-c\fP
-Configuration file name (default - turnserver.conf).
+\fB\-c\fP
+Configuration file name (default \- turnserver.conf).
 The format of config file can be seen in
 the supplied examples/etc/turnserver.conf example file. Long 
 names of the \fIoptions\fP are used as the configuration 
@@ -116,7 +116,7 @@ then the file is searched in the following directories:
 .IP \(bu 3
 current directory
 .IP \(bu 3
-current directory etc/ sub-directory
+current directory etc/ sub\-directory
 .IP \(bu 3
 upper directory level etc/
 .IP \(bu 3
@@ -131,22 +131,22 @@ installation directory /etc
 User database settings:
 .TP
 .B
-\fB-b\fP, \fB--userdb\fP
-User database file name (default - turnuserdb.conf),
-for long-term credentials mechanism only.
+\fB\-b\fP, \fB\-\-userdb\fP
+User database file name (default \- turnuserdb.conf),
+for long\-term credentials mechanism only.
 This user file database is being dynamically checked while the \fIturnserver\fP 
 is working, and the user accounts can be changed dynamically by
 editing the database.
 .TP
 .B
-\fB-e\fP, \fB--psql-userdb\fP
+\fB\-e\fP, \fB\-\-psql\-userdb\fP
 User database connection string for PostgreSQL.
-This database can be used for long-term and short-term credentials mechanisms,
-and it can store the secret value for secret-based timed authentication in TURN RESP API.
+This database can be used for long\-term and short\-term credentials mechanisms,
+and it can store the secret value for secret\-based timed authentication in TURN RESP API.
 The connection string format is like that:
 .RS
 .PP
-"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>" 
+"host=<host> dbname=<dbname> user=<db\-user> password=<db\-user\-password> connect_timeout=<seconds>" 
 (for 8.x or newer Postgres).
 .PP
 Or:
@@ -158,14 +158,14 @@ Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 .RE
 .TP
 .B
-\fB-M\fP, \fB--mysql-userdb\fP
+\fB\-M\fP, \fB\-\-mysql\-userdb\fP
 User database connection string for MySQL. 
-This database can be used for long-term and short-term credentials mechanisms,
-and it can store the secret value for secret-based timed authentication in TURN RESP API.
+This database can be used for long\-term and short\-term credentials mechanisms,
+and it can store the secret value for secret\-based timed authentication in TURN RESP API.
 The connection string format is like that:
 .RS
 .PP
-"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
+"host=<host> dbname=<dbname> user=<db\-user> password=<db\-user\-password> connect_timeout=<seconds>"
 See the INSTALL file for more explanations and examples.
 .PP
 Also, see http://www.mysql.org for full MySQL documentation.
@@ -175,137 +175,137 @@ Also, see http://www.mysql.org for full MySQL documentation.
 Flags:
 .TP
 .B
-\fB-v\fP, \fB--verbose\fP
+\fB\-v\fP, \fB\-\-verbose\fP
 Moderate verbose mode.
 .TP
 .B
-\fB-V\fP, \fB--Verbose\fP
+\fB\-V\fP, \fB\-\-Verbose\fP
 Extra verbose mode, very annoying and not recommended.
 .TP
 .B
-\fB-o\fP, \fB--daemon\fP
+\fB\-o\fP, \fB\-\-daemon\fP
 Run server as daemon.
 .TP
 .B
-\fB-f\fP, \fB--fingerprint\fP
+\fB\-f\fP, \fB\-\-fingerprint\fP
 Use fingerprints in the TURN messages. If an incoming request
 contains a fingerprint, then TURN server will always add 
 fingerprints to the messages in this session, regardless of the
-per-server setting.
+per\-server setting.
 .TP
 .B
-\fB-a\fP, \fB--lt-cred-mech\fP
-Use long-term credentials mechanism (this one you need for WebRTC usage). 
+\fB\-a\fP, \fB\-\-lt\-cred\-mech\fP
+Use long\-term credentials mechanism (this one you need for WebRTC usage). 
 This option can be used with either flat file user database or 
 PostgreSQL DB or MySQL DB for user keys storage.
 .TP
 .B
-\fB-A\fP, \fB--st-cred-mech\fP
-Use the short-term credentials mechanism. This option requires
+\fB\-A\fP, \fB\-\-st\-cred\-mech\fP
+Use the short\-term credentials mechanism. This option requires
 a PostgreSQL or MySQL DB for short term passwords storage.
 .TP
 .B
-\fB-z\fP, \fB--no-auth\fP
+\fB\-z\fP, \fB\-\-no\-auth\fP
 Do not use any credentials mechanism, allow anonymous access. 
-Opposite to \fB-a\fP and \fB-A\fP \fIoptions\fP. This is default option when no 
-authentication-related \fIoptions\fP are set.
-By default, no credential mechanism is used -
+Opposite to \fB\-a\fP and \fB\-A\fP \fIoptions\fP. This is default option when no 
+authentication\-related \fIoptions\fP are set.
+By default, no credential mechanism is used \-
 any user is allowed.
 .TP
 .B
-\fB--use-auth-secret\fP
+\fB\-\-use\-auth\-secret\fP
 Flag that sets a special WebRTC authorization option 
 that is based upon authentication secret. This feature purpose 
 is to support "\fBTURN Server\fP REST API" as described in
 TURNServerRESTAPI.pdf in the docs.
 This option uses timestamp as part of combined username:
-usercombo -> "user_id:timestamp",
-turn user -> usercombo,
-turn password -> \fBbase64\fP(hmac(secret key, usercombo)).
+usercombo \-> "user_id:timestamp",
+turn user \-> usercombo,
+turn password \-> \fBbase64\fP(hmac(secret key, usercombo)).
 This allows TURN credentials to be accounted for a specific user id.
 If you don't have a suitable id, the timestamp alone can be used.
-This option is just turns on secret-based authentication.
-The actual value of the secret is defined either by option static-auth-secret,
+This option is just turns on secret\-based authentication.
+The actual value of the secret is defined either by option static\-auth\-secret,
 or can be found in the turn_secret table in the database.
-This option can be used with long-term credentials mechanisms only -
-it does not make much sense with the short-term mechanism.
+This option can be used with long\-term credentials mechanisms only \-
+it does not make much sense with the short\-term mechanism.
 .TP
 .B
-\fB--no-udp\fP
+\fB\-\-no\-udp\fP
 Do not start UDP client listeners.
 .TP
 .B
-\fB--no-tcp\fP
+\fB\-\-no\-tcp\fP
 Do not start TCP client listeners.
 .TP
 .B
-\fB--no-tls\fP
+\fB\-\-no\-tls\fP
 Do not start TLS client listeners.
 .TP
 .B
-\fB--no-dtls\fP
+\fB\-\-no\-dtls\fP
 Do not start DTLS client listeners.
 .TP
 .B
-\fB--no-udp-relay\fP
+\fB\-\-no\-udp\-relay\fP
 Do not allow UDP relay endpoints, use only TCP relay option.
 .TP
 .B
-\fB--no-tcp-relay\fP
+\fB\-\-no\-tcp\-relay\fP
 Do not allow TCP relay endpoints, use only UDP relay option.
 .TP
 .B
-\fB--stale-nonce\fP
+\fB\-\-stale\-nonce\fP
 Use extra security with nonce value having limited lifetime (600 secs). 
 .TP
 .B
-\fB--no-stdout-log\fP
+\fB\-\-no\-stdout\-log\fP
 Flag to prevent stdout log messages.
 By default, all log messages are going to both stdout and to
 a log file. With this option everything will be going to the log file only
 (unless the log file itself is stdout).
 .TP
 .B
-\fB-S\fP, \fB--stun-only\fP
+\fB\-S\fP, \fB\-\-stun\-only\fP
 Run as STUN server only, all TURN requests will be ignored. 
 .TP
 .B
-\fB-h\fP
+\fB\-h\fP
 Help.
 .TP
 .B
 Options with required values:
 .TP
 .B
-\fB-d\fP, \fB--listening-device\fP
+\fB\-d\fP, \fB\-\-listening\-device\fP
 Listener interface device (optional functionality, Linux only). 
 The \fIturnserver\fP process must have root privileges to bind the 
 listening endpoint to a device. If \fIturnserver\fP must run as a 
 process without root privileges, then just do not use this setting.
 .TP
 .B
-\fB-L\fP, \fB--listening-ip\fP
+\fB\-L\fP, \fB\-\-listening\-ip\fP
 Listener IP address of relay server. 
 Multiple listeners can be specified:
-\fB-L\fP ip1 \fB-L\fP ip2 \fB-L\fP ip3
+\fB\-L\fP ip1 \fB\-L\fP ip2 \fB\-L\fP ip3
 If no \fBIP\fP(s) specified, then all IPv4 and 
 IPv6 system IPs will be used for listening.
 The same \fBip\fP(s) can be used as both listening and relay \fBip\fP(s).
 .TP
 .B
-\fB-p\fP, \fB--listening-port\fP
+\fB\-p\fP, \fB\-\-listening\-port\fP
 TURN listener port for UDP and TCP listeners (Default: 3478).
 Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP
-\fBport\fP(s), too - if allowed by configuration.
+\fBport\fP(s), too \- if allowed by configuration.
 .TP
 .B
-\fB--tls-listening-port\fP
+\fB\-\-tls\-listening\-port\fP
 TURN listener port for TLS and DTLS listeners (Default: 5349).
 Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS
-\fBport\fP(s), too - if allowed by configuration.
+\fBport\fP(s), too \- if allowed by configuration.
 .TP
 .B
-\fB--alt-listening-port\fP
+\fB\-\-alt\-listening\-port\fP
 Alternative listening port for UDP and TCP listeners
 (default value is 3479). This is needed for RFC 5780 support
 (STUN extension specs, NAT behavior discovery). The \fBTURN Server\fP 
@@ -313,57 +313,57 @@ supports RFC 5780 only if it is started with more than one
 listening IP address of the same family (IPv4 or IPv6).
 .TP
 .B
-\fB--alt-tls-listening-port\fP
+\fB\-\-alt\-tls\-listening\-port\fP
 Alternative listening port for TLS and DTLS protocols.
 Default value is 5350.
 .TP
 .B
-\fB-i\fP, \fB--relay-device\fP
+\fB\-i\fP, \fB\-\-relay\-device\fP
 Relay interface device for relay sockets 
 (optional, Linux only).
 .TP
 .B
-\fB-E\fP, \fB--relay-ip\fP
+\fB\-E\fP, \fB\-\-relay\-ip\fP
 Relay address (the local IP address that 
 will be used to relay the packets to the 
 peer). Multiple relay addresses may be used:
-\fB-E\fP ip1 \fB-E\fP ip2 \fB-E\fP ip3
+\fB\-E\fP ip1 \fB\-E\fP ip2 \fB\-E\fP ip3
 If no relay \fBIP\fP(s) specified, then all 
-non-loopback system IPs will be used.
+non\-loopback system IPs will be used.
 The same \fBip\fP(s) can be used as both listening and relay \fBip\fP(s).
 .TP
 .B
-\fB-X\fP, \fB--external-ip\fP
+\fB\-X\fP, \fB\-\-external\-ip\fP
 "External" \fBTURN Server\fP address if the server is behind NAT.
-In the server-behind-NAT situation, only one relay address must be used, and
+In the server\-behind\-NAT situation, only one relay address must be used, and
 that single relay address must be mapped by NAT to the external IP.
 For this external IP, NAT must forward ports directly (relayed port 12345
 must be always mapped to the same external port 12345).
-This value, if not empty, is returned in XOR-RELAYED-ADDRESS field.
+This value, if not empty, is returned in XOR\-RELAYED\-ADDRESS field.
 By default, this value is empty, and the real relay IP address is used.
 .TP
 .B
-\fB-m\fP, \fB--relay-threads\fP
+\fB\-m\fP, \fB\-\-relay\-threads\fP
 Number of relay threads to handle the established connections
 (in addition to authentication thread and the listener thread).
-If set to 0 then application runs in single-threaded mode.
+If set to 0 then application runs in single\-threaded mode.
 The default thread number is the number of CPUs.
 .TP
 .B
-\fB--min-port\fP
+\fB\-\-min\-port\fP
 Lower bound of the UDP port range for relay 
 endpoints allocation.
 Default value is 49152, according to RFC 5766.
 .TP
 .B
-\fB--max-port\fP
+\fB\-\-max\-port\fP
 Upper bound of the UDP port range for relay 
 endpoints allocation.
 Default value is 65535, according to RFC 5766.
 .TP
 .B
-\fB-u\fP, \fB--user\fP
-Long-term credentials user account, in the column-separated 
+\fB\-u\fP, \fB\-\-user\fP
+Long\-term credentials user account, in the column\-separated 
 form username:key. 
 Multiple user accounts may used in the command line.
 The key is either the user password, or
@@ -374,78 +374,78 @@ The key is calculated over the user name,
 the realm, and the user password.
 .TP
 .B
-\fB-r\fP, \fB--realm\fP
-Realm to be used for all users, with long-term credentials only
+\fB\-r\fP, \fB\-\-realm\fP
+Realm to be used for all users, with long\-term credentials only
 .TP
 .B
-\fB-q\fP, \fB--user-quota\fP
-Per-user allocations quota: how many concurrent 
+\fB\-q\fP, \fB\-\-user\-quota\fP
+Per\-user allocations quota: how many concurrent 
 allocations a user can create.
 .TP
 .B
-\fB-Q\fP, \fB--total-quota\fP
+\fB\-Q\fP, \fB\-\-total\-quota\fP
 Total allocations quota: global limit on concurrent allocations.
 .TP
 .B
-\fB--static-auth-secret\fP
+\fB\-\-static\-auth\-secret\fP
 Static authentication secret value (a string).
 If not set, then the turn server will try to use the dynamic value 
-in turn_secret table in user database (if present). The database-stored
-value can be changed on-the-fly by a separate program, so this is why 
+in turn_secret table in user database (if present). The database\-stored
+value can be changed on\-the\-fly by a separate program, so this is why 
 that other mode is dynamic.
 Multiple shared secrets can be used (both in the database and in the "static" fashion).
 .TP
 .B
-\fB--secret-ts-exp-time\fP
+\fB\-\-secret\-ts\-exp\-time\fP
 Expiration time for timestamp used with authentication secret, in seconds.
 The default value is 86400 (24 hours).
 This is TTL in terms of TURNServerRESTAPI.pdf document.
 .TP
 .B
-\fB-s\fP, \fB--max-bps\fP
-Max bytes-per-second bandwidth a TURN session is allowed to handle
+\fB\-s\fP, \fB\-\-max\-bps\fP
+Max bytes\-per\-second bandwidth a TURN session is allowed to handle
 (input and output network streams combined). Anything above that limit
 will be dropped.
 .TP
 .B
-\fB--cert\fP
+\fB\-\-cert\fP
 Certificate file, PEM format. Same file 
 search rules applied as for the configuration 
-file. If both \fB--no-tls\fP and \fB--no-dtls\fP \fIoptions\fP 
+file. If both \fB\-\-no\-tls\fP and \fB\-\-no\-dtls\fP \fIoptions\fP 
 are specified, then this parameter is not needed.
 Default value is turn_server_cert.pem.
 .TP
 .B
-\fB--pkey\fP
+\fB\-\-pkey\fP
 Private key file, PEM format. Same file 
 search rules applied as for the configuration 
-file. If both \fB--no-tls\fP and \fB--no-dtls\fP \fIoptions\fP 
+file. If both \fB\-\-no\-tls\fP and \fB\-\-no\-dtls\fP \fIoptions\fP 
 are specified, then this parameter is not needed.
 Default value is turn_server_pkey.pem.
 .TP
 .B
-\fB-l\fP, \fB--log-file\fP
+\fB\-l\fP, \fB\-\-log\-file\fP
 Option to set the full path name of the log file.
 By default, the \fIturnserver\fP tries to open a log file in 
 /var/log, /var/tmp, /tmp and current directories directories
 (which open operation succeeds first that file will be used).
 With this option you can set the definite log file name.
-The special names are "stdout" and "-" - they will force everything 
+The special names are "stdout" and "\-" \- they will force everything 
 to the stdout.
 .TP
 .B
-\fB--alternate-server\fP
+\fB\-\-alternate\-server\fP
 Option to set the "redirection" mode. The value of this option
 will be the address of the alternate server for UDP & TCP service in form of 
 <ip>[:<port>]. The server will send this value in the attribute
-ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client.
+ALTERNATE\-SERVER, with error 300, on ALLOCATE request, to the client.
 Client will receive only values with the same address family
 as the client network endpoint address family. 
 This functionality can be used only with authentication mode. See RFC 5389 and
-RFC 5766 for ALTERNATE-SERVER functionality description. 
+RFC 5766 for ALTERNATE\-SERVER functionality description. 
 The client must use the obtained value for subsequent TURN communications.
-If more than one \fB--alternate-server\fP \fIoptions\fP are provided, then the functionality
-can be more accurately described as "load-balancing" than a mere "redirection". 
+If more than one \fB\-\-alternate\-server\fP \fIoptions\fP are provided, then the functionality
+can be more accurately described as "load\-balancing" than a mere "redirection". 
 If the port number is omitted, then the default port 
 number 3478 for the UDP/TCP protocols will be used.
 Colon (:) characters in IPv6 addresses may conflict with the syntax of 
@@ -453,21 +453,21 @@ the option. To alleviate this conflict, literal IPv6 addresses are enclosed
 in square brackets in such resource identifiers, for example: 
 [2001:db8:85a3:8d3:1319:8a2e:370:7348]:3478 . 
 Multiple alternate servers can be set. They will be used in the
-round-robin manner. All servers in the pool are considered of equal weight and 
+round\-robin manner. All servers in the pool are considered of equal weight and 
 the load will be distributed equally. For example, if we have 4 alternate servers, 
 then each server will receive 25% of ALLOCATE requests. A alternate TURN server 
-address can be used more than one time with the alternate-server option, so this 
+address can be used more than one time with the alternate\-server option, so this 
 can emulate "weighting" of the servers. 
 .TP
 .B
-\fB--tls-alternate-server\fP
+\fB\-\-tls\-alternate\-server\fP
 Option to set alternative server for TLS & DTLS services in form of 
 <ip>:<port>. If the port number is omitted, then the default port 
 number 5349 for the TLS/DTLS protocols will be used. See the previous option for the 
 functionality description.
 .TP
 .B
-\fB-C\fP, \fB--rest-api-separator\fP
+\fB\-C\fP, \fB\-\-rest\-api\-separator\fP
 This is the username/timestamp separator symbol (character) in TURN REST API.
 The default value is :.
 .PP
@@ -478,17 +478,17 @@ To set a load balancing scheme, you have three \fIoptions\fP:
 .PP
 .nf
 .fam C
-        a) Set a complex networking load-balancing equipment that redirects 
+        a) Set a complex networking load\-balancing equipment that redirects 
         the requests to a member of the TURN servers group. It must take care 
-        about redirecting the requests to the same server from the same client - 
+        about redirecting the requests to the same server from the same client \- 
         because some TURN sessions from the same client must share the information.
 
-        b) Set a less complex scheme with round-robin DNS. The client must send all 
-        its requests to the same DNS-discovered TURN server.
+        b) Set a less complex scheme with round\-robin DNS. The client must send all 
+        its requests to the same DNS\-discovered TURN server.
 
-        c) Use build-in balancing capability with ALTERNATE-SERVER option 
-        (--alternate-server options). In this case, the client must also send all 
-        requests to the same alternate-server address.
+        c) Use build\-in balancing capability with ALTERNATE\-SERVER option 
+        (\-\-alternate\-server options). In this case, the client must also send all 
+        requests to the same alternate\-server address.
 
 .fam T
 .fi
@@ -497,14 +497,14 @@ To set a load balancing scheme, you have three \fIoptions\fP:
 
 This is a set of notes for the WebRTC users:
 .IP 1) 4
-WebRTC uses long-term authentication mechanism, so you have to use \fB-a\fP option (or \fB--lt-cred-mech\fP).
-WebRTC relaying will not work with anonymous access or with short-term authentication.
-With \fB-a\fP option, do not forget to set the realm (\fB-r\fP option). You will also have to set up
+WebRTC uses long\-term authentication mechanism, so you have to use \fB\-a\fP option (or \fB\-\-lt\-cred\-mech\fP).
+WebRTC relaying will not work with anonymous access or with short\-term authentication.
+With \fB\-a\fP option, do not forget to set the realm (\fB\-r\fP option). You will also have to set up
 the user accounts, for that you have a number of \fIoptions\fP:
 .PP
 .nf
 .fam C
-        a) command-line options (-u).
+        a) command\-line options (\-u).
 
         b) userdb config file.
 
@@ -517,20 +517,20 @@ the user accounts, for that you have a number of \fIoptions\fP:
 .fam T
 .fi
 .IP 2) 4
-Usually WebRTC uses fingerprinting (\fB-f\fP).
+Usually WebRTC uses fingerprinting (\fB\-f\fP).
 .IP 3) 4
-\fB-v\fP option may be nice to see the connected clients.
+\fB\-v\fP option may be nice to see the connected clients.
 .IP 4) 4
-\fB-X\fP is needed if you are running your TURN server behind a NAT.
+\fB\-X\fP is needed if you are running your TURN server behind a NAT.
 .IP 5) 4
-\fB--min-port\fP and \fB--max-port\fP may be needed if you want to limit the relay endpoints ports
+\fB\-\-min\-port\fP and \fB\-\-max\-port\fP may be needed if you want to limit the relay endpoints ports
 number range.
 .PP
 =================================
 .SH LIBRARIES
 
-In the lib/ sub-directory the build process will create TURN client messaging library.
-In the include/ sub-directory, the necessary include files will be placed.
+In the lib/ sub\-directory the build process will create TURN client messaging library.
+In the include/ sub\-directory, the necessary include files will be placed.
 The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
 An example of C++ code can be found in stunclient.c file. 
 .PP
@@ -543,7 +543,7 @@ $ man \fIturnserver\fP
 .PP
 or in the project root directory:
 .PP
-$ man \fB-M\fP man \fIturnserver\fP
+$ man \fB\-M\fP man \fIturnserver\fP
 .PP
 to see the man page.
 .PP
@@ -571,7 +571,7 @@ current directory
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 .PP
-This behavior can be controlled by \fB--log-file\fP and \fB--no-stdout-log\fP \fIoptions\fP (see \fIturnserver\fP help).
+This behavior can be controlled by \fB\-\-log\-file\fP and \fB\-\-no\-stdout\-log\fP \fIoptions\fP (see \fIturnserver\fP help).
 .PP
 =================================
 .SH CLUSTERS
@@ -580,7 +580,7 @@ This behavior can be controlled by \fB--log-file\fP and \fB--no-stdout-log\fP \f
 (RTP/RTCP streams pairs) the client requests from a particular IP must be delivered to the same 
 \fBTURN Server\fP instance, so it requires some networking setup massaging for the cluster. The reason is that 
 the RTP and RTCP relaying endpoints must be allocated on the same relay IP. It would be possible 
-to design a scheme with the application-level requests forwarding (and we may do that later) but 
+to design a scheme with the application\-level requests forwarding (and we may do that later) but 
 it would affect the performance.
 .PP
 =================================
@@ -601,7 +601,7 @@ new STUN RFC 5389
 .PP
 TURN RFC 5766
 .PP
-TURN-TCP extension RFC 6062
+TURN\-TCP extension RFC 6062
 .PP
 TURN IPv6 extension RFC 6156
 .PP
