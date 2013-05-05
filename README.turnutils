@@ -37,7 +37,7 @@ $ cd examples
 
 $ ./scripts/secure_relay.sh
 
-==================================================================================
+=====================================
     
   NAME
   
@@ -116,11 +116,11 @@ Options with required values:
 
 -W      TURN REST API authentication secret. Is not compatible with -A flag.
 
--C		This is the username/timestamp separator symbol (character) in TURN REST API. The default value is ':'.
+-C		This is the username/timestamp separator symbol (character) in TURN REST API. The default value is :.
 
 See the examples in the "examples/scripts" directory.
 
-====================================================================================
+======================================
   
   NAME
     
@@ -132,7 +132,7 @@ $ turnutils_peer [-v] [options]
   
   DESCRIPTION
   
-This application is used for the test purposes only, as a 'peer' for the turnutils_uclient application.
+This application is used for the test purposes only, as a peer for the turnutils_uclient application.
 
 Options with required values:  
 
@@ -145,7 +145,7 @@ If no listener address(es) defined, then it listens on all IPv4 and IPv6 address
 
 -v  Verbose
 
-===================================================================================
+========================================
 
   NAME
   
@@ -170,7 +170,7 @@ and if it finds that the STUN server supports RFC 5780
 (the binding response reveals that) then the turnutils_stunclient makes a couple more 
 requests with different parameters, to demonstrate the NAT discovery capabilities.
   
-===================================================================================
+=====================================
 
   NAME
   
@@ -189,7 +189,7 @@ Usage:
 
 $ turnutils_rfc5769check
 
-===================================================================================
+===================================
  
 DOCS
 
@@ -203,7 +203,7 @@ $ man -M man turnutils
 
 to see the man page.
 
-===================================================================================
+===================================
 
 STANDARDS
 
@@ -219,13 +219,13 @@ STUN/TURN test vectors RFC 5769
 
 STUN NAT behavior discovery RFC 5780
 
-===================================================================================
+====================================
 
 SEE ALSO
 
 	turnserver, turnadmin
 
-===================================================================================
+====================================
 
 AUTHORS
 

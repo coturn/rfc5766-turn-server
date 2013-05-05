@@ -49,7 +49,7 @@ is equivalent to:
 
  $ turnserver --lt-cred-mech
   
-===============================================================================
+=====================================
 
   NAME
   
@@ -81,7 +81,7 @@ Config file settings:
 
 User database settings:  
 
--b, --userdb	'Dynamic' user database file name (default - turnuserdb.conf),
+-b, --userdb	User database file name (default - turnuserdb.conf),
 		for long-term credentials mechanism only.
 		This user file database is being dynamically checked while the turnserver 
 		is working, and the user accounts can be changed dynamically by
@@ -114,9 +114,9 @@ User database settings:
 
 Flags:   
 
--v, --verbose		'Moderate' verbose mode.
+-v, --verbose		Moderate verbose mode.
 
--V, --Verbose		'Extra' verbose mode, very annoying and not recommended.
+-V, --Verbose		Extra verbose mode, very annoying and not recommended.
 
 -o, --daemon		Run server as daemon.
 
@@ -185,7 +185,7 @@ Options with required values:
 
 -L, --listening-ip		Listener IP address of relay server. 
 				Multiple listeners can be specified:
-				... -L ip1 -L ip2 -L ip3..."
+				-L ip1 -L ip2 -L ip3
 				If no IP(s) specified, then all IPv4 and 
 				IPv6 system IPs will be used for listening.
 				The same ip(s) can be used as both listening and relay ip(s).
@@ -213,16 +213,16 @@ Options with required values:
 -E, --relay-ip			Relay address (the local IP address that 
 				will be used to relay the packets to the 
 				peer). Multiple relay addresses may be used:
-				... -E ip1 -E ip2 -E ip3 ...
+				-E ip1 -E ip2 -E ip3
 				If no relay IP(s) specified, then all 
 				non-loopback system IPs will be used.
 				The same ip(s) can be used as both listening and relay ip(s).
 
 -X, --external-ip		"External" TURN Server address if the server is behind NAT.
 				In the server-behind-NAT situation, only one relay address must be used, and
-				that single relay address must be mapped by NAT to the 'external' IP.
-				For this 'external' IP, NAT must forward ports directly (relayed port 12345
-				must be always mapped to the same 'external' port 12345).
+				that single relay address must be mapped by NAT to the external IP.
+				For this external IP, NAT must forward ports directly (relayed port 12345
+				must be always mapped to the same external port 12345).
 				This value, if not empty, is returned in XOR-RELAYED-ADDRESS field.
 				By default, this value is empty, and the real relay IP address is used.
 				
@@ -240,12 +240,12 @@ Options with required values:
 				Default value is 65535, according to RFC 5766.
 
 -u, --user			Long-term credentials user account, in the column-separated 
-				form 'username:key'. 
+				form username:key. 
 				Multiple user accounts may used in the command line.
 				The key is either the user password, or
 				the key is generated
 				by turnadmin command. In the second case,
-				the key must be prepended with '0x' symbols.
+				the key must be prepended with 0x symbols.
 				The key is calculated over the user name, 
 				the realm, and the user password.
 
@@ -257,15 +257,15 @@ Options with required values:
 -Q, --total-quota		Total allocations quota: global limit on concurrent allocations.
 
 --static-auth-secret	Static authentication secret value (a string).
-				If not set, then the turn server will try to use the 'dynamic' value 
+				If not set, then the turn server will try to use the dynamic value 
 				in turn_secret table in user database (if present). The database-stored
 				value can be changed on-the-fly by a separate program, so this is why 
-				that other mode is 'dynamic'.
+				that other mode is dynamic.
 				Multiple shared secrets can be used (both in the database and in the "static" fashion).
 
 --secret-ts-exp-time	Expiration time for timestamp used with authentication secret, in seconds.
 				The default value is 86400 (24 hours).
-				This is 'TTL' in terms of TURNServerRESTAPI.pdf document.
+				This is TTL in terms of TURNServerRESTAPI.pdf document.
 
 -s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle
 				(input and output network streams combined). Anything above that limit
@@ -321,9 +321,9 @@ Options with required values:
 				functionality description.
 
 -C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.
-				The default value is ':'.
+				The default value is :.
 
-===============================================================================
+==================================
 
 LOAD BALANCE
 
@@ -341,7 +341,7 @@ To set a load balancing scheme, you have three options:
 	(--alternate-server options). In this case, the client must also send all 
 	requests to the same alternate-server address.
 	 
-===============================================================================
+===================================
 
 WEBRTC USAGE
 
@@ -371,7 +371,7 @@ the user accounts, for that you have a number of options:
 5) --min-port and --max-port may be needed if you want to limit the relay endpoints ports 
 number range.
 
-===============================================================================
+=================================
 
 LIBRARIES
 
@@ -380,7 +380,7 @@ In the include/ sub-directory, the necessary include files will be placed.
 The C++ wrapper for the messaging functionality is located in TurnMsgLib.h header.
 An example of C++ code can be found in stunclient.c file. 
 
-===================================================================================
+=================================
  
 DOCS
 
@@ -397,7 +397,7 @@ to see the man page.
 In the docs/html subdirectory of the original archive tree, you will find the client library 
 reference. After the installation, it will be placed in PREFIX/share/doc/turnserver/html.
 
-===================================================================================
+=================================
 
 LOGS
 
@@ -415,7 +415,7 @@ log messages are sent only to the standard output of the process.
 
 This behavior can be controlled by --log-file and --no-stdout-log options (see turnserver help).
 
-===================================================================================
+=================================
 
 CLUSTERS
 
@@ -426,7 +426,7 @@ the RTP and RTCP relaying endpoints must be allocated on the same relay IP. It w
 to design a scheme with the application-level requests forwarding (and we may do that later) but 
 it would affect the performance.
 
-===================================================================================
+=================================
 
 FILES
 
@@ -438,7 +438,7 @@ FILES
 
 /usr/local/etc/turnuserdb.conf
 
-===================================================================================
+=================================
 
 STANDARDS
 
@@ -454,13 +454,13 @@ STUN/TURN test vectors RFC 5769
 
 STUN NAT behavior discovery RFC 5780
 
-===================================================================================
+=================================
 
 SEE ALSO
 
 	turnadmin, turnutils
 
-===================================================================================
+=================================
 
 AUTHORS
 
