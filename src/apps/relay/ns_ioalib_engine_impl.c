@@ -2260,7 +2260,7 @@ free_blist_elem(e,elem);
 
 static inline u32bits get_allocation_id(allocation *a)
 {
-	return (u32bits)(kh_int64_hash_func((u64bits)a));
+	return (u32bits)(kh_int64_hash_func((u64bits)((unsigned long)a)));
 }
 
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
