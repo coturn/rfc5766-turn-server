@@ -515,22 +515,26 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
-						if(pwd && pwd_length>0) {
-							if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
+						if(pwd) {
+							if(pwd_length<1) {
+								free(pwd);
+							} else {
+								if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
 
-								if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
+									if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
 										ioa_network_buffer_data(nbh),
 										ioa_network_buffer_get_size(nbh),
 										key,
 										pwdtmp)>0) {
 
-									ret = 0;
+										ret = 0;
+									}
 								}
-							}
-							free(pwd);
+								free(pwd);
 
-							if(ret==0)
-								break;
+								if(ret==0)
+									break;
+							}
 						}
 					}
 				}
@@ -558,75 +562,78 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 	if(ret==0) {
 		ns_bcopy(ukey,key,sizeof(hmackey_t));
 		return 0;
-	} else {
+	}
 #if !defined(TURN_NO_PQ)
-	PGconn * pqc = get_pqdb_connection();
-	if(pqc) {
-		char statement[1025];
-		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
-		PGresult *res = PQexec(pqc, statement);
+	{
+		PGconn * pqc = get_pqdb_connection();
+		if(pqc) {
+			char statement[1025];
+			sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
+			PGresult *res = PQexec(pqc, statement);
 
-		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
-		} else {
-			char *kval = PQgetvalue(res,0,0);
-			if(kval) {
-				if(convert_string_key_to_binary(kval, key)<0) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
-				} else {
-					ret = 0;
-				}
+			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",uname);
+				char *kval = PQgetvalue(res,0,0);
+				if(kval) {
+					if(convert_string_key_to_binary(kval, key)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+					} else {
+						ret = 0;
+					}
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",uname);
+				}
 			}
-		}
 
-		if(res) {
-			PQclear(res);
+			if(res)
+				PQclear(res);
+
 		}
 	}
 #endif
 #if !defined(TURN_NO_MYSQL)
-	MYSQL * myc = get_mydb_connection();
-	if(myc) {
-		char statement[1025];
-		sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
-		int res = mysql_query(myc, statement);
-		if(res) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-		} else {
-			MYSQL_RES *mres = mysql_store_result(myc);
-			if(!mres) {
+	if(ret != 0) {
+		MYSQL * myc = get_mydb_connection();
+		if(myc) {
+			char statement[1025];
+			sprintf(statement,"select hmackey from turnusers_lt where name='%s'",uname);
+			int res = mysql_query(myc, statement);
+			if(res) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
-			} else if(mysql_field_count(myc)!=1) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
 			} else {
-				MYSQL_ROW row = mysql_fetch_row(mres);
-				if(row && row[0]) {
-					unsigned long *lengths = mysql_fetch_lengths(mres);
-					if(lengths) {
-						size_t sz = sizeof(hmackey_t)*2;
-						if(lengths[0]!=sz) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",uname,lengths[0]);
-						} else {
-							char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
-							ns_bcopy(row[0],kval,sz);
-							kval[sz]=0;
-							if(convert_string_key_to_binary(kval, key)<0) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+				MYSQL_RES *mres = mysql_store_result(myc);
+				if(!mres) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+				} else if(mysql_field_count(myc)!=1) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown error retrieving MySQL DB information: %s\n",statement);
+				} else {
+					MYSQL_ROW row = mysql_fetch_row(mres);
+					if(row && row[0]) {
+						unsigned long *lengths = mysql_fetch_lengths(mres);
+						if(lengths) {
+							size_t sz = sizeof(hmackey_t)*2;
+							if(lengths[0]!=sz) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",uname,lengths[0]);
 							} else {
-								ret = 0;
+								char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
+								ns_bcopy(row[0],kval,sz);
+								kval[sz]=0;
+								if(convert_string_key_to_binary(kval, key)<0) {
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+								} else {
+									ret = 0;
+								}
 							}
 						}
 					}
 				}
+				if(mres)
+					mysql_free_result(mres);
 			}
-			if(mres)
-				mysql_free_result(mres);
 		}
 	}
 #endif
-	}
 
 	return ret;
 }

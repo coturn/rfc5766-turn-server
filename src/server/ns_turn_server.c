@@ -1903,7 +1903,7 @@ static int check_stun_auth(turn_turnserver *server,
 		if(!ukey) {
 			/* direct user pattern is supported only for long-term credentials */
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: Cannot find user <%s>\n",
+					"%s: Cannot find credentials of user <%s>\n",
 					__FUNCTION__, (char*)uname);
 			*err_code = 401;
 			*reason = (u08bits*)"Unauthorised";
