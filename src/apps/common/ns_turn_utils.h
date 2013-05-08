@@ -57,6 +57,7 @@ typedef enum {
 #define eve(v) ((v)==TURN_VERBOSE_EXTRA)
 
 void set_no_stdout_log(int val);
+void set_log_to_syslog(int val);
 
 void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
 
@@ -64,7 +65,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
 
 /* Log */
 void rtpprintf(const char *format, ...);
-int vrtpprintf(const char *format, va_list args);
+int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);
 void reset_rtpprintf(void);
 void set_logfile(const char *fn);
 void rollover_logfile(void);

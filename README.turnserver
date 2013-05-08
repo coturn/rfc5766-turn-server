@@ -126,8 +126,8 @@ Flags:
 			per-server setting.
 
 -a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage). 
-					This option can be used with either flat file user database or 
-					PostgreSQL DB or MySQL DB for user keys storage.
+			This option can be used with either flat file user database or 
+			PostgreSQL DB or MySQL DB for user keys storage.
 -A, --st-cred-mech	Use the short-term credentials mechanism. This option requires
 	                a PostgreSQL or MySQL DB for short term passwords storage.
 
@@ -169,12 +169,18 @@ Flags:
 
 --no-stdout-log		Flag to prevent stdout log messages.
 			By default, all log messages are going to both stdout and to
-			a log file. With this option everything will be going to the log file only
-			(unless the log file itself is stdout).
+			the configured log file. With this option everything will be going to 
+			the log file only (unless the log file itself is stdout).
+			
+--syslog		With this flag, all log will be redirected to the system log (syslog).
 
--S, --stun-only			Run as STUN server only, all TURN requests will be ignored. 
+-S, --stun-only		Run as STUN server only, all TURN requests will be ignored.
 
--h				Help.
+--no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
+
+--no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*). 
+
+-h			Help.
     
 Options with required values:  
 
@@ -256,14 +262,14 @@ Options with required values:
 
 -Q, --total-quota		Total allocations quota: global limit on concurrent allocations.
 
---static-auth-secret	Static authentication secret value (a string).
+--static-auth-secret		Static authentication secret value (a string).
 				If not set, then the turn server will try to use the dynamic value 
 				in turn_secret table in user database (if present). The database-stored
 				value can be changed on-the-fly by a separate program, so this is why 
 				that other mode is dynamic.
 				Multiple shared secrets can be used (both in the database and in the "static" fashion).
 
---secret-ts-exp-time	Expiration time for timestamp used with authentication secret, in seconds.
+--secret-ts-exp-time		Expiration time for timestamp used with authentication secret, in seconds.
 				The default value is 86400 (24 hours).
 				This is TTL in terms of TURNServerRESTAPI.pdf document.
 
@@ -283,15 +289,16 @@ Options with required values:
 				are specified, then this parameter is not needed.
 				Default value is turn_server_pkey.pem.
 				
--l, --log-file	Option to set the full path name of the log file.
+-l, --log-file			Option to set the full path name of the log file.
 				By default, the turnserver tries to open a log file in 
 				/var/log, /var/tmp, /tmp and current directories directories
 				(which open operation succeeds first that file will be used).
 				With this option you can set the definite log file name.
 				The special names are "stdout" and "-" - they will force everything 
-				to the stdout.
+				to the stdout. Also, "syslog" name will redirect everything into
+				the system log (syslog), as if the option "--syslog" was set.
 				
---alternate-server	Option to set the "redirection" mode. The value of this option
+--alternate-server		Option to set the "redirection" mode. The value of this option
 				will be the address of the alternate server for UDP & TCP service in form of 
 				<ip>[:<port>]. The server will send this value in the attribute
 				ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client.
@@ -315,7 +322,7 @@ Options with required values:
 				address can be used more than one time with the alternate-server option, so this 
 				can emulate "weighting" of the servers. 
 
---tls-alternate-server	Option to set alternative server for TLS & DTLS services in form of 
+--tls-alternate-server		Option to set alternative server for TLS & DTLS services in form of 
 				<ip>:<port>. If the port number is omitted, then the default port 
 				number 5349 for the TLS/DTLS protocols will be used. See the previous option for the 
 				functionality description.

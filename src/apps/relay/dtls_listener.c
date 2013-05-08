@@ -472,9 +472,9 @@ static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, voi
   FUNCEND;
 }
 
-static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
-
 #endif
+
+static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
@@ -568,11 +568,6 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
-#if defined(TURN_NO_DTLS)
-  UNUSED_ARG(fd);
-  UNUSED_ARG(what);
-  UNUSED_ARG(arg);
-#else
 	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
 
 	FUNCSTART;
@@ -606,6 +601,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	} while (rc < 0 && (errno == EINTR));
 
 	addr_cpy(&client_addr, &si_other);
+
+#if !defined(TURN_NO_DTLS)
 
 	if (!no_dtls && is_dtls_handshake_message(buf, rc)) {
 
@@ -678,8 +675,11 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		}
 	} else if(!no_udp) {
 
+#endif
+
 		udp_server_input_handler(fd, what, arg);
 
+#if !defined(TURN_NO_DTLS)
 	} else {
 
 		flags = MSG_DONTWAIT;
@@ -688,17 +688,15 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			rc = recvfrom(fd, buf, sizeof(buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
 	}
+#endif
 
 	if (server->stats)
 		--(*(server->stats));
 
-	FUNCEND	;
-#endif
+	FUNCEND;
 }
 
 ///////////////////// operations //////////////////////////
-
-#if !defined(TURN_NO_DTLS)
 
 static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
 
@@ -715,6 +713,7 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
   }
 
   OPENSSL_assert(pinfo->remote_addr.ss.ss_family == server->addr.ss.ss_family);
+
   pinfo->fd = socket(pinfo->remote_addr.ss.ss_family, SOCK_DGRAM, 0);
   if (pinfo->fd < 0) {
     perror("socket");
@@ -756,8 +755,6 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
 
   return pinfo->fd;
 }
-
-#endif
 
 static int create_server_socket(dtls_listener_relay_server_type* server) {
 

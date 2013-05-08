@@ -80,6 +80,11 @@ int addr_less_eq(const ioa_addr* addr1, const ioa_addr* addr2);
 int ioa_addr_in_range(const ioa_addr_range* range, const ioa_addr* addr);
 void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src);
 
+/////// Check whether this is a good address //////////////
+
+int ioa_addr_is_multicast(ioa_addr *a);
+int ioa_addr_is_loopback(ioa_addr *addr);
+
 ///////////////////////////////////////////
 
 #ifdef __cplusplus

@@ -167,6 +167,9 @@ static band_limit_t max_bps = 0;
 static u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
 static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
 
+static int no_multicast_peers = 0;
+static int no_loopback_peers = 0;
+
 static char relay_ifname[1025]="\0";
 
 static size_t relays_number = 0;
@@ -736,7 +739,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					stale_nonce,
 					stun_only,
 					&alternate_servers_list,
-					&tls_alternate_servers_list);
+					&tls_alternate_servers_list,
+					no_multicast_peers, no_loopback_peers);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
@@ -1077,114 +1081,117 @@ static int make_local_relays_list(int allow_local)
 //////////////////////////////////////////////////
 
 static char Usage[] = "Usage: turnserver [options]\n"
-	"Options:\n"
-	"	-d, --listening-device		Listener interface device (optional, Linux only).\n"
-	"	-p, --listening-port		TURN listener port (Default: 3478).\n"
-	"					Note: actually, TLS & DTLS sessions can connect to the \"plain\" TCP & UDP port(s), too,\n"
-	"					if allowed by configuration.\n"
-	"	    --tls-listening-port	TURN listener port for TLS & DTLS listeners\n"
-	"					(Default: 5349).\n"
-	"					Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
-	"					if allowed by configuration.\n"
-	"	    --alt-listening-port	Alternative listening port (in RFC 5780 sense, default 3479).\n"
-	"	    --alt-tls-listening-port	Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 5350).\n"
-	"	-L, --listening-ip		Listener IP address of relay server. Multiple listeners can be specified.\n"
-	"	-i, --relay-device		Relay interface device for relay sockets (optional, Linux only).\n"
-	"	-E, --relay-ip			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
-	"	-X, --external-ip		\"External\" TURN Server address if the server is behind NAT.\n"
-	"					In the server-behind-NAT situation, only one relay address must be used, and\n"
-	"					that single relay address must be mapped by NAT to the 'external' IP.\n"
-	"					For this 'external' IP, NAT must forward ports directly (relayed port 12345\n"
-	"					must be always mapped to the same 'external' port 12345).\n"
-	"	-m, --relay-threads		Number of relay threads to handle the established connections\n"
-	"					(in addition to authentication thread and the listener thread).\n"
-	"					If set to 0 then application runs in single-threaded mode.\n"
-	"					The default thread number is the number of CPUs.\n"
-	"	    --min-port			Lower bound of the UDP port range for relay endpoints allocation.\n"
-	"					Default value is 49152, according to RFC 5766.\n"
-	"	    --max-port			Upper bound of the UDP port range for relay endpoints allocation.\n"
-	"					Default value is 65535, according to RFC 5766.\n"
-	"	-v, --verbose			'Moderate' verbose mode.\n"
-	"	-V, --Verbose			Extra verbose mode, very annoying (for debug purposes only).\n"
-	"	-o, --daemon			Start process as daemon (detach from current shell).\n"
-	"	-f, --fingerprint		Use fingerprints in the TURN messages.\n"
-	"	-a, --lt-cred-mech		Use the long-term credential mechanism. This option can be used with either\n"
-	"	                                flat file user database or PostgreSQL DB or MySQL DB for user keys storage.\n"
-	"	-A, --st-cred-mech		Use the short-term credential mechanism. This option requires\n"
-	"	                                a PostgreSQL or MySQL DB for short term passwords storage.\n"
-	"	-z, --no-auth			Do not use any credential mechanism, allow anonymous access.\n"
-	"	-u, --user			User account, in form 'username:password', for long-term credentials.\n"
-	"	-r, --realm			Realm, for long-term credentials.\n"
-	"	-q, --user-quota		Per-user allocation quota: how many concurrent allocations a user can create.\n"
-	"	-Q, --total-quota		Total allocations quota: global limit on concurrent allocations.\n"
-	"	-s, --max-bps			Max bytes-per-second bandwidth a TURN session is allowed to handle.\n"
-	"					(input and output network streams combined).\n"
-	"	-c				Configuration file name (default - turnserver.conf).\n"
-	"	-b, --userdb			User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
+"Options:\n"
+" -d, --listening-device	<device-name>	Listener interface device (optional, Linux only).\n"
+" -p, --listening-port		<port>		TURN listener port (Default: 3478).\n"
+"						Note: actually, TLS & DTLS sessions can connect to the \"plain\" TCP & UDP port(s), too,\n"
+"						if allowed by configuration.\n"
+" --tls-listening-port		<port>		TURN listener port for TLS & DTLS listeners\n"
+"						(Default: 5349).\n"
+"						Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
+"						if allowed by configuration.\n"
+" --alt-listening-port<port>	<port>		Alternative listening port (in RFC 5780 sense, default 3479).\n"
+" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 5350).\n"
+" -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
+" -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
+" -E, --relay-ip		<ip>		Relay address (the local IP address that will be used to relay the packets to the peer).\n"
+" -X, --external-ip		<ip>		\"External\" TURN Server address if the server is behind NAT.\n"
+"						In the server-behind-NAT situation, only one relay address must be used, and\n"
+"						that single relay address must be mapped by NAT to the 'external' IP.\n"
+"						For this 'external' IP, NAT must forward ports directly (relayed port 12345\n"
+"						must be always mapped to the same 'external' port 12345).\n"
+" --no-loopback-peers				Disallow peers on the loopback addresses (127.x.x.x and ::1).\n"
+" --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
+" -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
+"						(in addition to authentication thread and the listener thread).\n"
+"						If set to 0 then application runs in single-threaded mode.\n"
+"						The default thread number is the number of CPUs.\n"
+" --min-port			<port>		Lower bound of the UDP port range for relay endpoints allocation.\n"
+"						Default value is 49152, according to RFC 5766.\n"
+" --max-port			<port>		Upper bound of the UDP port range for relay endpoints allocation.\n"
+"						Default value is 65535, according to RFC 5766.\n"
+" -v, --verbose					'Moderate' verbose mode.\n"
+" -V, --Verbose					Extra verbose mode, very annoying (for debug purposes only).\n"
+" -o, --daemon					Start process as daemon (detach from current shell).\n"
+" -f, --fingerprint				Use fingerprints in the TURN messages.\n"
+" -a, --lt-cred-mech				Use the long-term credential mechanism. This option can be used with either\n"
+"		                                flat file user database or PostgreSQL DB or MySQL DB for user keys storage.\n"
+" -A, --st-cred-mech				Use the short-term credential mechanism. This option requires\n"
+"		                                a PostgreSQL or MySQL DB for short term passwords storage.\n"
+" -z, --no-auth					Do not use any credential mechanism, allow anonymous access.\n"
+" -u, --user			<user:pwd>	User account, in form 'username:password', for long-term credentials.\n"
+" -r, --realm			<realm>		Realm, for long-term credentials.\n"
+" -q, --user-quota		<number>	Per-user allocation quota: how many concurrent allocations a user can create.\n"
+" -Q, --total-quota		<number>	Total allocations quota: global limit on concurrent allocations.\n"
+" -s, --max-bps			<number>	Max bytes-per-second bandwidth a TURN session is allowed to handle.\n"
+"						(input and output network streams combined).\n"
+" -c				<filename>	Configuration file name (default - turnserver.conf).\n"
+" -b, --userdb			<filename>	User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
 #if !defined(TURN_NO_PQ)
-	"	-e, --psql-userdb, --sql-userdb	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
-	"	                                This database can be used for long-term and short-term credentials mechanisms,\n"
-	"	                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
-	"					See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
-	"					versions format, see http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING\n"
-	"					for 9.x and newer connection string formats.\n"
+" -e, --psql-userdb, --sql-userdb <connection>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
+"		                                This database can be used for long-term and short-term credentials mechanisms,\n"
+"		                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
+"						See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
+"						versions format, see http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING\n"
+"						for 9.x and newer connection string formats.\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
-	"	-M, --mysql-userdb		MySQL database connection string, if used (default - empty, no MySQL DB used).\n"
-	"	                                This database can be used for long-term and short-term credentials mechanisms,\n"
-	"	                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
-	"					The connection string my be space-separated list of parameters:\n"
-	"	                  		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
-	"	                  		All parameters are optional.\n"
+" -M, --mysql-userdb		<connection>	MySQL database connection string, if used (default - empty, no MySQL DB used).\n"
+"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"		                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
+"						The connection string my be space-separated list of parameters:\n"
+"	        	          		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
+"	        	          		All parameters are optional.\n"
 #endif
-	"	    --use-auth-secret		Flag that sets a special authorization option that is based upon authentication secret\n"
-	"					(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
-	"					This option can be used with long-term credentials mechanisms only -\n"
-	"					it does not make much sense with the short-term mechanism.\n"
-	"	    --static-auth-secret	'Static' authentication secret value (a string). If not set, then the turn server\n"
-	"					will try to use the 'dynamic' value in turn_secret table\n"
-	"					in user database (if present). That database value can be changed on-the-fly\n"
-	"					by a separate program, so this is why it is 'dynamic'.\n"
-	"					Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
-	"	    --secret-ts-exp-time 	Expiration time for timestamp used with authentication secret, in seconds.\n"
-	"					The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
-	"	-n				Do not use configuration file.\n"
-	"	    --cert			Certificate file, PEM format. Same file search rules\n"
-	"					applied as for the configuration file.\n"
-	"					If both --no-tls and --no_dtls options\n"
-	"					are specified, then this parameter is not needed.\n"
-	"	    --pkey			Private key file, PEM format. Same file search rules\n"
-	"					applied as for the configuration file.\n"
-	"					If both --no-tls and --no-dtls options\n"
-	"					are specified, then this parameter is not needed.\n"
-	"	    --no-udp			Do not start UDP client listeners.\n"
-	"	    --no-tcp			Do not start TCP client listeners.\n"
-	"	    --no-tls			Do not start TLS client listeners.\n"
-	"	    --no-dtls			Do not start DTLS client listeners.\n"
-	"	    --no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.\n"
-	"	    --no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay options.\n"
-	"	-l, --log-file			Option to set the full path name of the log file.\n"
-	"					By default, the turnserver tries to open a log file in\n"
-	"					/var/log, /var/tmp, /tmp and current directories directories\n"
-	"					(which open operation succeeds first that file will be used).\n"
-	"					With this option you can set the definite log file name.\n"
-	"					The special names are \"stdout\" and \"-\" - they will force everything\n"
-	"					to the stdout.\n"
-	"	    --no-stdout-log		Flag to prevent stdout log messages.\n"
-	"					By default, all log messages are going to both stdout and to\n"
-	"					a log file. With this option everything will be going to the log file only\n"
-	"					(unless the log file itself is stdout).\n"
-	"	    --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs).\n"
-	"	-S, --stun-only			Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
-	"	    --alternate-server		TURN server to redirect the allocate requests (UDP and TCP services).\n"
-	"					Multiple alternate-server options can be set for load balancing purposes.\n"
-	"					See the docs for more information.\n"
-	"	    --tls-alternate-server	TURN server to redirect the allocate requests (DTLS and TLS services).\n"
-	"					Multiple alternate-server options can be set for load balancing purposes.\n"
-	"					See the docs for more information.\n"
-	"	-C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.\n"
-	"					The default value is ':'.\n"
-	"	-h				Help\n";
+" --use-auth-secret				Flag that sets a special authorization option that is based upon authentication secret\n"
+"						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
+"						This option can be used with long-term credentials mechanisms only -\n"
+"						it does not make much sense with the short-term mechanism.\n"
+" --static-auth-secret				'Static' authentication secret value (a string). If not set, then the turn server\n"
+"						will try to use the 'dynamic' value in turn_secret table\n"
+"						in user database (if present). That database value can be changed on-the-fly\n"
+"						by a separate program, so this is why it is 'dynamic'.\n"
+"						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
+" --secret-ts-exp-time 		<numberofsecs>	Expiration time for timestamp used with authentication secret, in seconds.\n"
+"						The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
+" -n						Do not use configuration file, take all parameters from the command line only.\n"
+" --cert			<filename>	Certificate file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If both --no-tls and --no_dtls options\n"
+"						are specified, then this parameter is not needed.\n"
+" --pkey			<filename>	Private key file, PEM format. Same file search rules\n"
+"						applied as for the configuration file.\n"
+"						If both --no-tls and --no-dtls options\n"
+"						are specified, then this parameter is not needed.\n"
+" --no-udp					Do not start UDP client listeners.\n"
+" --no-tcp					Do not start TCP client listeners.\n"
+" --no-tls					Do not start TLS client listeners.\n"
+" --no-dtls					Do not start DTLS client listeners.\n"
+" --no-udp-relay				Do not allow UDP relay endpoints, use only TCP relay option.\n"
+" --no-tcp-relay				Do not allow TCP relay endpoints, use only UDP relay options.\n"
+" -l, --log-file		<filename>	Option to set the full path name of the log file.\n"
+"						By default, the turnserver tries to open a log file in\n"
+"						/var/log, /var/tmp, /tmp and current directories directories\n"
+"						(which open operation succeeds first that file will be used).\n"
+"						With this option you can set the definite log file name.\n"
+"						The special names are \"stdout\" and \"-\" - they will force everything\n"
+"						to the stdout; and \"syslog\" name will force all output to the syslog.\n"
+" --no-stdout-log				Flag to prevent stdout log messages.\n"
+"						By default, all log messages are going to both stdout and to\n"
+"						a log file. With this option everything will be going to the log file only\n"
+"						(unless the log file itself is stdout).\n"
+" --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
+" --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
+" -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
+" --alternate-server		<ip:port>	TURN server to redirect the allocate requests (UDP and TCP services).\n"
+"						Multiple alternate-server options can be set for load balancing purposes.\n"
+"						See the docs for more information.\n"
+" --tls-alternate-server	<ip:port>	TURN server to redirect the allocate requests (DTLS and TLS services).\n"
+"						Multiple alternate-server options can be set for load balancing purposes.\n"
+"						See the docs for more information.\n"
+" -C, --rest-api-separator	<SYMBOL>	This is the username/timestamp separator symbol (character) in TURN REST API.\n"
+"						The default value is ':'.\n"
+" -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"Commands:\n"
@@ -1238,8 +1245,11 @@ enum EXTRA_OPTS {
 	STATIC_AUTH_SECRET_VAL_OPT,
 	AUTH_SECRET_TS_EXP,
 	NO_STDOUT_LOG_OPT,
+	SYSLOG_OPT,
 	ALTERNATE_SERVER_OPT,
-	TLS_ALTERNATE_SERVER_OPT
+	TLS_ALTERNATE_SERVER_OPT,
+	NO_MULTICAST_PEERS_OPT,
+	NO_LOOPBACK_PEERS_OPT
 };
 
 static struct option long_options[] = {
@@ -1290,9 +1300,12 @@ static struct option long_options[] = {
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ "log-file", required_argument, NULL, 'l' },
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
+				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
 				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
 				{ "rest-api-separator", required_argument, NULL, 'C' },
+				{ "no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT },
+				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1376,6 +1389,12 @@ static void set_option(int c, char *value)
 		break;
 	case MAX_PORT_OPT:
 		max_port = atoi(value);
+		break;
+	case NO_MULTICAST_PEERS_OPT:
+		no_multicast_peers = get_bool_value(value);
+		break;
+	case NO_LOOPBACK_PEERS_OPT:
+		no_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
 		stale_nonce = get_bool_value(value);
@@ -1532,6 +1551,7 @@ static void set_option(int c, char *value)
 	/* these options have been already taken care of before: */
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
+	case SYSLOG_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1637,6 +1657,8 @@ static void read_config_file(int argc, char **argv, int pass)
 						set_logfile(value);
 					} else if((pass==0) && (c==NO_STDOUT_LOG_OPT)) {
 						set_no_stdout_log(get_bool_value(value));
+					} else if((pass==0) && (c==SYSLOG_OPT)) {
+						set_log_to_syslog(get_bool_value(value));
 					} else if((pass > 0) && (c == 'u')) {
 					  set_option(c, value);
 					}
@@ -1793,6 +1815,9 @@ int main(int argc, char **argv)
 				break;
 			case NO_STDOUT_LOG_OPT:
 				set_no_stdout_log(get_bool_value(optarg));
+				break;
+			case SYSLOG_OPT:
+				set_log_to_syslog(get_bool_value(optarg));
 				break;
 			default:
 				;

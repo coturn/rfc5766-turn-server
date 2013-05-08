@@ -1,3 +1,8 @@
+05/07/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.3.8 'Black Dow':
+	- multicast and loopback addresses disallow options added.
+	- option to direct all log messages to the system log (syslog).
+	
 05/02/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.7 'Black Dow':
 	- Allocation status log.

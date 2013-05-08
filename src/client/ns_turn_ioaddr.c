@@ -355,5 +355,42 @@ void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src) {
   }
 }
 
+/////// Check whether this is a good address //////////////
+
+int ioa_addr_is_multicast(ioa_addr *addr)
+{
+	if(addr) {
+		if(addr->ss.ss_family == AF_INET) {
+			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
+			return (u[0] > 223);
+		} else if(addr->ss.ss_family == AF_INET6) {
+			u08bits u = ((const u08bits*)&(addr->s6.sin6_addr))[0];
+			return (u == 255);
+		}
+	}
+	return 0;
+}
+
+int ioa_addr_is_loopback(ioa_addr *addr)
+{
+	if(addr) {
+		if(addr->ss.ss_family == AF_INET) {
+			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
+			return (u[0] == 127);
+		} else if(addr->ss.ss_family == AF_INET6) {
+			const u08bits *u = ((const u08bits*)&(addr->s6.sin6_addr));
+			if(u[7] == 1) {
+				int i;
+				for(i=0;i<7;++i) {
+					if(u[i])
+						return 0;
+				}
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 

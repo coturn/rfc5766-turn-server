@@ -22,7 +22,7 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="bin:../bin:../../bin:${PATH}" turnserver -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls --no-auth
+PATH="bin:../bin:../../bin:${PATH}" turnserver --syslog -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --no-tls --no-dtls --no-auth
 
 
 

@@ -37,6 +37,9 @@
 #include <pthread.h>
 #endif
 
+#include <syslog.h>
+#include <stdarg.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -161,7 +164,7 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 	{
 		va_list args;
 		va_start(args,format);
-		vrtpprintf(format, args);
+		vrtpprintf(level, format, args);
 		va_end(args);
 	}
 #endif
@@ -220,6 +223,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 /******* Log ************/
 
 static FILE* _rtpfile = NULL;
+static int to_syslog = 0;
 static char log_fn[1025]="\0";
 static char log_fn_base[1025]="\0";
 
@@ -282,9 +286,14 @@ static void set_log_file_name(char *base, char *f)
 
 static void set_rtpfile(void)
 {
-	if (!_rtpfile) {
+	if(to_syslog) {
+		return;
+	} else if (!_rtpfile) {
 		if(log_fn_base[0]) {
-			if(!strcmp(log_fn_base,"stdout")|| !strcmp(log_fn_base,"-")) {
+			if(!strcmp(log_fn_base,"syslog")) {
+				_rtpfile = stdout;
+				to_syslog = 1;
+			} else if(!strcmp(log_fn_base,"stdout")|| !strcmp(log_fn_base,"-")) {
 				_rtpfile = stdout;
 				no_stdout_log = 1;
 			} else {
@@ -333,11 +342,19 @@ static void set_rtpfile(void)
 	}
 }
 
+void set_log_to_syslog(int val)
+{
+	to_syslog = val;
+}
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
 void rollover_logfile(void)
 {
+	if(to_syslog)
+		return;
+
 	log_lock();
 	if(_rtpfile && log_fn[0] && (_rtpfile != stdout)) {
 		char logf[1025];
@@ -357,28 +374,44 @@ void rollover_logfile(void)
 	log_unlock();
 }
 
-void rtpprintf(const char *format, ...)
+static int get_syslog_level(TURN_LOG_LEVEL level)
 {
-	log_lock();
-	set_rtpfile();
-	fprintf(_rtpfile,"%lu: ",(unsigned long)turn_time());
-	va_list args;
-	va_start (args, format);
-	vfprintf(_rtpfile,format, args);
-	fflush(_rtpfile);
-	va_end (args);
-	log_unlock();
+	switch(level) {
+	case TURN_LOG_LEVEL_CONTROL:
+		return LOG_NOTICE;
+	case TURN_LOG_LEVEL_WARNING:
+		return LOG_WARNING;
+	case TURN_LOG_LEVEL_ERROR:
+		return LOG_ERR;
+	default:
+		;
+	};
+	return LOG_INFO;
+}
+int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
+{
+	char s[1025];
+	sprintf(s,"%lu: ",(unsigned long)turn_time());
+	vsprintf(s+strlen(s), format, args);
+
+	if(to_syslog) {
+		syslog(get_syslog_level(level),"%s",s);
+	} else {
+		log_lock();
+		set_rtpfile();
+		fprintf(_rtpfile,"%s",s);
+		fflush(_rtpfile);
+		log_unlock();
+	}
+	return 0;
 }
 
-int vrtpprintf(const char *format, va_list args)
+void rtpprintf(const char *format, ...)
 {
-	log_lock();
-	set_rtpfile();
-	fprintf(_rtpfile,"%lu: ",(unsigned long)turn_time());
-	vfprintf(_rtpfile,format, args);
-	fflush(_rtpfile);
-	log_unlock();
-	return 0;
+	va_list args;
+	va_start (args, format);
+	vrtpprintf(TURN_LOG_LEVEL_INFO, format, args);
+	va_end (args);
 }
 
 //////////////////////////////////////////////////////////////////

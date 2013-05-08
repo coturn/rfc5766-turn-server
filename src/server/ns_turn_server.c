@@ -69,6 +69,8 @@ struct _turn_turnserver {
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
 	size_t addrs_number;
+	int no_loopback_peers;
+	int no_multicast_peers;
 
 	/* RFC 6062 ==>> */
 	int no_udp_relay;
@@ -148,6 +150,20 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 	}
 
 	return -1;
+}
+
+/////////////////// Peer addr check /////////////////////////////
+
+static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
+{
+	if(server && peer_addr) {
+		if(server->no_multicast_peers && ioa_addr_is_multicast(peer_addr))
+			return 0;
+		if(server->no_loopback_peers && ioa_addr_is_loopback(peer_addr))
+			return 0;
+		return 1;
+	}
+	return 0;
 }
 
 /////////////////// Allocation //////////////////////////////////
@@ -913,6 +929,14 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 
 			allocation *a = &(ss->alloc);
 			ioa_addr *peer_addr = get_remote_addr_from_ioa_socket(s);
+			if(!good_peer_addr(server, peer_addr)) {
+				u08bits saddr[256];
+				addr_to_string(peer_addr, saddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n", __FUNCTION__,saddr);
+				close_ioa_socket(s);
+				FUNCEND;
+				return;
+			}
 			tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
 			if(tc) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer data socket with this address already exist\n", __FUNCTION__);
@@ -1051,7 +1075,12 @@ static int handle_turn_connect(turn_turnserver *server,
 			*reason = (const u08bits *)"Where is Peer Address ?";
 
 		} else {
-			start_tcp_connection_to_peer(server, ss, tid, a, &peer_addr, err_code, reason);
+			if(!good_peer_addr(server,&peer_addr)) {
+				*err_code = 403;
+				*reason = (const u08bits *) "Forbidden IP";
+			} else {
+				start_tcp_connection_to_peer(server, ss, tid, a, &peer_addr, err_code, reason);
+			}
 		}
 	}
 
@@ -1302,20 +1331,25 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 					*err_code = 400;
 					*reason = (const u08bits *)"You cannot use the same peer with different channel number";
 				} else {
-					chn = allocation_get_new_ch_info(a, chnum, &peer_addr);
-					if (!chn) {
-						*err_code = 500;
-						*reason = (const u08bits *) "Cannot find channel data";
+					if(!good_peer_addr(server,&peer_addr)) {
+						*err_code = 403;
+						*reason = (const u08bits *) "Forbidden IP";
 					} else {
-						tinfo = (turn_permission_info*) (chn->owner);
-						if (!tinfo) {
+						chn = allocation_get_new_ch_info(a, chnum, &peer_addr);
+						if (!chn) {
 							*err_code = 500;
-							*reason
+							*reason = (const u08bits *) "Cannot find channel data";
+						} else {
+							tinfo = (turn_permission_info*) (chn->owner);
+							if (!tinfo) {
+								*err_code = 500;
+								*reason
 									= (const u08bits *) "Wrong turn permission info";
-						}
-						if (!(chn->socket_channel))
-							chn->socket_channel = create_ioa_socket_channel(
+							}
+							if (!(chn->socket_channel))
+								chn->socket_channel = create_ioa_socket_channel(
 									get_relay_socket(a), chn);
+						}
 					}
 				}
 			}
@@ -1664,6 +1698,9 @@ static int handle_turn_create_permission(turn_turnserver *server,
 				if(relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
+				} else if(!good_peer_addr(server, &peer_addr)) {
+					*err_code = 403;
+					*reason = (const u08bits *) "Forbidden IP";
 				} else {
 					addr_found = 1;
 					addr_set_port(&peer_addr, 0);
@@ -2867,7 +2904,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int stale_nonce,
 		int stun_only,
 		alternate_servers_list_t *alternate_servers_list,
-		alternate_servers_list_t *tls_alternate_servers_list) {
+		alternate_servers_list_t *tls_alternate_servers_list,
+		int no_multicast_peers, int no_loopback_peers) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2884,6 +2922,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->userkeycb = userkeycb;
 	server->chquoatacb = chquotacb;
 	server->raqcb = raqcb;
+	server->no_multicast_peers = no_multicast_peers;
+	server->no_loopback_peers = no_loopback_peers;
 
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;

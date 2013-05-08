@@ -91,7 +91,9 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    int stale_nonce,
 				    int stun_only,
 				    alternate_servers_list_t *alternate_servers_list,
-				    alternate_servers_list_t *tls_alternate_servers_list);
+				    alternate_servers_list_t *tls_alternate_servers_list,
+				    int no_multicast_peers,
+				    int no_loopback_peers);
 
 void delete_turn_server(turn_turnserver* server);
 
