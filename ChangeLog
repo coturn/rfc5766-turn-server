@@ -1,3 +1,7 @@
+05/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.3.9 'Black Dow':
+        - No changes - just the tarball is repackaged for Debian compatibility.
+
 05/07/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.8 'Black Dow':
 	- multicast and loopback addresses disallow options added.
