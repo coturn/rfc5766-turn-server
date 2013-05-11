@@ -84,7 +84,6 @@ ioa_socket_handle get_relay_socket(allocation *a)
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time_interval, ioa_timer_handle ev)
 {
 	if (a) {
-		turn_report_allocation_set(a, exp_time_interval, ((a->lifetime_ev) != NULL));
 		IOA_EVENT_DEL(a->lifetime_ev);
 		a->expiration_time = turn_time() + exp_time_interval;
 		a->lifetime_ev = ev;

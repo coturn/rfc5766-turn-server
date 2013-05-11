@@ -594,6 +594,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 							   out_reservation_token);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
+
+				turn_report_allocation_set(&(ss->alloc), lifetime, 0);
 			}
 		}
 	}
@@ -712,6 +714,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 				}
 
 			} else {
+
+				turn_report_allocation_set(&(ss->alloc), lifetime, 1);
 
 				size_t len = ioa_network_buffer_get_size(nbh);
 				stun_init_success_response_str(method, ioa_network_buffer_data(nbh), &len, tid);

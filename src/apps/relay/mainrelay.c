@@ -74,6 +74,10 @@
 
 #include "ns_ioalib_impl.h"
 
+#if !defined(TURN_NO_HIREDIS)
+#include "hiredis_libevent2.h"
+#endif
+
 //////////////// OpenSSL Init //////////////////////
 
 static void openssl_setup(void);
@@ -154,9 +158,12 @@ struct listener_server {
 	tls_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
 	dtls_listener_relay_server_type **dtls_services;
+#if !defined(TURN_NO_HIREDIS)
+	redis_context_handle rch;
+#endif
 };
 
-struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL};
+struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL};
 
 static uint32_t stats=0;
 
@@ -544,6 +551,11 @@ static void setup_listener_servers(void)
 	set_ssl_ctx(listener.ioa_eng, tls_ctx, dtls_ctx);
 
 	listener.rtcpmap = rtcp_map_create(listener.ioa_eng);
+
+#if !defined(TURN_NO_HIREDIS)
+	listener.rch = redisLibeventAttach(listener.event_base, NULL, 0, NULL, 0); //TODO
+	set_default_async_context(listener.rch);
+#endif
 
 	ioa_engine_set_rtcp_map(listener.ioa_eng, listener.rtcpmap);
 

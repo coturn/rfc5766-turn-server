@@ -46,6 +46,10 @@
 
 #include <openssl/err.h>
 
+#if !defined(TURN_NO_HIREDIS)
+#include "hiredis_libevent2.h"
+#endif
+
 /* Compilation test:
 #if defined(IP_RECVTTL)
 #undef IP_RECVTTL
@@ -2268,16 +2272,24 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 	if(a) {
 		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
 		if(ss) {
+			const char* status="New";
+			if(refresh)
+				status="Refresh";
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					const char* status="New";
-					if(refresh)
-						status="Refresh";
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
 				}
 			}
+#if !defined(TURN_NO_HIREDIS)
+			if(default_async_context_is_not_empty()) {
+				char key[1024];
+				snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				send_message_to_redis(NULL, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
+				send_message_to_redis(NULL, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
+			}
+#endif
 		}
 	}
 }
@@ -2294,6 +2306,14 @@ void turn_report_allocation_delete(void *a)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=0x%lx, username=<%s>\n", get_allocation_id((allocation*)a), (char*)ss->username);
 				}
 			}
+#if !defined(TURN_NO_HIREDIS)
+			if(default_async_context_is_not_empty()) {
+				char key[1024];
+				snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				send_message_to_redis(NULL, "del", key, "");
+				send_message_to_redis(NULL, "publish", key, "delete");
+			}
+#endif
 		}
 	}
 }
@@ -2310,6 +2330,13 @@ void turn_report_session_usage(void *session)
 				if(e && e->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Session allocation id=0x%lx, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", get_allocation_id(a), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
+#if !defined(TURN_NO_HIREDIS)
+				if(default_async_context_is_not_empty()) {
+					char key[1024];
+					snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+					send_message_to_redis(NULL, "publish", key, "traffic rp=%lu, rb=%lu, sp=%lu, sb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+				}
+#endif
 				ss->received_packets=0;
 				ss->received_bytes=0;
 				ss->sent_packets=0;

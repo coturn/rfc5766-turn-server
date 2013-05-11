@@ -1,4 +1,8 @@
 05/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.4.0 'Black Dow':
+        - Redis DB support added
+        
+05/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.9 'Black Dow':
         - No changes - just the tarball is repackaged for Debian compatibility.
 

@@ -17,6 +17,8 @@ cleanup() {
 	rm -rf ${D_TMPCPROGB}
 	rm -rf ${E_TMPCPROGC}
 	rm -rf ${E_TMPCPROGO}
+	rm -rf ${HR_TMPCPROGC}
+	rm -rf ${HR_TMPCPROGB}
 }
 
 testlibraw() {
@@ -39,6 +41,25 @@ testlibevent2() {
 	return 0
     else
 	return 1
+    fi
+}
+
+testhiredis() {
+	HIREDISCFLAGS=
+	HIREDISLIBS=-lhiredis
+    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo
+		echo "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
+		echo "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		echo "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
+		echo
+		return 0
+    else
+		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
+		DBLIBS="${DBLIBS} ${HIREDISLIBS}"
+		return 1
     fi
 }
 
@@ -354,6 +375,20 @@ int main(int argc, char** argv) {
 }
 !
 
+HR_TMPCPROG=__test__ccomp__hiredis__$$
+HR_TMPCPROGC=${TMPDIR}/${HR_TMPCPROG}.c
+HR_TMPCPROGB=${TMPDIR}/${HR_TMPCPROG}
+
+cat > ${HR_TMPCPROGC} <<!
+#include <stdlib.h>
+#include <hiredis/hiredis.h>
+#include <hiredis/async.h>
+int main(int argc, char** argv) {
+	redisAsyncHandleRead(NULL);
+    return (int)(argv[argc][0]);
+}
+!
+
 PQ_TMPCPROG=__test__ccomp__libpq__$$
 PQ_TMPCPROGC=${TMPDIR}/${PQ_TMPCPROG}.c
 PQ_TMPCPROGB=${TMPDIR}/${PQ_TMPCPROG}
@@ -614,6 +649,26 @@ fi
 
 else
 	TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+
+fi
+
+###########################
+# Test Redis
+###########################
+
+if [ -z "${TURN_NO_HIREDIS}" ] ; then
+
+testhiredis
+
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+  echo "Hiredis found."
+else
+  TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
+fi
+
+else
+	TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
 
 fi
 
