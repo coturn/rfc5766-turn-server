@@ -98,8 +98,8 @@ This command will also:
 
 After the installation, you may want to adjust the system-wide shared library search 
 path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris). Your system must be 
-able to find the libevent2, openssl and (optionally) PostgreSQL and/or MySQL shared 
-libraries, either with the help of the system-wide library search configuration or 
+able to find the libevent2, openssl and (optionally) PostgreSQL and/or MySQL and/or Redis 
+shared libraries, either with the help of the system-wide library search configuration or 
 by using LD_LIBRARY_PATH.
 
 IV. PLATFORMS
@@ -150,15 +150,22 @@ VI. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
 or better) are required, the PostgreSQL C client development setup is optional, 
-and the MySQL C client development setup is optional.
+the MySQL C client development setup is optional, and the Hiredis development
+files for Redis database access are optional.
 For fully functional build, the extra set of libraries must be installed
 in full version (the development headers and the libraries to link with). 
 For runtime, only runtime setup is required. If the build is modified for static 
 linking, then even runtime installation is not needed.
 
-OpenSSL, libevent2, PostgreSQL and MySQL can be downloaded from their web sites -
-http://www.openssl.org, http://www.libevent.org, http://www.postgresql.org, and
-http://www.mysql.org. The installations are pretty straightforward - the usual 
+OpenSSL, libevent2, PostgreSQL, MySQL and Hiredis library (for redis access)
+can be downloaded from their web sites:
+ - http://www.openssl.org;
+ - http://www.libevent.org;
+ - http://www.postgresql.org;
+ - http://www.mysql.org;
+ - http://redis.io .
+ 
+The installations are pretty straightforward - the usual 
 "./configure" and "make install" commands. Install them into their default 
 locations - the configure script and the Makefile are assuming that they are 
 installed in their default locations. If not, then you will have to modify those.
@@ -176,18 +183,21 @@ third party tools installation:
 		$ sudo make install clean
 		$ cd /usr/ports/databases/mysql51-client/ (or any other version)
 		$ sudo make install clean
+		$ cd /usr/ports/databases/hiredis/
+		$ sudo make install clean
 
-	**) Linux Ubuntu 11.10+ and Debian Wheezy:
+	**) Linux Ubuntu 11.10+, Debian Wheezy, Mint 14+:
 		
 		$ sudo apt-get install libssl-dev
 		$ sudo apt-get install libevent-dev
 		$ sudo apt-get install libpq-dev
 		$ sudo apt-get install mysql-client
 		$ sudo apt-get install libmysqlclient-dev
+		$ sudo apt-get install libhiredis-dev
 		
 		or you can use Synaptic or other software center.
 		
-	***) Other OS in Debian family (Squeeze, Mint, earlier Ubuntus) setups are similar, 
+	***) Other OS in Debian family (Squeeze and earlier Ubuntus) setups are similar, 
 	although some packages have different names. 
 		 
 	****) On CentOS 6.3 you have to install libevent2 "manually", but everything else 
@@ -200,21 +210,21 @@ like this:
 
   $ CFLAGS="${CFLAGS} -I/usr/postgres/9.2-pgdg/include/" LDFLAGS="${LDFLAGS} -L/usr/postgres/9.2-pgdg/lib/" ./configure
 
-You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL 
+You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL and/or Redis 
 runtime library path to LD_LIBRARY_PATH. Or you can adjust the system-wide shared library 
 search path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris).
 
 See also the next section.
 
-NOTE: See "PostgreSQL setup" and "MySQL" setup sections below for more database setup information.
+NOTE: See "PostgreSQL setup" and "MySQL setup" and "Redis setup" sections below for more database setup information.
 
-NOTE: If you do not install PostgreSQL or MySQL then you will
+NOTE: If you do not install PostgreSQL or MySQL or Redis then you will
 be limited to flat files for user database. It will work great for 
 smaller user databases (like 100 users) but for larger systems you 
-will need PostgreSQL or MySQL.
+will need PostgreSQL or MySQL or Redis.
 
-NOTE: To run PostgreSQL or MySQL server on the same system, you will also have to install 
-a corresponding PostgreSQL or MySQL server package. C development packages only provide 
+NOTE: To run PostgreSQL or MySQL or Redis server on the same system, you will also have to install 
+a corresponding PostgreSQL or MySQL or Redis server package. C development packages only provide 
 development libraries, and client libraries only provide client access utilities and 
 runtime libraries. The server packages includes everything - client, C development and 
 server runtime.   
@@ -531,6 +541,36 @@ So, an example of the MySQL database parameter in the TURN server command line w
 Or in the turnserver.conf file:
 
 mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30"
+
+XIII. Redis setup
+
+The Redis setup is well documented on their site http://redis.io. 
+The TURN Server Redis database schema description can be found 
+in turndb/schema.*.redis files.
+
+If the TURN server was compiled with Hiredis support (Hiredis is the C client library 
+for Redis), then we can use the TURN server database parameter --redis-userdb. 
+The value of this parameter is a connection string 
+for the Redis database. As "native" Redis does not have such a feature as 
+"connection string", the TURN server parses the connection string and converts it into 
+Redis database access parameter. The format of the Redis connection string is:
+
+"ip=<ip-addr> dbname=<database-number> password=<database-password> port=<port> connect_timeout=<seconds>"
+
+(all parameters are optional)
+
+So, an example of the Redis database parameter in the TURN server command line would be:
+
+--redis-userdb="ip=127.0.0.1 dbname=0 password=turn connect_timeout=30"
+
+Or in the turnserver.conf file:
+
+redis-userdb="ip=127.0.0.1 dbname=0 password=turn connect_timeout=30"
+
+Redis can be also used for the TURN allocation status check and for status and traffic notifications.
+See the explanation in the turndb/schema.stats.redis file.
+
+ 
 
 
   

@@ -54,6 +54,8 @@ void set_default_async_context(redis_context_handle rch);
 int default_async_context_is_not_empty(void);
 void send_message_to_redis(redis_context_handle rch, const char *command, const char *key, const char *format,...);
 
+void delete_redis_keys(const char *key_pattern);
+
 #ifdef __cplusplus
 }
 #endif

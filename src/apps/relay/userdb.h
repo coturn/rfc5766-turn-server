@@ -85,6 +85,9 @@ enum _TURN_USERDB_TYPE {
 #if !defined(TURN_NO_MYSQL)
 	,TURN_USERDB_TYPE_MYSQL
 #endif
+#if !defined(TURN_NO_HIREDIS)
+	,TURN_USERDB_TYPE_REDIS
+#endif
 };
 
 typedef enum _TURN_USERDB_TYPE TURN_USERDB_TYPE;
@@ -148,6 +151,13 @@ void release_allocation_quota(u08bits *username);
 void read_userdb_file(int to_print);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURNADMIN_COMMAND_TYPE ct, int is_st);
+
+///////////// Redis //////////////////////
+
+#if !defined(TURN_NO_HIREDIS)
+#include "hiredis_libevent2.h"
+redis_context_handle get_redis_async_connection(struct event_base *base, char* connection_string);
+#endif
 
 ////////////////////////////////////////////
 

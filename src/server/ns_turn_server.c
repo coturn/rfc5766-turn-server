@@ -43,7 +43,7 @@
 
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
 
-#define TURN_MAX_TO_ALLOCATE_TIMEOUT (30)
+int TURN_MAX_TO_ALLOCATE_TIMEOUT = 60;
 
 ///////////////////////////////////////////
 

@@ -108,6 +108,16 @@ TURN(07 May 2013)
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.mysql.org for full MySQL documentation.
+		
+   * *-N,* *--redis-userdb* {{{<connection-string>}}}
+   		  User database connection string for Redis. 
+		This database can be used for long-term and short-term credentials mechanisms, and it can store the secret value for secret-based timed authentication in TURN RESP API. The (proprietary) connection string format is like this:
+		{{{
+"ip=<ip-addr> dbname=<number> password=<db-password> connect_timeout=<seconds>".
+}}}
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://redis.io for full Redis documentation. 
 
 ====Options:====
 
@@ -136,7 +146,9 @@ TURN(07 May 2013)
     *   *--alternate-server* {{{<ip:port>}}} Option to set the "redirection" mode. The value of this option will be the address of the alternate server for UDP & TCP service in form of  {{{<ip>[:<port>]}}}. The server will send this value in the attribute ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client. Client will receive only values with the same address family as the client network endpoint address family. This functionality can be used only with authentication mode. See RFC 5389 and RFC 5766 for ALTERNATE-SERVER functionality description. The client must use the obtained value for subsequent TURN communications. If more than one --alternate-server options are provided, then the functionality can be more accurately described as "load-balancing" than a mere "redirection". If the port number is omitted, then the default port number 3478 for the UDP/TCP protocols will be used. Colon (:) characters in IPv6 addresses may conflict with the syntax of the option. To alleviate this conflict, literal IPv6 addresses are enclosed in square brackets in such resource identifiers, for example: [2001:db8:85a3:8d3:1319:8a2e:370:7348]:3478 . Multiple alternate servers can be set. They will be used in the round-robin manner. All servers in the pool are considered of equal weight and the load will be distributed equally. For example, if we have 4 alternate servers, then each server will receive 25% of ALLOCATE requests. A alternate TURN server address can be used more than one time with the alternate-server option, so this can emulate "weighting" of the servers.
     *   *--tls-alternate-server* {{{<ip:port>}}}	Option to set alternative server for TLS & DTLS services in form of {{{<ip>[:<port>]}}}. If the port number is omitted, then the default port number 5349 for the TLS/DTLS protocols will be used. See the previous option for the functionality description.
     *   *-C*, *--rest-api-separator* {{{<symbol>}}}	This is the username/timestamp separator symbol (character) in TURN REST API. The default value is ':'.
-
+    *   *-O*, *--redis-statsdb*	{{{<connection-string>}}}	Redis status and statistics database connection string, if used (default - empty, no Redis stats DB used). This database keeps allocations status information, and it can be also used for publishing and delivering traffic and allocation event notifications. The connection string has the same parameters as redis-userdb connection string.
+    *   *--max-allocate-timeout* {{{<seconds>}}}	Max time, in seconds, allowed for full allocation establishment. Default is 60 seconds.
+    
 ==== LOAD BALANCE ====
 
 To set a load balancing scheme, you have three options:
@@ -158,7 +170,8 @@ the user accounts, for that you have a number of options:
     # command-line options (-u).
     # userdb config file.
     # database table (PostgreSQL or MySQL).
-    # you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table.
+    # Redis key/value pair(s).
+    # you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table, or through Redis database.
   * Usually WebRTC uses fingerprinting (-f).
   * -v option may be nice to see the connected clients.
   * -X is needed if you are running your TURN server behind a NAT.
@@ -191,6 +204,7 @@ number range.
  * *-b,* *--userdb* {{{<file-name>}}} 'Dynamic' user database file name (default - turnuserdb.conf).
  * *-e,* *--psql-userdb,* *--sql-userdb* {{{<connection-string>}}} PostgreSQL database connection string.
  * *-M,* *--mysql-userdb* {{{<connection-string>}}} MySQL database connection string.
+ * *-N,* *--redis-userdb* {{{<connection-string>}}} Redis database connection string.
  * *-u,* *--user* {{{<user>}}}   User name.
  * *-r,* *--realm* {{{<realm>}}}    Realm.
  * *-p,* *--password* {{{<password>}}} Password.
@@ -202,11 +216,11 @@ number range.
 }}}
 ====Add/update a user (and realm) in the userdb file:====
 {{{
-       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
+       $ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>	-r <realm>  -p	<password>
 }}}
 ====Delete a user from the userdb file:====
 {{{
-       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>
+       $ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string>  | -N <db-connection-string> ] -u <username>
 }}}
 ====List all long-term users in MySQL database:====
 {{{
@@ -216,13 +230,21 @@ $ turnadmin -l --mysql-userdb="<db-connection-string>"
 {{{
 $ turnadmin -L --psql-userdb="<db-connection-string>"
 }}}
+====List all long-term users in Redis database:====
+{{{
+$ turnadmin -l --redis-userdb="<db-connection-string>"
+}}}
 ====Set secret:====
 {{{
 $ turnadmin -s <secret> --mysql-userdb="<db-connection-string>"
 }}}
-====Show secret:=====
+====Show secret(s):=====
 {{{
 $ turnadmin -S --psql-userdb="<db-connection-string>"
+}}}
+====Show secret(s):=====
+{{{
+$ turnadmin -S --redis-userdb="<db-connection-string>"
 }}}
 
 ====Help:====

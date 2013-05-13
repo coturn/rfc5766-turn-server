@@ -148,7 +148,7 @@ static void send_message_for_redis(redisAsyncContext *ac, const struct redis_mes
 	if(!ac)
 		return;
 
-	struct redisLibeventEvents *e = ac->ev.data;
+	struct redisLibeventEvents *e = (struct redisLibeventEvents *)(ac->ev.data);
 
 	if(e && rm) {
 		struct evbuffer *output = bufferevent_get_output(e->out_buf);
@@ -202,6 +202,33 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 	}
 }
 
+static void deleteKeysCallback(redisAsyncContext *c, void *reply0, void *privdata)
+{
+	redisReply *reply = (redisReply*) reply0;
+
+	if (reply) {
+
+		if (reply->type == REDIS_REPLY_ERROR)
+			printf("Error: %s\n", reply->str);
+		else if (reply->type != REDIS_REPLY_ARRAY)
+			printf("Unexpected type: %d\n", reply->type);
+		else {
+			size_t i;
+			for (i = 0; i < reply->elements; ++i) {
+				redisAsyncCommand(c, NULL, privdata, "del %s", reply->element[i]->str);
+			}
+		}
+	}
+}
+
+void delete_redis_keys(const char *key_pattern)
+{
+	redisAsyncContext *ac = defaultAsyncContext;
+	if(ac) {
+		redisAsyncCommand(ac, deleteKeysCallback, ac->ev.data, "keys %s", key_pattern);
+	}
+}
+
 void set_default_async_context(redis_context_handle rch)
 {
 	defaultAsyncContext = (redisAsyncContext*)rch;
@@ -214,7 +241,8 @@ int default_async_context_is_not_empty(void)
 
 ///////////////////////// Attach /////////////////////////////////
 
-redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db) {
+redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int port0, char *pwd, int db)
+{
 
   struct redisLibeventEvents *e = NULL;
   redisAsyncContext *ac = NULL;
@@ -226,7 +254,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 	  STRCPY(ip,"127.0.0.1");
 
   int port = DEFAULT_REDIS_PORT;
-  if(port0)
+  if(port0>0)
 	  port=port0;
   
   ac = redisAsyncConnect(ip, port);
@@ -284,10 +312,10 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 
   //Authentication
   if(pwd)
-	  redisAsyncCommand(ac, NULL, NULL, "AUTH %s", pwd);
+	  redisAsyncCommand(ac, NULL, e, "AUTH %s", pwd);
 
   if(db>0)
-	  redisAsyncCommand(ac, NULL, NULL, "SELECT %d", db);
+	  redisAsyncCommand(ac, NULL, e, "SELECT %d", db);
 
   return ac;
 }

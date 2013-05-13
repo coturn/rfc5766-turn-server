@@ -388,11 +388,20 @@ static int get_syslog_level(TURN_LOG_LEVEL level)
 	};
 	return LOG_INFO;
 }
+
 int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 {
-	char s[1025];
+	/* Fix for Issue 24, raised by John Selbie: */
+#define MAX_RTPPRINTF_BUFFER_SIZE (1024)
+	char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
+#undef MAX_RTPPRINTF_BUFFER_SIZE
+
+	size_t sz;
+
 	sprintf(s,"%lu: ",(unsigned long)turn_time());
-	vsprintf(s+strlen(s), format, args);
+	sz=strlen(s);
+	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
+	s[sizeof(s)-1]=0;
 
 	if(to_syslog) {
 		syslog(get_syslog_level(level),"%s",s);
@@ -400,9 +409,9 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 		log_lock();
 		set_rtpfile();
 		fprintf(_rtpfile,"%s",s);
-		fflush(_rtpfile);
 		log_unlock();
 	}
+
 	return 0;
 }
 

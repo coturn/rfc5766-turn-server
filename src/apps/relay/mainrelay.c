@@ -115,6 +115,11 @@ static SSL_CTX *dtls_ctx = NULL;
 
 static char listener_ifname[1025]="\0";
 
+#if !defined(TURN_NO_HIREDIS)
+static char redis_statsdb[1025]="\0";
+static int use_redis_statsdb = 0;
+#endif
+
 /*
  * openssl genrsa -out pkey 2048
  * openssl req -new -key pkey -out cert.req
@@ -163,7 +168,13 @@ struct listener_server {
 #endif
 };
 
-struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL};
+struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL
+
+#if !defined(TURN_NO_HIREDIS)
+				   ,NULL
+#endif
+
+};
 
 static uint32_t stats=0;
 
@@ -553,8 +564,11 @@ static void setup_listener_servers(void)
 	listener.rtcpmap = rtcp_map_create(listener.ioa_eng);
 
 #if !defined(TURN_NO_HIREDIS)
-	listener.rch = redisLibeventAttach(listener.event_base, NULL, 0, NULL, 0); //TODO
-	set_default_async_context(listener.rch);
+	if(use_redis_statsdb) {
+		listener.rch = get_redis_async_connection(listener.event_base, redis_statsdb);
+		set_default_async_context(listener.rch);
+		turn_report_allocation_delete_all();
+	}
 #endif
 
 	ioa_engine_set_rtcp_map(listener.ioa_eng, listener.rtcpmap);
@@ -1094,7 +1108,7 @@ static int make_local_relays_list(int allow_local)
 
 static char Usage[] = "Usage: turnserver [options]\n"
 "Options:\n"
-" -d, --listening-device	<device-name>	Listener interface device (optional, Linux only).\n"
+" -d, --listening-device	<device-name>		Listener interface device (optional, Linux only).\n"
 " -p, --listening-port		<port>		TURN listener port (Default: 3478).\n"
 "						Note: actually, TLS & DTLS sessions can connect to the \"plain\" TCP & UDP port(s), too,\n"
 "						if allowed by configuration.\n"
@@ -1106,7 +1120,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 5350).\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
-" -E, --relay-ip		<ip>		Relay address (the local IP address that will be used to relay the packets to the peer).\n"
+" -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
 " -X, --external-ip		<ip>		\"External\" TURN Server address if the server is behind NAT.\n"
 "						In the server-behind-NAT situation, only one relay address must be used, and\n"
 "						that single relay address must be mapped by NAT to the 'external' IP.\n"
@@ -1140,20 +1154,32 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -c				<filename>	Configuration file name (default - turnserver.conf).\n"
 " -b, --userdb			<filename>	User database file name (default - turnuserdb.conf) for long-term credentials only.\n"
 #if !defined(TURN_NO_PQ)
-" -e, --psql-userdb, --sql-userdb <connection>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
+" -e, --psql-userdb, --sql-userdb <conn-string>	PostgreSQL database connection string, if used (default - empty, no PostreSQL DB used).\n"
 "		                                This database can be used for long-term and short-term credentials mechanisms,\n"
-"		                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
+"		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						See http://www.postgresql.org/docs/8.4/static/libpq-connect.html for 8.x PostgreSQL\n"
 "						versions format, see http://www.postgresql.org/docs/9.2/static/libpq-connect.html#LIBPQ-CONNSTRING\n"
 "						for 9.x and newer connection string formats.\n"
 #endif
 #if !defined(TURN_NO_MYSQL)
-" -M, --mysql-userdb		<connection>	MySQL database connection string, if used (default - empty, no MySQL DB used).\n"
+" -M, --mysql-userdb	<connection-string>	MySQL database connection string, if used (default - empty, no MySQL DB used).\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
-"		                                and it can store the secret value for secret-based timed authentication in TURN RESP API.\n"
+"		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port>\".\n"
+"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
 "	        	          		All parameters are optional.\n"
+#endif
+#if !defined(TURN_NO_HIREDIS)
+" -N, --redis-userdb	<connection-string>	Redis user database connection string, if used (default - empty, no Redis DB used).\n"
+"	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
+"		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
+"						The connection string my be space-separated list of parameters:\n"
+"	        	          		\"host=<ip-addr> dbname=<db-number> password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
+"	        	          		All parameters are optional.\n"
+" -O, --redis-statsdb	<connection-string>	Redis status and statistics database connection string, if used (default - empty, no Redis stats DB used).\n"
+"	                                	This database keeps allocations status information, and it can be also used for publishing\n"
+"		                                and delivering traffic and allocation event notifications.\n"
+"						The connection string has the same parameters as redis-userdb connection string.\n"
 #endif
 " --use-auth-secret				Flag that sets a special authorization option that is based upon authentication secret\n"
 "						(TURN Server REST API, see TURNServerRESTAPI.pdf). This option is used with timestamp.\n"
@@ -1167,11 +1193,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --secret-ts-exp-time 		<numberofsecs>	Expiration time for timestamp used with authentication secret, in seconds.\n"
 "						The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
-" --cert			<filename>	Certificate file, PEM format. Same file search rules\n"
+" --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no_dtls options\n"
 "						are specified, then this parameter is not needed.\n"
-" --pkey			<filename>	Private key file, PEM format. Same file search rules\n"
+" --pkey			<filename>		Private key file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no-dtls options\n"
 "						are specified, then this parameter is not needed.\n"
@@ -1179,9 +1205,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
 " --no-dtls					Do not start DTLS client listeners.\n"
-" --no-udp-relay				Do not allow UDP relay endpoints, use only TCP relay option.\n"
-" --no-tcp-relay				Do not allow TCP relay endpoints, use only UDP relay options.\n"
-" -l, --log-file		<filename>	Option to set the full path name of the log file.\n"
+" --no-udp-relay					Do not allow UDP relay endpoints, use only TCP relay option.\n"
+" --no-tcp-relay					Do not allow TCP relay endpoints, use only UDP relay options.\n"
+" -l, --log-file		<filename>		Option to set the full path name of the log file.\n"
 "						By default, the turnserver tries to open a log file in\n"
 "						/var/log, /var/tmp, /tmp and current directories directories\n"
 "						(which open operation succeeds first that file will be used).\n"
@@ -1195,14 +1221,15 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
 " --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
-" --alternate-server		<ip:port>	TURN server to redirect the allocate requests (UDP and TCP services).\n"
+" --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
 "						Multiple alternate-server options can be set for load balancing purposes.\n"
 "						See the docs for more information.\n"
-" --tls-alternate-server	<ip:port>	TURN server to redirect the allocate requests (DTLS and TLS services).\n"
+" --tls-alternate-server	<ip:port>		Set the TURN server to redirect the allocate requests (DTLS and TLS services).\n"
 "						Multiple alternate-server options can be set for load balancing purposes.\n"
 "						See the docs for more information.\n"
 " -C, --rest-api-separator	<SYMBOL>	This is the username/timestamp separator symbol (character) in TURN REST API.\n"
 "						The default value is ':'.\n"
+"     --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. Default is 60.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1217,7 +1244,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
 	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
 	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
-	"	-X, --delete-secret		Delete a shared secret\n"
+	"	-X, --delete-secret=<value>	Delete a shared secret\n"
 	"	    --delete-all-secrets	Delete all shared secrets for REST API\n"
 #endif
 	"Options:\n"
@@ -1228,14 +1255,17 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 #if !defined(TURN_NO_MYSQL)
 	"	-M, --mysql-userdb		MySQL user database connection string, if MySQL DB is used.\n"
 #endif
+#if !defined(TURN_NO_HIREDIS)
+	"	-N, --redis-userdb		Redis user database connection string, if Redis DB is used.\n"
+#endif
 	"	-u, --user			Username\n"
 	"	-r, --realm			Realm for long-term mechanism only\n"
 	"	-p, --password			Password\n"
 	"	-h, --help			Help\n";
 
-#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:q:Q:s:C:vVofhznaAS"
+#define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:N:O:q:Q:s:C:vVofhznaAS"
 
-#define ADMIN_OPTIONS "lLkaADSdb:e:M:u:r:p:s:X:h"
+#define ADMIN_OPTIONS "lLkaADSdb:e:M:N:u:r:p:s:X:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -1261,7 +1291,8 @@ enum EXTRA_OPTS {
 	ALTERNATE_SERVER_OPT,
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
-	NO_LOOPBACK_PEERS_OPT
+	NO_LOOPBACK_PEERS_OPT,
+	MAX_ALLOCATE_TIMEOUT_OPT
 };
 
 static struct option long_options[] = {
@@ -1288,6 +1319,10 @@ static struct option long_options[] = {
 #endif
 #if !defined(TURN_NO_MYSQL)
 				{ "mysql-userdb", required_argument, NULL, 'M' },
+#endif
+#if !defined(TURN_NO_HIREDIS)
+				{ "redis-userdb", required_argument, NULL, 'N' },
+				{ "redis-statsdb", required_argument, NULL, 'O' },
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
@@ -1316,6 +1351,7 @@ static struct option long_options[] = {
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
 				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
 				{ "rest-api-separator", required_argument, NULL, 'C' },
+				{ "max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT },
 				{ "no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT },
 				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
 				{ NULL, no_argument, NULL, 0 }
@@ -1342,6 +1378,9 @@ static struct option admin_long_options[] = {
 #endif
 #if !defined(TURN_NO_MYSQL)
 				{ "mysql-userdb", required_argument, NULL, 'M' },
+#endif
+#if !defined(TURN_NO_HIREDIS)
+				{ "redis-userdb", required_argument, NULL, 'N' },
 #endif
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
@@ -1410,6 +1449,9 @@ static void set_option(int c, char *value)
 		break;
 	case STALE_NONCE_OPT:
 		stale_nonce = get_bool_value(value);
+		break;
+	case MAX_ALLOCATE_TIMEOUT_OPT:
+		TURN_MAX_TO_ALLOCATE_TIMEOUT = atoi(value);
 		break;
 	case 'S':
 		stun_only = get_bool_value(value);
@@ -1493,6 +1535,16 @@ static void set_option(int c, char *value)
 		userdb_type = TURN_USERDB_TYPE_MYSQL;
 		break;
 #endif
+#if !defined(TURN_NO_HIREDIS)
+	case 'N':
+		STRCPY(userdb, value);
+		userdb_type = TURN_USERDB_TYPE_REDIS;
+		break;
+	case 'O':
+		STRCPY(redis_statsdb, value);
+		use_redis_statsdb = 1;
+		break;
+#endif
 	case AUTH_SECRET_OPT:
 		use_auth_secret_with_timestamp = 1;
 		break;
@@ -1569,7 +1621,7 @@ static void set_option(int c, char *value)
 	case 'h':
 		break;
 	default:
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", Usage);
+		fprintf(stderr,"\n%s\n", Usage);
 		exit(-1);
 	}
 }
@@ -1623,7 +1675,7 @@ static void read_config_file(int argc, char **argv, int pass)
 		config_file[0]=0;
 		return;
 	      } else if (!strcmp(argv[i], "-h")) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", Usage);
+		printf("\n%s\n",Usage);
 		exit(0);
 	      }
 	    }
@@ -1756,6 +1808,12 @@ static int adminmain(int argc, char **argv)
 			userdb_type = TURN_USERDB_TYPE_MYSQL;
 			break;
 #endif
+#if !defined(TURN_NO_HIREDIS)
+		case 'N':
+			strcpy(userdb,optarg);
+			userdb_type = TURN_USERDB_TYPE_REDIS;
+			break;
+#endif
 		case 'u':
 			strcpy((char*)user,optarg);
 			if(SASLprep((u08bits*)user)<0) {
@@ -1778,11 +1836,11 @@ static int adminmain(int argc, char **argv)
 			}
 			break;
 		case 'h':
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s\n", AdminUsage);
+			printf("\n%s\n", AdminUsage);
 			exit(0);
 			break;
 		default:
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
+			fprintf(stderr,"\n%s\n", AdminUsage);
 			exit(-1);
 		}
 	}
@@ -1796,7 +1854,7 @@ static int adminmain(int argc, char **argv)
 		strcpy(userdb,DEFAULT_USERDB_FILE);
 
 	if(ct == TA_COMMAND_UNKNOWN) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
+		fprintf(stderr,"\n%s\n", AdminUsage);
 		exit(-1);
 	}
 
@@ -1804,7 +1862,7 @@ static int adminmain(int argc, char **argv)
 	argv += optind;
 
 	if(argc != 0) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", AdminUsage);
+		fprintf(stderr,"\n%s\n", AdminUsage);
 		exit(-1);
 	}
 
@@ -1978,7 +2036,7 @@ int main(int argc, char **argv)
 		local_listeners = 1;
 		if (!listener.addrs_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
+			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
 		}
 	}
@@ -1998,7 +2056,7 @@ int main(int argc, char **argv)
 			if (!relays_number) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
 								__FUNCTION__);
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", Usage);
+				fprintf(stderr,"\n%s\n", Usage);
 				exit(-1);
 			}
 		}

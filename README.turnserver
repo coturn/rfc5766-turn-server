@@ -57,7 +57,7 @@ turnserver - a TURN relay server implementation.
   
   SYNOPSIS
   
-$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
+$ turnserver [-n | -c <config-file> ] [flags] [ --userdb=<userdb-file> | --psql-userdb=<db-conn-string> | --mysql-userdb=<db-conn-string>  | --redis-userdb=<db-conn-string> ] [-z | --no-auth | -a | --lt-cred-mech ] [options]
 $ turnserver -h
   
   DESCRIPTION						
@@ -111,6 +111,16 @@ User database settings:
 		See the INSTALL file for more explanations and examples.
 		
 		Also, see http://www.mysql.org for full MySQL documentation.
+		
+-N, --redis-userdb	User database connection string for Redis. 
+		This database can be used for long-term and short-term credentials mechanisms,
+		and it can store the secret value for secret-based timed authentication in TURN RESP API.
+		The connection string format is like that:
+		 
+		"ip=<ip-addr> dbname=<db-number> password=<db-password> connect_timeout=<seconds>"
+		See the INSTALL file for more explanations and examples.
+		
+		Also, see http://redis.io for full Redis documentation.
 
 Flags:   
 
@@ -330,6 +340,17 @@ Options with required values:
 -C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.
 				The default value is :.
 
+-O, --redis-statsdb	Redis status and statistics database connection string, if used (default - empty, 
+				no Redis stats DB used). This database keeps allocations status information, and it can 
+				be also used for publishing and delivering traffic and allocation event notifications.
+				This database option can be used independently of --redis-userdb option,
+				and actually Redis can be used for status/statistics and MySQL or PostgreSQL can
+				be used for the user database.
+				The connection string has the same parameters as redis-userdb connection string.
+
+--max-allocate-timeout	Max time, in seconds, allowed for full allocation establishment. 
+				Default is 60 seconds.
+		
 ==================================
 
 LOAD BALANCE

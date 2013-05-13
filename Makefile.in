@@ -138,6 +138,10 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} postinstall.txt ${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.sql ${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.sql ${SCHEMADIR}
+	${INSTALL_DATA} turndb/schema.userdb.redis ${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.userdb.redis ${SCHEMADIR}
+	${INSTALL_DATA} turndb/schema.stats.redis ${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.stats.redis ${SCHEMADIR}
 	${INSTALL_DATA} examples/etc/turnserver.conf ${PREFIX}/etc/turnserver.conf.default
 	${INSTALL_DATA} examples/etc/turnuserdb.conf ${PREFIX}/etc/turnuserdb.conf.default
 	${INSTALL_DIR} examples/etc ${EXAMPLESDIR}

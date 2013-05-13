@@ -9,9 +9,12 @@ service, you have to:
 
 	b) For user accounts settings, if using the turnserver 
 	with authentication: create and edit /etc/turnuserdb.conf 
-	file, or set up PostgreSQL or MySQL database for user accounts.
+	file, or set up PostgreSQL or MySQL or Redis database for user accounts.
 	Use /etc/turnuserdb.conf.default as example for flat file DB,
-	or use /usr/local/share/turnserver/schema.sql as database schema.
+	or use /usr/local/share/turnserver/schema.sql as SQL database schema,
+	or use /usr/local/share/turnserver/schema.userdb.redis as Redis
+	database schema description and/or /usr/local/share/turnserver/schema.stats.redis
+	as Redis status & statistics database schema description.
 
 	c) add whatever is necessary to enable start-up daemon for the /usr/local/bin/turnserver.
      

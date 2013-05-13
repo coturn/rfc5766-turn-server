@@ -77,6 +77,8 @@ Options with required values:
 			See the --psql-userdb option in the turnserver section.
 -M, --mysql-userdb	MySQL user database connection string.
 			See the --mysql-userdb option in the turnserver section.
+-N, --redis-userdb	Redis user database connection string.
+			See the --redis-userdb option in the turnserver section.
 -u, --user		User name.
 -r, --realm		Realm, for long-term credentials mechanism only.
 -p, --password		Password.
@@ -88,19 +90,19 @@ $ turnadmin -k -u <username> -r <realm> -p <password>
   
 Add/update a user (and realm) in the userdb file or in the database:
 
-$ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username> -r <realm> -p <password>
+$ turnadmin -a [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> | -N <db-connection-string> ] -u <username> -r <realm> -p <password>
   
 Delete a user from the userdb file or from the database:
 
-$ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> ] -u <username>
+$ turnadmin -d [-b <userdb-file> | -e <db-connection-string> | -M <db-connection-string> | -N <db-connection-string> ] -u <username>
 
 List all long-term users in MySQL database:
 
 $ turnadmin -l --mysql-userdb="<db-connection-string>"
 
-List all short-term users in PostgreSQL database:
+List all short-term users in Redis database:
 
-$ turnadmin -L --psql-userdb="<db-connection-string>"
+$ turnadmin -L --redis-userdb="<db-connection-string>"
 
 Set secret in MySQL database:
 

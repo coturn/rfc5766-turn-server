@@ -70,6 +70,11 @@
 
 #include "apputils.h"
 
+#if !defined(TURN_NO_HIREDIS)
+#include "hiredis_libevent2.h"
+#include <hiredis/hiredis.h>
+#endif
+
 //////////// USER DB //////////////////////////////
 
 TURN_USERDB_TYPE userdb_type=TURN_USERDB_TYPE_FILE;
@@ -177,6 +182,15 @@ static int is_mysql_userdb(void)
 {
 #if !defined(TURN_NO_MYSQL)
 	return (userdb_type == TURN_USERDB_TYPE_MYSQL);
+#else
+	return 0;
+#endif
+}
+
+static int is_redis_userdb(void)
+{
+#if !defined(TURN_NO_HIREDIS)
+	return (userdb_type == TURN_USERDB_TYPE_REDIS);
 #else
 	return 0;
 #endif
@@ -389,6 +403,207 @@ static MYSQL *get_mydb_connection(void)
 }
 #endif
 
+
+#if !defined(TURN_NO_HIREDIS)
+
+struct _Ryconninfo {
+	char *host;
+	char *dbname;
+	char *password;
+	unsigned int connect_timeout;
+	unsigned int port;
+};
+
+typedef struct _Ryconninfo Ryconninfo;
+
+static void RyconninfoFree(Ryconninfo *co) {
+	if(co) {
+		if(co->host) free(co->host);
+		if(co->dbname) free(co->dbname);
+		if(co->password) free(co->password);
+		ns_bzero(co,sizeof(Ryconninfo));
+	}
+}
+
+static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
+{
+	Ryconninfo *co = (Ryconninfo*) malloc(sizeof(Ryconninfo));
+	ns_bzero(co,sizeof(Ryconninfo));
+	if (userdb) {
+		char *s0 = strdup(userdb);
+		char *s = s0;
+
+		while (s && *s) {
+
+			while (*s && (*s == ' '))
+				++s;
+			char *snext = strstr(s, " ");
+			if (snext) {
+				*snext = 0;
+				++snext;
+			}
+
+			char* seq = strstr(s, "=");
+			if (!seq) {
+				RyconninfoFree(co);
+				co = NULL;
+				if (errmsg) {
+					*errmsg = strdup(s);
+				}
+				break;
+			}
+
+			*seq = 0;
+			if (!strcmp(s, "host"))
+				co->host = strdup(seq + 1);
+			else if (!strcmp(s, "ip"))
+				co->host = strdup(seq + 1);
+			else if (!strcmp(s, "addr"))
+				co->host = strdup(seq + 1);
+			else if (!strcmp(s, "ipaddr"))
+				co->host = strdup(seq + 1);
+			else if (!strcmp(s, "hostaddr"))
+				co->host = strdup(seq + 1);
+			else if (!strcmp(s, "dbname"))
+				co->dbname = strdup(seq + 1);
+			else if (!strcmp(s, "db"))
+				co->dbname = strdup(seq + 1);
+			else if (!strcmp(s, "database"))
+				co->dbname = strdup(seq + 1);
+			else if (!strcmp(s, "user"))
+				;
+			else if (!strcmp(s, "uname"))
+				;
+			else if (!strcmp(s, "name"))
+				;
+			else if (!strcmp(s, "username"))
+				;
+			else if (!strcmp(s, "password"))
+				co->password = strdup(seq + 1);
+			else if (!strcmp(s, "pwd"))
+				co->password = strdup(seq + 1);
+			else if (!strcmp(s, "passwd"))
+				co->password = strdup(seq + 1);
+			else if (!strcmp(s, "secret"))
+				co->password = strdup(seq + 1);
+			else if (!strcmp(s, "port"))
+				co->port = (unsigned int) atoi(seq + 1);
+			else if (!strcmp(s, "p"))
+				co->port = (unsigned int) atoi(seq + 1);
+			else if (!strcmp(s, "connect_timeout"))
+				co->connect_timeout = (unsigned int) atoi(seq + 1);
+			else if (!strcmp(s, "timeout"))
+				co->connect_timeout = (unsigned int) atoi(seq + 1);
+			else {
+				RyconninfoFree(co);
+				co = NULL;
+				if (errmsg) {
+					*errmsg = strdup(s);
+				}
+				break;
+			}
+
+			s = snext;
+		}
+
+		free(s0);
+	}
+	return co;
+}
+
+redis_context_handle get_redis_async_connection(struct event_base *base, char* connection_string)
+{
+	redis_context_handle ret = NULL;
+	char *errmsg = NULL;
+	Ryconninfo *co = RyconninfoParse(connection_string, &errmsg);
+	if (!co) {
+		if (errmsg) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
+			free(errmsg);
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", userdb);
+		}
+	} else if (errmsg) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
+		free(errmsg);
+		RyconninfoFree(co);
+	} else {
+
+		ret = redisLibeventAttach(base, co->host, co->port, co->password, atoi(co->dbname));
+
+		if (!ret) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
+		} else {
+			if (!donot_print_connection_success) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB connection success: %s\n", connection_string);
+			}
+		}
+		RyconninfoFree(co);
+	}
+
+	return ret;
+}
+
+static redisContext *get_redis_connection(void)
+{
+	static redisContext *redisconnection = NULL;
+
+	if (!redisconnection && is_redis_userdb()) {
+
+		char *errmsg = NULL;
+		Ryconninfo *co = RyconninfoParse(userdb, &errmsg);
+		if (!co) {
+			if (errmsg) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
+				free(errmsg);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", userdb);
+			}
+		} else if (errmsg) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
+			free(errmsg);
+			RyconninfoFree(co);
+		} else {
+			char ip[256] = "\0";
+			int port = DEFAULT_REDIS_PORT;
+			if (co->host)
+				STRCPY(ip,co->host);
+			if (!ip[0])
+				STRCPY(ip,"127.0.0.1");
+
+			if (co->port)
+				port = (int) (co->port);
+
+			if (co->connect_timeout) {
+				struct timeval tv;
+				tv.tv_usec = 0;
+				tv.tv_sec = (time_t) (co->connect_timeout);
+				redisconnection = redisConnectWithTimeout(ip, port, tv);
+			} else {
+				redisconnection = redisConnect(ip, port);
+			}
+
+			if (!redisconnection) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
+			} else {
+				if (co->password) {
+					redisCommand(redisconnection, "AUTH %s", co->password);
+				}
+				if (co->dbname) {
+					redisCommand(redisconnection, "select %s", co->dbname);
+				}
+				if (!donot_print_connection_success) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB connection success: %s\n", userdb);
+				}
+			}
+			RyconninfoFree(co);
+		}
+	}
+	return redisconnection;
+}
+
+#endif
+
 static int get_auth_secrets(secrets_list_t *sl)
 {
 	int ret = -1;
@@ -462,6 +677,49 @@ static int get_auth_secrets(secrets_list_t *sl)
 				ret = 0;
 				mysql_free_result(mres);
 			}
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_HIREDIS)
+	redisContext *rc = get_redis_connection();
+	if(rc) {
+		redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/secret/*");
+		if(reply) {
+			secrets_list_t keys;
+			size_t isz = 0;
+			char s[257];
+
+			init_secrets_list(&keys);
+
+			if (reply->type == REDIS_REPLY_ERROR)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+			else if (reply->type != REDIS_REPLY_ARRAY)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+			else {
+				size_t i;
+				for (i = 0; i < reply->elements; ++i) {
+					add_to_secrets_list(&keys,reply->element[i]->str);
+				}
+			}
+
+			for(isz=0;isz<keys.sz;++isz) {
+				snprintf(s,sizeof(s)-1,"get %s", keys.secrets[isz]);
+				redisReply *rget = (redisReply *)redisCommand(rc, s);
+				if(rget) {
+					if (rget->type == REDIS_REPLY_ERROR)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+					else if (rget->type != REDIS_REPLY_STRING)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					else {
+						add_to_secrets_list(sl,rget->str);
+					}
+				}
+			}
+
+			clean_secrets_list(&keys);
+
+			ret = 0;
 		}
 	}
 #endif
@@ -593,7 +851,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 	}
 #endif
 #if !defined(TURN_NO_MYSQL)
-	if(ret != 0) {
+	{
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			char statement[1025];
@@ -630,6 +888,44 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 				}
 				if(mres)
 					mysql_free_result(mres);
+			}
+		}
+	}
+#endif
+#if !defined(TURN_NO_HIREDIS)
+	{
+		redisContext * rc = get_redis_connection();
+		if(rc) {
+			char s[1025];
+			snprintf(s,sizeof(s)-1,"get turn/user/%s/key", uname);
+			redisReply *rget = (redisReply *)redisCommand(rc, s);
+			if(rget) {
+				if (rget->type == REDIS_REPLY_ERROR)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+				else if (rget->type != REDIS_REPLY_STRING)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+				else {
+					if(convert_string_key_to_binary(rget->str, key)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,uname);
+					} else {
+						ret = 0;
+					}
+				}
+			}
+			if(ret != 0) {
+				snprintf(s,sizeof(s)-1,"get turn/user/%s/password", uname);
+				rget = (redisReply *)redisCommand(rc, s);
+				if(rget) {
+					if (rget->type == REDIS_REPLY_ERROR)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+					else if (rget->type != REDIS_REPLY_STRING)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					else {
+						if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)rget->str, key)>=0) {
+							ret = 0;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -702,6 +998,27 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 			}
 			if(mres)
 				mysql_free_result(mres);
+		}
+	}
+#endif
+#if !defined(TURN_NO_HIREDIS)
+	{
+		redisContext * rc = get_redis_connection();
+		if(rc) {
+			char s[1025];
+			snprintf(s,sizeof(s)-1,"get turn/user/%s/password", uname);
+			redisReply *rget = (redisReply *)redisCommand(rc, s);
+			if(rget) {
+				if (rget->type == REDIS_REPLY_ERROR)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+				else if (rget->type != REDIS_REPLY_STRING)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+				else {
+					strncpy((char*)pwd,rget->str,SHORT_TERM_PASSWORD_SIZE);
+					pwd[SHORT_TERM_PASSWORD_SIZE]=0;
+					ret = 0;
+				}
+			}
 		}
 	}
 #endif
@@ -919,6 +1236,8 @@ int add_user_account(char *user, int dynamic)
 
 static int list_users(int is_st)
 {
+	donot_print_connection_success = 1;
+
 	if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
 		char statement[1025];
@@ -980,6 +1299,68 @@ static int list_users(int is_st)
 				if(mres)
 					mysql_free_result(mres);
 			}
+		}
+#endif
+	} else if(is_redis_userdb()) {
+#if !defined(TURN_NO_HIREDIS)
+		redisContext *rc = get_redis_connection();
+		if(rc) {
+			secrets_list_t keys;
+			size_t isz = 0;
+
+			init_secrets_list(&keys);
+
+			redisReply *reply = NULL;
+
+			if(!is_st) {
+				redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/user/*/key");
+				if(reply) {
+
+					if (reply->type == REDIS_REPLY_ERROR)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+					else if (reply->type != REDIS_REPLY_ARRAY)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+					else {
+						size_t i;
+						for (i = 0; i < reply->elements; ++i) {
+							add_to_secrets_list(&keys,reply->element[i]->str);
+						}
+					}
+				}
+			}
+
+			reply = (redisReply*)redisCommand(rc, "keys turn/user/*/password");
+			if(reply) {
+
+				if (reply->type == REDIS_REPLY_ERROR)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+				else if (reply->type != REDIS_REPLY_ARRAY)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				else {
+					size_t i;
+					for (i = 0; i < reply->elements; ++i) {
+						add_to_secrets_list(&keys,reply->element[i]->str);
+					}
+				}
+			}
+
+			for(isz=0;isz<keys.sz;++isz) {
+				char *s = keys.secrets[isz];
+				char *sh = strchr(s,'/');
+				if(sh) {
+					++sh;
+					sh = strchr(sh,'/');
+					if(sh) {
+						++sh;
+						char* st = strchr(sh,'/');
+						if(st)
+							*st=0;
+						printf("%s\n",sh);
+					}
+				}
+			}
+
+			clean_secrets_list(&keys);
 		}
 #endif
 	} else if(!is_st) {
@@ -996,6 +1377,8 @@ static int show_secret(void)
 	char statement[1025];
 	sprintf(statement,"select value from turn_secret");
 
+	donot_print_connection_success=1;
+
 	if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
 		PGconn *pqc = get_pqdb_connection();
@@ -1047,6 +1430,47 @@ static int show_secret(void)
 			}
 		}
 #endif
+	} else if(is_redis_userdb()) {
+#if !defined(TURN_NO_HIREDIS)
+		redisContext *rc = get_redis_connection();
+		if(rc) {
+			redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/secret/*");
+			if(reply) {
+				secrets_list_t keys;
+				size_t isz = 0;
+				char s[257];
+
+				init_secrets_list(&keys);
+
+				if (reply->type == REDIS_REPLY_ERROR)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+				else if (reply->type != REDIS_REPLY_ARRAY)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				else {
+					size_t i;
+					for (i = 0; i < reply->elements; ++i) {
+						add_to_secrets_list(&keys,reply->element[i]->str);
+					}
+				}
+
+				for(isz=0;isz<keys.sz;++isz) {
+					snprintf(s,sizeof(s)-1,"get %s", keys.secrets[isz]);
+					redisReply *rget = (redisReply *)redisCommand(rc, s);
+					if(rget) {
+						if (rget->type == REDIS_REPLY_ERROR)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+						else if (rget->type != REDIS_REPLY_STRING)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+						else {
+							printf("%s\n",rget->str);
+						}
+					}
+				}
+
+				clean_secrets_list(&keys);
+			}
+		}
+#endif
 	}
 
 	return 0;
@@ -1055,6 +1479,8 @@ static int show_secret(void)
 static int del_secret(u08bits *secret) {
 
 	UNUSED_ARG(secret);
+
+	donot_print_connection_success=1;
 
 	if (is_pqsql_userdb()) {
 #if !defined(TURN_NO_PQ)
@@ -1084,6 +1510,57 @@ static int del_secret(u08bits *secret) {
 			mysql_query(myc, statement);
 		}
 #endif
+	} else if(is_redis_userdb()) {
+#if !defined(TURN_NO_HIREDIS)
+		redisContext *rc = get_redis_connection();
+		if(rc) {
+			redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/secret/*");
+			if(reply) {
+				secrets_list_t keys;
+				size_t isz = 0;
+				char s[1025];
+
+				init_secrets_list(&keys);
+
+				if (reply->type == REDIS_REPLY_ERROR)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+				else if (reply->type != REDIS_REPLY_ARRAY)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				else {
+					size_t i;
+					for (i = 0; i < reply->elements; ++i) {
+						add_to_secrets_list(&keys,reply->element[i]->str);
+					}
+				}
+
+				for(isz=0;isz<keys.sz;++isz) {
+					if(!secret || (secret[0]==0)) {
+						snprintf(s,sizeof(s)-1,"del %s", keys.secrets[isz]);
+						redisCommand(rc, s);
+					} else {
+						snprintf(s,sizeof(s)-1,"get %s", keys.secrets[isz]);
+						redisReply *rget = (redisReply *)redisCommand(rc, s);
+						if(rget) {
+							if (rget->type == REDIS_REPLY_ERROR)
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+							else if (rget->type != REDIS_REPLY_STRING)
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+							else {
+								if(!strcmp((char*)secret,rget->str)) {
+									snprintf(s,sizeof(s)-1,"del %s", keys.secrets[isz]);
+									redisCommand(rc, s);
+								}
+							}
+						}
+					}
+				}
+
+				redisCommand(rc, "save");
+
+				clean_secrets_list(&keys);
+			}
+		}
+#endif
 	}
 
 	return 0;
@@ -1093,6 +1570,8 @@ static int set_secret(u08bits *secret) {
 
 	if(!secret || (secret[0]==0))
 		return 0;
+
+	donot_print_connection_success = 1;
 
 	del_secret(secret);
 
@@ -1129,6 +1608,20 @@ static int set_secret(u08bits *secret) {
 			}
 		}
 #endif
+	} else if(is_redis_userdb()) {
+#if !defined(TURN_NO_HIREDIS)
+		redisContext *rc = get_redis_connection();
+		if(rc) {
+			char s[1025];
+
+			del_secret(secret);
+
+			snprintf(s,sizeof(s)-1,"set turn/secret/%lu %s", (unsigned long)turn_time(), secret);
+
+			redisCommand(rc, s);
+			redisCommand(rc, "save");
+		}
+#endif
 	}
 
 	return 0;
@@ -1139,15 +1632,15 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 	hmackey_t key;
 	char skey[sizeof(hmackey_t)*2+1];
 
+	donot_print_connection_success = 1;
+
 	st_password_t passwd;
 
 	if(ct == TA_LIST_USERS) {
-		donot_print_connection_success=1;
 		return list_users(is_st);
 	}
 
 	if(ct == TA_SHOW_SECRET) {
-		donot_print_connection_success=1;
 		return show_secret();
 	}
 
@@ -1261,6 +1754,33 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 			}
 		}
 #endif
+	} else if(is_redis_userdb()) {
+#if !defined(TURN_NO_HIREDIS)
+		redisContext *rc = get_redis_connection();
+		if(rc) {
+			char statement[1025];
+
+			if(ct == TA_DELETE_USER) {
+				if(!is_st) {
+					sprintf(statement,"del turn/user/%s/key",user);
+					redisCommand(rc, statement);
+				}
+				sprintf(statement,"del turn/user/%s/password",user);
+				redisCommand(rc, statement);
+			}
+
+			if(ct == TA_UPDATE_USER) {
+				if(is_st) {
+					sprintf(statement,"set turn/user/%s/password %s",user,passwd);
+				} else {
+					sprintf(statement,"set turn/user/%s/key %s",user,skey);
+				}
+				redisCommand(rc, statement);
+			}
+
+			redisCommand(rc, "save");
+		}
+#endif
 	} else if(!is_st) {
 
 		char *full_path_to_userdb_file = find_config_file(userdb, 1);
@@ -1364,6 +1884,5 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 
 	return 0;
 }
-
 
 ///////////////////////////////

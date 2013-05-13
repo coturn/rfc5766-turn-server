@@ -2272,9 +2272,9 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 	if(a) {
 		ts_ur_super_session *ss = (ts_ur_super_session*)(((allocation*)a)->owner);
 		if(ss) {
-			const char* status="New";
+			const char* status="new";
 			if(refresh)
-				status="Refresh";
+				status="refreshed";
 			turn_turnserver *server = (turn_turnserver*)ss->server;
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
@@ -2285,7 +2285,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
 				send_message_to_redis(NULL, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				send_message_to_redis(NULL, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 			}
@@ -2309,13 +2309,20 @@ void turn_report_allocation_delete(void *a)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
 				send_message_to_redis(NULL, "del", key, "");
-				send_message_to_redis(NULL, "publish", key, "delete");
+				send_message_to_redis(NULL, "publish", key, "deleted");
 			}
 #endif
 		}
 	}
+}
+
+void turn_report_allocation_delete_all(void)
+{
+#if !defined(TURN_NO_HIREDIS)
+	delete_redis_keys("turn/user/*/allocation/*/status");
+#endif
 }
 
 void turn_report_session_usage(void *session)
@@ -2333,8 +2340,8 @@ void turn_report_session_usage(void *session)
 #if !defined(TURN_NO_HIREDIS)
 				if(default_async_context_is_not_empty()) {
 					char key[1024];
-					snprintf(key,sizeof(key)-1,"turn:allocation:%s:0x%lx",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
-					send_message_to_redis(NULL, "publish", key, "traffic rp=%lu, rb=%lu, sp=%lu, sb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/traffic",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+					send_message_to_redis(NULL, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #endif
 				ss->received_packets=0;

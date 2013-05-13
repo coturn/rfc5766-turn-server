@@ -50,6 +50,8 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 19) Short-term credentials mechanism implemented.
 
 20) Simple load-balancing with ALTERNATE-SERVER implemented. 
+
+21) Redis database support added.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

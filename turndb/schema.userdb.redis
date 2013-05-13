@@ -1,0 +1,20 @@
+
+Redis database for user authentication has the following schema:
+
+1) For the long-term credentials there must be keys "turn/user/<username>/key" 
+and the values must be the the hmackeys. For example, for the user "gorst",
+realm "north.gov" and password "hero", there must be key "turn/user/gorst/key"
+with value "7da2270ccfa49786e0115366d3a3d14d". Alternatively, the password may be
+stored in clear text format. Then the key will be "turn/user/gorst/password" and
+the key will be simply "hero".
+
+2) For the short-term credentials, the passwords are stored always on clear text format.
+So, there will be key "turn/user/gorst/password" and the value will be "hero".
+
+3) For the shared secrets (REST API), several key/value pairs may be used (same as in 
+SQL schema). The key will be "turn/secret/<arbitrary secret ID>" and the value will be 
+"<secret>". For example, if we have secrets "hero1", "hero2" and "hero3", then we will 
+have keys "turn/secret/A", "turn/secret/B", "turn/secret/777" and their values will be 
+"hero1", "hero2", "hero3". The turnserver will issue command "keys turn/secret/*" it it 
+will try to use the returned keys in arbitrary order.   
+ 

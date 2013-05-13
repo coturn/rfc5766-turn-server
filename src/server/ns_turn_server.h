@@ -40,6 +40,8 @@ extern "C" {
 
 //////////////////////////////////////////
 
+extern int TURN_MAX_TO_ALLOCATE_TIMEOUT;
+
 struct socket_message {
 	ioa_addr remote_addr;
 	ioa_socket_handle s;
