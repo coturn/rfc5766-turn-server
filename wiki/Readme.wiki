@@ -1,4 +1,4 @@
-TURN(07 May 2013)	
+TURN(13 May 2013)	
 
 == GENERAL INFORMATION ==
 
@@ -154,29 +154,43 @@ TURN(07 May 2013)
 To set a load balancing scheme, you have three options:
 
 	# Set a complex networking load-balancing equipment that redirects the requests to a member of the TURN servers group. It must take care about redirecting the requests to the same server from the same client - because some TURN sessions from the same client must share the information.
-	
 	# Set a less complex scheme with round-robin DNS. The same precaution must be taken as in the first case.
-	
 	# Use build-in balancing capability with ALTERNATE-SERVER option (--alternate-server and --tls-alternate-server options). In this case, the shared information in the session will be taken care of automatically by the "master" TURN server.
 	
 ==== WEBRTC USAGE ====
 
 This is a set of notes for the WebRTC users:
 
-  * WebRTC uses long-term authentication mechanism, so you have to use -a option (or --lt-cred-mech).
-WebRTC relaying will not work with anonymous access or with short-term authentication.
-With -a option, do not forget to set the realm (-r option). You will also have to set up
-the user accounts, for that you have a number of options:
-    # command-line options (-u).
-    # userdb config file.
-    # database table (PostgreSQL or MySQL).
-    # Redis key/value pair(s).
-    # you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table, or through Redis database.
-  * Usually WebRTC uses fingerprinting (-f).
-  * -v option may be nice to see the connected clients.
-  * -X is needed if you are running your TURN server behind a NAT.
-  * --min-port and --max-port may be needed if you want to limit the relay endpoints ports 
-number range.
+  # WebRTC uses long-term authentication mechanism, so you have to use -a option (or --lt-cred-mech). WebRTC relaying will not work with anonymous access or with short-term authentication. With -a option, do not forget to set the realm (-r option). You will also have to set up the user accounts, for that you have a number of options (see also the DATABASES section below):
+    *   command-line options (-u).
+    *   userdb config file.
+    *   database table (PostgreSQL or MySQL).
+    *   Redis key/value pair(s).
+    *   you also can use the TURN REST API (see docs). You will need shared secret(s) set either	through the command line option, or through the config file, or through the database table, or through Redis database.
+  # Usually WebRTC uses fingerprinting (-f).
+  # -v option may be nice to see the connected clients.
+  # -X is needed if you are running your TURN server behind a NAT.
+  # --min-port and --max-port may be needed if you want to limit the relay endpoints ports number range.
+
+==== DATABASES ====
+
+For the user database, the turnserver has the following options:
+
+  # Users can be set in the command line, with multiple -u or --user options. Obviously, only a few users can be set that way, and their credentials are fixed for the turnserver process lifetime.
+  # Users can be set in turnusers.conf flat file DB. The turnserver process periodically re-reads this file, so the user accounts may be changed while the turnserver is running. But still a relatively small (up to a hundred ?) number of users can be handled that way.
+  # Users can be stored in PostgreSQL database, if the turnserver was compiled with PostgreSQL support. Each time turnserver checks user credentials, it reads the database (asynchronously, of course, so that the current flow of packets is not delayed in any way), so any change in the database content is immediately visible by the turnserver. This is the way if you need the best scalability. The schema for the database can be found in schema.sql file.
+  # The same is true for MySQL database. The same schema file is applicable.
+  # The same is true for the Redis database, but the Redis database has aa different schema - it can be found (in the form of explanation) in schema.userdb.redis.
+  # Of course, the turnserver can be used in non-secure mode, when users are allowed to establish sessions anonymously. But in most cases (like WebRTC) that will not work.
+
+For the status and statistics database, there are two choices:
+
+  # The simplest choice is not to use it. Do not set --redis-statsdb option, and this functionality will be simply ignored.
+  # If you choose to use the statistics database, then set the --redis-statsdb option. This may be the same database as in --redis-userdb option, or it may be a different database. You may want to use different database for security or convenience reasons. Also, you can use different database management systems for the user database and for the ststus and statistics database. For example, you can use MySQL as the user database, and you can use redis for the statistics. Or you can use Redis for both.
+
+So, we have 6 choices for the user management, and 2 choices for the statistics management. These two are totally independent. So, you have overall 6*2=12 ways to handle persistent information, choose any for your convenience.
+
+You do not have to handle the database information "manually" - the turnadmin program can handle everything for you. For PostgreSQL and MySQL you will just have to create an empty database with schema.sql SQL script. With Redis, you do not have to do even that - just run turnadmin and it will set the users for you (see the turnadmin manuals).
 
 === turnadmin application: a TURN relay administration tool===
 
@@ -407,6 +421,4 @@ STUN NAT behavior discovery RFC 5780
 Oleg Moskalenko <mom040267@gmail.com>
 
 
-							TURN(07 May 2013)
-
-
+							TURN(13 May 2013)

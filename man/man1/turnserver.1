@@ -211,12 +211,12 @@ per\-server setting.
 \fB\-a\fP, \fB\-\-lt\-cred\-mech\fP
 Use long\-term credentials mechanism (this one you need for WebRTC usage). 
 This option can be used with either flat file user database or 
-PostgreSQL DB or MySQL DB for user keys storage.
+PostgreSQL DB or MySQL DB or Redis for user keys storage.
 .TP
 .B
 \fB\-A\fP, \fB\-\-st\-cred\-mech\fP
 Use the short\-term credentials mechanism. This option requires
-a PostgreSQL or MySQL DB for short term passwords storage.
+a PostgreSQL or MySQL or Redis DB for short term passwords storage.
 .TP
 .B
 \fB\-z\fP, \fB\-\-no\-auth\fP
@@ -550,7 +550,7 @@ the user accounts, for that you have a number of \fIoptions\fP:
 
         b) userdb config file.
 
-        c) a database table (PostgreSQL or MySQL).
+        c) a database table (PostgreSQL or MySQL or Redis).
 
         d) You also can use the TURN REST API (see docs). You will need shared secret(s) set
         either  through the command line option, or through the config file, or through
@@ -567,6 +567,53 @@ Usually WebRTC uses fingerprinting (\fB\-f\fP).
 .IP 5) 4
 \fB\-\-min\-port\fP and \fB\-\-max\-port\fP may be needed if you want to limit the relay endpoints ports
 number range.
+.PP
+===================================
+.SH DATABASES
+
+For the user database, the \fIturnserver\fP has the following \fIoptions\fP:
+.IP 1) 4
+Users can be set in the command line, with multiple \fB\-u\fP or \fB\-\-user\fP \fIoptions\fP.
+Obviously, only a few users can be set that way, and their credentials are fixed 
+for the \fIturnserver\fP process lifetime.
+.IP 2) 4
+Users can be set in turnusers.conf flat file DB. The \fIturnserver\fP process periodically
+re\-reads this file, so the user accounts may be changed while the \fIturnserver\fP is running.
+But still a relatively small (up to a hundred ?) number of users can be handled that way.
+.IP 3) 4
+Users can be stored in PostgreSQL database, if the \fIturnserver\fP was compiled with PostgreSQL
+support. Each time \fIturnserver\fP checks user credentials, it reads the database (asynchronously,
+of course, so that the current flow of packets is not delayed in any way), so any change in the 
+database content is immediately visible by the \fIturnserver\fP. This is the way if you need the 
+best scalability. The schema for the database can be found in schema.sql file.
+.IP 4) 4
+The same is true for MySQL database. The same schema file is applicable.
+.IP 5) 4
+The same is true for the Redis database, but the Redis database has aa different schema \-
+it can be found (in the form of explanation) in schema.userdb.redis.
+.IP 6) 4
+Of course, the \fIturnserver\fP can be used in non\-secure mode, when users are allowed to establish
+sessions anonymously. But in most cases (like WebRTC) that will not work.
+.PP
+For the status and statistics database, there are two choices:
+.IP 1) 4
+The simplest choice is not to use it. Do not set \fB\-\-redis\-statsdb\fP option, and this functionality
+will be simply ignored.
+.IP 2) 4
+If you choose to use it, then set the \fB\-\-redis\-statsdb\fP option. This may be the same database
+as in \fB\-\-redis\-userdb\fP option, or it may be a different database. You may want to use different 
+database for security or convenience reasons. Also, you can use different database management
+systems for the user database and for the ststus and statistics database. For example, you can use 
+MySQL as the user database, and you can use redis for the statistics. Or you can use Redis for both.
+.PP
+So, we have 6 choices for the user management, and 2 choices for the statistics management. These
+two are totally independent. So, you have overall 6*2=12 ways to handle persistent information, 
+choose any for your convenience.
+.PP
+You do not have to handle the database information "manually" \- the \fIturnadmin\fP program can handle 
+everything for you. For PostgreSQL and MySQL you will just have to create an empty database
+with schema.sql SQL script. With Redis, you do not have to do even that \- just run \fIturnadmin\fP and 
+it will set the users for you (see the \fIturnadmin\fP manuals).
 .PP
 =================================
 .SH LIBRARIES
@@ -613,7 +660,7 @@ current directory
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 .PP
-This behavior can be controlled by \fB\-\-log\-file\fP and \fB\-\-no\-stdout\-log\fP \fIoptions\fP (see \fIturnserver\fP help).
+This behavior can be controlled by \fB\-\-log\-file\fP, \fB\-\-syslog\fP and \fB\-\-no\-stdout\-log\fP \fIoptions\fP.
 .PP
 =================================
 .SH CLUSTERS

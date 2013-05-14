@@ -1,4 +1,8 @@
-05/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+05/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.4.1 'Black Dow':
+        - Cosmetics (docs, warnings, etc).
+        
+05/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.0 'Black Dow':
         - Redis DB support added.
         - Crash on help text fixed.

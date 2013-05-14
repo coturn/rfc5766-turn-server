@@ -28,6 +28,9 @@
  * SUCH DAMAGE.
  */
 
+#include <stdlib.h>
+#include <stdarg.h>
+
 #if !defined(TURN_NO_HIREDIS)
 
 #include "hiredis_libevent2.h"
@@ -38,8 +41,6 @@
 
 #include <hiredis/hiredis.h>
 #include <hiredis/async.h>
-
-#include <stdarg.h>
 
 //////////////// Libevent context ///////////////////////
 

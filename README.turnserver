@@ -137,9 +137,9 @@ Flags:
 
 -a, --lt-cred-mech	Use long-term credentials mechanism (this one you need for WebRTC usage). 
 			This option can be used with either flat file user database or 
-			PostgreSQL DB or MySQL DB for user keys storage.
+			PostgreSQL DB or MySQL DB or Redis for user keys storage.
 -A, --st-cred-mech	Use the short-term credentials mechanism. This option requires
-	                a PostgreSQL or MySQL DB for short term passwords storage.
+	                a PostgreSQL or MySQL or Redis DB for short term passwords storage.
 
 -z, --no-auth		Do not use any credentials mechanism, allow anonymous access. 
 			Opposite to -a and -A options. This is default option when no 
@@ -384,7 +384,7 @@ the user accounts, for that you have a number of options:
 	
 	b) userdb config file.
 	
-	c) a database table (PostgreSQL or MySQL).
+	c) a database table (PostgreSQL or MySQL or Redis).
 	
 	d) You also can use the TURN REST API (see docs). You will need shared secret(s) set
 	either	through the command line option, or through the config file, or through
@@ -398,7 +398,55 @@ the user accounts, for that you have a number of options:
 
 5) --min-port and --max-port may be needed if you want to limit the relay endpoints ports 
 number range.
+	 
+===================================
 
+DATABASES
+
+For the user database, the turnserver has the following options:
+
+1) Users can be set in the command line, with multiple -u or --user options. 
+Obviously, only a few users can be set that way, and their credentials are fixed 
+for the turnserver process lifetime.
+
+2) Users can be set in turnusers.conf flat file DB. The turnserver process periodically 
+re-reads this file, so the user accounts may be changed while the turnserver is running.
+But still a relatively small (up to a hundred ?) number of users can be handled that way.
+
+3) Users can be stored in PostgreSQL database, if the turnserver was compiled with PostgreSQL
+support. Each time turnserver checks user credentials, it reads the database (asynchronously,
+of course, so that the current flow of packets is not delayed in any way), so any change in the 
+database content is immediately visible by the turnserver. This is the way if you need the 
+best scalability. The schema for the database can be found in schema.sql file.
+
+4) The same is true for MySQL database. The same schema file is applicable.
+
+5) The same is true for the Redis database, but the Redis database has aa different schema -
+it can be found (in the form of explanation) in schema.userdb.redis.
+
+6) Of course, the turnserver can be used in non-secure mode, when users are allowed to establish
+sessions anonymously. But in most cases (like WebRTC) that will not work.
+
+For the status and statistics database, there are two choices:
+
+1) The simplest choice is not to use it. Do not set --redis-statsdb option, and this functionality 
+will be simply ignored.
+
+2) If you choose to use it, then set the --redis-statsdb option. This may be the same database
+as in --redis-userdb option, or it may be a different database. You may want to use different 
+database for security or convenience reasons. Also, you can use different database management
+systems for the user database and for the ststus and statistics database. For example, you can use 
+MySQL as the user database, and you can use redis for the statistics. Or you can use Redis for both.
+
+So, we have 6 choices for the user management, and 2 choices for the statistics management. These
+two are totally independent. So, you have overall 6*2=12 ways to handle persistent information, 
+choose any for your convenience.
+
+You do not have to handle the database information "manually" - the turnadmin program can handle 
+everything for you. For PostgreSQL and MySQL you will just have to create an empty database
+with schema.sql SQL script. With Redis, you do not have to do even that - just run turnadmin and 
+it will set the users for you (see the turnadmin manuals).
+    
 =================================
 
 LIBRARIES
@@ -441,7 +489,7 @@ in the following directories:
 If all efforts failed (due to the system permission settings) then all 
 log messages are sent only to the standard output of the process.
 
-This behavior can be controlled by --log-file and --no-stdout-log options (see turnserver help).
+This behavior can be controlled by --log-file, --syslog and --no-stdout-log options.
 
 =================================
 
