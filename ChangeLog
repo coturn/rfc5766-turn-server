@@ -1,6 +1,8 @@
-05/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+05/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.1 'Black Dow':
         - Cosmetics (docs, warnings, etc).
+        - More complex case of TURN-server-behind-NAT is implemented,
+        when multiple public-ip/private-ip mappings are involved. 
         
 05/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.0 'Black Dow':

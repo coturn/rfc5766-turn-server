@@ -192,6 +192,10 @@ static char relay_ifname[1025]="\0";
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;
+
+// Single global public IP.
+// If multiple public IPs are used
+// then ioa_addr mapping must be used.
 static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
@@ -1121,11 +1125,16 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
 " -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
-" -X, --external-ip		<ip>		\"External\" TURN Server address if the server is behind NAT.\n"
-"						In the server-behind-NAT situation, only one relay address must be used, and\n"
-"						that single relay address must be mapped by NAT to the 'external' IP.\n"
-"						For this 'external' IP, NAT must forward ports directly (relayed port 12345\n"
+" -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
+"						In that situation, if a -X is used in form \"-X ip\" then that ip will be reported\n"
+"						as relay IP address of all allocations. This scenario works only in a simple case\n"
+"						when one single relay address is be used, and no RFC5780 functionality is required.\n"
+"						That single relay address must be mapped by NAT to the 'external' IP.\n"
+"						For that 'external' IP, NAT must forward ports directly (relayed port 12345\n"
 "						must be always mapped to the same 'external' port 12345).\n"
+"						In more complex case when more than one IP address is involved,\n"
+"						that option must be used several times in the command line, each entry must\n"
+"						have form \"-X public-ip/private-ip\", to map all involved addresses.\n"
 " --no-loopback-peers				Disallow peers on the loopback addresses (127.x.x.x and ::1).\n"
 " --no-multicast-peers				Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).\n"
 " -m, --relay-threads		<number>	Number of relay threads to handle the established connections\n"
@@ -1463,12 +1472,27 @@ static void set_option(int c, char *value)
 		add_relay_addr(value);
 		break;
 	case 'X':
-		if(external_ip) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
-		} else {
-			external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
-			ns_bzero(external_ip,sizeof(ioa_addr));
-			make_ioa_addr((const u08bits*)value,0,external_ip);
+		if(value) {
+			char *div = strchr(value,'/');
+			if(div) {
+				char *nval=strdup(value);
+				div = strchr(nval,'/');
+				div[0]=0;
+				++div;
+				ioa_addr apub,apriv;
+				make_ioa_addr((const u08bits*)nval,0,&apub);
+				make_ioa_addr((const u08bits*)div,0,&apriv);
+				ioa_addr_add_mapping(&apub,&apriv);
+				free(nval);
+			} else {
+				if(external_ip) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
+				} else {
+					external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+					ns_bzero(external_ip,sizeof(ioa_addr));
+					make_ioa_addr((const u08bits*)value,0,external_ip);
+				}
+			}
 		}
 		break;
 	case 'v':

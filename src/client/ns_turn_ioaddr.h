@@ -85,6 +85,15 @@ void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src);
 int ioa_addr_is_multicast(ioa_addr *a);
 int ioa_addr_is_loopback(ioa_addr *addr);
 
+/////// Map "public" address to "private" address //////////////
+
+// Must be called only in a single-threaded context,
+// before the program starts spawning threads:
+
+void ioa_addr_add_mapping(ioa_addr *apub, ioa_addr *apriv);
+void map_addr_from_public_to_private(const ioa_addr *public_addr, ioa_addr *private_addr);
+void map_addr_from_private_to_public(const ioa_addr *private_addr, ioa_addr *public_addr);
+
 ///////////////////////////////////////////
 
 #ifdef __cplusplus

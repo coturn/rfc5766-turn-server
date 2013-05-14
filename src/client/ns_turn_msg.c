@@ -834,9 +834,12 @@ int stun_attr_add_addr_str(u08bits *buf, size_t *len, u16bits attr_type, const i
     ;
   };
 
+  ioa_addr public_addr;
+  map_addr_from_private_to_public(ca,&public_addr);
+
   u08bits cfield[64];
   int clen=0;
-  if(stun_addr_encode(ca, cfield, &clen, xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
+  if(stun_addr_encode(&public_addr, cfield, &clen, xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
     return -1;
   }
 
@@ -849,6 +852,7 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
 
   stun_tid tid;
   stun_tid_from_message_str(buf, len, &tid);
+  ioa_addr public_addr;
 
   ns_bzero(ca,sizeof(ioa_addr));
 
@@ -869,9 +873,11 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
   const u08bits *cfield=stun_attr_get_value(attr);
   if(!cfield) return -1;
 
-  if(stun_addr_decode(ca, cfield, stun_attr_get_len(attr), xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
+  if(stun_addr_decode(&public_addr, cfield, stun_attr_get_len(attr), xor_ed, STUN_MAGIC_COOKIE, tid.tsx_id)<0) {
     return -1;
   }
+
+  map_addr_from_public_to_private(&public_addr, ca);
 
   if(default_addr && addr_any_no_port(ca)) {
     int port = addr_get_port(ca);

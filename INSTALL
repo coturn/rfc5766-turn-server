@@ -114,7 +114,8 @@ The following platforms have been used in the development:
 	- FreeBSD 8.x, i386
 	- PC-BSD 9.x, x86_64
 	- Solaris 11, x86_64
-	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64
+	- Linux CentOS / Red Hat Enterprise Edition 6.3, x86_64 (amd64)
+	- Linux CentOS / Red Hat Enterprise Edition 6.4, x86_32 (i386)
 	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
 	- Linux Debian 'Wheezy', x86_64 
@@ -200,8 +201,8 @@ third party tools installation:
 	***) Other OS in Debian family (Squeeze and earlier Ubuntus) setups are similar, 
 	although some packages have different names. 
 		 
-	****) On CentOS 6.3 you have to install libevent2 "manually", but everything else 
-	is usually pre-installed by the system installer. 
+	****) On CentOS / RedHat 6.x you have to install libevent2 "manually", and optionally you have to
+	download and install Hiredis, but everything else can be found in the software repository. 
 
 NOTE: If your tools are installed in non-standard locations, you will have to adjust CFLAGS 
 and LDFLAGS environment variables for TURN server ./configure script. For example, to 
@@ -211,8 +212,8 @@ like this:
   $ CFLAGS="${CFLAGS} -I/usr/postgres/9.2-pgdg/include/" LDFLAGS="${LDFLAGS} -L/usr/postgres/9.2-pgdg/lib/" ./configure
 
 You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL and/or Redis 
-runtime library path to LD_LIBRARY_PATH. Or you can adjust the system-wide shared library 
-search path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris).
+runtime library path to LD_LIBRARY_PATH. Or you may find that it would be more convenient to adjust the 
+system-wide shared library search path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris).
 
 See also the next section.
 
