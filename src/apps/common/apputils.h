@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -98,6 +98,7 @@ char *skip_blanks(char* s);
 
 char* find_config_file(const char *config_file, int print_file_name);
 void set_execdir(void);
+void print_abs_file_name(const char *msg1, const char *msg2, const char *fn);
 
 ////////////////// Base64 /////////////////////////////
 

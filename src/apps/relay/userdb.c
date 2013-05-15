@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -1179,8 +1179,9 @@ void read_userdb_file(int to_print)
 
 		fclose(f);
 
-	} else if (first_read)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without flat file user database.\n", userdb);
+	} else if (first_read) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Cannot find userdb file: %s: going without flat file user database.\n", userdb);
+	} 
 
 	first_read = 0;
 }

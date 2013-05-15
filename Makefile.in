@@ -128,9 +128,6 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_peer.1 ${MANPREFIX}/man/man1/
 	${INSTALL_STATIC_LIB} lib/libturnclient.a ${LIBDIR}
-	${INSTALL_DIR} docs/html ${DOCSDIR}
-	${INSTALL_DATA} docs/TURNServerRESTAPI.pdf ${DOCSDIR}
-	${INSTALL_DATA} docs/TurnNetworks.pdf ${DOCSDIR}
 	${INSTALL_DATA} README.turnserver ${DOCSDIR}
 	${INSTALL_DATA} README.turnadmin ${DOCSDIR}
 	${INSTALL_DATA} README.turnutils ${DOCSDIR}

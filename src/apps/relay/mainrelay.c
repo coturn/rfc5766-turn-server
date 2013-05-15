@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -2204,13 +2204,13 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n",protocol);
 	} else {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Certificate file %s found\n",protocol,cert_file);
+	  print_abs_file_name(protocol,": Certificate", cert_file);
 	}
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n",protocol);
 	} else {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: Private key file %s found\n",protocol,pkey_file);
+	  print_abs_file_name(protocol,": Private key", pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {

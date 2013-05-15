@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "1.8.4.1"
+#define TURN_SERVER_VERSION "1.8.4.2"
 #define TURN_SERVER_VERSION_NAME "Black Dow"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 

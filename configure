@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Proprietary configure script of TURN Server project
+# Proprietary configure script of RFC5766-TURN-Server project
 
 cleanup() {
 	rm -rf ${TMPCPROGC}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013 Citrix Systems
  *
  * All rights reserved.
  *
@@ -470,6 +470,35 @@ void set_execdir(void)
   }
 }
 
+void print_abs_file_name(const char *msg1, const char *msg2, const char *fn) 
+{
+  char absfn[1025];
+  absfn[0]=0;
+
+  if(fn) {
+    while(fn[0] && fn[0]==' ') ++fn;
+    if(fn[0]) {
+      if(fn[0]=='/') {
+	STRCPY(absfn,fn);
+      } else {
+	if(fn[0]=='.' && fn[1]=='/')
+	  fn+=2;
+	getcwd(absfn,sizeof(absfn)-1);
+	size_t blen=strlen(absfn);
+	if(blen<sizeof(absfn)) {
+	  strncpy(absfn+blen,fn,sizeof(absfn)-blen);
+	} else {
+	  STRCPY(absfn,fn);
+	}
+	absfn[sizeof(absfn)-1]=0;
+      }
+    }
+  }
+  if(absfn[0]) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s%s file found: %s\n", msg1, msg2, absfn);
+  }
+}
+
 char* find_config_file(const char *config_file, int print_file_name)
 {
 	char *full_path_to_config_file = NULL;
@@ -494,7 +523,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 				if (f) {
 					fclose(f);
 					if (print_file_name)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
+					  print_abs_file_name("","Config",fn);
 					full_path_to_config_file = fn;
 					break;
 				}
@@ -513,7 +542,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 					  if (f) {
 					    fclose(f);
 					    if (print_file_name)
-					      TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File found: %s\n", fn);
+					      print_abs_file_name("","Config",fn);
 					    full_path_to_config_file = fn;
 					    break;
 					  }

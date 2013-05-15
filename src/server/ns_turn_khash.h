@@ -24,7 +24,7 @@
 
  */
 
-/* Citrix changes, 2011-2012:
+/* Changes, 2011-2012:
    proprietary header added, with proprietary memory management functions.
 */
 

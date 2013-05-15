@@ -1,3 +1,7 @@
+05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.4.2 'Black Dow':
+		- repackaging for Debian compliance. Docs separated.
+
 05/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.1 'Black Dow':
         - Cosmetics (docs, warnings, etc).
