@@ -278,10 +278,50 @@ void reset_rtpprintf(void)
 static void set_log_file_name(char *base, char *f)
 {
 	char logdate[125];
+	char *tail=strdup(".log");
 
 	get_date(logdate,sizeof(logdate));
 
-	sprintf(f, "%s%s.log", base,logdate);
+	char *base1=strdup(base);
+
+	int len=(int)strlen(base1);
+
+	--len;
+
+	while(len>=0) {
+		if((base1[len]==' ')||(base1[len]=='\t')) {
+			base1[len]='_';
+		}
+		--len;
+	}
+
+	len=(int)strlen(base1);
+
+	while(len>=0) {
+		if(base1[len]=='/')
+			break;
+		else if(base1[len]=='.') {
+			free(tail);
+			tail=strdup(base1+len);
+			base1[len]=0;
+			if(strlen(tail)<2) {
+				free(tail);
+				tail = strdup(".log");
+			}
+			break;
+		}
+		--len;
+	}
+
+	len=(int)strlen(base1);
+	if(len>0 && (base1[len-1]!='/')) {
+		sprintf(f, "%s-%s%s", base1,logdate,tail);
+	} else {
+		sprintf(f, "%s%s%s", base1,logdate,tail);
+	}
+
+	free(base1);
+	free(tail);
 }
 
 static void set_rtpfile(void)
@@ -409,6 +449,7 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 		log_lock();
 		set_rtpfile();
 		fprintf(_rtpfile,"%s",s);
+		fflush(_rtpfile);
 		log_unlock();
 	}
 

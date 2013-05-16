@@ -1,6 +1,7 @@
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.3 'Black Dow':
 		- Compilation warning removed.
+		- Log file fixed (Issue 26)
 	
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.2 'Black Dow':

@@ -1739,14 +1739,14 @@ static void read_config_file(int argc, char **argv, int pass)
 					if (parse_arg_string(sarg, &c, &value) < 0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Bad configuration format: %s\n",
 							sarg);
-					} else if((pass == 0) && (c != 'u')) {
-					  set_option(c, value);
 					} else if((pass == 0) && (c == 'l')) {
 						set_logfile(value);
 					} else if((pass==0) && (c==NO_STDOUT_LOG_OPT)) {
 						set_no_stdout_log(get_bool_value(value));
 					} else if((pass==0) && (c==SYSLOG_OPT)) {
 						set_log_to_syslog(get_bool_value(value));
+					} else if((pass == 0) && (c != 'u')) {
+					  set_option(c, value);
 					} else if((pass > 0) && (c == 'u')) {
 					  set_option(c, value);
 					}
