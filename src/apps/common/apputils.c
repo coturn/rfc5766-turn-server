@@ -483,7 +483,8 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn)
       } else {
 	if(fn[0]=='.' && fn[1]=='/')
 	  fn+=2;
-	getcwd(absfn,sizeof(absfn)-1);
+	if(!getcwd(absfn,sizeof(absfn)-1))
+	  absfn[0]=0;
 	size_t blen=strlen(absfn);
 	if(blen<sizeof(absfn)) {
 	  strncpy(absfn+blen,fn,sizeof(absfn)-blen);
