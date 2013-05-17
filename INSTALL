@@ -19,7 +19,12 @@ First, you have to run the configure script:
 It will create a Makefile customized for your system. 
 
 By default, the generated Makefile will be set to install everything
-in /usr/local directory. You can change that and some other settings by 
+in:
+	- /usr on Solaris.
+	- /usr/pkg on NetBSD.
+	- /usr/local everywhere else.
+
+ You can change that and some other settings by 
 setting PREFIX variable (and other common build variables) in the 
 configure command line. Compilation and linking options
 can be customized, too. For example:
@@ -49,6 +54,8 @@ The command:
 	$ sudo make install 
 
 will install everything into the system file structure (see below).
+
+(NOTE: On NetBSD, use "su root -c" in place of sudo).
 
 The command:
 
@@ -97,10 +104,14 @@ This command will also:
  - copy all docs into PREFIX/share/doc/turnserver/ directory.
 
 After the installation, you may want to adjust the system-wide shared library search 
-path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris). Your system must be 
+path by using "ldconfig -n <libdirname>" (Linux), "ldconfig -m <libdirname>" (BSD) or 
+"crle -u -l <libdirname>" (Solaris). Your system must be 
 able to find the libevent2, openssl and (optionally) PostgreSQL and/or MySQL and/or Redis 
 shared libraries, either with the help of the system-wide library search configuration or 
-by using LD_LIBRARY_PATH.
+by using LD_LIBRARY_PATH. "make install" will add automatically PREFIX/lib and /usr/local/lib 
+to the libraries search path, but if you have some libraries in different non-default 
+directories (like MySQL) you will have to add them manually to the search path, or you will
+have to adjust LD_LIBRARY_PATH.
 
 IV. PLATFORMS
 
@@ -214,7 +225,8 @@ like this:
 
 You may also have to adjust the turn server start script, add PostgreSQL and/or MySQL and/or Redis 
 runtime library path to LD_LIBRARY_PATH. Or you may find that it would be more convenient to adjust the 
-system-wide shared library search path by using "ldconfig" (Linux & FreeBSD) or "crle" (Solaris).
+system-wide shared library search path by using "ldconfig -n <libdirname>" (Linux), 
+"ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" (Solaris).
 
 See also the next section.
 
@@ -225,10 +237,11 @@ be limited to flat files for user database. It will work great for
 smaller user databases (like 100 users) but for larger systems you 
 will need PostgreSQL or MySQL or Redis.
 
-NOTE: To run PostgreSQL or MySQL or Redis server on the same system, you will also have to install 
-a corresponding PostgreSQL or MySQL or Redis server package. C development packages only provide 
-development libraries, and client libraries only provide client access utilities and 
-runtime libraries. The server packages includes everything - client, C development and 
+NOTE: To run PostgreSQL or MySQL or Redis server on the same system, you will also 
+have to install a corresponding PostgreSQL or MySQL or Redis server package. 
+The DB C development packages only provide development libraries, and client libraries 
+only provide client access utilities and runtime libraries. 
+The server packages may include everything - client, C development and 
 server runtime.   
 
 NOTE: OpenSSL to be installed before libevent2. When libevent2 is building, it 
@@ -290,8 +303,9 @@ But remember that to run it, you have to adjust your LD_LIBRARY_PATH, like that:
 
     $ LD_LIBRARY_PATH=/opt/lib ./bin/turnserver
 
-An alternative would be adjusting the system-wide shared library search path by using "ldconfig" 
-(Linux & FreeBSD) or "crle" (Solaris).
+An alternative would be adjusting the system-wide shared library search path by using 
+"ldconfig -n <libdirname>" (Linux), "ldconfig -m <libdirname>" (BSD) or 
+"crle -u -l <libdirname>" (Solaris).
 
 VIII. TEST SCRIPT SETS
 

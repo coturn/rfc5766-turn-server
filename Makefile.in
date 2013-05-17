@@ -145,6 +145,8 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DIR} examples/scripts ${EXAMPLESDIR}
 	${INSTALL_DIR} include/turn/client ${TURNINCLUDEDIR}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${TURNINCLUDEDIR}
+	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib ; fi
+	if [ -d /usr/local/lib ] ; then ${LDCONFIG} /usr/local/lib ; fi
 	${MORECMD} ${DOCSDIR}/postinstall.txt
 
 deinstall:	${MAKE_DEPS}

@@ -1,11 +1,15 @@
+05/17/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.4.4 'Black Dow':
+	- configuration and installation adjusted for NetBSD and Solaris.
+
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.3 'Black Dow':
-		- Compilation warning removed.
-		- Log file fixed (Issue 26)
+	- Compilation warning removed.
+	- Log file fixed (Issue 26)
 	
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.2 'Black Dow':
-		- repackaging for Debian compliance. Docs separated.
+	- repackaging for Debian compliance. Docs separated.
 
 05/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.1 'Black Dow':

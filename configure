@@ -197,7 +197,19 @@ if [ -z "${PORTNAME}" ] ; then
 fi
 
 if [ -z "${PREFIX}" ] ; then
-	PREFIX=/usr/local
+
+	SYSTEM=`uname`
+
+	if [ "${SYSTEM}" = "NetBSD" ] ; then
+		# A little tough guy
+		PREFIX=/usr/pkg
+	elif [ "${SYSTEM}" = "SunOS" ] ; then
+		# A fat guy
+		PREFIX=/usr
+	else
+		# An ordinary person
+		PREFIX=/usr/local
+	fi
 fi
 
 if [ -z "${MANPREFIX}" ] ; then
@@ -230,6 +242,13 @@ fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
+
+SYSTEM=`uname`
+
+if [ "${SYSTEM}" = "NetBSD" ] ; then
+	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
+	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
+fi
 
 ###########################
 # Install shell commands
@@ -658,19 +677,43 @@ fi
 
 if [ -z "${TURN_NO_HIREDIS}" ] ; then
 
-testhiredis
+	testhiredis
 
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-  echo "Hiredis found."
-else
-  TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
-fi
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+  		echo "Hiredis found."
+	else
+  		TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
+	fi
 
 else
 	TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
 
 fi
+
+###############################
+# LDCONFIG
+###############################
+
+if [ -z "${LDCONFIG}" ] ; then
+	ISBSD=`uname | grep -i bsd`
+	if [ -z "${ISBSD}" ] ; then
+		ISLINUX=`uname | grep -i linux`
+		if [ -z "${ISLINUX}" ] ; then 
+			SYSTEM=`uname`
+			if [ "${SYSTEM}" = "SunOS" ] ; then
+				LDCONFIG="crle -u -l"
+			else
+				LDCONFIG=echo
+			fi
+		else
+			LDCONFIG="ldconfig -n"
+		fi
+	else
+		LDCONFIG="ldconfig -m"
+	fi
+fi
+
 
 ###############################
 # So, what we have now:
@@ -715,6 +758,7 @@ echo "INSTALL_DIR = ${INSTALL_DIR}" >> Makefile
 echo "MKBUILDDIR = ${MKBUILDDIR}" >> Makefile
 echo "RMCMD = ${RMCMD}" >> Makefile
 echo "MORECMD = ${MORECMD}" >> Makefile
+echo "LDCONFIG=${LDCONFIG}" >> Makefile
 echo "################################" >> Makefile
 echo "" >> Makefile
 cat Makefile.in >> Makefile
