@@ -686,7 +686,7 @@ int start_connection(uint16_t clnet_remote_port0,
 
 	uint16_t clnet_remote_port = clnet_remote_port0;
 	char remote_address[1025];
-	strcpy(remote_address,remote_address0);
+	STRCPY(remote_address,remote_address0);
 
 	clnet_allocate(verbose, clnet_info_probe, &relay_addr, default_address_family, remote_address, &clnet_remote_port);
 
@@ -797,7 +797,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 	uint16_t clnet_remote_port = clnet_remote_port0;
 	char remote_address[1025];
-	strcpy(remote_address,remote_address0);
+	STRCPY(remote_address,remote_address0);
 
 	clnet_allocate(verbose, clnet_info_probe, &relay_addr1, default_address_family, remote_address, &clnet_remote_port);
 

@@ -81,10 +81,11 @@ int turn_mutex_unlock(const turn_mutex *mutex) {
 
 int turn_mutex_init(turn_mutex* mutex) {
   if(mutex) {
-    mutex->mutex=malloc(sizeof(pthread_mutex_t));
+    mutex->mutex=malloc(1);
     mutex->data=MAGIC_CODE;
     int ret = 0;
 #if !defined(TURN_NO_THREADS)
+    mutex->mutex=malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init((pthread_mutex_t*)mutex->mutex,NULL);
 #endif
     if(ret<0) {
@@ -222,10 +223,12 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 
 /******* Log ************/
 
+#define FILE_STR_LEN (1025)
+
 static FILE* _rtpfile = NULL;
 static int to_syslog = 0;
-static char log_fn[1025]="\0";
-static char log_fn_base[1025]="\0";
+static char log_fn[FILE_STR_LEN]="\0";
+static char log_fn_base[FILE_STR_LEN]="\0";
 
 static turn_mutex log_mutex;
 static int log_mutex_inited = 0;
@@ -315,9 +318,9 @@ static void set_log_file_name(char *base, char *f)
 
 	len=(int)strlen(base1);
 	if(len>0 && (base1[len-1]!='/')) {
-		sprintf(f, "%s-%s%s", base1,logdate,tail);
+	  snprintf(f, FILE_STR_LEN, "%s-%s%s", base1,logdate,tail);
 	} else {
-		sprintf(f, "%s%s%s", base1,logdate,tail);
+	  snprintf(f, FILE_STR_LEN, "%s%s%s", base1,logdate,tail);
 	}
 
 	free(base1);
@@ -349,24 +352,25 @@ static void set_rtpfile(void)
 	}
 
 	if(!_rtpfile) {
-		char logbase[1025];
-		char logtail[125];
-		char logf[1025];
-		sprintf(logtail, "turn_%d_", (int)getpid());
+		char logbase[FILE_STR_LEN];
+		char logtail[FILE_STR_LEN];
+		char logf[FILE_STR_LEN];
 
-		sprintf(logbase, "/var/log/%s", logtail);
+		snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
+		snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
+
 		set_log_file_name(logbase,logf);
 		_rtpfile = fopen(logf, "w");
 		if(!_rtpfile) {
-			sprintf(logbase, "/var/tmp/%s", logtail);
+			snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
 			set_log_file_name(logbase,logf);
 			_rtpfile = fopen(logf, "w");
 			if(!_rtpfile) {
-				sprintf(logbase, "/tmp/%s", logtail);
+				snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
 				set_log_file_name(logbase,logf);
 				_rtpfile = fopen(logf, "w");
 				if(!_rtpfile) {
-					sprintf(logbase, "%s", logtail);
+					snprintf(logbase, FILE_STR_LEN, "%s", logtail);
 					set_log_file_name(logbase,logf);
 					_rtpfile = fopen(logf, "w");
 					if(!_rtpfile) {
@@ -397,7 +401,7 @@ void rollover_logfile(void)
 
 	log_lock();
 	if(_rtpfile && log_fn[0] && (_rtpfile != stdout)) {
-		char logf[1025];
+		char logf[FILE_STR_LEN];
 
 		set_log_file_name(log_fn_base,logf);
 		if(strcmp(log_fn,logf)) {
@@ -438,7 +442,7 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 
 	size_t sz;
 
-	sprintf(s,"%lu: ",(unsigned long)turn_time());
+	snprintf(s, sizeof(s)-1, "%lu: ",(unsigned long)turn_time());
 	sz=strlen(s);
 	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
 	s[sizeof(s)-1]=0;

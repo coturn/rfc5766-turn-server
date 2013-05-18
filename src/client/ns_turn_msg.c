@@ -54,13 +54,15 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	size_t ulen = strlen((s08bits*)uname);
 	size_t rlen = strlen((s08bits*)realm);
 	size_t plen = strlen((s08bits*)upwd);
-	u08bits *str = (u08bits*)malloc(ulen+1+rlen+1+plen+1);
+	size_t sz = ulen+1+rlen+1+plen+1+10;
+	u08bits *str = (u08bits*)malloc(sz+1);
 
-	strcpy((s08bits*)str,(s08bits*)uname);
+	strncpy((s08bits*)str,(s08bits*)uname,sz);
 	str[ulen]=':';
-	strcpy((s08bits*)str+ulen+1,(s08bits*)realm);
+	strncpy((s08bits*)str+ulen+1,(s08bits*)realm,sz-ulen-1);
 	str[ulen+1+rlen]=':';
-	strcpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd);
+	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
+	str[sz]=0;
 
 	MD5_Init(&ctx);
 	MD5_Update(&ctx,str,ulen+1+rlen+1+plen);

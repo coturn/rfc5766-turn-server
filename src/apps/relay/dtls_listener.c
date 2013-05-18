@@ -362,9 +362,9 @@ static int dtls_listen(int verbose, SSL* ssl, ioa_addr *client_addr)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_ZERO_RETURN\n");
 		return 0;
 	case SSL_ERROR_SYSCALL:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SYSCALL\n");
-		return 0;
+	  if (verbose)
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SYSCALL\n");
+	  return 0;
 	case SSL_ERROR_SSL:
 		if (verbose)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SSL\n");
@@ -636,7 +636,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		if (open_client_connection_socket(server, &info) >= 0) {
 
-		  new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
+			new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
 			memset(ndc, 0, sizeof(new_dtls_conn));
 
 			memcpy(&(ndc->info), &info, sizeof(info));

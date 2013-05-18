@@ -127,7 +127,7 @@ static int use_redis_statsdb = 0;
  *
 */
 static char cert_file[1025]="turn_server_cert.pem\0";
-static char pkey_file[1025]="turn_server_pkey.pem\0";
+static char pkey_file[sizeof(cert_file)]="turn_server_pkey.pem\0";
 
 struct message_to_listener_to_client {
 	ioa_addr origin;
@@ -1817,43 +1817,43 @@ static int adminmain(int argc, char **argv)
 			break;
 #endif
 		case 'b':
-			strcpy(userdb,optarg);
-			userdb_type = TURN_USERDB_TYPE_FILE;
-			break;
+		  STRCPY(userdb,optarg);
+		  userdb_type = TURN_USERDB_TYPE_FILE;
+		  break;
 #if !defined(TURN_NO_PQ)
 		case 'e':
-			strcpy(userdb,optarg);
-			userdb_type = TURN_USERDB_TYPE_PQ;
-			break;
+		  STRCPY(userdb,optarg);
+		  userdb_type = TURN_USERDB_TYPE_PQ;
+		  break;
 #endif
 #if !defined(TURN_NO_MYSQL)
 		case 'M':
-			strcpy(userdb,optarg);
-			userdb_type = TURN_USERDB_TYPE_MYSQL;
-			break;
+		  STRCPY(userdb,optarg);
+		  userdb_type = TURN_USERDB_TYPE_MYSQL;
+		  break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
 		case 'N':
-			strcpy(userdb,optarg);
-			userdb_type = TURN_USERDB_TYPE_REDIS;
-			break;
+		  STRCPY(userdb,optarg);
+		  userdb_type = TURN_USERDB_TYPE_REDIS;
+		  break;
 #endif
 		case 'u':
-			strcpy((char*)user,optarg);
+			STRCPY(user,optarg);
 			if(SASLprep((u08bits*)user)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
 				exit(-1);
 			}
 			break;
 		case 'r':
-			strcpy((char*)realm,optarg);
+			STRCPY(realm,optarg);
 			if(SASLprep((u08bits*)realm)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong realm: %s\n",realm);
 				exit(-1);
 			}
 			break;
 		case 'p':
-			strcpy((char*)pwd,optarg);
+			STRCPY(pwd,optarg);
 			if(SASLprep((u08bits*)pwd)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
 				exit(-1);
@@ -1875,7 +1875,7 @@ static int adminmain(int argc, char **argv)
 	}
 
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
-		strcpy(userdb,DEFAULT_USERDB_FILE);
+		STRCPY(userdb,DEFAULT_USERDB_FILE);
 
 	if(ct == TA_COMMAND_UNKNOWN) {
 		fprintf(stderr,"\n%s\n", AdminUsage);
@@ -1987,7 +1987,7 @@ int main(int argc, char **argv)
 	}
 
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
-			strcpy(userdb,DEFAULT_USERDB_FILE);
+			STRCPY(userdb,DEFAULT_USERDB_FILE);
 
 	read_userdb_file(0);
 
@@ -2239,7 +2239,8 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	    goto keyerr;
 	  }
 	  
-	  strcpy(fn,full_path_to_file);
+	  strncpy(fn,full_path_to_file,sizeof(cert_file)-1);
+	  fn[sizeof(cert_file)-1]=0;
 	  
 	  if(full_path_to_file)
 	    free(full_path_to_file);

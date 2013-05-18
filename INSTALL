@@ -132,6 +132,7 @@ The following platforms have been used in the development:
 	- Linux Debian 'Wheezy', x86_64 
 	- Cygwin 1.7.17 (only partial support, see STATUS file)
 	- NetBSD 6.0.1
+	- OpenBSD 5.3
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.

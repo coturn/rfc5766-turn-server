@@ -39,6 +39,8 @@ extern "C" {
 
 /////////////////////////////////////////////////////
 
+#define MAX_IOA_ADDR_STRING (65)
+
 typedef union {
   struct sockaddr_storage ss;
   struct sockaddr_in s4;

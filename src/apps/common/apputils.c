@@ -486,8 +486,9 @@ void print_abs_file_name(const char *msg1, const char *msg2, const char *fn)
 	if(!getcwd(absfn,sizeof(absfn)-1))
 	  absfn[0]=0;
 	size_t blen=strlen(absfn);
-	if(blen<sizeof(absfn)) {
-	  strncpy(absfn+blen,fn,sizeof(absfn)-blen);
+	if(blen<sizeof(absfn)-1) {
+	  strncpy(absfn+blen,"/",sizeof(absfn)-blen);
+	  strncpy(absfn+blen+1,fn,sizeof(absfn)-blen-1);
 	} else {
 	  STRCPY(absfn,fn);
 	}
@@ -517,9 +518,11 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 			while (config_file_search_dirs[i]) {
 				size_t dirlen = strlen(config_file_search_dirs[i]);
-				char *fn = (char*)malloc(sizeof(char) * (dirlen + cflen + 10));
-				strcpy(fn, config_file_search_dirs[i]);
-				strcpy(fn + dirlen, config_file);
+				size_t fnsz = sizeof(char) * (dirlen + cflen + 10);
+				char *fn = (char*)malloc(fnsz+1);
+				strncpy(fn, config_file_search_dirs[i], fnsz);
+				strncpy(fn + dirlen, config_file, fnsz-dirlen);
+				fn[fnsz]=0;
 				FILE *f = fopen(fn, "r");
 				if (f) {
 					fclose(f);
@@ -533,11 +536,22 @@ char* find_config_file(const char *config_file, int print_file_name)
 				   config_file_search_dirs[i][0]!='.' &&
 				   c_execdir && c_execdir[0]) {
 					size_t celen = strlen(c_execdir);
-					fn = (char*)malloc(sizeof(char) * (dirlen + cflen + celen + 10));
-					strcpy(fn,c_execdir);
-					strcpy(fn+strlen(fn),"/");
-					strcpy(fn+strlen(fn), config_file_search_dirs[i]);
-					strcpy(fn+strlen(fn), config_file);
+					fnsz = sizeof(char) * (dirlen + cflen + celen + 10);
+					fn = (char*)malloc(fnsz+1);
+					strncpy(fn,c_execdir,fnsz);
+					size_t fnlen=strlen(fn);
+					if(fnlen<fnsz) {
+					  strncpy(fn+fnlen,"/",fnsz-fnlen);
+					  fnlen=strlen(fn);
+					  if(fnlen<fnsz) {
+					    strncpy(fn+fnlen, config_file_search_dirs[i], fnsz-fnlen);
+					    fnlen=strlen(fn);
+					    if(fnlen<fnsz) {
+					      strncpy(fn+fnlen, config_file, fnsz-fnlen);
+					    }
+					  }
+					}
+					fn[fnsz]=0;
 					if(strstr(fn,"//")!=fn) {
 					  f = fopen(fn, "r");
 					  if (f) {

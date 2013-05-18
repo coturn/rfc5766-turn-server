@@ -1,6 +1,11 @@
 05/17/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.4 'Black Dow':
-	- configuration and installation adjusted for NetBSD and Solaris.
+	- configuration and installation adjusted for:
+		- NetBSD;
+		- Solaris;
+		- OpenBSD;
+	- Screen messages fixed;
+	- code security fixes.
 
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.3 'Black Dow':

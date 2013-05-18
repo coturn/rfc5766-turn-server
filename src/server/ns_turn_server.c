@@ -1830,7 +1830,7 @@ static int check_stun_auth(turn_turnserver *server,
 		int i = 0;
 		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
 			u08bits *s = ss->nonce + 8*i;
-			sprintf((s08bits*)s,"%08x",(u32bits)random());
+			snprintf((s08bits*)s, sizeof(ss->nonce)-8*i-1, "%08x",(u32bits)random());
 		}
 		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
 		new_nonce = 1;
@@ -1841,7 +1841,7 @@ static int check_stun_auth(turn_turnserver *server,
 			int i = 0;
 			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
 				u08bits *s = ss->nonce + 8*i;
-				sprintf((s08bits*)s,"%08x",(u32bits)random());
+				snprintf((s08bits*)s, sizeof(ss->nonce)-8*i-1, "%08x",(u32bits)random());
 			}
 			ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
 		}

@@ -237,20 +237,20 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 
 	if (addr && saddr) {
 
-		s08bits addrtmp[129];
+		s08bits addrtmp[MAX_IOA_ADDR_STRING];
 
 		if (addr->ss.ss_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
-				sprintf((s08bits*)saddr, "%s:%d", addrtmp, addr_get_port(addr));
+			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
 			else
-				strcpy((s08bits*)saddr, addrtmp);
+			  strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else if (addr->ss.ss_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
-				sprintf((s08bits*)saddr, "[%s]:%d", addrtmp, addr_get_port(addr));
+			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
 			else
-				strcpy((s08bits*)saddr, addrtmp);
+			  strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else {
 			return -1;
 		}
@@ -266,14 +266,14 @@ int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr)
 
 	if (addr && saddr) {
 
-		s08bits addrtmp[129];
+		s08bits addrtmp[MAX_IOA_ADDR_STRING];
 
 		if (addr->ss.ss_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
-			strcpy((s08bits*)saddr, addrtmp);
+			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else if (addr->ss.ss_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
-			strcpy((s08bits*)saddr, addrtmp);
+			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else {
 			return -1;
 		}

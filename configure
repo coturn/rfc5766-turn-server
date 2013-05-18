@@ -33,7 +33,7 @@ testlibraw() {
     fi
 }
 
-testlibevent2() {
+testlibevent2_comp() {
     ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
@@ -537,23 +537,23 @@ testdaemon
 # Test OpenSSL installation
 ###########################
 
-testlib ssl
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    echo "SSL lib found."
-else
-    echo "ERROR: OpenSSL development libraries are not installed properly in required location."
-    echo "Abort."
-    cleanup
-    exit
-fi
-
 testlib crypto
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Crypto SSL lib found."
 else
     echo "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
+    echo "Abort."
+    cleanup
+    exit
+fi
+
+testlib ssl
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "SSL lib found."
+else
+    echo "ERROR: OpenSSL development libraries are not installed properly in required location."
     echo "Abort."
     cleanup
     exit
@@ -580,7 +580,7 @@ fi
 ###########################
 # Test Libevent2 setup
 ###########################
-testlibevent2
+testlibevent2_comp
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Libevent2 development found."
@@ -593,16 +593,23 @@ else
     exit
 fi
 
-testlib event
+testlib event_core
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
+    testlib event_extra
     echo "Libevent2 runtime found."
 else
-    echo "ERROR: Libevent2 runtime libraries are not installed properly in required location."
-    echo "See the INSTALL file."
-    echo "Abort."
-    cleanup
-    exit
+    testlib event
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo "Libevent2 runtime found."
+    else
+	echo "ERROR: Libevent2 runtime libraries are not installed properly in required location."
+	echo "See the INSTALL file."
+	echo "Abort."
+	cleanup
+	exit
+    fi
 fi
 
 if [ -z "${TURN_NO_TLS}" ] ; then

@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 			break;
 		case 'W':
 			use_auth_secret_with_timestamp = 1;
-			strcpy(auth_secret,optarg);
+			STRCPY(auth_secret,optarg);
 			break;
 		case 'i':
 		{
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 				fprintf(stderr,"ERROR: file %s not found\n",optarg);
 				exit(-1);
 			}
-			strcpy(cert_file,fn);
+			STRCPY(cert_file,fn);
 			free(fn);
 			break;
 		}
@@ -241,11 +241,11 @@ int main(int argc, char **argv)
 		{
 			char new_uname[1025];
 			if(g_uname[0]) {
-				sprintf(new_uname,"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname)-1,"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
 			} else {
-				sprintf(new_uname,"%lu", (unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname)-1,"%lu", (unsigned long)time(NULL));
 			}
-			strcpy((char*)g_uname,new_uname);
+			STRCPY(g_uname,new_uname);
 		}
 		{
 			u08bits hmac[1025]="\0";
