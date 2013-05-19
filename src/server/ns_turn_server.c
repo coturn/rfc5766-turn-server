@@ -1350,9 +1350,15 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 								*reason
 									= (const u08bits *) "Wrong turn permission info";
 							}
-							if (!(chn->socket_channel))
+							if (!(chn->socket_channel)) {
 								chn->socket_channel = create_ioa_socket_channel(
 									get_relay_socket(a), chn);
+								if(!(chn->socket_channel)) {
+									*err_code = 500;
+									*reason = (const u08bits *) "Cannot create channel socket";
+									turn_channel_delete(chn);
+								}
+							}
 						}
 					}
 				}

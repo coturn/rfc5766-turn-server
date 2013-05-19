@@ -75,6 +75,28 @@ int set_sock_buf_size(evutil_socket_t fd, int sz) {
   return 0;
 }
 
+int socket_tcp_set_keepalive(evutil_socket_t fd)
+{
+#ifdef SO_KEEPALIVE
+    /* Set the keepalive option active */
+    {
+	    const int on = 1;
+	    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
+    }
+#else
+    UNUSED_ARG(fd);
+#endif
+
+#ifdef SO_NOSIGPIPE
+    {
+    	 const int on = 1;
+    	 setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, (const void*)&on, (socklen_t) sizeof(on));
+    }
+#endif
+
+    return 0;
+}
+
 int socket_set_reusable(evutil_socket_t fd) {
   if(fd<0) return -1;
   else {

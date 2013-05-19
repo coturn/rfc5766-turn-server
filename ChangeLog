@@ -1,3 +1,7 @@
+05/18/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 1.8.4.5 'Black Dow':
+	- socket conditions cleaned (SIGPIPE, etc)
+
 05/17/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.4 'Black Dow':
 	- configuration and installation adjusted for:

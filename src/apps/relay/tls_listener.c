@@ -144,6 +144,8 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   addr_bind(tls_listen_fd,&server->addr);
 
+  socket_tcp_set_keepalive(tls_listen_fd);
+
   evutil_make_socket_nonblocking(tls_listen_fd);
 
   server->l = evconnlistener_new(server->e->event_base,

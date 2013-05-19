@@ -374,6 +374,8 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	current_relay_server = current_relay_server % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
+	ns_bzero(&sm,sizeof(sm));
+
 	sm.t = RMT_SOCKET;
 	addr_cpy(&(sm.m.sm.remote_addr),&(nd->src_addr));
 	sm.m.sm.nbh = nd->nbh;
@@ -396,7 +398,16 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	sm.m.sm.chnum = nd->chnum;
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
-	evbuffer_add(output,&sm,sizeof(sm));
+	if(output)
+		evbuffer_add(output,&sm,sizeof(sm));
+	else {
+		TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Empty output buffer\n",
+				__FUNCTION__);
+		ioa_network_buffer_delete(e, sm.m.sm.nbh);
+		IOA_CLOSE_SOCKET(sm.m.sm.s);
+	}
 
 	return 0;
 }
@@ -440,6 +451,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 
 			open_client_connection_session(rs->server, &(sm.m.sm));
 			ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
+			sm.m.sm.nbh=NULL;
 
 			if (ioa_socket_tobeclosed(s)) {
 				ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
@@ -456,6 +468,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			sm.m.am.resume_func(sm.m.am.success, sm.m.am.key, sm.m.am.pwd, sm.m.am.ctx, &(sm.m.am.in_buffer));
 			if(sm.m.am.in_buffer.nbh) {
 				ioa_network_buffer_delete(rs->ioa_eng, sm.m.am.in_buffer.nbh);
+				sm.m.am.in_buffer.nbh=NULL;
 			}
 		}
 		break;

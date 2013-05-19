@@ -691,6 +691,7 @@ static int set_socket_options(ioa_socket_handle s)
 					sizeof(int)); /* length of option value */
 		if (result < 0)
 			perror("TCP_NODELAY");
+		socket_tcp_set_keepalive(s->fd);
 	}
 
 	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
@@ -979,6 +980,10 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 {
 	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
 
+	if(!ret) {
+		return NULL;
+	}
+
 	ioa_addr local_addr;
 	addr_cpy(&local_addr,&(s->local_addr));
 	addr_set_port(&local_addr,0);
@@ -987,6 +992,8 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 		IOA_CLOSE_SOCKET(ret);
 		return NULL;
 	}
+
+	socket_tcp_set_keepalive(ret->fd);
 
 	addr_cpy(&(ret->remote_addr), peer_addr);
 
