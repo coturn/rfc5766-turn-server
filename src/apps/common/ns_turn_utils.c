@@ -317,8 +317,8 @@ static void set_log_file_name(char *base, char *f)
 	}
 
 	len=(int)strlen(base1);
-	if(len>0 && (base1[len-1]!='/')) {
-	  snprintf(f, FILE_STR_LEN, "%s-%s%s", base1,logdate,tail);
+	if(len>0 && (base1[len-1]!='/') && (base1[len-1]!='-') && (base1[len-1]!='_')) {
+	  snprintf(f, FILE_STR_LEN, "%s_%s%s", base1,logdate,tail);
 	} else {
 	  snprintf(f, FILE_STR_LEN, "%s%s%s", base1,logdate,tail);
 	}

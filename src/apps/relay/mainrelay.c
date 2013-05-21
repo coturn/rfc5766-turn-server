@@ -98,9 +98,21 @@ static int do_not_use_config_file = 0;
 
 static int listener_port = DEFAULT_STUN_PORT;
 static int tls_listener_port = DEFAULT_STUN_TLS_PORT;
-static int alt_listener_port = DEFAULT_ALT_STUN_PORT;
-static int alt_tls_listener_port = DEFAULT_ALT_STUN_TLS_PORT;
+static int alt_listener_port = 0;
+static int alt_tls_listener_port = 0;
 static int rfc5780 = 1;
+
+static inline int get_alt_listener_port(void) {
+	if(alt_listener_port<1)
+		return listener_port + 1;
+	return alt_listener_port;
+}
+
+static inline int get_alt_tls_listener_port(void) {
+	if(alt_tls_listener_port<1)
+		return tls_listener_port + 1;
+	return alt_tls_listener_port;
+}
 
 int no_udp = 0;
 int no_tcp = 0;
@@ -337,11 +349,10 @@ static int add_ip_list_range(const char* range, ip_range_list_t * list)
 		addr_cpy(&max, &min);
 	}
 
-	if (separator) {
+	if (separator)
 		*separator = '-';
-	}
 
-	++list->ranges_number;
+	++(list->ranges_number);
 	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
 	list->ranges[list->ranges_number - 1] = strdup(range);
 	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
@@ -581,7 +592,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 							found = 1;
 							udp_send_message(listener.udp_services[i*2], mm.m.tc.nbh, &mm.m.tc.destination);
 						}
-					} else if(o_port == alt_listener_port) {
+					} else if(o_port == get_alt_listener_port()) {
 						if(listener.udp_services && listener.udp_services[i*2+1]) {
 							found = 1;
 							udp_send_message(listener.udp_services[i*2+1], mm.m.tc.nbh, &mm.m.tc.destination);
@@ -652,13 +663,11 @@ static void setup_listener_servers(void)
 		bufferevent_enable(listener.in_buf, EV_READ);
 	}
 
-	if(alt_listener_port>=0 || alt_tls_listener_port>=0) {
-		if(listener.addrs_number<2) {
-			rfc5780 = 0;
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
-		} else {
-			listener.services_number = listener.services_number * 2;
-		}
+	if(listener.addrs_number<2) {
+		rfc5780 = 0;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
+	} else {
+		listener.services_number = listener.services_number * 2;
 	}
 
 	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
@@ -670,8 +679,8 @@ static void setup_listener_servers(void)
 		int index = rfc5780 ? i*2 : i;
 		if(!no_udp) {
 			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
-			if(rfc5780 && alt_listener_port>=0)
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			if(rfc5780)
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.udp_services[index] = NULL;
 			if(rfc5780)
@@ -679,8 +688,8 @@ static void setup_listener_servers(void)
 		}
 		if(!no_tcp) {
 			listener.tcp_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
-			if(rfc5780 && alt_listener_port>=0)
-				listener.tcp_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			if(rfc5780)
+				listener.tcp_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.tcp_services[index] = NULL;
 			if(rfc5780)
@@ -688,8 +697,8 @@ static void setup_listener_servers(void)
 		}
 		if(!no_tls && (no_tcp || (listener_port != tls_listener_port))) {
 			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
-			if(rfc5780 && alt_tls_listener_port>=0)
-				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			if(rfc5780)
+				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.tls_services[index] = NULL;
 			if(rfc5780)
@@ -697,8 +706,8 @@ static void setup_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
-			if(rfc5780 && alt_tls_listener_port>=0)
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], alt_tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			if(rfc5780)
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
 		} else {
 			listener.dtls_services[index] = NULL;
 			if(rfc5780)
@@ -718,12 +727,12 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr)
 		int port = addr_get_port(addr);
 
 		if(port == listener_port)
-			alt_port = alt_listener_port;
-		else if(port == alt_listener_port)
+			alt_port = get_alt_listener_port();
+		else if(port == get_alt_listener_port())
 			alt_port = listener_port;
 		else if(port == tls_listener_port)
-			alt_port = alt_tls_listener_port;
-		else if(port == alt_tls_listener_port)
+			alt_port = get_alt_tls_listener_port();
+		else if(port == get_alt_tls_listener_port())
 			alt_port = tls_listener_port;
 		else
 			return -1;
@@ -1225,8 +1234,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						(Default: 5349).\n"
 "						Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
 "						if allowed by configuration.\n"
-" --alt-listening-port<port>	<port>		Alternative listening port (in RFC 5780 sense, default 3479).\n"
-" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 sense, default 5350).\n"
+" --alt-listening-port<port>	<port>		Alternative listening port (in RFC 5780 sense, default is \"listening port plus one\").\n"
+" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 sense, \n"
+" 						default is \"TLS port plus one\").\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
 " -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"

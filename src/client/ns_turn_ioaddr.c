@@ -321,7 +321,7 @@ int addr_less_eq(const ioa_addr* addr1, const ioa_addr* addr2) {
   else {
     if(addr1->ss.ss_family != addr2->ss.ss_family) return (addr1->ss.ss_family < addr2->ss.ss_family);
     else if(addr1->ss.ss_family == AF_INET) {
-      return ((u32bits)(addr1->s4.sin_addr.s_addr) <= (u32bits)(addr2->s4.sin_addr.s_addr));
+      return ((u32bits)nswap32(addr1->s4.sin_addr.s_addr) <= (u32bits)nswap32(addr2->s4.sin_addr.s_addr));
     } else if(addr1->ss.ss_family == AF_INET6) {
       int i;
       for(i=0;i<16;i++) {

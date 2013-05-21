@@ -2,7 +2,9 @@
 05/20/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Erik Johnston <erikj@openmarket.com> 
 Version 1.8.5.0 'Black Dow':
-	- IP access control lists 
+	- IP access control lists.
+	- log file name fix.
+	- alt-* ports default behavior changed. 
 	
 05/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.5 'Black Dow':

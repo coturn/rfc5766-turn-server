@@ -177,9 +177,9 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 
 			for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
 				if (ioa_addr_in_range(server->ip_blacklist->encaddrsranges[i], peer_addr)) {
-					if(server->verbose) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP denied in the range: %s\n",server->ip_blacklist->ranges[i]);
-					}
+					char saddr[129];
+					addr_to_string_no_port(peer_addr,(u08bits*)saddr);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,server->ip_blacklist->ranges[i]);
 					return 0;
 				}
 			}

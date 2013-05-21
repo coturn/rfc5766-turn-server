@@ -215,14 +215,15 @@ Options with required values:
 				Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS
 				port(s), too - if allowed by configuration.
 
---alt-listening-port		Alternative listening port for UDP and TCP listeners
-				(default value is 3479). This is needed for RFC 5780 support
+--alt-listening-port		Alternative listening port for UDP and TCP listeners;
+				default (or zero) value means "listening port plus one". 
+				This is needed for RFC 5780 support
 				(STUN extension specs, NAT behavior discovery). The TURN Server 
 				supports RFC 5780 only if it is started with more than one 
 				listening IP address of the same family (IPv4 or IPv6).
 							 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
-				Default value is 5350.
+				Default (or zero) value means "TLS listening port plus one".
 
 -i, --relay-device		Relay interface device for relay sockets 
 				(optional, Linux only).
