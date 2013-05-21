@@ -176,6 +176,9 @@ struct listener_server listener = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NUL
 
 };
 
+static ip_range_list_t ip_whitelist = {NULL, NULL, 0};
+static ip_range_list_t ip_blacklist = {NULL, NULL, 0};
+
 static uint32_t stats=0;
 
 //////////////// Relay servers //////////////////////////////////
@@ -304,6 +307,50 @@ static void add_relay_addr(const char* addr) {
 	relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
 	relay_addrs[relays_number-1]=strdup(addr);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
+}
+
+/////////////// add ACL record ///////////////////
+
+static int add_ip_list_range(const char* range, ip_range_list_t * list)
+{
+
+	char* separator = strchr(range, '-');
+
+	if (separator) {
+		*separator = '\0';
+	}
+
+	ioa_addr min, max;
+
+	if (make_ioa_addr((const u08bits*) range, 0, &min) != 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
+		return -1;
+	}
+
+	if (separator) {
+		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
+			return -1;
+		}
+	} else {
+		// Doesn't have a '-' character in it, so assume that this is a single address
+		addr_cpy(&max, &min);
+	}
+
+	if (separator) {
+		*separator = '-';
+	}
+
+	++list->ranges_number;
+	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
+	list->ranges[list->ranges_number - 1] = strdup(range);
+	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
+
+	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) malloc(sizeof(ioa_addr_range));
+
+	ioa_addr_range_set(list->encaddrsranges[list->ranges_number - 1], &min, &max);
+
+	return 0;
 }
 
 //////////////////////////////////////////////////
@@ -783,7 +830,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					stun_only,
 					&alternate_servers_list,
 					&tls_alternate_servers_list,
-					no_multicast_peers, no_loopback_peers);
+					no_multicast_peers, no_loopback_peers,
+					&ip_whitelist, &ip_blacklist);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
@@ -1027,6 +1075,50 @@ static void clean_server(void)
 
 	listener.addrs_number = 0;
 
+	if (ip_whitelist.ranges) {
+		for (i = 0; i < ip_whitelist.ranges_number; i++) {
+			if (ip_whitelist.ranges[i]) {
+				free(ip_whitelist.ranges[i]);
+				ip_whitelist.ranges[i] = NULL;
+			}
+		}
+		free(ip_whitelist.ranges);
+		ip_whitelist.ranges = NULL;
+	}
+
+	if (ip_whitelist.encaddrsranges) {
+		for (i = 0; i < ip_whitelist.ranges_number; i++) {
+			if (ip_whitelist.encaddrsranges[i]) {
+				free(ip_whitelist.encaddrsranges[i]);
+				ip_whitelist.encaddrsranges[i] = NULL;
+			}
+		}
+		free(ip_whitelist.encaddrsranges);
+		ip_whitelist.encaddrsranges = NULL;
+	}
+
+	if (ip_blacklist.ranges) {
+		for (i = 0; i < ip_blacklist.ranges_number; i++) {
+			if (ip_blacklist.ranges[i]) {
+				free(ip_blacklist.ranges[i]);
+				ip_blacklist.ranges[i] = NULL;
+			}
+		}
+		free(ip_blacklist.ranges);
+		ip_blacklist.ranges = NULL;
+	}
+
+	if (ip_blacklist.encaddrsranges) {
+		for (i = 0; i < ip_blacklist.ranges_number; i++) {
+			if (ip_blacklist.encaddrsranges[i]) {
+				free(ip_blacklist.encaddrsranges[i]);
+				ip_blacklist.encaddrsranges[i] = NULL;
+			}
+		}
+		free(ip_blacklist.encaddrsranges);
+		ip_blacklist.encaddrsranges = NULL;
+	}
+
 	if(users) {
 		ur_string_map_free(&(users->static_accounts));
 		ur_string_map_free(&(users->dynamic_accounts));
@@ -1252,6 +1344,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -C, --rest-api-separator	<SYMBOL>	This is the username/timestamp separator symbol (character) in TURN REST API.\n"
 "						The default value is ':'.\n"
 "     --max-allocate-timeout=<seconds>		Max time, in seconds, allowed for full allocation establishment. Default is 60.\n"
+"     --allowed-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are explicitly allowed to connect to the turn server. Multiple allowed-peer-ip can be set.\n"
+"     --denied-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are not allowed to connect to the turn server. Multiple denied-peer-ip can be set.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1314,7 +1408,9 @@ enum EXTRA_OPTS {
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
 	NO_LOOPBACK_PEERS_OPT,
-	MAX_ALLOCATE_TIMEOUT_OPT
+	MAX_ALLOCATE_TIMEOUT_OPT,
+	ALLOWED_PEER_IPS,
+	DENIED_PEER_IPS
 };
 
 static struct option long_options[] = {
@@ -1376,6 +1472,8 @@ static struct option long_options[] = {
 				{ "max-allocate-timeout", required_argument, NULL, MAX_ALLOCATE_TIMEOUT_OPT },
 				{ "no-multicast-peers", optional_argument, NULL, NO_MULTICAST_PEERS_OPT },
 				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
+				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
+				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1643,6 +1741,12 @@ static void set_option(int c, char *value)
 		break;
 	case TLS_ALTERNATE_SERVER_OPT:
 		add_tls_alternate_server(value);
+		break;
+	case ALLOWED_PEER_IPS:
+		if (add_ip_list_range(value, &ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
+		break;
+	case DENIED_PEER_IPS:
+		if (add_ip_list_range(value, &ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
 		break;
 	case 'C':
 		if(value && *value) {

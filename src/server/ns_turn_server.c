@@ -83,6 +83,10 @@ struct _turn_turnserver {
 	size_t as_counter;
 	alternate_servers_list_t *tls_alternate_servers_list;
 	size_t tls_as_counter;
+
+	/* White/black listing of address ranges */
+	ip_range_list_t* ip_whitelist;
+	ip_range_list_t* ip_blacklist;
 };
 
 ///////////////////////////////////////////
@@ -161,6 +165,26 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 			return 0;
 		if(server->no_loopback_peers && ioa_addr_is_loopback(peer_addr))
 			return 0;
+
+		{
+			int i;
+
+			// White/black listing of addr ranges
+			for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
+				if (ioa_addr_in_range(server->ip_whitelist->encaddrsranges[i], peer_addr))
+					return 1;
+			}
+
+			for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
+				if (ioa_addr_in_range(server->ip_blacklist->encaddrsranges[i], peer_addr)) {
+					if(server->verbose) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP denied in the range: %s\n",server->ip_blacklist->ranges[i]);
+					}
+					return 0;
+				}
+			}
+		}
+
 		return 1;
 	}
 	return 0;
@@ -2915,7 +2939,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int stun_only,
 		alternate_servers_list_t *alternate_servers_list,
 		alternate_servers_list_t *tls_alternate_servers_list,
-		int no_multicast_peers, int no_loopback_peers) {
+		int no_multicast_peers, int no_loopback_peers,
+		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -2954,6 +2979,9 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->verbose = verbose;
 
 	server->e = e;
+
+	server->ip_whitelist = ip_whitelist;
+	server->ip_blacklist = ip_blacklist;
 
 	if (init_server(server) < 0) {
 	  turn_free(server,sizeof(turn_turnserver));

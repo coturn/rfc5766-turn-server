@@ -74,6 +74,17 @@ struct _alternate_servers_list {
 
 typedef struct _alternate_servers_list alternate_servers_list_t;
 
+//////// IP White/black listing ///////////
+
+struct _ip_range_list {
+	char **ranges;
+	ioa_addr_range **encaddrsranges;
+	size_t ranges_number;
+};
+
+typedef struct _ip_range_list ip_range_list_t;
+
+
 ///////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose,
@@ -95,7 +106,9 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    alternate_servers_list_t *alternate_servers_list,
 				    alternate_servers_list_t *tls_alternate_servers_list,
 				    int no_multicast_peers,
-				    int no_loopback_peers);
+				    int no_loopback_peers,
+				    ip_range_list_t* ip_whitelist,
+				    ip_range_list_t* ip_blacklist);
 
 void delete_turn_server(turn_turnserver* server);
 
