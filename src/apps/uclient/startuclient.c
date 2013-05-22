@@ -143,6 +143,21 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 	return ssl;
 }
 
+int socket_connect(evutil_socket_t clnet_fd, ioa_addr *remote_addr, int *connect_err)
+{
+	if (addr_connect(clnet_fd, remote_addr, connect_err) < 0) {
+		if(*connect_err == EINPROGRESS)
+			return 0;
+		if (*connect_err == EADDRINUSE)
+			return +1;
+		perror("connect");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect to remote addr: %d\n", __FUNCTION__,*connect_err);
+		exit(-1);
+	}
+
+	return 0;
+}
+
 static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		const unsigned char* ifname, const char *local_address, int verbose,
 		app_ur_conn_info *clnet_info) {
@@ -180,7 +195,13 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 
 	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
 
-	if (strlen(local_address) > 0) {
+	if(clnet_info->is_peer && (*local_address==0)) {
+		if (make_ioa_addr((const u08bits*) "127.0.0.1", 0,
+					    &local_addr) < 0)
+			    return -1;
+
+		addr_bind(clnet_fd, &local_addr);
+	} else if (strlen(local_address) > 0) {
 
 	  if (make_ioa_addr((const u08bits*) local_address, 0,
 			    &local_addr) < 0)
@@ -189,27 +210,22 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	  addr_bind(clnet_fd, &local_addr);
 	}
 
-	if (addr_connect(clnet_fd, &remote_addr, &connect_err) < 0) {
-	  if(connect_err == EADDRINUSE) 
-	    goto start_socket;
-	  perror("connect");
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-			"%s: cannot connect to remote addr\n", __FUNCTION__);
-	  exit(-1);
-	}
+	if(clnet_info->is_peer) {
+		;
+	} else if(socket_connect(clnet_fd, &remote_addr, &connect_err)>0)
+		goto start_socket;
 
 	if (clnet_info) {
 		addr_cpy(&(clnet_info->remote_addr), &remote_addr);
 		addr_cpy(&(clnet_info->local_addr), &local_addr);
 		clnet_info->fd = clnet_fd;
-		addr_get_from_sock(clnet_fd,&(clnet_info->local_addr));
+		addr_get_from_sock(clnet_fd, &(clnet_info->local_addr));
 	}
 
-	if(use_secure) {
+	if (use_secure) {
 		clnet_info->ssl = tls_connect(clnet_info->fd, &remote_addr);
-		if(!clnet_info->ssl) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"%s: cannot SSL connect to remote addr\n", __FUNCTION__);
+		if (!clnet_info->ssl) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot SSL connect to remote addr\n", __FUNCTION__);
 			exit(-1);
 		}
 	}
@@ -814,6 +830,9 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	    exit(-1);
 	  }
 
+	if(passive_tcp)
+		clnet_info2->is_peer = 1;
+
 	if (clnet_connect(clnet_remote_port, remote_address, ifname, local_address,
 			verbose, clnet_info2) < 0) {
 		exit(-1);
@@ -826,6 +845,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	  }
 
 	if(!no_rtcp) {
+
 	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
@@ -846,13 +866,18 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 	    exit(-1);
 	  }
 	} else {
+
 	  if (clnet_allocate(verbose, clnet_info1, &relay_addr1, default_address_family,NULL,NULL)
 	      < 0) {
 	    exit(-1);
-	  }	  
-	  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL)
-	      < 0) {
-	    exit(-1);
+	  }
+	  if(!(clnet_info2->is_peer)) {
+		  if (clnet_allocate(verbose, clnet_info2, &relay_addr2, default_address_family,NULL,NULL) < 0) {
+			  exit(-1);
+		  }
+	  } else {
+		  addr_cpy(&(clnet_info2->remote_addr),&relay_addr1);
+		  addr_cpy(&relay_addr2,&(clnet_info2->local_addr));
 	  }
 	}
 
@@ -874,6 +899,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 		    exit(-1);
 		  }
 	} else {
+
 		if (turn_create_permission(verbose, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
@@ -881,8 +907,10 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			if (turn_create_permission(verbose, clnet_info1_rtcp, &relay_addr2_rtcp) < 0) {
 				exit(-1);
 			}
-		if (turn_create_permission(verbose, clnet_info2, &relay_addr1) < 0) {
-			exit(-1);
+		if(!(clnet_info2->is_peer)) {
+			if (turn_create_permission(verbose, clnet_info2, &relay_addr1) < 0) {
+				exit(-1);
+			}
 		}
 		if (!no_rtcp)
 			if (turn_create_permission(verbose, clnet_info2_rtcp, &relay_addr1_rtcp) < 0) {

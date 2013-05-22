@@ -682,12 +682,23 @@ static int client_write(app_ur_session *elem) {
   app_tcp_conn_info *atc=NULL;
 
   if (is_TCP_relay()) {
+
+	  memcpy(elem->out_buffer.buf, buffer_to_send, clmessage_length);
+	  elem->out_buffer.len = clmessage_length;
+
+	  if(elem->pinfo.is_peer) {
+		  if(send(elem->pinfo.fd, elem->out_buffer.buf, clmessage_length, 0)>=0) {
+			  ++elem->wmsgnum;
+			  elem->to_send_timems += RTP_PACKET_INTERVAL;
+			  tot_send_messages++;
+		  }
+		  return 0;
+	  }
+
 	if (!(elem->pinfo.tcp_conn) || !(elem->pinfo.tcp_conn_number)) {
 		return -1;
 	}
 	int i = (unsigned int)(random()) % elem->pinfo.tcp_conn_number;
-	memcpy(elem->out_buffer.buf, buffer_to_send, clmessage_length);
-	elem->out_buffer.len = clmessage_length;
 	atc = elem->pinfo.tcp_conn[i];
 	if(!atc->tcp_data_bound) {
 		printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n",__FUNCTION__,i,(long)atc);
@@ -1029,6 +1040,9 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 	stun_buffer message;
 	app_ur_conn_info *clnet_info = &(elem->pinfo);
 
+	if(clnet_info->is_peer)
+		return 0;
+
 	if (!method || (method == STUN_METHOD_REFRESH)) {
 		stun_init_request(STUN_METHOD_REFRESH, &message);
 		uint32_t lt = htonl(600);
@@ -1220,8 +1234,15 @@ void start_mclient(const char *remote_address, int port,
 	for(i=0;i<total_clients;i++) {
 
 		if(is_TCP_relay()) {
-			if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
-				exit(-1);
+			if(passive_tcp) {
+				if(elems[i]->pinfo.is_peer) {
+					int connect_err = 0;
+					socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
+				}
+			} else {
+				if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
+					exit(-1);
+				}
 			}
 		}
 		run_events(1);
@@ -1240,16 +1261,30 @@ void start_mclient(const char *remote_address, int port,
 		while(1) {
 			int i = 0;
 			int completed = 0;
-			for(i=0;i<total_clients;++i) {
-				if(elems[i]->pinfo.tcp_conn_number==2 &&
-				  elems[i]->pinfo.tcp_conn[0]->tcp_data_bound &&
-				  elems[i]->pinfo.tcp_conn[1]->tcp_data_bound) {
-					completed += elems[i]->pinfo.tcp_conn_number;
+			if(passive_tcp) {
+				for(i=0;i<total_clients;++i) {
+					if(elems[i]->pinfo.is_peer) {
+						completed+=1;
+					} else if(elems[i]->pinfo.tcp_conn_number==1 &&
+							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
+						completed += elems[i]->pinfo.tcp_conn_number;
+					}
+					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
 				}
-				elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
+				if((completed) == total_clients)
+					break;
+			} else {
+				for(i=0;i<total_clients;++i) {
+					if(elems[i]->pinfo.tcp_conn_number==2 &&
+						elems[i]->pinfo.tcp_conn[0]->tcp_data_bound &&
+						elems[i]->pinfo.tcp_conn[1]->tcp_data_bound) {
+						completed += elems[i]->pinfo.tcp_conn_number;
+					}
+					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
+				}
+				if((completed>>1) == total_clients)
+					break;
 			}
-			if((completed>>1) == total_clients)
-				break;
 			run_events(0);
 			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are not completed\n",

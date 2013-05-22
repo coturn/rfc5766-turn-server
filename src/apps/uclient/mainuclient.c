@@ -65,6 +65,7 @@ int use_fingerprints = 1;
 SSL_CTX *root_tls_ctx = NULL;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
+int passive_tcp = 0;
 
 //////////////// local definitions /////////////////
 
@@ -74,6 +75,7 @@ static char Usage[] =
   "	-t	TCP (default - UDP).\n"
   "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"
   "		options -s, -e, -r and -g.\n"
+  "     -P      Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
   "	-v	Verbose.\n"
   "	-s	Use send method.\n"
@@ -129,7 +131,7 @@ int main(int argc, char **argv)
 
 	memset(local_addr, 0, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSA")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAP")) != -1) {
 		switch (c){
 		case 'C':
 			rest_api_separator=*optarg;
@@ -194,6 +196,9 @@ int main(int argc, char **argv)
 		case 't':
 			use_tcp = 1;
 			break;
+		case 'P':
+			passive_tcp = 1;
+			/* implies 'T': */
 		case 'T':
 			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
 			break;

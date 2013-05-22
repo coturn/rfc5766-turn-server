@@ -68,6 +68,7 @@ extern int RTP_PACKET_INTERVAL;
 extern u08bits relay_transport;
 extern unsigned char client_ifname[1025];
 extern struct event_base* client_event_base;
+extern int passive_tcp;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 

@@ -5,6 +5,7 @@ Version 1.8.5.0 'Black Dow':
 	- IP access control lists.
 	- log file name fix.
 	- alt-* ports default behavior changed. 
+	- "passive TCP" option in uclient.
 	
 05/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.5 'Black Dow':

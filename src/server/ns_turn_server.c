@@ -1000,6 +1000,8 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_data_input_handler, tc, 1)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
 				close_ioa_socket(s);
+				tc->peer_s = NULL;
+				tc->state = TC_STATE_UNKNOWN;
 				FUNCEND;
 				return;
 			}

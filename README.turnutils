@@ -62,6 +62,8 @@ Flags:
 
 -T      Use TCP for the relay transport (default - UDP). Implies options -t, -y, -c, 
     	and ignores flags and options -s, -e, -r and -g.
+    	
+-P      Passive TCP (RFC6062 with active peer). Implies -T.
 
 -S      Secure connection: TLS for TCP, DTLS for UDP.
 

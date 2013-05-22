@@ -80,6 +80,7 @@ typedef struct {
   /* RFC 6062 */
   app_tcp_conn_info **tcp_conn;
   size_t tcp_conn_number;
+  int is_peer;
 } app_ur_conn_info;
 
 typedef struct {
