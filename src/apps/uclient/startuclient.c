@@ -220,6 +220,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		addr_cpy(&(clnet_info->local_addr), &local_addr);
 		clnet_info->fd = clnet_fd;
 		addr_get_from_sock(clnet_fd, &(clnet_info->local_addr));
+		strcpy(clnet_info->lsaddr,local_address);
+		strcpy(clnet_info->rsaddr,remote_address);
+		strcpy(clnet_info->ifname,(const char*)ifname);
 	}
 
 	if (use_secure) {
@@ -244,6 +247,7 @@ static int clnet_allocate(int verbose,
 		char *turn_addr, u16bits *turn_port) {
 
 	int af_cycle = 0;
+	int reopen_socket = 0;
 
 	int allocate_finished;
 
@@ -254,6 +258,16 @@ static int clnet_allocate(int verbose,
 	while (!allocate_finished && af_cycle++ < 32) {
 
 		int allocate_sent = 0;
+
+		if(reopen_socket && !use_tcp) {
+			close(clnet_info->fd);
+			clnet_info->fd = -1;
+			if (clnet_connect(addr_get_port(&(clnet_info->remote_addr)), clnet_info->rsaddr, (u08bits*)clnet_info->ifname, clnet_info->lsaddr,
+					verbose, clnet_info) < 0) {
+				exit(-1);
+			}
+			reopen_socket = 0;
+		}
 
 		stun_buffer message;
 		if(current_reservation_token)
@@ -385,7 +399,8 @@ static int clnet_allocate(int verbose,
 						} else {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 									"trying allocate again...\n", err_code);
-							sleep(5);
+							sleep(1);
+							reopen_socket = 1;
 						}
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

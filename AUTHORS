@@ -1,9 +1,26 @@
 Oleg Moskalenko <mom040267@gmail.com> :
-	General design and implementation, 2011-2013:
+	General design and implementation
+	(2011-2013);
+	
+Gabor Kovesdan, http://kovesdan.org :
+	Initial FreeBSD packaging
+	(since v1.5.2.6);
+	
+Daniel Pocock, http://danielpocock.com :
+	Debian packaging
+	(since v1.8.3.6);
+	
+John Selbie (jselbie) :
+	Stuntman interoperability, RFC5780 fixes 
+	(since v1.8.3.6);
+	
+Lee Sylvester <lee@designrealm.co.uk> :
+	Status and statistics - ideas and pilot implementation
+	(since v1.8.4.0);
 
 Erik Johnston <erikj@openmarket.com> :
-	Access Control Lists, 2013 (starting from version 1.8.5.0)
-	
+	Access Control Lists, 2013 
+	(since v1.8.5.0);
 
 
 

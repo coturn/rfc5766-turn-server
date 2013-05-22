@@ -42,8 +42,6 @@ extern "C" {
 
 //////////////// session info //////////////////////
 
-#define STUN_NONCE_EXPIRATION_TIME (600)
-
 typedef struct {
   void* server; 
   ts_ur_session client_session;
