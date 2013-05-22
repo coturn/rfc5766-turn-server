@@ -676,6 +676,20 @@ static int set_socket_options(ioa_socket_handle s)
 
 	set_sock_buf_size(s->fd,UR_CLIENT_SOCK_BUF_SIZE);
 
+	if ((s->st == TCP_SOCKET) || (s->st == TLS_SOCKET)) {
+		struct linger so_linger;
+		so_linger.l_onoff = 1;
+		so_linger.l_linger = 0;
+		if(setsockopt(s->fd,
+		    SOL_SOCKET,
+		    SO_LINGER,
+		    &so_linger,
+		    sizeof(so_linger))<1) {
+			//perror("setsolinger")
+			;
+		}
+	}
+
 	evutil_make_socket_nonblocking(s->fd);
 	socket_set_reusable(s->fd);
 
@@ -692,19 +706,6 @@ static int set_socket_options(ioa_socket_handle s)
 		if (result < 0)
 			perror("TCP_NODELAY");
 		socket_tcp_set_keepalive(s->fd);
-
-		{
-			struct linger so_linger;
-			so_linger.l_onoff = 1;
-			so_linger.l_linger = 0;
-			if(setsockopt(s->fd,
-			    SOL_SOCKET,
-			    SO_LINGER,
-			    &so_linger,
-			    sizeof(so_linger))<1) {
-				perror("setsolinger");
-			}
-		}
 	}
 
 	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
