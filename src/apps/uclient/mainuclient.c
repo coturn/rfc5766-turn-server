@@ -75,7 +75,7 @@ static char Usage[] =
   "	-t	TCP (default - UDP).\n"
   "	-T	TCP relay transport (default - UDP). Implies options -t, -y, -c, and ignores \n"
   "		options -s, -e, -r and -g.\n"
-  "     -P      Passive TCP (RFC6062 with active peer). Implies -T.\n"
+  "	-P	Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
   "	-v	Verbose.\n"
   "	-s	Use send method.\n"

@@ -362,6 +362,16 @@ Options with required values:
 
 --max-allocate-timeout	Max time, in seconds, allowed for full allocation establishment. 
 				Default is 60 seconds.
+				
+--denied-peer-ip=<IPaddr[-IPaddr]>
+
+--allowed-peer-ip=<IPaddr[-IPaddr]> Options to ban or allow specific ip addresses or ranges of ip addresses. 
+				If an ip address is specified as both allowed and denied, then the ip address is 
+				considered to be allowed. This is useful when you wish to ban a range of ip 
+				addresses, except for a few specific ips within that range.
+				This can be used when you do not want users of the turn server to be able to access
+				machines reachable by the turn server, but would otherwise be unreachable from the 
+				internet (e.g. when the turn server is sitting behind a NAT)
 		
 ==================================
 
