@@ -1,4 +1,4 @@
-I. DOWNLOAD
+sI. DOWNLOAD
 
 You have to download the archive file turnserver-*.tar.gz and unpack it:
 
@@ -133,6 +133,7 @@ The following platforms have been used in the development:
 	- Cygwin 1.7.17 (only partial support, see STATUS file)
 	- NetBSD 6.0.1
 	- OpenBSD 5.3
+	- Amazon Linux
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -216,6 +217,23 @@ third party tools installation:
 		 
 	****) On CentOS / RedHat 6.x you have to install libevent2 "manually", and optionally you have to
 	download and install Hiredis, but everything else can be found in the software repository. 
+
+	*****) Amazon Linux: (you have to install gcc first)
+
+	$ sudo yum install gcc
+	$ sudo yum install openssl-devel
+	$ sudo yum install libevent
+	$ sudo yum install libevent-devel
+	$ sudo yum install postgresql-devel
+	$ sudo yum install postgresql
+	$ sudo yum install postgresql-server
+	$ sudo yum install mysql-devel
+	$ sudo yum install mysql
+	$ sudo yum install mysql-server
+
+(redis is not available as an Amazon EC2 yum package, so we ignore it - 
+redis support will not be compiled, unless you install it "manually" 
+before the TURN server compilation).
 
 NOTE: If your tools are installed in non-standard locations, you will have to adjust CFLAGS 
 and LDFLAGS environment variables for TURN server ./configure script. For example, to 
@@ -539,7 +557,8 @@ XII. MySQL setup
 
 The MySQL setup is similar to PostgreSQL (same idea), and is well documented on their 
 site http://www.mysql.org. The TURN Server database schema is the same as for PostgreSQL
-and you can find it in turndb/schema.sql file.
+and you can find it in turndb/schema.sql file, or in the system's 
+PREFIX/share/turnserver/schema.sql file after the turnserver installation.
 
 If the TURN server was compiled with MySQL support, then we can use the TURN server 
 database parameter --mysql-userdb. The value of this parameter is a connection string 
