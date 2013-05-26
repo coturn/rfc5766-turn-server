@@ -1815,16 +1815,32 @@ static int parse_arg_string(char *sarg, int *c, char **value)
 	int i = 0;
 	char *name = sarg;
 	while(*sarg) {
-		if((*sarg==' ') || (*sarg=='=')) {
+		if((*sarg==' ') || (*sarg=='=') || (*sarg=='\t')) {
 			*sarg=0;
 			do {
 				++sarg;
-			} while((*sarg==' ') || (*sarg=='='));
+			} while((*sarg==' ') || (*sarg=='=') || (*sarg=='\t'));
 			*value = sarg;
 			break;
 		}
 		++sarg;
 		*value=sarg;
+	}
+
+	if(value && *value && **value=='\"') {
+		*value += 1;
+		size_t len = strlen(*value);
+		while(len>0 && (
+				(*value[len-1]=='\n') ||
+				(*value[len-1]=='\r') ||
+				(*value[len-1]==' ') ||
+				(*value[len-1]=='\t')
+				) ) {
+			*value[--len]=0;
+		}
+		if(**value && *value[len-1]=='\"') {
+			*value[--len]=0;
+		}
 	}
 
 	while(long_options[i].name) {

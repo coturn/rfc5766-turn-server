@@ -538,6 +538,16 @@ FILES
 
 =================================
 
+DIRECTORIES
+
+/usr/local/share/turnserver
+
+/usr/local/share/doc/turnserver
+
+/usr/local/share/examples/turnserver
+
+=================================
+
 STANDARDS
 
 new STUN RFC 5389

@@ -142,6 +142,16 @@ FILES
 
 /usr/local/etc/turnuserdb.conf
 
+=================================
+
+DIRECTORIES
+
+/usr/local/share/turnserver
+
+/usr/local/share/doc/turnserver
+
+/usr/local/share/examples/turnserver
+
 ======================================
 
 SEE ALSO

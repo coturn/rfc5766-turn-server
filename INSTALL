@@ -564,7 +564,7 @@ If the TURN server was compiled with MySQL support, then we can use the TURN ser
 database parameter --mysql-userdb. The value of this parameter is a connection string 
 for the MySQL database. As "native" MySQL does not have such a feature as 
 "connection string", the TURN server parses the connection string and converts it into 
-MySQL database access parameter. The format of the MySQL connection string is:
+MySQL database connection parameter. The format of the MySQL connection string is:
 
 "host=<host> dbname=<database-name> user=<database-user> password=<database-user-password> port=<port> connect_timeout=<seconds>"
 
