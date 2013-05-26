@@ -1827,19 +1827,20 @@ static int parse_arg_string(char *sarg, int *c, char **value)
 		*value=sarg;
 	}
 
+
 	if(value && *value && **value=='\"') {
 		*value += 1;
 		size_t len = strlen(*value);
 		while(len>0 && (
-				(*value[len-1]=='\n') ||
-				(*value[len-1]=='\r') ||
-				(*value[len-1]==' ') ||
-				(*value[len-1]=='\t')
+				((*value)[len-1]=='\n') ||
+				((*value)[len-1]=='\r') ||
+				((*value)[len-1]==' ') ||
+				((*value)[len-1]=='\t')
 				) ) {
-			*value[--len]=0;
+			(*value)[--len]=0;
 		}
-		if(**value && *value[len-1]=='\"') {
-			*value[--len]=0;
+		if(len>0 && (*value)[len-1]=='\"') {
+			(*value)[--len]=0;
 		}
 	}
 
@@ -1906,7 +1907,7 @@ static void read_config_file(int argc, char **argv, int pass)
 				if (!s[0])
 					continue;
 				size_t slen = strlen(s);
-				while (slen && (s[slen - 1] == 10 || s[slen - 1] == 13))
+				while (slen && ((s[slen - 1] == 10) || (s[slen - 1] == 13)))
 					s[--slen] = 0;
 				if (slen) {
 					int c = 0;
