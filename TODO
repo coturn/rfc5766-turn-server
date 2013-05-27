@@ -7,6 +7,8 @@ Things to be added:
 5) HTTP status monitor and management.
 6) Add SHA256 security.
 
+More details:
+
 1) Another socket abstraction implementation has to be added, one compatible with MS Windows platform. Due to the flaw in MS Windows network layer, UDP sockets do not work properly in the TURN server, and a workaround must be implemented. After that, the TURN server will be working fine under Cygwin. Now, only TCP feature works fine in Cygwin.
 
 2) After that, a native MS Windows implementation can be considered. It would involve a good GUI for MS Windows users.
