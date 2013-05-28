@@ -2,16 +2,16 @@ Things to be added:
 
 1) Locale support (?).
 
-	Currently we assume that all text data in 8-bits encoded, like C locale.
+	Currently we assume that all text data is 8-bits encoded, like C locale.
 	It would be nice to support localized strings (8-bits and 2-bytes as well).
 	But I am not sure whether this is really important, given the essentially
 	backend nature of the TURN Server. It is so deeply "hidden" in the network
 	infrastructure that the significant code complication involved into 2-bytes 
 	string support is probably unjustified.
 
-2) User manual.
+2) User's manual.
 
-3) Developer manual.
+3) Developer's manual.
 
 4) MS Windows support.
 
@@ -20,7 +20,8 @@ Things to be added:
 	the MS Windows TCP/IP stack, UDP sockets do not work properly in 
 	the TURN server with MS Windows, and a workaround must be 
 	implemented. After that, the TURN server will be working 
-	fine under Cygwin. For now, only TCP feature works fine in Cygwin.
+	fine, at least, under Cygwin. For now, only TCP feature works well 
+	in Cygwin.
 
 	b) After that, a native MS Windows implementation can be considered. 
 	It would involve a good GUI for MS Windows users.
@@ -44,11 +45,13 @@ Things to be added:
 
 8) For a large enterprise, a user-space stack to be integrated.
 
-	And another socket abstraction to be implemented, 
+	An another socket abstraction to be implemented, 
 	the one that uses the user-space TCP/IP stack with zero memory copy. 
 	This is an ambitious goal that would increase the system scaleability,
-	significantly. The stock TCP/IP stack in UNIX and in MS WIndows has 
-	serious scaleability issues. 
+	significantly. The stock TCP/IP stack in UNIX and in MS WIndows do not 
+	scale gracefully. We are trying to suppress those issues in the TURN Server,
+	by using an advanced synchronous I/O technique, but still the underlying
+	stock TCP/IP stack is a limitation.  
 
 9) Traffic recording (for selected allocations).
 
