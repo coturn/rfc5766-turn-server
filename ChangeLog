@@ -1,3 +1,7 @@
+05/31/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 1.8.5.2 'Black Dow':
+	- REST API extra script example and docs extention.
+	
 05/26/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.5.1 'Black Dow':
 	- Config file parsing fixed (Issue 28)

@@ -1635,12 +1635,12 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(s->bev) { /* TCP & TLS */
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
 		if(inbuf) {
-			ev_ssize_t blen = evbuffer_copyout(inbuf, elem->buf.buf, sizeof(elem->buf.buf));
+			ev_ssize_t blen = evbuffer_copyout(inbuf, elem->buf.buf, STUN_BUFFER_SIZE);
 			if(blen>0) {
 				int mlen = 0;
 
-				if(blen>(ev_ssize_t)sizeof(elem->buf.buf))
-				  blen=(ev_ssize_t)sizeof(elem->buf.buf);
+				if(blen>(ev_ssize_t)STUN_BUFFER_SIZE)
+				  blen=(ev_ssize_t)STUN_BUFFER_SIZE;
 
 				if(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
 					mlen = blen;
@@ -1680,14 +1680,14 @@ static int socket_input_worker(ioa_socket_handle s)
 			len = -1;
 	} else if(s->ssl) { /* DTLS */
 		send_backlog_buffers(s);
-		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), s->e->verbose, &len);
+		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
 		addr_cpy(&remote_addr,&(s->remote_addr));
 		if(ret < 0) {
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
 	} else if(s->fd>=0){ /* UDP */
-		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), sizeof(elem->buf.buf), &ttl, &tos, &len);
+		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, &len);
 	} else {
 		s->tobeclosed = 1;
 		s->broken = 1;
@@ -1700,7 +1700,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->read_cb) {
 				ioa_net_data nd;
 
-				ns_bzero(&nd,sizeof(nd));
+				ns_bzero(&nd,sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = elem;
 				nd.chnum = 0;

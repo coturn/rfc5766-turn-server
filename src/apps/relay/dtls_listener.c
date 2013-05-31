@@ -316,7 +316,7 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 		if(ioas) {
 			ioa_net_data nd;
 
-			ns_bzero(&nd,sizeof(nd));
+			ns_bzero(&nd,sizeof(ioa_net_data));
 			addr_cpy(&(nd.src_addr),&((*ndc)->info.remote_addr));
 			nd.nbh = NULL;
 			nd.chnum = 0;
@@ -501,9 +501,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
 	  ioa_network_buffer_allocate(server->e);
 
-	ioa_net_data nd;;
+	ioa_net_data nd;
 
-	ns_bzero(&nd,sizeof(nd));
+	ns_bzero(&nd,sizeof(ioa_net_data));
 	addr_cpy(&(nd.src_addr),&client_addr);
 	nd.nbh = elem;
 	nd.chnum = 0;
@@ -530,7 +530,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 			ur_conn_info info;
 
-			memset(&info, 0, sizeof(info));
+			ns_bzero(&info, sizeof(ur_conn_info));
 			info.fd = -1;
 			addr_cpy(&(info.remote_addr), &client_addr);
 			addr_cpy(&(info.local_addr), &(server->addr));
@@ -628,7 +628,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		ur_conn_info info;
 
-		memset(&info, 0, sizeof(info));
+		ns_bzero(&info, sizeof(ur_conn_info));
 		info.fd = -1;
 		addr_cpy(&(info.remote_addr), &client_addr);
 		addr_cpy(&(info.local_addr), &(server->addr));
@@ -637,9 +637,9 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		if (open_client_connection_socket(server, &info) >= 0) {
 
 			new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
-			memset(ndc, 0, sizeof(new_dtls_conn));
+			ns_bzero(ndc, sizeof(new_dtls_conn));
 
-			memcpy(&(ndc->info), &info, sizeof(info));
+			ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
 
 			ndc->state = NDC_LISTENING;
 
@@ -889,7 +889,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     malloc(sizeof(dtls_listener_relay_server_type));
 
-  memset(server,0,sizeof(dtls_listener_relay_server_type));
+  ns_bzero(server,sizeof(dtls_listener_relay_server_type));
 
   if(init_server(server,
 		 ifname, local_address, port,

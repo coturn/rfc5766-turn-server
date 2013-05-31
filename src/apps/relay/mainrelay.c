@@ -378,7 +378,7 @@ static int add_ip_list_range(const char* range, ip_range_list_t * list)
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
 	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
-	if(evbuffer_add(output,am,sizeof(*am))<0) {
+	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
 	}
 }
@@ -390,8 +390,8 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 	struct auth_message am;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
-	while ((n = evbuffer_remove(input, &am, sizeof(am))) > 0) {
-		if (n != sizeof(am)) {
+	while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
+		if (n != sizeof(struct auth_message)) {
 			fprintf(stderr,"%s: Weird buffer error: size=%d\n",__FUNCTION__,n);
 			continue;
 		}
@@ -419,10 +419,10 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		size_t dest = am.id;
 
-		ns_bcopy(&am,&(sm.m.am),sizeof(am));
+		ns_bcopy(&am,&(sm.m.am),sizeof(struct auth_message));
 
 		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
-		evbuffer_add(output,&sm,sizeof(sm));
+		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
 	}
 }
 
@@ -439,7 +439,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	current_relay_server = current_relay_server % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(sm));
+	ns_bzero(&sm,sizeof(struct message_to_relay));
 
 	sm.t = RMT_SOCKET;
 	addr_cpy(&(sm.m.sm.remote_addr),&(nd->src_addr));
@@ -464,7 +464,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 	if(output)
-		evbuffer_add(output,&sm,sizeof(sm));
+		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
 	else {
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_ERROR,
@@ -482,8 +482,8 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 	struct message_to_relay sm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
-	while ((n = evbuffer_remove(input, &sm, sizeof(sm))) > 0) {
-		if (n != sizeof(sm)) {
+	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
+		if (n != sizeof(struct message_to_relay)) {
 			perror("Weird buffer error\n");
 			continue;
 		}
@@ -557,7 +557,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 	ioa_network_buffer_set_size(mm.m.tc.nbh,ioa_network_buffer_get_size(nbh));
 
 	struct evbuffer *output = bufferevent_get_output(listener.out_buf);
-	evbuffer_add(output,&mm,sizeof(mm));
+	evbuffer_add(output,&mm,sizeof(struct message_to_listener));
 
 	return 0;
 }
@@ -569,8 +569,8 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 	struct message_to_listener mm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
-	while ((n = evbuffer_remove(input, &mm, sizeof(mm))) > 0) {
-		if (n != sizeof(mm)) {
+	while ((n = evbuffer_remove(input, &mm, sizeof(struct message_to_listener))) > 0) {
+		if (n != sizeof(struct message_to_listener)) {
 			perror("Weird buffer error\n");
 			continue;
 		}
@@ -932,7 +932,7 @@ static void* run_auth_server_thread(void *arg)
 
 static void setup_auth_server(void)
 {
-	ns_bzero(&authserver,sizeof(authserver));
+	ns_bzero(&authserver,sizeof(struct auth_server));
 
 #if defined(TURN_NO_THREADS)
 	authserver.event_base = listener.event_base;

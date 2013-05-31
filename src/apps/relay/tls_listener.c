@@ -100,7 +100,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	if (ioas) {
 		ioa_net_data nd;
 
-		ns_bzero(&nd,sizeof(nd));
+		ns_bzero(&nd,sizeof(ioa_net_data));
 		addr_cpy(&(nd.src_addr),&client_addr);
 		nd.chnum = 0;
 		nd.recv_ttl = TTL_IGNORE;

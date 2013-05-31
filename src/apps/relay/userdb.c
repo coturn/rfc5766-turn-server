@@ -1037,11 +1037,11 @@ u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_
 	*postpone_reply = 1;
 
 	struct auth_message am;
-	ns_bzero(&am,sizeof(am));
+	ns_bzero(&am,sizeof(struct auth_message));
 	am.id = id;
 	STRCPY(am.username,uname);
 	am.resume_func = resume;
-	memcpy(&(am.in_buffer),in_buffer,sizeof(am.in_buffer));
+	memcpy(&(am.in_buffer),in_buffer,sizeof(ioa_net_data));
 	in_buffer->nbh = NULL;
 	am.ctx = ctx;
 
@@ -1795,8 +1795,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		char **content = NULL;
 		size_t csz = 0;
 
-		strncpy(us, (char*) user, sizeof(us)-1);
-		us[sizeof(us)-1]=0;
+		STRCPY(us, (char*) user);
 		strncpy(us + strlen(us), ":", sizeof(us)-1-strlen(us));
 		us[sizeof(us)-1]=0;
 
@@ -1823,8 +1822,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 				if (!s[0])
 					goto add_and_cont;
 
-				strncpy(sarg, s, sizeof(sarg)-1);
-				sarg[sizeof(sarg)-1]=0;
+				STRCPY(sarg, s);
 				if (strstr(sarg, us) == sarg) {
 					if (ct == TA_DELETE_USER)
 						continue;
@@ -1832,8 +1830,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 					if (found)
 						continue;
 					found = 1;
-					strncpy(us, (char*) user, sizeof(us)-1);
-					us[sizeof(us)-1]=0;
+					STRCPY(us, (char*) user);
 					strncpy(us + strlen(us), ":0x", sizeof(us)-1-strlen(us));
 					us[sizeof(us)-1]=0;
 					for (i = 0; i < sizeof(hmackey_t); i++) {
@@ -1856,8 +1853,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		}
 
 		if(!found && (ct == TA_UPDATE_USER)) {
-		  strncpy(us,(char*)user,sizeof(us)-1);
-		  us[sizeof(us)-1]=0;
+		  STRCPY(us,(char*)user);
 		  strncpy(us+strlen(us),":0x",sizeof(us)-1-strlen(us));
 		  us[sizeof(us)-1]=0;
 		  for(i=0;i<sizeof(hmackey_t);i++) {
