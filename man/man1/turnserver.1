@@ -609,7 +609,7 @@ limited time by an application that has to create a TURN server connection.
 .PP
 The "classic" long\-term credentials mechanism (LTCM) is described here:
 .PP
-http://tools.ietf.org/html/rfc5389#page\-24
+http://tools.ietf.org/html/rfc5389#section\-10.2
 http://tools.ietf.org/html/rfc5389#section\-15.4
 .PP
 For authentication, each user must know two things: the username and the 
@@ -630,7 +630,7 @@ temporary\-username="username" + ":" + "timestamp"
 where username is the persistent user name, and the timestamp format is just 
 seconds sinse 1970 \- the same value as \fBtime\fP(NULL) function returns.
 .PP
-The temporary password is obtained as HMAC\-SHA1 function over the temporray
+The temporary password is obtained as HMAC\-SHA1 function over the temporary
 username, with shared secret as the HMAC key, and then the result is encoded:
 .PP
 temporary\-password = \fBbase64_encode\fP(hmac\-sha1(shared\-secret, temporary\-username))
