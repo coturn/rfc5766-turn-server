@@ -225,7 +225,7 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
   tls_listener_relay_server_type* server = (tls_listener_relay_server_type*)
     malloc(sizeof(tls_listener_relay_server_type));
 
-	memset(server, 0, sizeof(tls_listener_relay_server_type));
+	ns_bzero(server, sizeof(tls_listener_relay_server_type));
 
 	if (init_server(server, ifname, local_address, port, verbose, e, stats, send_socket) < 0) {
 		free(server);

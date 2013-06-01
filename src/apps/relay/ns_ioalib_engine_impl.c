@@ -2306,7 +2306,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
 				send_message_to_redis(NULL, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				send_message_to_redis(NULL, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 			}
@@ -2330,7 +2330,7 @@ void turn_report_allocation_delete(void *a)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
 				send_message_to_redis(NULL, "del", key, "");
 				send_message_to_redis(NULL, "publish", key, "deleted");
 			}
@@ -2361,7 +2361,7 @@ void turn_report_session_usage(void *session)
 #if !defined(TURN_NO_HIREDIS)
 				if(default_async_context_is_not_empty()) {
 					char key[1024];
-					snprintf(key,sizeof(key)-1,"turn/user/%s/allocation/0x%lx/traffic",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+					snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/traffic",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
 					send_message_to_redis(NULL, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #endif

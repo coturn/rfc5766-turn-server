@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(0);
 
-	memset(local_addr, 0, sizeof(local_addr));
+	ns_bzero(local_addr, sizeof(local_addr));
 
 	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAP")) != -1) {
 		switch (c){
@@ -246,9 +246,9 @@ int main(int argc, char **argv)
 		{
 			char new_uname[1025];
 			if(g_uname[0]) {
-			  snprintf(new_uname,sizeof(new_uname)-1,"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname),"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
 			} else {
-			  snprintf(new_uname,sizeof(new_uname)-1,"%lu", (unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname),"%lu", (unsigned long)time(NULL));
 			}
 			STRCPY(g_uname,new_uname);
 		}

@@ -127,7 +127,7 @@ typedef u32bits turn_time_t;
 
 #define MAX_STUN_MESSAGE_SIZE (65507)
 
-#define NONCE_LENGTH_32BITS (2)
+#define NONCE_LENGTH_32BITS (4)
 
 #define DEFAULT_STUN_PORT (3478)
 #define DEFAULT_STUN_TLS_PORT (5349)

@@ -981,7 +981,7 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 			}
 
 			stun_tid tid;
-			ns_bzero(&tid,sizeof(tid));
+			ns_bzero(&tid,sizeof(stun_tid));
 			int err_code=0;
 			tc = create_tcp_connection(a, &tid, peer_addr, &err_code);
 			if(!tc) {
@@ -1808,7 +1808,7 @@ static int create_challenge_response(turn_turnserver *server,
 	stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, *err_code, *reason, tid);
 	*resp_constructed = 1;
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_NONCE,
-					ss->nonce, (int)(sizeof(ss->nonce)-1));
+					ss->nonce, (int)(NONCE_MAX_SIZE-1));
 	stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_REALM,
 					server->realm, (int)(strlen((s08bits*)(server->realm))));
 	ioa_network_buffer_set_size(nbh,len);
@@ -1861,8 +1861,9 @@ static int check_stun_auth(turn_turnserver *server,
 	if(ss->nonce[0]==0) {
 		int i = 0;
 		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
-			u08bits *s = ss->nonce + 8*i;
-			snprintf((s08bits*)s, sizeof(ss->nonce)-8*i-1, "%08x",(u32bits)random());
+			u08bits *s = ss->nonce + 4*i;
+			u32bits rand=(u32bits)random();
+			snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 		}
 		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
 		new_nonce = 1;
@@ -1872,8 +1873,9 @@ static int check_stun_auth(turn_turnserver *server,
 		if(turn_time_before(ss->nonce_expiration_time,turn_time())) {
 			int i = 0;
 			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
-				u08bits *s = ss->nonce + 8*i;
-				snprintf((s08bits*)s, sizeof(ss->nonce)-8*i-1, "%08x",(u32bits)random());
+				u08bits *s = ss->nonce + 4*i;
+				u32bits rand=(u32bits)random();
+				snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 			}
 			ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
 		}

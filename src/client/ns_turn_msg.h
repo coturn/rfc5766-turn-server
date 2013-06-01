@@ -43,11 +43,12 @@ extern "C" {
 /**
  * Structure holding the STUN message Transaction ID
  */
+#define STUN_TID_SIZE (12)
 typedef struct {
 	/**
 	 * Binary array
 	 */
-  uint8_t tsx_id[12];
+  uint8_t tsx_id[STUN_TID_SIZE];
 } stun_tid;
 
 typedef enum {

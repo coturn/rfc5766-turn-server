@@ -106,7 +106,7 @@ static server_type* init_server(int verbose, const char* ifname, char **local_ad
 
   if(!server) return server;
 
-  memset(server,0,sizeof(server_type));
+  ns_bzero(server,sizeof(server_type));
 
   server->verbose=verbose;
 

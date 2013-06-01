@@ -173,12 +173,12 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	clnet_fd = -1;
 	connect_err = 0;
 
-	memset((void *) &remote_addr, 0, sizeof(struct sockaddr_storage));
+	ns_bzero(&remote_addr, sizeof(ioa_addr));
 	if (make_ioa_addr((const u08bits*) remote_address, clnet_remote_port,
 			&remote_addr) < 0)
 		return -1;
 
-	memset((void *) &local_addr, 0, sizeof(struct sockaddr_storage));
+	ns_bzero(&local_addr, sizeof(struct sockaddr_storage));
 
 	clnet_fd = socket(remote_addr.ss.ss_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
 	if (clnet_fd < 0) {

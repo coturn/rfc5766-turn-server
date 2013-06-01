@@ -442,7 +442,7 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 
 	size_t sz;
 
-	snprintf(s, sizeof(s)-1, "%lu: ",(unsigned long)turn_time());
+	snprintf(s, sizeof(s), "%lu: ",(unsigned long)turn_time());
 	sz=strlen(s);
 	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
 	s[sizeof(s)-1]=0;

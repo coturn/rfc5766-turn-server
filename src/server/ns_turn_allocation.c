@@ -171,7 +171,7 @@ void free_turn_permission_map(turn_permission_map *map) {
       (*map)[i]=NULL;
     }
   }
-  turn_free(*map,sizeof(turn_permission_map));
+  turn_free(*map,sizeof(turn_permission_info*)*TURN_PERMISSION_MAP_SIZE);
   *map=NULL;
 }
 
@@ -390,7 +390,7 @@ tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *pe
 	tcl->next = &(tc->list);
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)
-		ns_bcopy(tid,&(tc->tid),sizeof(tc->tid));
+		ns_bcopy(tid,&(tc->tid),sizeof(stun_tid));
 	tc->owner = a;
 	set_new_tc_id(tc);
 	return tc;

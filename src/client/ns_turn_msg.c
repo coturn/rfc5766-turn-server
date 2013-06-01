@@ -524,7 +524,7 @@ u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
   
   if(!peer_addr) {
     ioa_addr ca;
-    ns_bzero(&ca,sizeof(ca));
+    ns_bzero(&ca,sizeof(ioa_addr));
     
     if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &ca)<0) return 0;
   } else {
@@ -595,7 +595,7 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
   if(!id2) return 0;
   {
     unsigned int i=0;
-    for(i=0;i<sizeof(id1->tsx_id);++i) {
+    for(i=0;i<sizeof(STUN_TID_SIZE);++i) {
       if(id1->tsx_id[i]!=id2->tsx_id[i]) return 0;
     }
   }
@@ -605,18 +605,18 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
 void stun_tid_cpy(stun_tid *id1, const stun_tid *id2) {
   if(!id1) return;
   if(!id2) return;
-  ns_bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),sizeof(id1->tsx_id));
+  ns_bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),sizeof(STUN_TID_SIZE));
 }
 
 static void stun_tid_string_cpy(u08bits* s, const stun_tid* id) {
   if(s && id) {
-    ns_bcopy((const void*)(id->tsx_id),s,sizeof(id->tsx_id));
+    ns_bcopy((const void*)(id->tsx_id),s,sizeof(STUN_TID_SIZE));
   }
 }
 
 static void stun_tid_from_string(const u08bits* s, stun_tid* id) {
   if(s && id) {
-    ns_bcopy(s,(void*)(id->tsx_id),sizeof(id->tsx_id));
+    ns_bcopy(s,(void*)(id->tsx_id),sizeof(STUN_TID_SIZE));
   }
 }
 

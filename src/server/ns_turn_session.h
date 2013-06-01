@@ -42,13 +42,15 @@ extern "C" {
 
 //////////////// session info //////////////////////
 
+#define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
+
 typedef struct {
   void* server; 
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
   allocation alloc;
   ioa_timer_handle to_be_allocated_timeout_ev;
-  u08bits nonce[NONCE_LENGTH_32BITS*8+1];
+  u08bits nonce[NONCE_MAX_SIZE];
   turn_time_t nonce_expiration_time;
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
   hmackey_t hmackey;
