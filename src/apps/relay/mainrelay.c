@@ -85,7 +85,7 @@ static void openssl_cleanup(void);
 
 //////////// Barrier for the threads //////////////
 
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
 #endif
@@ -861,7 +861,7 @@ static void *run_relay_thread(void *arg)
   
   setup_relay_server(rs, NULL);
 
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
 	  perror("barrier wait");
 #endif
@@ -915,7 +915,7 @@ static void* run_auth_server_thread(void *arg)
 {
 	struct event_base *eb = (struct event_base*)arg;
 
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
@@ -965,7 +965,7 @@ static void setup_auth_server(void)
 
 static void setup_server(void)
 {
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth thread plus current (listener) thread */
 	barrier_count = relay_servers_number+2;
@@ -980,7 +980,7 @@ static void setup_server(void)
 	setup_relay_servers();
 	setup_auth_server();
 
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
