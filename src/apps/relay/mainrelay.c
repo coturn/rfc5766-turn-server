@@ -965,12 +965,14 @@ static void setup_auth_server(void)
 
 static void setup_server(void)
 {
+#if !defined(TURN_NO_THREADS)
+	evthread_use_pthreads();
+#endif
+
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth thread plus current (listener) thread */
 	barrier_count = relay_servers_number+2;
-
-	evthread_use_pthreads();
 
 	if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
 		perror("barrier init");

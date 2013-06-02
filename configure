@@ -158,6 +158,17 @@ pthread_testlib() {
     fi
 }
 
+pthread_testbarriers() {
+
+    echo "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo "pthread barriers not found"
+	OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
+    fi
+}
+
 dtls_testlib() {
 
     if [ -z "${TURN_NO_DTLS}" ] ; then
@@ -355,6 +366,7 @@ int main(int argc, char** argv) {
     pthread_mutexattr_settype(0,PTHREAD_MUTEX_RECURSIVE);
     return (int)pthread_create(0,0,0,0)+(int)(argv[argc][0]);
 }
+
 !
 
 DTLS_TMPCPROG=__test__ccomp__dtls__$$
@@ -503,8 +515,7 @@ testlib wldap32
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     #CYGWIN ?
-    TURN_NO_THREADS="-DTURN_NO_THREADS"
-    OSCFLAGS="-DTURN_UDP_SOCKET_CONNECT_BUG -DTURN_NO_THREAD_BARRIERS ${OSCFLAGS}"
+    OSCFLAGS="-DTURN_UDP_SOCKET_CONNECT_BUG ${OSCFLAGS}"
 fi
 testlib wldap64
 testlib intl
@@ -515,17 +526,19 @@ testlib intl
 
 if [ -z ${TURN_NO_THREADS} ] ; then 
 
-pthread_testlib
-ER=$?
-if [ ${ER} -eq 0 ] ; then
+    pthread_testlib
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
 	echo "WARNING: Cannot find pthread library functions."
 	echo "Using single-thread mode."
 	TURN_NO_THREADS="-DTURN_NO_THREADS"
+    fi
+    
+else
+    TURN_NO_THREADS="-DTURN_NO_THREADS"
 fi
 
-else
-	TURN_NO_THREADS="-DTURN_NO_THREADS"
-fi
+pthread_testbarriers
 
 ###########################
 # Can we use daemon ?

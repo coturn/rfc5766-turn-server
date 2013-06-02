@@ -1,6 +1,7 @@
 06/01/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.5.4 'Black Dow':
 	- minor fixes.
+	- Cygwin-related fixes and INSTALL additions.
 
 05/31/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.5.3 'Black Dow':
