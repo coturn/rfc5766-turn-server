@@ -472,6 +472,11 @@ The problem is how MS Windows implement the connect() and bind() functions
 on UDP sockets. Those MS functions behave differently from the same 
 functions in all other systems, so we have to find  a workaround.
 
+One note for Cygwin users: we recommended libevent2 installation from the cygwin
+"ports" site: http://sourceware.org/cygwinports/ . You will have to install 
+libevent2 runtime and libevent-devel packages.
+
+
 XI. CLIENT API LIBRARY.
 
 The compilation process will create lib/ sub-directory with libturnclient.a 
