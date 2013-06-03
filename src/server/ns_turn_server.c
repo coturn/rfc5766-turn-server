@@ -169,25 +169,29 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 		{
 			int i;
 
-			// White/black listing of addr ranges
-			for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
-				if (ioa_addr_in_range(server->ip_whitelist->encaddrsranges[i], peer_addr))
-					return 1;
+			if(server->ip_whitelist) {
+				// White listing of addr ranges
+				for (i = server->ip_whitelist->ranges_number - 1; i >= 0; --i) {
+					if (ioa_addr_in_range(server->ip_whitelist->encaddrsranges[i], peer_addr))
+						return 1;
+				}
 			}
 
-			for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
-				if (ioa_addr_in_range(server->ip_blacklist->encaddrsranges[i], peer_addr)) {
-					char saddr[129];
-					addr_to_string_no_port(peer_addr,(u08bits*)saddr);
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,server->ip_blacklist->ranges[i]);
-					return 0;
+			if(server->ip_blacklist) {
+				// Black listing of addr ranges
+				for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
+					if (ioa_addr_in_range(server->ip_blacklist->encaddrsranges[i], peer_addr)) {
+						char saddr[129];
+						addr_to_string_no_port(peer_addr,(u08bits*)saddr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,server->ip_blacklist->ranges[i]);
+						return 0;
+					}
 				}
 			}
 		}
-
-		return 1;
 	}
-	return 0;
+
+	return 1;
 }
 
 /////////////////// Allocation //////////////////////////////////
