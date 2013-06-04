@@ -2253,7 +2253,7 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e)
 {
 	stun_buffer_list_elem *elem = new_blist_elem(e);
-	ns_bzero(&(elem->buf),sizeof(stun_buffer));
+	elem->buf.len = 0;
 	return elem;
 }
 
