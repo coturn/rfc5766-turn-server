@@ -96,11 +96,8 @@ int stun_get_command_message_len(const stun_buffer* buf);
 
 ///////////////////////////////////////////////////////////////
 
-int stun_init_channel_message(u16bits chnumber, stun_buffer* buf, int length);
-s08bits* stun_get_app_data_ptr(stun_buffer* buf, int *olength);
-int stun_get_channel_message_len(const stun_buffer* buf);
-int stun_is_channel_message(const stun_buffer* buf, u16bits* chnumber);
-int stun_is_specific_channel_message(const stun_buffer* buf, u16bits chnumber);
+int stun_init_channel_message(u16bits chnumber, stun_buffer* buf, int length, int do_padding);
+int stun_is_channel_message(stun_buffer* buf, u16bits* chnumber, int is_padding_madatory);
 
 ///////////////////////////////////////////////////////////////
 

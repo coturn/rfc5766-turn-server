@@ -406,14 +406,17 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 	    
 	  if(rc>0) {
 	    int mlen = rc;
+	    size_t app_msg_len = (size_t)rc;
 	    if(!atc) {
-	      mlen = stun_get_message_len_str(message->buf, rc);
+	      mlen = stun_get_message_len_str(message->buf, rc, 1, &app_msg_len);
 	    } else {
 	      if(!sync)
 		mlen = clmessage_length;
 
 	      if(mlen>clmessage_length)
 		mlen = clmessage_length;
+
+	      app_msg_len = (size_t)mlen;
 	    }
 	      
 	    if(mlen>0) {
@@ -430,19 +433,21 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 	      
 		if (rcr > 0)
 		  rsf+= rcr;
-
-		if(atc && rsf!=clmessage_length && rsf!=80 && rsf!=112) {
-		  usleep(1000);
-		}
 	      
 	      }
 
 	      if(rsf<1)
 		return -1;
 
-	      message->len = rsf;
+	      if(rsf<(int)app_msg_len) {
+		      if((size_t)(app_msg_len/(size_t)rsf)*((size_t)(rsf)) != app_msg_len) {
+			      return -1;
+		      }
+	      }
 
-	      rc = rsf;
+	      message->len = app_msg_len;
+
+	      rc = app_msg_len;
 
 	    } else {
 	      rc = 0;
@@ -501,8 +506,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				} else if (elem->in_buffer.len < clmessage_length) {
 					TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
-						"ERROR: received wrong buffer size: length: %d, must be %d\n",
-						rc, clmessage_length);
+						"ERROR: received wrong buffer size: length: %d, must be %d; len=%d\n",
+						rc, clmessage_length, (int)elem->in_buffer.len);
 					return rc;
 				}
 
@@ -584,7 +589,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			return rc;
 		} else if (stun_is_error_response(&(elem->in_buffer), NULL,NULL,0)) {
 			return rc;
-		} else if (stun_is_channel_message(&(elem->in_buffer), &chnumber)) {
+		} else if (stun_is_channel_message(&(elem->in_buffer), &chnumber, use_tcp)) {
 			if (elem->chnum != chnumber) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"ERROR: received message has wrong channel: %d\n",
@@ -592,12 +597,13 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				return rc;
 			}
 
-			if (elem->in_buffer.len >= 0) {
-				if (elem->in_buffer.len != clmessage_length + 4) {
+			if (elem->in_buffer.len >= 4) {
+				if (((elem->in_buffer.len-4) < clmessage_length) ||
+					((elem->in_buffer.len-4) > clmessage_length + 3)) {
 					TURN_LOG_FUNC(
 							TURN_LOG_LEVEL_INFO,
-							"ERROR: received buffer have wrong length: %d, must be %d\n",
-							rc, clmessage_length + 4);
+							"ERROR: received buffer have wrong length: %d, must be %d, len=%d\n",
+							rc, clmessage_length + 4,(int)elem->in_buffer.len);
 					return rc;
 				}
 
@@ -705,7 +711,8 @@ static int client_write(app_ur_session *elem) {
 		return -1;
 	}
   } else if(!do_not_use_channel) {
-    stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length);
+	  /* Let's always do padding: */
+    stun_init_channel_message(elem->chnum, &(elem->out_buffer), clmessage_length, mandatory_channel_padding || use_tcp);
     memcpy(elem->out_buffer.buf+4,buffer_to_send,clmessage_length);
   } else {
     stun_init_indication(STUN_METHOD_SEND, &(elem->out_buffer));

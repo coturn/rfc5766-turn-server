@@ -2662,15 +2662,23 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 	u16bits chnum = 0;
 
+	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
+	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
+
 	if (stun_is_channel_message_str(ioa_network_buffer_data(in_buffer->nbh), 
-					ioa_network_buffer_get_size(in_buffer->nbh), 
-					&chnum)) {
+					&blen,
+					&chnum,
+					is_padding_mandatory)) {
 
 		if(ss->is_tcp_relay) {
 			//Forbidden
 			FUNCEND;
 			return -1;
 		}
+
+		ioa_network_buffer_set_size(in_buffer->nbh,blen);
+
 		int rc = write_to_peerchannel(ss, chnum, in_buffer);
 
 		if (eve(server->verbose)) {
@@ -2831,7 +2839,11 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				nbh = in_buffer->nbh;
 				ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
 				ioa_network_buffer_header_init(nbh);
-				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
+
+				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+				int do_padding = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
+
+				stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
 				ioa_network_buffer_set_size(nbh,len);
 				in_buffer->nbh = NULL;
 				if (eve(server->verbose)) {

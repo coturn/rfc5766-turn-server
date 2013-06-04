@@ -66,6 +66,7 @@ SSL_CTX *root_tls_ctx = NULL;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
 int passive_tcp = 0;
+int mandatory_channel_padding = 0;
 
 //////////////// local definitions /////////////////
 
@@ -101,6 +102,7 @@ static char Usage[] =
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
   "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
+  "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-C	TURN REST API username/timestamp separator symbol (character). The default value is ':'.\n";
 
 //////////////////////////////////////////////////
@@ -131,10 +133,13 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAP")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPD")) != -1) {
 		switch (c){
 		case 'C':
 			rest_api_separator=*optarg;
+			break;
+		case 'D':
+			mandatory_channel_padding = 1;
 			break;
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);

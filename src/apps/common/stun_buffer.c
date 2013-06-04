@@ -139,25 +139,18 @@ int stun_get_command_message_len(const stun_buffer* buf) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int stun_init_channel_message(u16bits chnumber, stun_buffer* buf, int length) {
-  return stun_init_channel_message_str(chnumber, buf->buf, (size_t*)(&(buf->len)), length);
+int stun_init_channel_message(u16bits chnumber, stun_buffer* buf, int length, int do_padding) {
+  return stun_init_channel_message_str(chnumber, buf->buf, (size_t*)(&(buf->len)), length, do_padding);
 }
 
-s08bits* stun_get_app_data_ptr(stun_buffer* buf, int *olength) {
-  return (s08bits*)stun_get_app_data_ptr_str(buf->buf, olength);
-}
-
-int stun_get_channel_message_len(const stun_buffer* buf) {
-  return stun_get_channel_message_len_str(buf->buf);
-}
-
-int stun_is_channel_message(const stun_buffer* buf, u16bits* chnumber) {
+int stun_is_channel_message(stun_buffer* buf, u16bits* chnumber, int is_padding_mandatory) {
   if(!buf) return 0;
-  return stun_is_channel_message_str(buf->buf, (size_t)(buf->len), chnumber);
-}
-
-int stun_is_specific_channel_message(const stun_buffer* buf, u16bits chnumber) {
-  return stun_is_specific_channel_message_str(buf->buf, (size_t)(buf->len), chnumber);
+  size_t blen = (size_t)buf->len;
+  int ret = stun_is_channel_message_str(buf->buf, &blen, chnumber, is_padding_mandatory);
+  if(ret) {
+	  buf->len=(ssize_t)blen;
+  }
+  return ret;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

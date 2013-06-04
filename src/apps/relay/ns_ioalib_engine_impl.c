@@ -1110,6 +1110,9 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 
 		size_t len = (size_t)(ilen);
 
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+		int do_padding = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
+
 		u16bits chnum = chn->chnum;
 
 		if (chnum) {
@@ -1117,7 +1120,8 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 			ioa_network_buffer_handle nbh = in_buffer->nbh;
 			ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
 			ioa_network_buffer_header_init(nbh);
-			stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len);
+			stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
+
 			ioa_network_buffer_set_size(nbh,len);
 			in_buffer->nbh = NULL;
 			if (eve(s->e->verbose)) {
@@ -1576,6 +1580,7 @@ static int socket_input_worker(ioa_socket_handle s)
 {
 	int len = 0;
 	int ret = 0;
+	size_t app_msg_len = 0;
 	int ttl = TTL_IGNORE;
 	int tos = TOS_IGNORE;
 	ioa_addr remote_addr;
@@ -1645,7 +1650,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				if(((s->st == TCP_SOCKET)||(s->st == TLS_SOCKET)) && ((s->sat == TCP_CLIENT_DATA_SOCKET)||(s->sat==TCP_RELAY_DATA_SOCKET))) {
 					mlen = blen;
 				} else {
-					mlen = stun_get_message_len_str(elem->buf.buf, blen);
+					mlen = stun_get_message_len_str(elem->buf.buf, blen, 1, &app_msg_len);
 				}
 
 				if(mlen>0 && mlen<=(int)blen) {
@@ -1663,9 +1668,11 @@ static int socket_input_worker(ioa_socket_handle s)
 						}
 #endif
 					}
-					if(ret != -1)
+					if(ret != -1) {
 						ret = len;
+					}
 				}
+
 			} else if(blen<0) {
 				s->tobeclosed = 1;
 				s->broken = 1;
@@ -1676,8 +1683,10 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->broken = 1;
 			ret = -1;
 		}
+
 		if(len == 0)
 			len = -1;
+
 	} else if(s->ssl) { /* DTLS */
 		send_backlog_buffers(s);
 		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
@@ -1696,7 +1705,11 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if ((ret!=-1) && (len >= 0)) {
 		if(ioa_socket_check_bandwidth(s,(size_t)len)) {
-			elem->buf.len = len;
+			if(app_msg_len)
+				elem->buf.len = app_msg_len;
+			else
+				elem->buf.len = len;
+
 			if(s->read_cb) {
 				ioa_net_data nd;
 

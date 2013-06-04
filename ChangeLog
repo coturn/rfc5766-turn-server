@@ -1,7 +1,9 @@
 06/01/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.5.4 'Black Dow':
+	- Issues 29 and 30 fixed (channels padding).
 	- minor fixes.
-	- Cygwin-related fixes and INSTALL additions.
+	- Mac OS X compilation fixes.
+	- Cygwin-related compilation fixes and INSTALL additions.
 
 05/31/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.5.3 'Black Dow':

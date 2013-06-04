@@ -348,51 +348,72 @@ void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 	}
 }
 
-int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length) {
-  if(length<0 || (MAX_STUN_MESSAGE_SIZE<(4+length))) return -1;
-  ((u16bits*)(buf))[0]=nswap16(chnumber);
-  ((u16bits*)(buf))[1]=nswap16((u16bits)length);
-  *len=4+length;
-  return 0;
-}
-
 /////////// CHANNEL ////////////////////////////////////////////////
 
-u08bits* stun_get_app_data_ptr_str(u08bits* buf, int *olength) {
-  u16bits length=nswap16(((u16bits*)(buf))[1]);
-  if(MAX_STUN_MESSAGE_SIZE<(4+length)) return NULL;
-  if(olength) *olength=(int)length;
-  return buf+4;
+int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length, int do_padding)
+{
+	u16bits rlen = (u16bits)length;
+
+	if(length<0 || (MAX_STUN_MESSAGE_SIZE<(4+length))) return -1;
+	((u16bits*)(buf))[0]=nswap16(chnumber);
+	((u16bits*)(buf))[1]=nswap16((u16bits)length);
+
+	if(do_padding && (rlen & 0x0003))
+		rlen = ((rlen>>2)+1)<<2;
+
+	*len=4+rlen;
+
+	return 0;
 }
 
-int stun_get_channel_message_len_str(const u08bits* buf) {
-  u16bits length=nswap16(((const u16bits*)buf)[1]);
-  if(MAX_STUN_MESSAGE_SIZE<(4+length)) return -1;
-  return (4+length);
-}
+int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnumber, int mandatory_padding)
+{
+	u16bits datalen_header;
+	u16bits datalen_actual;
 
-int stun_is_channel_message_str(const u08bits *buf, size_t blen, u16bits* chnumber) {
-  if(blen<4) return 0;
-  u16bits chn=nswap16(((const u16bits*)(buf))[0]);
-  if(!STUN_VALID_CHANNEL(chn)) return 0;
-  if((size_t)(4+(nswap16(((const u16bits*)(buf))[1])))!=blen) return 0;
-  if(chnumber) *chnumber=chn;
-  return 1;
-}
+	if (!blen || (*blen < 4))
+		return 0;
 
-int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits chnumber) {
-  if(len<4) return 0;
-  if(((u08bits)(buf[0]) & 0xc0) != 0x40) return 0;
-  u16bits chn=nswap16(((const u16bits*)(buf))[0]);
-  if(!STUN_VALID_CHANNEL(chn)) return 0;
-  if(chn!=chnumber) return 0;
-  if(4+(size_t)(nswap16(((const u16bits*)(buf))[1]))!=len) return 0;
-  return 1;
+	u16bits chn = nswap16(((const u16bits*)(buf))[0]);
+	if (!STUN_VALID_CHANNEL(chn))
+		return 0;
+
+	if(*blen>(u16bits)-1)
+		*blen=(u16bits)-1;
+
+	datalen_actual = (u16bits)(*blen) - 4;
+	datalen_header = ((const u16bits*)buf)[1];
+	datalen_header = nswap16(datalen_header);
+
+	if (datalen_header != datalen_actual) {
+
+		/* maybe there are padding bytes for 32-bit alignment. Mandatory for TCP. Optional for UDP */
+
+		if(datalen_actual & 0x0003) {
+
+			if(mandatory_padding) {
+				return 0;
+			} else if ((datalen_actual < datalen_header) || (datalen_header == 0)) {
+				return 0;
+			} else {
+				u16bits diff = datalen_actual - datalen_header;
+				if (diff > 3)
+					return 0;
+			}
+		}
+	}
+
+	*blen = datalen_header + 4;
+
+	if (chnumber)
+		*chnumber = chn;
+
+	return 1;
 }
 
 ////////// STUN message ///////////////////////////////
 
-int stun_get_message_len_str(u08bits *buf, size_t blen) {
+int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
 	if (buf && blen) {
 		/* STUN request/response ? */
 		if (buf && blen >= STUN_HEADER_LENGTH) {
@@ -404,6 +425,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen) {
 						if ((len & 0x0003) == 0) {
 							len += STUN_HEADER_LENGTH;
 							if ((size_t) len <= blen) {
+								*app_len = (size_t)len;
 								return (int)len;
 							}
 						}
@@ -416,8 +438,16 @@ int stun_get_message_len_str(u08bits *buf, size_t blen) {
 		if(blen>=4) {
 			u16bits chn=nswap16(((const u16bits*)(buf))[0]);
 			if(STUN_VALID_CHANNEL(chn)) {
-				int bret = (4+(nswap16(((const u16bits*)(buf))[1])));
-				if((size_t)bret<=blen) {
+
+				u16bits bret = (4+(nswap16(((const u16bits*)(buf))[1])));
+
+				*app_len = bret;
+
+				if(padding && (bret & 0x0003)) {
+					bret = ((bret>>2)+1)<<2;
+				}
+
+				if(bret<=blen) {
 					return bret;
 				}
 			}
@@ -595,7 +625,7 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
   if(!id2) return 0;
   {
     unsigned int i=0;
-    for(i=0;i<sizeof(STUN_TID_SIZE);++i) {
+    for(i=0;i<STUN_TID_SIZE;++i) {
       if(id1->tsx_id[i]!=id2->tsx_id[i]) return 0;
     }
   }
@@ -605,18 +635,18 @@ int stun_tid_equals(const stun_tid *id1, const stun_tid *id2) {
 void stun_tid_cpy(stun_tid *id1, const stun_tid *id2) {
   if(!id1) return;
   if(!id2) return;
-  ns_bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),sizeof(STUN_TID_SIZE));
+  ns_bcopy((const void*)(id2->tsx_id),(void*)(id1->tsx_id),STUN_TID_SIZE);
 }
 
 static void stun_tid_string_cpy(u08bits* s, const stun_tid* id) {
   if(s && id) {
-    ns_bcopy((const void*)(id->tsx_id),s,sizeof(STUN_TID_SIZE));
+    ns_bcopy((const void*)(id->tsx_id),s,STUN_TID_SIZE);
   }
 }
 
 static void stun_tid_from_string(const u08bits* s, stun_tid* id) {
   if(s && id) {
-    ns_bcopy(s,(void*)(id->tsx_id),sizeof(STUN_TID_SIZE));
+    ns_bcopy(s,(void*)(id->tsx_id),STUN_TID_SIZE);
   }
 }
 

@@ -93,7 +93,7 @@ u32bits stun_adjust_allocate_lifetime(u32bits lifetime);
 
 ///////////// STR ////////////////////////////////////////////////
 
-int stun_get_message_len_str(u08bits *buf, size_t len);
+int stun_get_message_len_str(u08bits *buf, size_t len, int padding, size_t *app_len);
 
 void stun_init_buffer_str(u08bits *buf, size_t *len);
 void stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len);
@@ -101,9 +101,7 @@ void stun_init_request_str(u16bits method, u08bits* buf, size_t *len);
 void stun_init_indication_str(u16bits method, u08bits* buf, size_t *len);
 void stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id);
 void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len, u16bits error_code, const u08bits *reason, stun_tid* id);
-int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length);
-
-u08bits* stun_get_app_data_ptr_str(u08bits* buf, int *olength);
+int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length, int do_padding);
 
 int stun_is_command_message_str(const u08bits* buf, size_t blen);
 int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present);
@@ -116,7 +114,7 @@ int stun_is_response_str(const u08bits* buf, size_t len);
 int stun_is_indication_str(const u08bits* buf, size_t len);
 u16bits stun_get_method_str(const u08bits *buf, size_t len);
 u16bits stun_get_msg_type_str(const u08bits *buf, size_t len);
-int stun_is_channel_message_str(const u08bits *buf, size_t len, u16bits* chnumber);
+int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnumber, int mandatory_padding);
 int is_channel_msg_str(const u08bits* buf, size_t blen);
 
 void stun_set_binding_request_str(u08bits* buf, size_t *len);
@@ -148,9 +146,6 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
 int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_type, ioa_addr* ca, const ioa_addr *default_addr);
 int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber);
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
-
-int stun_get_channel_message_len_str(const u08bits* buf);
-int stun_is_specific_channel_message_str(const u08bits* buf, size_t len, u16bits chnumber);
 
 int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family, u08bits transport);
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
