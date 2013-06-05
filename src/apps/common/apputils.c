@@ -618,8 +618,8 @@ void set_system_parameters(int max_resources)
 			perror("Cannot get system limit");
 		} else {
 			rlim.rlim_cur = rlim.rlim_max;
-			if(setrlimit(RLIMIT_NOFILE, &rlim)<0) {
-				perror("Cannot set system limit");
+			while((setrlimit(RLIMIT_NOFILE, &rlim)<0) && (rlim.rlim_cur>0)) {
+				rlim.rlim_cur = rlim.rlim_cur>>1;
 			}
 		}
 	}
