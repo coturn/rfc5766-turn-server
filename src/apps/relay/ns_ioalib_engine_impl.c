@@ -1585,10 +1585,18 @@ static int socket_input_worker(ioa_socket_handle s)
 	int tos = TOS_IGNORE;
 	ioa_addr remote_addr;
 
+	int try_again = 0;
+	int try_ok = 0;
+	int try_cycle = 0;
+	const int MAX_TRIES = 16;
+
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 		return -1;
 	}
+
+	if(s->tobeclosed)
+		return 0;
 
 	if(s->connected)
 		addr_cpy(&remote_addr,&(s->remote_addr));
@@ -1607,6 +1615,11 @@ static int socket_input_worker(ioa_socket_handle s)
 			return 0;
 		}
 	}
+
+	try_start:
+
+	try_again=0;
+	try_ok=0;
 
 	stun_buffer_list_elem *elem = new_blist_elem(s->e);
 	len = -1;
@@ -1695,8 +1708,12 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->tobeclosed = 1;
 			s->broken = 1;
 		}
+		if((ret!=-1)&&(len>0))
+			try_again = 1;
 	} else if(s->fd>=0){ /* UDP */
 		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, &len);
+		if((ret!=-1)&&(len>0))
+			try_again = 1;
 	} else {
 		s->tobeclosed = 1;
 		s->broken = 1;
@@ -1727,6 +1744,8 @@ static int socket_input_worker(ioa_socket_handle s)
 
 				elem = NULL;
 
+				try_ok = 1;
+
 			} else {
 				ioa_network_buffer_delete(s->e, s->defer_nbh);
 				s->defer_nbh = elem;
@@ -1738,6 +1757,10 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(elem) {
 		free_blist_elem(s->e,elem);
 		elem = NULL;
+	}
+
+	if(try_again && try_ok && !(s->done) && !(s->tobeclosed) && ((++try_cycle)<MAX_TRIES)) {
+		goto try_start;
 	}
 
 	return len;
