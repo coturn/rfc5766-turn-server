@@ -2831,8 +2831,11 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				 */
 				turn_permission_info* tinfo = allocation_get_permission(a,
 								&(in_buffer->src_addr));
-					if (tinfo)
-					chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+					if (tinfo) {
+						chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+					} else {
+						return;
+					}
 			}
 
 			if (chnum) {
