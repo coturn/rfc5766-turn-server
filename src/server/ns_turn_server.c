@@ -2259,7 +2259,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 				if(eve(server->verbose)) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-										"%s: user <%s>: indication SEND processed, error %d\n",
+										"%s: user <%s>: indication DATA processed, error %d\n",
 										__FUNCTION__, (char*)ss->username, err_code);
 				}
 
