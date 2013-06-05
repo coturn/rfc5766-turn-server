@@ -1105,7 +1105,7 @@ public:
 			StunMsg(buffer,total_sz,sz,constructed),_cn(0) {
 
 		if(constructed) {
-			if(!stun_is_channel_message_str(buffer,sz,&_cn)) {
+			if(!stun_is_channel_message_str(buffer,&_sz,&_cn,0)) {
 				throw WrongStunBufferFormatException();
 			}
 			if(_sz>0xFFFF || _sz<4)
@@ -1145,7 +1145,7 @@ public:
 
 protected:
 	virtual void constructBuffer() {
-		stun_init_channel_message_str(_cn,_buffer,&_sz,(int)_len);
+		stun_init_channel_message_str(_cn,_buffer,&_sz,(int)_len,0);
 		_constructed = true;
 	}
 
@@ -1153,7 +1153,7 @@ protected:
 		if(!_constructed)
 			return false;
 		u16bits cn = 0;
-		if(!stun_is_channel_message_str(_buffer,_sz,&cn)) {
+		if(!stun_is_channel_message_str(_buffer,&_sz,&cn,0)) {
 			return false;
 		}
 		if(_cn != cn) {
