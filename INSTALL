@@ -169,6 +169,7 @@ The following platforms have been used in the development:
 	- NetBSD 6.0.1
 	- OpenBSD 5.3
 	- Amazon Linux
+	- Mac OS X
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -469,9 +470,9 @@ secure_relay.sh as a guidance how to run the TURN server.
 X. OS X compilation notes
 
 OS X usually has an older version of openssl supplied, with some Apple 
-additions. The compilation will produce lots of warnings which can be 
-ignored, but the best option is to install a good fresh openssl development 
-library, free of Apple tweaks, from http://www.openssl.org. 
+additions. The best option is to install a good fresh openssl development 
+library, free of Apple tweaks, from http://www.openssl.org. But the "native"
+openssl will work, too.
 
 XI. MS Windows and Cygwin support
 
@@ -494,9 +495,9 @@ server features do not work properly in Cygwin:
 So, you can use the TURN Server in Cygwin if you only need TCP communications
 and/or basic UDP relaying. 
 
-If the company that owns MS Windows will ever fix their UDP sockets, 
-or if we will find time to implement a workaround, then the project 
-will be fully usable in MS Windows.
+If MS Windows will ever fix their UDP sockets, 
+or if we will find time to implement a workaround, 
+then the project will be fully usable in MS Windows.
 
 The problem is how MS Windows implement the connect() and bind() functions
 on UDP sockets. Those MS functions behave differently from the same 
