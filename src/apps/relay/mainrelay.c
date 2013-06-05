@@ -330,7 +330,7 @@ static void add_relay_addr(const char* addr) {
 
 /////////////// add ACL record ///////////////////
 
-static int add_ip_list_range(const char* range, ip_range_list_t * list)
+static int add_ip_list_range(char* range, ip_range_list_t * list)
 {
 
 	char* separator = strchr(range, '-');
