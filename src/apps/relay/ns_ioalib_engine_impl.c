@@ -1083,6 +1083,8 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 	return ret;
 }
 
+#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+
 static void channel_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg) {
 
@@ -1139,6 +1141,8 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 	}
 }
 
+#endif
+
 void refresh_ioa_socket_channel(void *socket_channel)
 {
 	UNUSED_ARG(socket_channel);
@@ -1146,6 +1150,11 @@ void refresh_ioa_socket_channel(void *socket_channel)
 
 void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 {
+#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
+  UNUSED_ARG(s);
+  UNUSED_ARG(channel_info);
+  return NULL;
+#else
 	ch_info *chn = (ch_info*)channel_info;
 
 	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
@@ -1179,6 +1188,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn, 0);
 
 	return cs;
+#endif
 }
 
 void delete_ioa_socket_channel(void **socket_channel)
