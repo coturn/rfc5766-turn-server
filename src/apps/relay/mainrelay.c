@@ -85,7 +85,7 @@ static void openssl_cleanup(void);
 
 //////////// Barrier for the threads //////////////
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
 #endif
@@ -222,7 +222,7 @@ static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_UDP_SOCKET_CONNECT_BUG)
 static size_t relay_servers_number = 0;
 #else
 static size_t relay_servers_number = 1;
@@ -861,7 +861,7 @@ static void *run_relay_thread(void *arg)
   
   setup_relay_server(rs, NULL);
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
   if((pthread_barrier_wait(&barrier)<0) && errno)
 	  perror("barrier wait");
 #endif
@@ -877,7 +877,7 @@ static void setup_relay_servers(void)
 {
 	size_t i = 0;
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_UDP_SOCKET_CONNECT_BUG)
 	relay_servers_number = 0;
 #endif
 
@@ -915,7 +915,7 @@ static void* run_auth_server_thread(void *arg)
 {
 	struct event_base *eb = (struct event_base*)arg;
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
@@ -969,7 +969,7 @@ static void setup_server(void)
 	evthread_use_pthreads();
 #endif
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 
 	/* relay threads plus auth thread plus current (listener) thread */
 	barrier_count = relay_servers_number+2;
@@ -982,7 +982,7 @@ static void setup_server(void)
 	setup_relay_servers();
 	setup_auth_server();
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
@@ -1577,9 +1577,11 @@ static void set_option(int c, char *value)
 		STRCPY(relay_ifname, value);
 		break;
 	case 'm':
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
+	  //No relay threads
+#elif defined(TURN_NO_THREADS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported,\n I am using single thread.\n");
-#elif defined(OPENSSL_THREADS)
+#elif defined(OPENSSL_THREADS) 
 		relay_servers_number = atoi(value);
 #else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
@@ -2112,7 +2114,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(1);
 
-#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS)
+#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 
 	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 
