@@ -749,7 +749,8 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
   
   evutil_make_socket_nonblocking(pinfo->fd);
 
-  set_socket_df(pinfo->fd, pinfo->remote_addr.ss.ss_family, 1);
+  if(server->dtls_ctx)
+	  set_socket_df(pinfo->fd, pinfo->remote_addr.ss.ss_family, 1);
 
   FUNCEND;
 
@@ -780,7 +781,8 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
   addr_bind(server->udp_listen_fd,&server->addr);
 
-  set_socket_df(server->udp_listen_fd, server->addr.ss.ss_family, 1);
+  if(server->dtls_ctx)
+	  set_socket_df(server->udp_listen_fd, server->addr.ss.ss_family, 1);
 
   evutil_make_socket_nonblocking(server->udp_listen_fd);
 
