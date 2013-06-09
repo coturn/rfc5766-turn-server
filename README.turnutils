@@ -251,14 +251,33 @@ SEE ALSO
 
 	turnserver, turnadmin
 
-====================================
+======================================
 
-AUTHORS
+  WEB RESOURCES
 
-Oleg Moskalenko <mom040267@gmail.com>
-Gabor Kovesdan http://kovesdan.org/
-Daniel Pocock http://danielpocock.com/
-John Selbie (jselbie@gmail.com)
-Lee Sylvester <lee@designrealm.co.uk>
-Erik Johnston <erikj@openmarket.com>
-Roman Lisagor <roman@demonware.net>
+	project page:
+
+	http://code.google.com/p/rfc5766-turn-server/
+
+	forum:
+
+	https://groups.google.com/forum/?fromgroups=#!forum/turn-server-project-rfc5766-turn-server/
+
+======================================
+
+  AUTHORS
+
+	Oleg Moskalenko <mom040267@gmail.com>
+
+	Gabor Kovesdan http://kovesdan.org/
+
+	Daniel Pocock http://danielpocock.com/
+
+	John Selbie (jselbie@gmail.com)
+
+	Lee Sylvester <lee@designrealm.co.uk>
+
+	Erik Johnston <erikj@openmarket.com>
+
+	Roman Lisagor <roman@demonware.net>
+	
