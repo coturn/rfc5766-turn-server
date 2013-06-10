@@ -1,3 +1,7 @@
+06/10/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 1.8.7.0 'Black Dow':
+	- Cygwin sockets fixes.
+
 06/06/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.6.3 'Black Dow':
 	- DONT-FRAGMENT flag removed on UDP listening (clients-facing) sockets.

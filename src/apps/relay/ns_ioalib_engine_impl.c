@@ -65,13 +65,19 @@
 #endif
 */
 
+#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+static const int use_colocated_udp_sockets = 1;
+#else
+static const int use_colocated_udp_sockets = 0;
+#endif
+
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
-static int send_backlog_buffers(ioa_socket_handle s);
+static int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
@@ -83,6 +89,9 @@ static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 {
+	if(s->parent_s)
+		return 0;
+
 	if (s->do_not_use_df)
 		value = 0;
 
@@ -96,6 +105,9 @@ int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 
 void set_do_not_use_df(ioa_socket_handle s)
 {
+	if(s->parent_s)
+		return;
+
 	s->do_not_use_df = 1;
 	s->current_df_relay_flag = 1;
 	set_socket_df(s->fd, s->family, 0);
@@ -674,6 +686,9 @@ static int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 static int set_socket_options(ioa_socket_handle s)
 {
 
+	if(!s || (s->parent_s))
+		return 0;
+
 	set_sock_buf_size(s->fd,UR_CLIENT_SOCK_BUF_SIZE);
 
 	if ((s->st == TCP_SOCKET) || (s->st == TLS_SOCKET)) {
@@ -719,7 +734,7 @@ static int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
-ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
+ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_handle parent_s, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
@@ -755,13 +770,20 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, int family, SOC
 	ret->sat = sat;
 	ret->e = e;
 
-	set_socket_options(ret);
+	if(parent_s && (parent_s->fd == fd)) {
+		add_socket_to_parent(parent_s, ret);
+	} else {
+		set_socket_options(ret);
+	}
 
 	return ret;
 }
 
 static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 {
+	if(!s || (s->parent_s))
+		return 0;
+
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
 		int res = addr_bind(s->fd, local_addr);
@@ -806,7 +828,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 		int rtcp_port = -1;
 
-		*rtp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family,
+		*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family,
 						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
 						RELAY_SOCKET);
 		if (*rtp_s == NULL) {
@@ -820,7 +842,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 		addr_cpy(&rtcp_local_addr, &relay_addr);
 
 		if (even_port > 0) {
-			*rtcp_s = create_unbound_ioa_socket(e, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
+			*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
 			if (*rtcp_s == NULL) {
 				perror("socket");
 				IOA_CLOSE_SOCKET(*rtp_s);
@@ -917,6 +939,7 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 				create_ioa_socket_from_fd(
 							list_s->e,
 							fd,
+							NULL,
 							TCP_SOCKET,
 							TCP_RELAY_DATA_SOCKET,
 							&client_addr,
@@ -992,7 +1015,7 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 
 ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, ioa_addr *peer_addr, connect_cb cb, void *arg)
 {
-	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, s->family, s->st, TCP_RELAY_DATA_SOCKET);
+	ioa_socket_handle ret = create_unbound_ioa_socket(s->e, NULL, s->family, s->st, TCP_RELAY_DATA_SOCKET);
 
 	if(!ret) {
 		return NULL;
@@ -1038,8 +1061,33 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 
 /* <<== RFC 6062 */
 
+void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
+{
+	if(parent_s && s) {
+		if(!(parent_s->children_ss))
+			parent_s->children_ss = ur_addr_map_create(0);
+
+		ur_addr_map_put(parent_s->children_ss,
+				&(s->remote_addr),
+				(ur_addr_map_value_type)s);
+
+		s->parent_s = parent_s;
+	}
+}
+
+void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
+{
+	if(parent_s && s && parent_s->children_ss) {
+		ur_addr_map_del(parent_s->children_ss,
+				&(s->remote_addr),
+				NULL);
+		s->parent_s = NULL;
+	}
+}
+
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
-				ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat,
+				ioa_socket_raw fd, ioa_socket_handle parent_s,
+				SOCKET_TYPE st, SOCKET_APP_TYPE sat,
 				const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
 	ioa_socket_handle ret = NULL;
@@ -1057,8 +1105,6 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->sat = sat;
 	ret->e = e;
 
-	set_socket_options(ret);
-
 	if (local_addr) {
 		ret->bound = 1;
 		addr_cpy(&(ret->local_addr), local_addr);
@@ -1069,21 +1115,25 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		addr_cpy(&(ret->remote_addr), remote_addr);
 	}
 
+	if(parent_s && (fd == parent_s->fd)) {
+		add_socket_to_parent(parent_s, ret);
+	} else {
+		set_socket_options(ret);
+	}
+
 	return ret;
 }
 
 /* Only must be called for DTLS_SOCKET */
-ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
-	ioa_socket_handle ret = create_ioa_socket_from_fd(e, fd, st, sat, remote_addr, local_addr);
+	ioa_socket_handle ret = create_ioa_socket_from_fd(e, fd, parent_s, st, sat, remote_addr, local_addr);
 
 	if(ret)
 		ret->ssl = ssl;
 
 	return ret;
 }
-
-#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 
 static void channel_input_handler(ioa_socket_handle s, int event_type,
 		ioa_net_data *in_buffer, void *arg) {
@@ -1141,8 +1191,6 @@ static void channel_input_handler(ioa_socket_handle s, int event_type,
 	}
 }
 
-#endif
-
 void refresh_ioa_socket_channel(void *socket_channel)
 {
 	UNUSED_ARG(socket_channel);
@@ -1150,14 +1198,12 @@ void refresh_ioa_socket_channel(void *socket_channel)
 
 void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 {
-#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
-  UNUSED_ARG(s);
-  UNUSED_ARG(channel_info);
-  return NULL;
-#else
+  if(!use_colocated_udp_sockets) {
+	  return NULL;
+  } else {
 	ch_info *chn = (ch_info*)channel_info;
 
-	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
+	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, NULL, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
 	if (cs == NULL) {
 		perror("socket");
 		return NULL;
@@ -1188,7 +1234,7 @@ void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
 	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn, 0);
 
 	return cs;
-#endif
+  }
 }
 
 void delete_ioa_socket_channel(void **socket_channel)
@@ -1203,6 +1249,11 @@ void delete_ioa_socket_channel(void **socket_channel)
 static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
+		if(s->parent_s) {
+			delete_socket_from_parent(s->parent_s, s);
+			return;
+		}
+
 		EVENT_DEL(s->read_event);
 		if(s->list_ev) {
 			evconnlistener_free(s->list_ev);
@@ -1323,6 +1374,8 @@ void inc_ioa_socket_ref_counter(ioa_socket_handle s)
 int get_ioa_socket_address_family(ioa_socket_handle s) {
 	if(!s) {
 		return AF_INET;
+	} else if(s->parent_s) {
+		return s->parent_s->family;
 	} else {
 		return s->family;
 	}
@@ -1352,7 +1405,9 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
 
-		if (s->local_addr_known) {
+		if(s->parent_s) {
+			return get_local_addr_from_ioa_socket(s->parent_s);
+		} else if (s->local_addr_known) {
 			return &(s->local_addr);
 		} else if (s->bound && (addr_get_port(&(s->local_addr)) > 0)) {
 			s->local_addr_known = 1;
@@ -1379,6 +1434,9 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 int get_local_mtu_ioa_socket(ioa_socket_handle s)
 {
 	if(s) {
+		if(s->parent_s)
+			return get_local_mtu_ioa_socket(s->parent_s);
+
 		return get_socket_mtu(s->fd, s->family, eve(s->e->verbose));
 	}
 	return -1;
@@ -1711,7 +1769,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			len = -1;
 
 	} else if(s->ssl) { /* DTLS */
-		send_backlog_buffers(s);
+		send_ssl_backlog_buffers(s);
 		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
 		addr_cpy(&remote_addr,&(s->remote_addr));
 		if(ret < 0) {
@@ -1769,7 +1827,9 @@ static int socket_input_worker(ioa_socket_handle s)
 		elem = NULL;
 	}
 
-	if(try_again && try_ok && !(s->done) && !(s->tobeclosed) && ((++try_cycle)<MAX_TRIES)) {
+	if(try_again && try_ok && !(s->done) &&
+		!(s->tobeclosed) && ((++try_cycle)<MAX_TRIES) &&
+		!(s->parent_s)) {
 		goto try_start;
 	}
 
@@ -2026,7 +2086,7 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 	}
 }
 
-static int send_backlog_buffers(ioa_socket_handle s)
+static int send_ssl_backlog_buffers(ioa_socket_handle s)
 {
 	int ret = 0;
 	if(s) {
@@ -2120,7 +2180,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							}
 						}
 					} else if (s->ssl) {
-						send_backlog_buffers(s);
+						send_ssl_backlog_buffers(s);
 						ret = ssl_send(
 								s->ssl,
 								(s08bits*) ioa_network_buffer_data(nbh),
@@ -2134,10 +2194,11 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									(s08bits*) ioa_network_buffer_data(nbh),
 									ioa_network_buffer_get_size(nbh));
 					} else if (s->fd >= 0) {
-						if (s->connected)
+						if (s->connected && !(s->parent_s))
 							dest_addr = NULL; /* ignore dest_addr */
 						else if (!dest_addr)
 							dest_addr = &(s->remote_addr);
+
 						ret = udp_send(s->fd,
 								dest_addr,
 								(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
@@ -2165,7 +2226,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 			if(e)
 				s->e = e;
 
-			if(s->e) {
+			if(s->e && !(s->parent_s)) {
+
 				switch(s->st) {
 				case DTLS_SOCKET:
 				case UDP_SOCKET:

@@ -105,6 +105,8 @@ struct _ioa_socket
 {
 	int ref_counter;
 	evutil_socket_t fd;
+	struct _ioa_socket *parent_s;
+	ur_addr_map *children_ss;
 	struct bufferevent *bev;
 	ioa_network_buffer_handle defer_nbh;
 	int family;
@@ -171,8 +173,11 @@ void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
-ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
-ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+
+void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
+void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
 
 int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len);
 

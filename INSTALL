@@ -165,7 +165,7 @@ The following platforms have been used in the development:
 	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
 	- Linux Debian 'Wheezy', x86_64 
-	- Cygwin 1.7.17 (TCP only supported, at this moment)
+	- Cygwin 1.7.17
 	- NetBSD 6.0.1
 	- OpenBSD 5.3
 	- Amazon Linux
@@ -479,29 +479,7 @@ XI. MS Windows and Cygwin support
 Currently, this project cannot be compiled under MS Windows.
 
 As the project is using fairly straightforward *NIX API, it can be compiled 
-under Cygwin environment in MS Windows. But, because Cygwin uses Windows 
-sockets at the implementation layer, and because the UDP sockets in 
-MS Windows are not fully compatible with UDP sockets behavior in a 
-usual TCP/IP stack implementation in *NIX systems, we do not support UDP
-functionality in MS Windows even inside Cygwin. The following TURN
-server features do not work properly in Cygwin:
-
-       - UDP communications between clients and TURN server are
-       not supported. Only TCP and TLS protocols are supported.
-
-       - On the relay side, we support UDP communications - but only
-       with Send and Data methods. We do not support UDP TURN "channels".
-
-So, you can use the TURN Server in Cygwin if you only need TCP communications
-and/or basic UDP relaying. 
-
-If MS Windows will ever fix their UDP sockets, 
-or if we will find time to implement a workaround, 
-then the project will be fully usable in MS Windows.
-
-The problem is how MS Windows implement the connect() and bind() functions
-on UDP sockets. Those MS functions behave differently from the same 
-functions in all other systems, so we have to find  a workaround.
+under Cygwin environment in MS Windows. 
 
 One note for Cygwin users: we recommended libevent2 installation from the cygwin
 "ports" site: http://sourceware.org/cygwinports/ . You will have to install 

@@ -92,6 +92,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 				create_ioa_socket_from_fd(
 							server->e,
 							fd,
+							NULL,
 							st,
 							CLIENT_SOCKET,
 							&client_addr,
