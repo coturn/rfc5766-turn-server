@@ -694,9 +694,10 @@ static int get_auth_secrets(secrets_list_t *sl)
 
 			if (reply->type == REDIS_REPLY_ERROR)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-			else if (reply->type != REDIS_REPLY_ARRAY)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-			else {
+			else if (reply->type != REDIS_REPLY_ARRAY) {
+				if (reply->type != REDIS_REPLY_NIL)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+			} else {
 				size_t i;
 				for (i = 0; i < reply->elements; ++i) {
 					add_to_secrets_list(&keys,reply->element[i]->str);
@@ -709,9 +710,10 @@ static int get_auth_secrets(secrets_list_t *sl)
 				if(rget) {
 					if (rget->type == REDIS_REPLY_ERROR)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-					else {
+					else if (rget->type != REDIS_REPLY_STRING) {
+						if (rget->type != REDIS_REPLY_NIL)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					} else {
 						add_to_secrets_list(sl,rget->str);
 					}
 				}
@@ -902,9 +904,10 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 			if(rget) {
 				if (rget->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-				else {
+				else if (rget->type != REDIS_REPLY_STRING) {
+					if (rget->type != REDIS_REPLY_NIL)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+				} else {
 					if(convert_string_key_to_binary(rget->str, key)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,uname);
 					} else {
@@ -918,9 +921,10 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 				if(rget) {
 					if (rget->type == REDIS_REPLY_ERROR)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-					else if (rget->type != REDIS_REPLY_STRING)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-					else {
+					else if (rget->type != REDIS_REPLY_STRING) {
+						if (rget->type != REDIS_REPLY_NIL)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					} else {
 						if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)rget->str, key)>=0) {
 							ret = 0;
 						}
@@ -1011,9 +1015,10 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 			if(rget) {
 				if (rget->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-				else {
+				else if (rget->type != REDIS_REPLY_STRING) {
+					if (rget->type != REDIS_REPLY_NIL)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+				} else {
 					strncpy((char*)pwd,rget->str,SHORT_TERM_PASSWORD_SIZE);
 					pwd[SHORT_TERM_PASSWORD_SIZE]=0;
 					ret = 0;
@@ -1319,9 +1324,10 @@ static int list_users(int is_st)
 
 					if (reply->type == REDIS_REPLY_ERROR)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-					else if (reply->type != REDIS_REPLY_ARRAY)
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-					else {
+					else if (reply->type != REDIS_REPLY_ARRAY) {
+						if (reply->type != REDIS_REPLY_NIL)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+					} else {
 						size_t i;
 						for (i = 0; i < reply->elements; ++i) {
 							add_to_secrets_list(&keys,reply->element[i]->str);
@@ -1335,9 +1341,10 @@ static int list_users(int is_st)
 
 				if (reply->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				else {
+				else if (reply->type != REDIS_REPLY_ARRAY) {
+					if (reply->type != REDIS_REPLY_NIL)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				} else {
 					size_t i;
 					for (i = 0; i < reply->elements; ++i) {
 						add_to_secrets_list(&keys,reply->element[i]->str);
@@ -1445,9 +1452,10 @@ static int show_secret(void)
 
 				if (reply->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				else {
+				else if (reply->type != REDIS_REPLY_ARRAY) {
+					if (reply->type != REDIS_REPLY_NIL)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				} else {
 					size_t i;
 					for (i = 0; i < reply->elements; ++i) {
 						add_to_secrets_list(&keys,reply->element[i]->str);
@@ -1460,9 +1468,10 @@ static int show_secret(void)
 					if(rget) {
 						if (rget->type == REDIS_REPLY_ERROR)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-						else if (rget->type != REDIS_REPLY_STRING)
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-						else {
+						else if (rget->type != REDIS_REPLY_STRING) {
+							if (rget->type != REDIS_REPLY_NIL)
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+						} else {
 							printf("%s\n",rget->str);
 						}
 					}
@@ -1525,9 +1534,10 @@ static int del_secret(u08bits *secret) {
 
 				if (reply->type == REDIS_REPLY_ERROR)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
-				else if (reply->type != REDIS_REPLY_ARRAY)
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
-				else {
+				else if (reply->type != REDIS_REPLY_ARRAY) {
+					if (reply->type != REDIS_REPLY_NIL)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+				} else {
 					size_t i;
 					for (i = 0; i < reply->elements; ++i) {
 						add_to_secrets_list(&keys,reply->element[i]->str);
@@ -1544,9 +1554,10 @@ static int del_secret(u08bits *secret) {
 						if(rget) {
 							if (rget->type == REDIS_REPLY_ERROR)
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-							else if (rget->type != REDIS_REPLY_STRING)
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
-							else {
+							else if (rget->type != REDIS_REPLY_STRING) {
+								if (rget->type != REDIS_REPLY_NIL)
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+							} else {
 								if(!strcmp((char*)secret,rget->str)) {
 									snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
 									redisCommand(rc, s);
