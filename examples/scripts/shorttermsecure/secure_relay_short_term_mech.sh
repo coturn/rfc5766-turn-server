@@ -21,7 +21,9 @@
 # database user password "turn", and connection timeout 30 seconds.
 # 6) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 7) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
-# 8) "--log-file=stdout" means that all log output will go to the stdout. 
+# 8) "--log-file=stdout" means that all log output will go to the stdout.
+# 9) -E 127.0.0.1 and -E :;1 sets the relay addresses, in this case for loopback 
+# communications only. 
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -30,4 +32,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver -v --syslog -A --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535  --mysql-userdb="host=localhost dbname=turn user=turn password=turn connect_timeout=30" --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -E 127.0.0.1 -E ::1
