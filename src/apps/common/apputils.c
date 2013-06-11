@@ -288,10 +288,12 @@ int set_socket_df(evutil_socket_t fd, int family, int value)
   return ret;
 }
 
-static int get_mtu_from_ssl(SSL* ssl) {
+static int get_mtu_from_ssl(SSL* ssl)
+{
   int ret = SOSO_MTU;
 #if !defined(TURN_NO_DTLS)
-  ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+  if(ssl)
+	  ret = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 #else
   UNUSED_ARG(ssl);
 #endif
@@ -308,33 +310,44 @@ static void set_query_mtu(SSL* ssl) {
   }
 }
 
-int decrease_mtu(SSL* ssl, int mtu, int verbose) {
+int decrease_mtu(SSL* ssl, int mtu, int verbose)
+{
 
-  int new_mtu=get_mtu_from_ssl(ssl);
+	if (!ssl)
+		return mtu;
 
-  if(new_mtu<1) new_mtu=mtu;
+	int new_mtu = get_mtu_from_ssl(ssl);
 
-  if(new_mtu>MAX_MTU) mtu=MAX_MTU;
-  if(new_mtu>0 && new_mtu<MIN_MTU) mtu=MIN_MTU;
-  else if(new_mtu<mtu) mtu=new_mtu;
-  else mtu-=MTU_STEP;
+	if (new_mtu < 1)
+		new_mtu = mtu;
 
-  if(mtu<MIN_MTU) mtu=MIN_MTU;
+	if (new_mtu > MAX_MTU)
+		mtu = MAX_MTU;
+	if (new_mtu > 0 && new_mtu < MIN_MTU)
+		mtu = MIN_MTU;
+	else if (new_mtu < mtu)
+		mtu = new_mtu;
+	else
+		mtu -= MTU_STEP;
 
-  set_query_mtu(ssl);
-  if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"1. mtu to use: %d\n",mtu);
+	if (mtu < MIN_MTU)
+		mtu = MIN_MTU;
+
+	set_query_mtu(ssl);
+	if (verbose)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "1. mtu to use: %d\n", mtu);
 
 #if !defined(TURN_NO_DTLS)
-  SSL_set_mtu(ssl,mtu);
-  BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
+	SSL_set_mtu(ssl,mtu);
+	BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
 #endif
 
-  return mtu;
+	return mtu;
 }
 
 int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, int verbose) {
 
-  if(fd<0) return 0;
+  if(!ssl || fd<0) return 0;
 
   int ret=set_socket_df(fd, family, df_value);
 
@@ -346,8 +359,11 @@ int set_mtu_df(SSL* ssl, evutil_socket_t fd, int family, int mtu, int df_value, 
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"3. mtu to use: %d\n",mtu);
 
 #if !defined(TURN_NO_DTLS)
+
   SSL_set_mtu(ssl,mtu);
+
   BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_SET_MTU, mtu, NULL);
+
 #endif
 
   if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"4. new mtu: %d\n",get_mtu_from_ssl(ssl));

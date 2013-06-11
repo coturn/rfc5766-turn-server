@@ -516,6 +516,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     #CYGWIN ?
     OSCFLAGS="-DTURN_UDP_SOCKET_CONNECT_BUG ${OSCFLAGS}"
+    echo "WARNING: WE DO NOT SUPPORT DTLS ON THIS PLATFORM"
 fi
 testlib wldap64
 testlib intl

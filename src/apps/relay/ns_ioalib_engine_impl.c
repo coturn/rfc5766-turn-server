@@ -65,12 +65,6 @@
 #endif
 */
 
-#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
-static const int use_colocated_udp_sockets = 1;
-#else
-static const int use_colocated_udp_sockets = 0;
-#endif
-
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);

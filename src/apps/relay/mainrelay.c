@@ -124,7 +124,7 @@ static inline int get_alt_tls_listener_port(void) {
 int no_udp = 0;
 int no_tcp = 0;
 int no_tls = 0;
-int no_dtls = 0;
+int no_dtls = !use_colocated_udp_sockets;
 
 static int no_tcp_relay = 0;
 static int no_udp_relay = 0;
@@ -1776,6 +1776,10 @@ static void set_option(int c, char *value)
 #else
 		no_dtls = 1;
 #endif
+		if(!no_dtls && !use_colocated_udp_sockets) {
+			no_dtls = 1;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: we do not support DTLS on this platform\n");
+		}
 		break;
 	case CERT_FILE_OPT:
 		STRCPY(cert_file,value);

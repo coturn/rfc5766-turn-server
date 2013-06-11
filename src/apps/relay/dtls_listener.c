@@ -40,12 +40,6 @@
 
 /* #define REQUEST_CLIENT_CERT */
 
-#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
-static const int use_colocated_udp_sockets = 1;
-#else
-static const int use_colocated_udp_sockets = 0;
-#endif
-
 ///////////////////////////////////////////////////
 
 typedef struct {
@@ -588,6 +582,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
+	int read_all = 0;
+
 	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
 
 	FUNCSTART;
@@ -654,7 +650,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		addr_cpy(&(info.local_addr), &(server->addr));
 		info.ssl = connecting_ssl;
 
-		if (open_client_connection_socket(server, &info) >= 0) {
+		if ((open_client_connection_socket(server, &info) >= 0) && info.ssl) {
 
 			new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
 			ns_bzero(ndc, sizeof(new_dtls_conn));
@@ -692,6 +688,10 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			} else {
 				free_ndc(ndc);
 			}
+		} else {
+			if(connecting_ssl)
+				SSL_free(connecting_ssl);
+			read_all = 1;
 		}
 	} else if(!no_udp) {
 
@@ -701,6 +701,11 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 #if !defined(TURN_NO_DTLS)
 	} else {
+		read_all = 1;
+	}
+#endif
+
+	if(read_all) {
 
 		flags = MSG_DONTWAIT;
 
@@ -708,7 +713,6 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			rc = recvfrom(fd, buf, sizeof(buf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
 	}
-#endif
 
 	if (server->stats)
 		--(*(server->stats));
@@ -737,8 +741,6 @@ static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_
 
   if(!use_colocated_udp_sockets) {
 	  pinfo->fd = server->udp_listen_s->fd;
-	  //TODO
-	  pinfo->ssl = NULL;
 	  return pinfo->fd;
   }
 
