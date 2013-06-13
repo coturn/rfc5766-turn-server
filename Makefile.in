@@ -105,67 +105,67 @@ distclean:	clean
 ### Install all:
 
 install:	all ${MAKE_DEPS}
-	${MKDIR} ${PREFIX}
-	${MKDIR} ${PREFIX}/bin
-	${MKDIR} ${MANPREFIX}/man/man1
-	${MKDIR} ${PREFIX}/etc
-	${MKDIR} ${LIBDIR}
-	${MKDIR} ${EXAMPLESDIR}
-	${MKDIR} ${DOCSDIR}
-	${MKDIR} ${SCHEMADIR}
-	${MKDIR} ${TURNINCLUDEDIR}
-	${INSTALL_PROGRAM} bin/turnserver ${PREFIX}/bin/
-	${INSTALL_PROGRAM} bin/turnadmin ${PREFIX}/bin/
-	${INSTALL_PROGRAM} bin/turnutils_uclient ${PREFIX}/bin/
-	${INSTALL_PROGRAM} bin/turnutils_peer ${PREFIX}/bin/
-	${INSTALL_PROGRAM} bin/turnutils_stunclient ${PREFIX}/bin/
-	${INSTALL_PROGRAM} bin/turnutils_rfc5769check ${PREFIX}/bin/
-	${INSTALL_MAN} man/man1/turnserver.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnadmin.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnutils.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnutils_uclient.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnutils_rfc5769check.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${MANPREFIX}/man/man1/
-	${INSTALL_MAN} man/man1/turnutils_peer.1 ${MANPREFIX}/man/man1/
-	${INSTALL_STATIC_LIB} lib/libturnclient.a ${LIBDIR}
-	${INSTALL_DATA} README.turnserver ${DOCSDIR}
-	${INSTALL_DATA} README.turnadmin ${DOCSDIR}
-	${INSTALL_DATA} README.turnutils ${DOCSDIR}
-	${INSTALL_DATA} INSTALL ${DOCSDIR}
-	${INSTALL_DATA} postinstall.txt ${DOCSDIR}
-	${INSTALL_DATA} turndb/schema.sql ${DOCSDIR}
-	${INSTALL_DATA} turndb/schema.sql ${SCHEMADIR}
-	${INSTALL_DATA} turndb/schema.userdb.redis ${DOCSDIR}
-	${INSTALL_DATA} turndb/schema.userdb.redis ${SCHEMADIR}
-	${INSTALL_DATA} turndb/schema.stats.redis ${DOCSDIR}
-	${INSTALL_DATA} turndb/schema.stats.redis ${SCHEMADIR}
-	${INSTALL_DATA} examples/etc/turnserver.conf ${PREFIX}/etc/turnserver.conf.default
-	${INSTALL_DATA} examples/etc/turnuserdb.conf ${PREFIX}/etc/turnuserdb.conf.default
-	${INSTALL_DIR} examples/etc ${EXAMPLESDIR}
-	${INSTALL_DIR} examples/scripts ${EXAMPLESDIR}
-	${INSTALL_DIR} include/turn/client ${TURNINCLUDEDIR}
-	${INSTALL_DATA} include/turn/ns_turn_defs.h ${TURNINCLUDEDIR}
-	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib ; fi
-	if [ -d /usr/local/lib ] ; then ${LDCONFIG} /usr/local/lib ; fi
-	${MORECMD} ${DOCSDIR}/postinstall.txt
+	${MKDIR} ${DESTDIR}${PREFIX}
+	${MKDIR} ${DESTDIR}${BINDIR}
+	${MKDIR} ${DESTDIR}${MANPREFIX}/man/man1
+	${MKDIR} ${DESTDIR}${CONFDIR}
+	${MKDIR} ${DESTDIR}${LIBDIR}
+	${MKDIR} ${DESTDIR}${EXAMPLESDIR}
+	${MKDIR} ${DESTDIR}${DOCSDIR}
+	${MKDIR} ${DESTDIR}${SCHEMADIR}
+	${MKDIR} ${DESTDIR}${TURNINCLUDEDIR}
+	${INSTALL_PROGRAM} bin/turnserver ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnadmin ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnutils_uclient ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnutils_peer ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnutils_stunclient ${DESTDIR}${BINDIR}
+	${INSTALL_PROGRAM} bin/turnutils_rfc5769check ${DESTDIR}${BINDIR}
+	${INSTALL_MAN} man/man1/turnserver.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnadmin.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_uclient.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_rfc5769check.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/turnutils_peer.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_STATIC_LIB} lib/libturnclient.a ${DESTDIR}${LIBDIR}
+	${INSTALL_DATA} README.turnserver ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} README.turnadmin ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} README.turnutils ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} INSTALL ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} postinstall.txt ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${SCHEMADIR}
+	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}
+	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${DOCSDIR}
+	${INSTALL_DATA} turndb/schema.stats.redis ${DESTDIR}${SCHEMADIR}
+	${INSTALL_DATA} examples/etc/turnserver.conf ${DESTDIR}${CONFDIR}/turnserver.conf.default
+	${INSTALL_DATA} examples/etc/turnuserdb.conf ${DESTDIR}${CONFDIR}/turnuserdb.conf.default
+	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
+	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
+	${INSTALL_DIR} include/turn/client ${DESTDIR}${TURNINCLUDEDIR}
+	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
+	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib || echo OK; fi
+	if [ -d /usr/local/lib ] ; then ${LDCONFIG} /usr/local/lib || echo OK; fi
+	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
 deinstall:	${MAKE_DEPS}
-	${RMCMD} ${DOCSDIR}
-	${RMCMD} ${SCHEMADIR}
-	${RMCMD} ${PREFIX}/bin/turnserver
-	${RMCMD} ${PREFIX}/bin/turnadmin
-	${RMCMD} ${PREFIX}/bin/turnutils_peer
-	${RMCMD} ${PREFIX}/bin/turnutils_uclient
-	${RMCMD} ${PREFIX}/bin/turnutils_rfc5769check
-	${RMCMD} ${PREFIX}/bin/turnutils_stunclient
-	${RMCMD} ${MANPREFIX}/man/man1/turnserver.1
-	${RMCMD} ${MANPREFIX}/man/man1/turnadmin.1
-	${RMCMD} ${MANPREFIX}/man/man1/turnutils.1
-	${RMCMD} ${LIBDIR}/libturnclient.a
-	${RMCMD} ${EXAMPLESDIR}/
-	${RMCMD} ${PREFIX}/etc/turnserver.conf.default
-	${RMCMD} ${PREFIX}/etc/turnuserdb.conf.default
-	${RMCMD} ${TURNINCLUDEDIR}
+	${RMCMD} ${DESTDIR}${DOCSDIR}
+	${RMCMD} ${DESTDIR}${SCHEMADIR}
+	${RMCMD} ${DESTDIR}${BINDIR}/turnserver
+	${RMCMD} ${DESTDIR}${BINDIR}/turnadmin
+	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_peer
+	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_uclient
+	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_rfc5769check
+	${RMCMD} ${DESTDIR}${BINDIR}/turnutils_stunclient
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnserver.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnadmin.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils.1
+	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
+	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/
+	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
+	${RMCMD} ${DESTDIR}${CONFDIR}/turnuserdb.conf.default
+	${RMCMD} ${DESTDIR}${TURNINCLUDEDIR}
 
 uninstall:	deinstall
 

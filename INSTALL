@@ -54,14 +54,30 @@ in:
 	- /usr/pkg on NetBSD.
 	- /usr/local everywhere else.
 
- You can change that and some other settings by 
-setting PREFIX variable (and other common build variables) in the 
-configure command line. Compilation and linking options
-can be customized, too. For example:
+The binaries will be copied in bin subdirectory of the installation 
+destination, config files copied to etc subdirectory. There will be 
+also documents, examples and some other files, in separate directories.
 
-	$ PREFIX=/opt CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure   
+ You can change the root configured destination directory by 
+setting PREFIX variable in the 
+configure command line. For example:
 
-(see below a separate section for more details).
+	$ PREFIX=/opt ./configure   
+
+ You can change the auxiliary configured destination sub-directories by 
+setting BINDIR, CONFDIR, MANPREFIX, EXAMPLESDIR, DOCSDIR, LIBDIR, SCHEMADIR
+and TURNINCLUDEDIR variables in the 
+configure command line. For example:
+
+	$ PREFIX=/opt BINDIR=/opt/bin64 CONFDIR=/opt/conf ./configure
+
+ You also can change the compilation and link options by 
+setting common build variables in the 
+configure command line. For example:
+
+	$ CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure
+
+See below a separate INSTALL section for more details.
 
 The script configure is a proprietary script. It will create a Makefile 
 that you can use to build the project:
@@ -135,6 +151,15 @@ This command will also:
  PREFIX/share/turnserver/ 
  directory;
  - copy all docs into PREFIX/share/doc/turnserver/ directory.
+ 
+The installation destination of "make install" can be changed by
+using DESTDIR variable, for example:
+
+ $ PREFIX=/usr ./configure
+ $ make
+ $ make DESTDIR=/opt install
+ 
+In this example, the root installation directory will be /opt/usr.  
 
 After the installation, you may want to adjust the system-wide shared library 
 search path by using "ldconfig -n <libdirname>" (Linux), 

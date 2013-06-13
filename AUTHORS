@@ -24,7 +24,11 @@ Erik Johnston <erikj@openmarket.com> :
 
 Roman Lisagor <roman@demonware.net> :
 	Testing, code optimization
-	(since v1.8.6.0)
+	(since v1.8.6.0);
 
-
+Vladimir Tsanev <tsachev@gmail.com> :
+	configure script and Makefile fixes,
+	Arch Linux port
+	(since v1.8.6.1);
+	 
 

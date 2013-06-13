@@ -223,6 +223,14 @@ if [ -z "${PREFIX}" ] ; then
 	fi
 fi
 
+if [ -z "${BINDIR}" ] ; then
+    BINDIR=${PREFIX}/bin
+fi
+
+if [ -z "${CONFDIR}" ] ; then
+    CONFDIR=${PREFIX}/etc
+fi
+
 if [ -z "${MANPREFIX}" ] ; then
 	MANPREFIX=${PREFIX}
 fi
@@ -760,6 +768,8 @@ echo "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_HIREDIS}"
 echo "#" >> Makefile
 echo "PORTNAME = ${PORTNAME}" >> Makefile
 echo "PREFIX = ${PREFIX}" >> Makefile
+echo "BINDIR = ${BINDIR}" >> Makefile
+echo "CONFDIR = ${CONFDIR}" >> Makefile
 echo "MANPREFIX = ${MANPREFIX}" >> Makefile
 echo "EXAMPLESDIR = ${EXAMPLESDIR}" >> Makefile
 echo "DOCSDIR = ${DOCSDIR}" >> Makefile
