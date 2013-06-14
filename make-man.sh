@@ -12,4 +12,5 @@ cd man/man1; ln -s turnutils.1 turnutils_uclient.1;cd ../..
 cd man/man1; ln -s turnutils.1 turnutils_peer.1;cd ../..
 cd man/man1; ln -s turnutils.1 turnutils_rfc5769check.1;cd ../..
 cd man/man1; ln -s turnutils.1 turnutils_stunclient.1;cd ../..
+cd man/man1; ln -s turnserver.1 rfc5766-turn-server.1;cd ../..
 

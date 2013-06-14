@@ -127,6 +127,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_MAN} man/man1/turnutils_rfc5769check.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_stunclient.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/turnutils_peer.1 ${DESTDIR}${MANPREFIX}/man/man1/
+	${INSTALL_MAN} man/man1/rfc5766-turn-server.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_STATIC_LIB} lib/libturnclient.a ${DESTDIR}${LIBDIR}
 	${INSTALL_DATA} README.turnserver ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnadmin ${DESTDIR}${DOCSDIR}
@@ -161,6 +162,11 @@ deinstall:	${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnserver.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnadmin.1
 	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_uclient.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_rfc5769check.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_stunclient.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/turnutils_peer.1
+	${RMCMD} ${DESTDIR}${MANPREFIX}/man/man1/rfc5766-turn-server.1
 	${RMCMD} ${DESTDIR}${LIBDIR}/libturnclient.a
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/
 	${RMCMD} ${DESTDIR}${CONFDIR}/turnserver.conf.default
