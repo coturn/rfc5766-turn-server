@@ -1,9 +1,12 @@
 Smaller things to be added:
 
+0) Support ip:port format in -L option
 1) DTLS support for Cygwin.
 2) immediately (quickly) delete unfinished allocations.
 
 Larger things to be added:
+
+0) Compatibility with old obsolete STUN
 
 1) Locale support (?).
 
