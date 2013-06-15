@@ -3,6 +3,8 @@ Smaller things to be added:
 0) Support ip:port format in -L option
 1) DTLS support for Cygwin.
 2) immediately (quickly) delete unfinished allocations.
+3) killproc or pkill when uninstalling
+4) update debian package according to the latest lintian complains
 
 Larger things to be added:
 
