@@ -171,11 +171,11 @@ Flags:
 
 --no-dtls		Do not start DTLS client listeners.
 
---no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay 
-option from RFC 6062.
+--no-udp-relay		Do not allow UDP relay endpoints defined in RFC 5766, 
+use only TCP relay endpoints as defined in RFC 6062.
 
---no-tcp-relay		Do not allow TCP relay endpoints in RFC 6062 sense, 
-use only UDP relay option from RFC 5766. 
+--no-tcp-relay		Do not allow TCP relay endpoints defined in RFC 6062, 
+use only UDP relay endpoints as defined in RFC 5766. 
 ATTENTION: Always use this option if you are not going to use TCP relay (RFC 6062). 
 This option allows "usual" TURN TCP defined in RFC 5766 to work in multithreaded mode. 
 Without this option, all TCP connections are handled in one relay thread. So, this 
