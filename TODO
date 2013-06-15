@@ -1,4 +1,10 @@
-Things to be added:
+Smaller things to be added:
+
+1) DTLS support for Cygwin.
+2) immediately (quickly) delete unfinished allocations.
+
+
+Larger things to be added:
 
 1) Locale support (?).
 
@@ -15,15 +21,6 @@ Things to be added:
 
 4) MS Windows support.
 
-	a) Another socket abstraction implementation has to be added, 
-	one compatible with MS Windows platform. Due to the flaw in 
-	the MS Windows TCP/IP stack, UDP sockets do not work properly in 
-	the TURN server with MS Windows, and a workaround must be 
-	implemented. After that, the TURN server will be working 
-	fine, at least, under Cygwin. For now, only TCP feature works well 
-	in Cygwin.
-
-	b) After that, a native MS Windows implementation can be considered. 
 	It would involve a good GUI for MS Windows users.
 
 5) HTTP or GUI status monitor and management.
@@ -31,6 +28,8 @@ Things to be added:
 	For enterprise users, a management (configuration, status and statistics) 
 	GUI has to be implemented. Currently, all these features are available 
 	through the shell command line and through Redis command line.
+
+	Also, Redis status data to be extended.
 
 6) Add SHA256 security.
 
