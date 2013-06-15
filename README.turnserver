@@ -171,9 +171,16 @@ Flags:
 
 --no-dtls		Do not start DTLS client listeners.
 
---no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay option.
+--no-udp-relay		Do not allow UDP relay endpoints, use only TCP relay 
+option from RFC 6062.
 
---no-tcp-relay		Do not allow TCP relay endpoints, use only UDP relay option.
+--no-tcp-relay		Do not allow TCP relay endpoints in RFC 6062 sense, 
+use only UDP relay option from RFC 5766. 
+ATTENTION: Always use this option if you are not going to use TCP relay (RFC 6062). 
+This option allows "usual" TURN TCP defined in RFC 5766 to work in multithreaded mode. 
+Without this option, all TCP connections are handled in one relay thread. So, this 
+option is very desirable when you need high performance TCP connections handling 
+and you do not need RFC 6062 functionality. 
 
 --stale-nonce		Use extra security with nonce value having limited lifetime (600 secs). 
 
@@ -254,7 +261,10 @@ Options with required values:
 -m, --relay-threads		Number of relay threads to handle the established connections
 				(in addition to authentication thread and the listener thread).
 				If set to 0 then application runs in single-threaded mode.
-				The default thread number is the number of CPUs.
+				The default thread number is the number of CPUs (for UDP relay threads)
+				plus one (for TCP relay thread). If option --no-tcp-relay is used,
+				then the default threads number is the number of CPUs, and those 
+				threads will handle both UDP and TCP connections. 
 
 --min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.

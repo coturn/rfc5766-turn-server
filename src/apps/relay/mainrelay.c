@@ -2121,7 +2121,7 @@ int main(int argc, char **argv)
 #if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 
 	/* UDP threads plus one TCP/TLS thread: */
-	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF) + 1;
+	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 
 	if(relay_servers_number<1)
 		relay_servers_number = 1;
@@ -2170,6 +2170,8 @@ int main(int argc, char **argv)
 
 	if(no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
+	} else {
+		relay_servers_number += 1;
 	}
 
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
