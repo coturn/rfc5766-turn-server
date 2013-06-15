@@ -142,6 +142,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} examples/etc/turnuserdb.conf ${DESTDIR}${CONFDIR}/turnuserdb.conf.default
 	${INSTALL_DIR} examples/etc ${DESTDIR}${EXAMPLESDIR}
 	${INSTALL_DIR} examples/scripts ${DESTDIR}${EXAMPLESDIR}
+	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
 	${INSTALL_DIR} include/turn/client ${DESTDIR}${TURNINCLUDEDIR}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
 	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib || echo OK; fi
