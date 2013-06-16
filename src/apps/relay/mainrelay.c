@@ -1618,7 +1618,7 @@ static void set_option(int c, char *value)
 		stale_nonce = get_bool_value(value);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
-		TURN_MAX_TO_ALLOCATE_TIMEOUT = atoi(value);
+		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
 		break;
 	case 'S':
 		stun_only = get_bool_value(value);

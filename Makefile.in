@@ -145,11 +145,12 @@ install:	all ${MAKE_DEPS}
 	${RMCMD} ${DESTDIR}${EXAMPLESDIR}/scripts/rfc5769.sh
 	${INSTALL_DIR} include/turn/client ${DESTDIR}${TURNINCLUDEDIR}
 	${INSTALL_DATA} include/turn/ns_turn_defs.h ${DESTDIR}${TURNINCLUDEDIR}
-	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib || echo OK; fi
-	if [ -d /usr/local/lib ] ; then ${LDCONFIG} /usr/local/lib || echo OK; fi
+	if [ -d ${PREFIX}/lib ] ; then ${LDCONFIG} ${PREFIX}/lib || ${ECHO_CMD} OK; fi
+	if [ -d /usr/local/lib ] ; then ${LDCONFIG} /usr/local/lib || ${ECHO_CMD} OK; fi
 	${MORECMD} ${DESTDIR}${DOCSDIR}/postinstall.txt
 
 deinstall:	${MAKE_DEPS}
+	${PKILL_PROGRAM} turnserver || ${ECHO_CMD} OK
 	${RMCMD} ${DESTDIR}${DOCSDIR}
 	${RMCMD} ${DESTDIR}${SCHEMADIR}
 	${RMCMD} ${DESTDIR}${BINDIR}/turnserver

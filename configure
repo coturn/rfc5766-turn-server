@@ -25,11 +25,11 @@ testlibraw() {
     ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "Do not use -${1}"
-	return 0
+		${ECHO_CMD} "Do not use -${1}"
+		return 0
     else
-	OSLIBS="${OSLIBS} -${1}"
-	return 1
+		OSLIBS="${OSLIBS} -${1}"
+		return 1
     fi
 }
 
@@ -37,10 +37,10 @@ testlibevent2_comp() {
     ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "Libevent2 development is not installed properly"
-	return 0
+		${ECHO_CMD} "Libevent2 development is not installed properly"
+		return 0
     else
-	return 1
+		return 1
     fi
 }
 
@@ -50,11 +50,11 @@ testhiredis() {
     ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo
-		echo "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-		echo "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		echo "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-		echo
+		${ECHO_CMD}
+		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
+		${ECHO_CMD}
 		return 0
     else
 		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
@@ -74,11 +74,11 @@ testlibpq() {
     ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>/dev/null 
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-    	echo
-		echo "POSTGRESQL DEVELOPMENT LIBRARY (libpq.a) AND/OR HEADER (libpq-fe.h)"
-		echo "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		echo "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT POSTGRESQL DATABASE SUPPORT."
-		echo
+    	${ECHO_CMD}
+		${ECHO_CMD} "POSTGRESQL DEVELOPMENT LIBRARY (libpq.a) AND/OR HEADER (libpq-fe.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT POSTGRESQL DATABASE SUPPORT."
+		${ECHO_CMD}
 		return 0
     else
 		DBCFLAGS="${DBCFLAGS} ${POSTCFLAGS}"
@@ -98,11 +98,11 @@ testlibmysql() {
     ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-    	echo
-		echo "MYSQL DEVELOPMENT LIBRARY (libmysqlclient) AND/OR HEADER (mysql.h)"
-		echo "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		echo "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MYSQL DATABASE SUPPORT."
-		echo
+    	${ECHO_CMD}
+		${ECHO_CMD} "MYSQL DEVELOPMENT LIBRARY (libmysqlclient) AND/OR HEADER (mysql.h)"
+		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT MYSQL DATABASE SUPPORT."
+		${ECHO_CMD}
 		return 0
     else
 		DBCFLAGS="${DBCFLAGS} ${MYSQL_CFLAGS}"
@@ -146,10 +146,10 @@ pthread_testlib() {
     	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
     	ER=$?
     	if ! [ ${ER} -eq 0 ] ; then
-    		echo "Do not use pthreads"
+    		${ECHO_CMD} "Do not use pthreads"
 	    	return 0
 	else 
-	    	echo "Older GNU pthread library found"
+	    	${ECHO_CMD} "Older GNU pthread library found"
 	    	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
 	    	return 1
 	fi
@@ -160,11 +160,11 @@ pthread_testlib() {
 
 pthread_testbarriers() {
 
-    echo "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
+    ${ECHO_CMD} "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "pthread barriers not found"
+	${ECHO_CMD} "pthread barriers not found"
 	OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
     fi
 }
@@ -178,9 +178,9 @@ dtls_testlib() {
     	    return 1
     	else
     	    return 0
-	fi
+    	fi
     else
-	return 0
+		return 0
     fi
 }
 
@@ -202,6 +202,10 @@ cleanup
 #########################
 # To be set:
 #########################
+
+if [ -z "${ECHO_CMD}" ] ; then
+	ECHO_CMD=echo 
+fi
 
 if [ -z "${PORTNAME}" ] ; then
 	PORTNAME=turnserver
@@ -305,6 +309,14 @@ else
 	fi
 fi
 
+type pkill 2>/dev/null
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+	PKILL_PROGRAM="pkill"
+else
+	PKILL_PROGRAM="${ECHO_CMD}"
+fi
+
 INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
@@ -317,9 +329,9 @@ else
     type less 2>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-	MORECMD="less"
+		MORECMD="less"
     else
-	MORECMD="cat"
+		MORECMD="cat"
     fi
 fi
 
@@ -346,7 +358,7 @@ elif [ -d /tmp ] ; then
   TMPDIR=/tmp
 fi
 
-echo Use TMP dir ${TMPDIR}
+${ECHO_CMD} Use TMP dir ${TMPDIR}
 
 #########################
 # Basic C test programs
@@ -477,12 +489,12 @@ if [ -z "${CC}" ] ; then
 	fi
 fi
 
-echo "Compiler: ${CC}"
+${ECHO_CMD} "Compiler: ${CC}"
 
 ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "ERROR: cannot use compiler ${CC} properly"
+    ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
     cleanup
     exit
 fi
@@ -497,13 +509,13 @@ GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnest
 ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-	echo "Hm..."
+	${ECHO_CMD} "Hm..."
 	${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-    	echo "Not an ordinary GNU or Clang compiler"
+    	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
-    	echo "C++ or something..."
+    	${ECHO_CMD} "C++ or something..."
     	OSCFLAGS="-Wall ${OSCFLAGS}"
     fi
 else
@@ -524,7 +536,7 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     #CYGWIN ?
     OSCFLAGS="-DTURN_UDP_SOCKET_CONNECT_BUG ${OSCFLAGS}"
-    echo "WARNING: WE DO NOT SUPPORT DTLS ON THIS PLATFORM"
+    ${ECHO_CMD} "WARNING: WE DO NOT SUPPORT DTLS ON THIS PLATFORM"
 fi
 testlib wldap64
 testlib intl
@@ -538,8 +550,8 @@ if [ -z ${TURN_NO_THREADS} ] ; then
     pthread_testlib
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-	echo "WARNING: Cannot find pthread library functions."
-	echo "Using single-thread mode."
+	${ECHO_CMD} "WARNING: Cannot find pthread library functions."
+	${ECHO_CMD} "Using single-thread mode."
 	TURN_NO_THREADS="-DTURN_NO_THREADS"
     fi
     
@@ -562,10 +574,10 @@ testdaemon
 testlib crypto
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Crypto SSL lib found."
+    ${ECHO_CMD} "Crypto SSL lib found."
 else
-    echo "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
-    echo "Abort."
+    ${ECHO_CMD} "ERROR: OpenSSL Crypto development libraries are not installed properly in required location."
+    ${ECHO_CMD} "Abort."
     cleanup
     exit
 fi
@@ -573,10 +585,10 @@ fi
 testlib ssl
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "SSL lib found."
+    ${ECHO_CMD} "SSL lib found."
 else
-    echo "ERROR: OpenSSL development libraries are not installed properly in required location."
-    echo "Abort."
+    ${ECHO_CMD} "ERROR: OpenSSL development libraries are not installed properly in required location."
+    ${ECHO_CMD} "Abort."
     cleanup
     exit
 fi
@@ -590,8 +602,8 @@ if [ -z ${TURN_NO_DTLS} ] ; then
 dtls_testlib
 ER=$?
 if [ ${ER} -eq 0 ] ; then
-	echo "WARNING: Cannot find DTLS support."
-	echo "Turning DTLS off."
+	${ECHO_CMD} "WARNING: Cannot find DTLS support."
+	${ECHO_CMD} "Turning DTLS off."
 	TURN_NO_DTLS="-DTURN_NO_DTLS"
 fi
 
@@ -605,12 +617,12 @@ fi
 testlibevent2_comp
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2 development found."
+    ${ECHO_CMD} "Libevent2 development found."
 else
-    echo "ERROR: Libevent2 development libraries are not installed properly in required location."
-    echo "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
-    echo "See the INSTALL file."
-    echo "Abort."
+    ${ECHO_CMD} "ERROR: Libevent2 development libraries are not installed properly in required location."
+    ${ECHO_CMD} "ERROR: may be you have just too old libevent tool - then you have to upgrade it."
+    ${ECHO_CMD} "See the INSTALL file."
+    ${ECHO_CMD} "Abort."
     cleanup
     exit
 fi
@@ -619,47 +631,46 @@ testlib event_core
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     testlib event_extra
-    echo "Libevent2 runtime found."
+    ${ECHO_CMD} "Libevent2 runtime found."
 else
     testlib event
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	echo "Libevent2 runtime found."
+		${ECHO_CMD} "Libevent2 runtime found."
     else
-	echo "ERROR: Libevent2 runtime libraries are not installed properly in required location."
-	echo "See the INSTALL file."
-	echo "Abort."
-	cleanup
-	exit
+		${ECHO_CMD} "ERROR: Libevent2 runtime libraries are not installed properly in required location."
+		${ECHO_CMD} "See the INSTALL file."
+		${ECHO_CMD} "Abort."
+		cleanup
+		exit
     fi
 fi
 
 if [ -z "${TURN_NO_TLS}" ] ; then
 
-testlib event_openssl
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    echo "Libevent2 openssl found."
-else
-    echo "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
-    echo "TLS will be disabled."
-    TURN_NO_TLS="-DTURN_NO_TLS"
-fi
+	testlib event_openssl
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+    	${ECHO_CMD} "Libevent2 openssl found."
+	else
+    	${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with OpenSSL support."
+    	${ECHO_CMD} "TLS will be disabled."
+    	TURN_NO_TLS="-DTURN_NO_TLS"
+	fi
 
 else
 	TURN_NO_TLS="-DTURN_NO_TLS"
-
 fi
 
 if [ -z "${TURN_NO_THREADS}" ] ; then
     testlib event_pthreads
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-    	echo "Libevent2 pthreads found."
+    	${ECHO_CMD} "Libevent2 pthreads found."
     else
-    	echo "WARNING: Libevent2 development libraries are not compiled with threads support."
-    	echo "Using single-thread mode."
-	TURN_NO_THREADS="-DTURN_NO_THREADS"
+    	${ECHO_CMD} "WARNING: Libevent2 development libraries are not compiled with threads support."
+    	${ECHO_CMD} "Using single-thread mode."
+		TURN_NO_THREADS="-DTURN_NO_THREADS"
     fi
 fi
 
@@ -669,14 +680,13 @@ fi
 
 if [ -z "${TURN_NO_PQ}" ] ; then
 
-testlibpq
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-  echo "PostgreSQL found."
-else
-  TURN_NO_PQ="-DTURN_NO_PQ"
-fi
-
+	testlibpq
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "PostgreSQL found."
+	else
+		TURN_NO_PQ="-DTURN_NO_PQ"
+	fi
 else
 	TURN_NO_PQ="-DTURN_NO_PQ"
 fi
@@ -687,17 +697,15 @@ fi
 
 if [ -z "${TURN_NO_MYSQL}" ] ; then
 
-testlibmysql
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-  echo "MySQL found."
-else
-  TURN_NO_MYSQL="-DTURN_NO_MYSQL"
-fi
-
+	testlibmysql
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+		${ECHO_CMD} "MySQL found."
+	else
+		TURN_NO_MYSQL="-DTURN_NO_MYSQL"
+	fi
 else
 	TURN_NO_MYSQL="-DTURN_NO_MYSQL"
-
 fi
 
 ###########################
@@ -710,7 +718,7 @@ if [ -z "${TURN_NO_HIREDIS}" ] ; then
 
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-  		echo "Hiredis found."
+  		${ECHO_CMD} "Hiredis found."
 	else
   		TURN_NO_HIREDIS="-DTURN_NO_HIREDIS"
 	fi
@@ -733,7 +741,7 @@ if [ -z "${LDCONFIG}" ] ; then
 			if [ "${SYSTEM}" = "SunOS" ] ; then
 				LDCONFIG="crle -u -l"
 			else
-				LDCONFIG=echo
+				LDCONFIG=${ECHO_CMD}
 			fi
 		else
 			LDCONFIG="ldconfig -n"
@@ -750,48 +758,50 @@ fi
 
 OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
-echo PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
+${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
 ###############################
 # Make make:
 ###############################
 
-echo "#################################" > Makefile
-echo "# Generated by configure script #" >> Makefile
-echo "#################################" >> Makefile
-echo "CC = ${CC}" >> Makefile
-echo "LDFLAGS += ${OSLIBS}" >> Makefile
-echo "DBLIBS += ${DBLIBS}" >> Makefile
-echo "CFLAGS += ${OSCFLAGS}" >> Makefile
-echo "CPPFLAGS = ${CPPFLAGS}" >> Makefile
-echo "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_HIREDIS}" >> Makefile
-echo "#" >> Makefile
-echo "PORTNAME = ${PORTNAME}" >> Makefile
-echo "PREFIX = ${PREFIX}" >> Makefile
-echo "BINDIR = ${BINDIR}" >> Makefile
-echo "CONFDIR = ${CONFDIR}" >> Makefile
-echo "MANPREFIX = ${MANPREFIX}" >> Makefile
-echo "EXAMPLESDIR = ${EXAMPLESDIR}" >> Makefile
-echo "DOCSDIR = ${DOCSDIR}" >> Makefile
-echo "LIBDIR = ${LIBDIR}" >> Makefile
-echo "SCHEMADIR = ${SCHEMADIR}" >> Makefile
-echo "TURNINCLUDEDIR = ${TURNINCLUDEDIR}" >> Makefile
-echo "#" >> Makefile
-echo "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
-echo "MKDIR = ${MKDIR}" >> Makefile
-echo "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
-echo "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile
-echo "INSTALL_SCRIPT = ${INSTALL_SCRIPT}" >> Makefile
-echo "INSTALL_SHARED_LIB = ${INSTALL_SHARED_LIB}" >> Makefile
-echo "INSTALL_STATIC_LIB = ${INSTALL_STATIC_LIB}" >> Makefile
-echo "INSTALL_DATA = ${INSTALL_DATA}" >> Makefile
-echo "INSTALL_DIR = ${INSTALL_DIR}" >> Makefile
-echo "MKBUILDDIR = ${MKBUILDDIR}" >> Makefile
-echo "RMCMD = ${RMCMD}" >> Makefile
-echo "MORECMD = ${MORECMD}" >> Makefile
-echo "LDCONFIG=${LDCONFIG}" >> Makefile
-echo "################################" >> Makefile
-echo "" >> Makefile
+${ECHO_CMD} "#################################" > Makefile
+${ECHO_CMD} "# Generated by configure script #" >> Makefile
+${ECHO_CMD} "#################################" >> Makefile
+${ECHO_CMD} "ECHO_CMD = ${ECHO_CMD}" >> Makefile
+${ECHO_CMD} "CC = ${CC}" >> Makefile
+${ECHO_CMD} "LDFLAGS += ${OSLIBS}" >> Makefile
+${ECHO_CMD} "DBLIBS += ${DBLIBS}" >> Makefile
+${ECHO_CMD} "CFLAGS += ${OSCFLAGS}" >> Makefile
+${ECHO_CMD} "CPPFLAGS = ${CPPFLAGS}" >> Makefile
+${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_HIREDIS}" >> Makefile
+${ECHO_CMD} "#" >> Makefile
+${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
+${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
+${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
+${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
+${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
+${ECHO_CMD} "EXAMPLESDIR = ${EXAMPLESDIR}" >> Makefile
+${ECHO_CMD} "DOCSDIR = ${DOCSDIR}" >> Makefile
+${ECHO_CMD} "LIBDIR = ${LIBDIR}" >> Makefile
+${ECHO_CMD} "SCHEMADIR = ${SCHEMADIR}" >> Makefile
+${ECHO_CMD} "TURNINCLUDEDIR = ${TURNINCLUDEDIR}" >> Makefile
+${ECHO_CMD} "#" >> Makefile
+${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
+${ECHO_CMD} "MKDIR = ${MKDIR}" >> Makefile
+${ECHO_CMD} "INSTALL_PROGRAM = ${INSTALL_PROGRAM}" >> Makefile
+${ECHO_CMD} "PKILL_PROGRAM = ${PKILL_PROGRAM}" >> Makefile
+${ECHO_CMD} "INSTALL_MAN = ${INSTALL_MAN}" >> Makefile
+${ECHO_CMD} "INSTALL_SCRIPT = ${INSTALL_SCRIPT}" >> Makefile
+${ECHO_CMD} "INSTALL_SHARED_LIB = ${INSTALL_SHARED_LIB}" >> Makefile
+${ECHO_CMD} "INSTALL_STATIC_LIB = ${INSTALL_STATIC_LIB}" >> Makefile
+${ECHO_CMD} "INSTALL_DATA = ${INSTALL_DATA}" >> Makefile
+${ECHO_CMD} "INSTALL_DIR = ${INSTALL_DIR}" >> Makefile
+${ECHO_CMD} "MKBUILDDIR = ${MKBUILDDIR}" >> Makefile
+${ECHO_CMD} "RMCMD = ${RMCMD}" >> Makefile
+${ECHO_CMD} "MORECMD = ${MORECMD}" >> Makefile
+${ECHO_CMD} "LDCONFIG=${LDCONFIG}" >> Makefile
+${ECHO_CMD} "################################" >> Makefile
+${ECHO_CMD} "" >> Makefile
 cat Makefile.in >> Makefile
 
 ###############################
