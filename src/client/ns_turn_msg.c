@@ -82,9 +82,11 @@ void print_hmac(const char *name, const void *s, size_t len);
 
 /////////////////////////////////////////////////////////////////
 
-int stun_get_command_message_len_str(const u08bits* buf, size_t len) {
-  if(!stun_is_command_message_str(buf,len)) return -1;
-  return (int)(nswap16(((const u16bits*)(buf))[1])+STUN_HEADER_LENGTH);
+int stun_get_command_message_len_str(const u08bits* buf, size_t len)
+{
+	if (len < STUN_HEADER_LENGTH)
+		return -1;
+	return (int) (nswap16(((const u16bits*)(buf))[1]) + STUN_HEADER_LENGTH);
 }
 
 static int stun_set_command_message_len_str(u08bits* buf, int len) {
@@ -133,6 +135,24 @@ int stun_is_command_message_str(const u08bits* buf, size_t blen)
 						if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
 							return 1;
 						}
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+int old_stun_is_command_message_str(const u08bits* buf, size_t blen, u32bits *cookie)
+{
+	if (buf && blen >= STUN_HEADER_LENGTH) {
+		if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
+			if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
+				u16bits len = nswap16(((const u16bits*)(buf))[1]);
+				if ((len & 0x0003) == 0) {
+					if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
+						*cookie = nswap32(((const u32bits*)(buf))[1]);
+						return 1;
 					}
 				}
 			}
@@ -281,6 +301,15 @@ void stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len) {
   stun_tid_generate_in_message_str(buf,NULL);
 }
 
+void old_stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len, u32bits cookie) {
+  stun_init_buffer_str(buf,len);
+  message_type &= (u16bits)(0x3FFF);
+  ((u16bits*)buf)[0]=nswap16(message_type);
+  ((u16bits*)buf)[1]=0;
+  ((u32bits*)buf)[1]=nswap32(cookie);
+  stun_tid_generate_in_message_str(buf,NULL);
+}
+
 void stun_init_request_str(u16bits method, u08bits* buf, size_t *len) {
   stun_init_command_str(stun_make_request(method), buf, len);
 }
@@ -296,12 +325,17 @@ void stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, s
   }
 }
 
-void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
+void old_stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id, u32bits cookie) {
+  old_stun_init_command_str(stun_make_success_response(method), buf, len, cookie);
+  if(id) {
+    stun_tid_message_cpy(buf, id);
+  }
+}
+
+static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 				u16bits error_code, const u08bits *reason,
 				stun_tid* id)
 {
-
-	stun_init_command_str(stun_make_error_response(method), buf, len);
 
 	if (!reason) {
 
@@ -346,6 +380,30 @@ void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
 	if (id) {
 		stun_tid_message_cpy(buf, id);
 	}
+}
+
+void old_stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
+				u16bits error_code, const u08bits *reason,
+				stun_tid* id, u32bits cookie)
+{
+
+	old_stun_init_command_str(stun_make_error_response(method), buf, len, cookie);
+
+	stun_init_error_response_common_str(buf, len,
+					error_code, reason,
+					id);
+}
+
+void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len,
+				u16bits error_code, const u08bits *reason,
+				stun_tid* id)
+{
+
+	stun_init_command_str(stun_make_error_response(method), buf, len);
+
+	stun_init_error_response_common_str(buf, len,
+					error_code, reason,
+					id);
 }
 
 /////////// CHANNEL ////////////////////////////////////////////////
@@ -579,17 +637,29 @@ void stun_set_binding_request_str(u08bits* buf, size_t *len) {
 }
 
 int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
-				  const ioa_addr *reflexive_addr, int error_code, const u08bits *reason) {
+				  const ioa_addr *reflexive_addr, int error_code, const u08bits *reason,
+				  u32bits cookie, int old_stun)
 
-  if(!error_code) {
-    stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid);
-    if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS,reflexive_addr)<0) return -1;
-    if(stun_attr_add_addr_str(buf,len,STUN_ATTRIBUTE_MAPPED_ADDRESS,reflexive_addr)<0) return -1;
-  } else {
-    stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
-  }
+{
+	if (!error_code) {
+		if (!old_stun) {
+			stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid);
+		} else {
+			old_stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid, cookie);
+		}
+		if(!old_stun) {
+			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
+				return -1;
+		}
+		if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
+			return -1;
+	} else if (!old_stun) {
+		stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
+	} else {
+		old_stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid, cookie);
+	}
 
-  return 0;
+	return 0;
 }
 
 int stun_is_binding_request_str(const u08bits* buf, size_t len, size_t offset)
@@ -759,9 +829,10 @@ int stun_attr_is_addr(stun_attr_ref attr) {
     case STUN_ATTRIBUTE_XOR_RELAYED_ADDRESS:
     case STUN_ATTRIBUTE_MAPPED_ADDRESS:
     case STUN_ATTRIBUTE_ALTERNATE_SERVER:
-    case STUN_ATTRIBUTE_RESPONSE_ADDRESS:
-    case STUN_ATTRIBUTE_SOURCE_ADDRESS:
-    case STUN_ATTRIBUTE_CHANGED_ADDRESS:
+    case OLD_STUN_ATTRIBUTE_RESPONSE_ADDRESS:
+    case OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS:
+    case OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS:
+    case OLD_STUN_ATTRIBUTE_REFLECTED_FROM:
     case STUN_ATTRIBUTE_RESPONSE_ORIGIN:
     case STUN_ATTRIBUTE_OTHER_ADDRESS:
       return 1;

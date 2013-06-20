@@ -1,6 +1,4 @@
 
-0) Compatibility with old obsolete STUN
-
 1) DTLS support for Cygwin.
 
 2) Locale support (?).

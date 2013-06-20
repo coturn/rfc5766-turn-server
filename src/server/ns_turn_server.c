@@ -1413,7 +1413,8 @@ static int handle_turn_binding(turn_turnserver *server,
 				    int *err_code, const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
 				    ioa_net_data *in_buffer, ioa_network_buffer_handle nbh,
 				    int *origin_changed, ioa_addr *response_origin,
-				    int *dest_changed, ioa_addr *response_destination) {
+				    int *dest_changed, ioa_addr *response_destination,
+				    u32bits cookie, int old_stun) {
 
 	FUNCSTART;
 	ts_ur_session* elem = &(ss->client_session);
@@ -1423,6 +1424,7 @@ static int handle_turn_binding(turn_turnserver *server,
 	int response_port_present = 0;
 	u16bits response_port = 0;
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+	int use_reflected_from = 0;
 
 	*origin_changed = 0;
 	*dest_changed = 0;
@@ -1432,6 +1434,7 @@ static int handle_turn_binding(turn_turnserver *server,
 	while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
 		int attr_type = stun_attr_get_type(sar);
 		switch (attr_type) {
+		case OLD_STUN_ATTRIBUTE_PASSWORD:
 		SKIP_ATTRIBUTES;
 		case STUN_ATTRIBUTE_CHANGE_REQUEST:
 /*
@@ -1492,6 +1495,14 @@ static int handle_turn_binding(turn_turnserver *server,
 				}
 			}
 			break;
+		case OLD_STUN_ATTRIBUTE_RESPONSE_ADDRESS:
+			if(old_stun) {
+				use_reflected_from = 1;
+				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
+							ioa_network_buffer_get_size(in_buffer->nbh),
+							sar, response_destination, response_destination);
+				break;
+			}
 		default:
 			if(attr_type>=0x0000 && attr_type<=0x7FFF)
 				unknown_attrs[(*ua_num)++] = nswap16(attr_type);
@@ -1514,16 +1525,29 @@ static int handle_turn_binding(turn_turnserver *server,
 
 		size_t len = ioa_network_buffer_get_size(nbh);
 		if (stun_set_binding_response_str(ioa_network_buffer_data(nbh), &len, tid,
-					get_remote_addr_from_ioa_socket(elem->s), 0, NULL) >= 0) {
+					get_remote_addr_from_ioa_socket(elem->s), 0, NULL, cookie, old_stun) >= 0) {
 
 			addr_cpy(response_origin, get_local_addr_from_ioa_socket(ss->client_session.s));
 
 			*resp_constructed = 1;
 
+			if(old_stun && use_reflected_from) {
+				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+						OLD_STUN_ATTRIBUTE_REFLECTED_FROM,
+						get_remote_addr_from_ioa_socket(ss->client_session.s));
+			}
+
 			if(!is_rfc5780(server)) {
 
-				stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+				if(old_stun) {
+					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+								OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
+					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+								OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, response_origin);
+				} else {
+					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 							STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
+				}
 
 			} else {
 
@@ -1547,10 +1571,17 @@ static int handle_turn_binding(turn_turnserver *server,
 						addr_set_port(response_origin,addr_get_port(&other_address));
 					}
 
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+					if(old_stun) {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_SOURCE_ADDRESS, response_origin);
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+									OLD_STUN_ATTRIBUTE_CHANGED_ADDRESS, &other_address);
+					} else {
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 									STUN_ATTRIBUTE_RESPONSE_ORIGIN, response_origin);
-					stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
+						stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len,
 									STUN_ATTRIBUTE_OTHER_ADDRESS, &other_address);
+					}
 
 					if(response_port_present) {
 						*dest_changed = 1;
@@ -1560,7 +1591,7 @@ static int handle_turn_binding(turn_turnserver *server,
 					if(padding) {
 						int mtu = get_local_mtu_ioa_socket(ss->client_session.s);
 						if(mtu<68)
-							mtu=1500; /* must be more than enough to test fragmentation in real networks */
+							mtu=1500;
 
 						mtu = (mtu >> 2) << 2;
 						stun_attr_add_padding_str(ioa_network_buffer_data(nbh), &len, (u16bits)mtu);
@@ -2188,7 +2219,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				handle_turn_binding(server, ss, &tid, resp_constructed, &err_code, &reason,
 							unknown_attrs, &ua_num, in_buffer, nbh,
 							&origin_changed, &response_origin,
-							&dest_changed, &response_destination);
+							&dest_changed, &response_destination,
+							0, 0);
 
 				if(server->verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2322,6 +2354,140 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			if(server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 								"%s: user <%s>: message processed, error %d\n",
+								__FUNCTION__, (char*)ss->username, err_code);
+			}
+		}
+
+	} else {
+		*resp_constructed = 0;
+	}
+
+	return 0;
+}
+
+static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, u32bits cookie)
+{
+
+	stun_tid tid;
+	int err_code = 0;
+	const u08bits *reason = NULL;
+	int no_response = 0;
+
+	u16bits unknown_attrs[MAX_NUMBER_OF_UNKNOWN_ATTRS];
+	u16bits ua_num = 0;
+	u16bits method = stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh),
+					     ioa_network_buffer_get_size(in_buffer->nbh));
+
+	*resp_constructed = 0;
+
+	stun_tid_from_message_str(ioa_network_buffer_data(in_buffer->nbh),
+				  ioa_network_buffer_get_size(in_buffer->nbh),
+				  &tid);
+
+	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh),
+				ioa_network_buffer_get_size(in_buffer->nbh))) {
+
+		if(method != STUN_METHOD_BINDING) {
+			no_response = 1;
+			if(server->verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"%s: OLD STUN method 0x%x ignored\n",
+							__FUNCTION__, (unsigned int)method);
+			}
+		}
+
+		if (!err_code && !(*resp_constructed) && !no_response) {
+
+			int origin_changed=0;
+			ioa_addr response_origin;
+			int dest_changed=0;
+			ioa_addr response_destination;
+
+			handle_turn_binding(server, ss, &tid, resp_constructed, &err_code, &reason,
+						unknown_attrs, &ua_num, in_buffer, nbh,
+						&origin_changed, &response_origin,
+						&dest_changed, &response_destination,
+						cookie,1);
+
+			if(server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"%s: user <%s>: request OLD BINDING processed, error %d\n",
+									__FUNCTION__, (char*)ss->username, err_code);
+			}
+
+			if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
+
+				if (server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC3489 CHANGE request successfully processed\n");
+				}
+
+				{
+					size_t newsz = (((sizeof(TURN_SOFTWARE))>>2) + 1)<<2;
+					u08bits software[120];
+					if(newsz>sizeof(software))
+						newsz = sizeof(software);
+					ns_bcopy(TURN_SOFTWARE,software,newsz);
+					size_t len = ioa_network_buffer_get_size(nbh);
+					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
+					ioa_network_buffer_set_size(nbh, len);
+				}
+
+				send_turn_message_to(server, nbh, &response_origin, &response_destination);
+
+				no_response = 1;
+			}
+		}
+	} else {
+
+		no_response = 1;
+
+		if (server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong OLD STUN message received\n");
+		}
+	}
+
+	if (ua_num > 0) {
+
+		err_code = 420;
+
+		size_t len = ioa_network_buffer_get_size(nbh);
+		old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, NULL, &tid, cookie);
+
+		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_UNKNOWN_ATTRIBUTES, (const u08bits*) unknown_attrs, (ua_num * 2));
+
+		ioa_network_buffer_set_size(nbh,len);
+
+		*resp_constructed = 1;
+	}
+
+	if (!no_response) {
+
+		if (!(*resp_constructed)) {
+
+			if (!err_code)
+				err_code = 400;
+
+			size_t len = ioa_network_buffer_get_size(nbh);
+			old_stun_init_error_response_str(method, ioa_network_buffer_data(nbh), &len, err_code, reason, &tid, cookie);
+			ioa_network_buffer_set_size(nbh,len);
+			*resp_constructed = 1;
+		}
+
+		{
+			size_t newsz = (((sizeof(TURN_SOFTWARE))>>2) + 1)<<2;
+			u08bits software[120];
+			if(newsz>sizeof(software))
+				newsz = sizeof(software);
+			ns_bcopy(TURN_SOFTWARE,software,newsz);
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, OLD_STUN_ATTRIBUTE_SERVER, software, newsz);
+			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		if(err_code) {
+			if(server->verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"%s: user <%s>: OLD STUN message processed, error %d\n",
 								__FUNCTION__, (char*)ss->username, err_code);
 			}
 		}
@@ -2656,6 +2822,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 	}
 
 	u16bits chnum = 0;
+	u32bits old_stun_cookie = 0;
 
 	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
@@ -2684,29 +2851,46 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		FUNCEND;
 		return 0;
 
-	} else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh),
-			ioa_network_buffer_get_size(in_buffer->nbh), 0, &(ss->enforce_fingerprints))) {
+	} else if (stun_is_command_message_full_check_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), 0, &(ss->enforce_fingerprints))) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
-		if(resp_constructed) {
+		if (resp_constructed) {
 
-			if(server->fingerprint || ss->enforce_fingerprints) {
+			if (server->fingerprint || ss->enforce_fingerprints) {
 				size_t len = ioa_network_buffer_get_size(nbh);
-				if(stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh),&len)<0) {
-					FUNCEND;
+				if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+					FUNCEND	;
 					ioa_network_buffer_delete(server->e, nbh);
 					return -1;
 				}
-				ioa_network_buffer_set_size(nbh,len);
+				ioa_network_buffer_set_size(nbh, len);
 			}
 
 			int ret = write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
-			FUNCEND;
+			FUNCEND	;
+			return ret;
+		} else {
+			ioa_network_buffer_delete(server->e, nbh);
+			return 0;
+		}
+
+	} else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie)) {
+
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		int resp_constructed = 0;
+
+		handle_old_stun_command(server, ss, in_buffer, nbh, &resp_constructed, old_stun_cookie);
+
+		if (resp_constructed) {
+
+			int ret = write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+
+			FUNCEND	;
 			return ret;
 		} else {
 			ioa_network_buffer_delete(server->e, nbh);
@@ -2715,7 +2899,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 	}
 
-	//Unrecognised message received
+	//Unrecognised message received, ignore it
 
 	FUNCEND;
 	return -1;
@@ -2910,14 +3094,22 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"!!! %s: Trying to read from closed socket: s=0x%lx\n",
 				__FUNCTION__, (long) (elem->s));
-		return;
+		break;
 	default:
 		ret = -1;
 	}
 
-	if (ret < 0 && server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+	if (ret < 0) {
+		if(server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Error on client handler: s=0x%lx\n", (long) (elem->s));
+		}
+		set_ioa_socket_tobeclosed(s);
+	} else if (ss->to_be_closed) {
+		if(server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Session to be closed: ss=0x%lx\n", (long)ss);
+		}
 		set_ioa_socket_tobeclosed(s);
 	}
 }

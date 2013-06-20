@@ -97,13 +97,17 @@ int stun_get_message_len_str(u08bits *buf, size_t len, int padding, size_t *app_
 
 void stun_init_buffer_str(u08bits *buf, size_t *len);
 void stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len);
+void old_stun_init_command_str(u16bits message_type, u08bits* buf, size_t *len, u32bits cookie);
 void stun_init_request_str(u16bits method, u08bits* buf, size_t *len);
 void stun_init_indication_str(u16bits method, u08bits* buf, size_t *len);
 void stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id);
+void old_stun_init_success_response_str(u16bits method, u08bits* buf, size_t *len, stun_tid* id, u32bits cookie);
 void stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len, u16bits error_code, const u08bits *reason, stun_tid* id);
+void old_stun_init_error_response_str(u16bits method, u08bits* buf, size_t *len, u16bits error_code, const u08bits *reason, stun_tid* id, u32bits cookie);
 int stun_init_channel_message_str(u16bits chnumber, u08bits* buf, size_t *len, int length, int do_padding);
 
 int stun_is_command_message_str(const u08bits* buf, size_t blen);
+int old_stun_is_command_message_str(const u08bits* buf, size_t blen, u32bits *cookie);
 int stun_is_command_message_full_check_str(const u08bits* buf, size_t blen, int must_check_fingerprint, int *fingerprint_present);
 int stun_is_command_message_offset_str(const u08bits* buf, size_t blen, int offset);
 int stun_is_request_str(const u08bits* buf, size_t len);
@@ -120,7 +124,8 @@ int is_channel_msg_str(const u08bits* buf, size_t blen);
 void stun_set_binding_request_str(u08bits* buf, size_t *len);
 int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				  const ioa_addr *reflexive_addr, int error_code,
-				  const u08bits *reason);
+				  const u08bits *reason,
+				  u32bits cookie, int old_stun);
 int stun_is_binding_request_str(const u08bits* buf, size_t len, size_t offset);
 int stun_is_binding_response_str(const u08bits* buf, size_t len);
 

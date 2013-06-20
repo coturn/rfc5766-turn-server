@@ -672,7 +672,7 @@ static void setup_listener_servers(void)
 
 	if(listener.addrs_number<2) {
 		rfc5780 = 0;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot start alternative services of RFC 5780 because only one IP address is provided\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: I cannot support STUN CHANGE_REQUEST functionality because only one IP address is provided\n");
 	} else {
 		listener.services_number = listener.services_number * 2;
 	}
@@ -1265,8 +1265,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						(Default: 5349).\n"
 "						Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
 "						if allowed by configuration.\n"
-" --alt-listening-port<port>	<port>		Alternative listening port (in RFC 5780 sense, default is \"listening port plus one\").\n"
-" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 sense, \n"
+" --alt-listening-port<port>	<port>		Alternative listening port for STUN CHANGE_REQUEST (in RFC 5780 sense, \n"
+"                                               or in old RFC 3489 sense, default is \"listening port plus one\").\n"
+" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 or RFC 3489 sense, \n"
 " 						default is \"TLS port plus one\").\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
@@ -1274,7 +1275,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
 "						In that situation, if a -X is used in form \"-X ip\" then that ip will be reported\n"
 "						as relay IP address of all allocations. This scenario works only in a simple case\n"
-"						when one single relay address is be used, and no RFC5780 functionality is required.\n"
+"						when one single relay address is be used, and no STUN CHANGE_REQUEST functionality is required.\n"
 "						That single relay address must be mapped by NAT to the 'external' IP.\n"
 "						For that 'external' IP, NAT must forward ports directly (relayed port 12345\n"
 "						must be always mapped to the same 'external' port 12345).\n"
@@ -2140,7 +2141,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 5389/5766/5780/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
 
 	read_config_file(argc,argv,0);
 

@@ -4,9 +4,10 @@ Version 1.8.7.0 'Black Dow':
 	- Cygwin sockets fixes.
 	- Makefile and configure script fixes.
 	- Manpages installation and deinstallation fixed.
-	- Relay threads number is set as 1 for TCP/TLS and CPUs number for UDP/DTLS.
+	- Relay threads number is set to 1 for TCP/TLS and to CPUs number for UDP/DTLS.
 	- rfc5769check utility removed from installation, is used for the compilation 
 	check only. 
+	- Obsolete "classic" STUN RFC 3489 support.
 
 06/06/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.6.3 'Black Dow':

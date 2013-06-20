@@ -223,9 +223,9 @@ Options with required values:
 
 --alt-listening-port		Alternative listening port for UDP and TCP listeners;
 				default (or zero) value means "listening port plus one". 
-				This is needed for RFC 5780 support
-				(STUN extension specs, NAT behavior discovery). The TURN Server 
-				supports RFC 5780 only if it is started with more than one 
+				This is needed for STUN CHANGE_REQUEST  - in RFC 5780 sense
+                or in old RFC 3489 sense - for NAT behavior discovery). The TURN Server 
+				supports CHANGE_REQUEST only if it is started with more than one 
 				listening IP address of the same family (IPv4 or IPv6).
 							 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
@@ -245,16 +245,16 @@ Options with required values:
 -X, --external-ip		TURN Server public/private address mapping, if the server is behind NAT.
 				In that situation, if a -X is used in form "-X <ip>" then that ip will be reported
 				as relay IP address of all allocations. This scenario works only in a simple case
-				when one single relay address is be used, and no RFC5780 functionality is required.
-				That single relay address must be mapped by NAT to the 'external' IP.
+				when one single relay address is be used, and no CHANGE_REQUEST functionality is 
+				required. That single relay address must be mapped by NAT to the 'external' IP.
 				The "external-ip" value, if not empty, is returned in XOR-RELAYED-ADDRESS field.
 				For that 'external' IP, NAT must forward ports directly (relayed port 12345
 				must be always mapped to the same 'external' port 12345).
 				In more complex case when more than one IP address is involved,
 				that option must be used several times, each entry must
 				have form "-X <public-ip/private-ip>", to map all involved addresses.
-				RFC5780 NAT discovery STUN functionality will work correctly,
-				if the addresses are mapped properly, even when the TURN server itself 
+				CHANGE_REQUEST (RFC5780 or RFC3489) NAT discovery STUN functionality will work 
+				correctly, if the addresses are mapped properly, even when the TURN server itself 
 				is behind A NAT.
 				By default, this value is empty, and no address mapping is used.
 				
@@ -676,6 +676,8 @@ DIRECTORIES
 =================================
 
 STANDARDS
+
+obsolete STUN RFC 3489
 
 new STUN RFC 5389
 
