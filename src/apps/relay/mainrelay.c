@@ -745,21 +745,23 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr)
 			return -1;
 
 		for(i=0;i<listener.addrs_number;i++) {
-			if(addr_eq_no_port(addr,listener.encaddrs[i])) {
-				index=i;
-				break;
+			if(listener.encaddrs && listener.encaddrs[i]) {
+				if(addr->ss.ss_family == listener.encaddrs[i]->ss.ss_family) {
+					index=i;
+					break;
+				}
 			}
 		}
 		if(index!=0xffff) {
 			for(i=0;i<listener.addrs_number;i++) {
-				size_t ind = (index+i) % listener.addrs_number;
-				ioa_addr *caddr = listener.encaddrs[ind];
-				if(caddr->ss.ss_family == addr->ss.ss_family) {
-					if(addr_eq_no_port(caddr,addr))
-						continue;
-					addr_cpy(alt_addr,caddr);
-					addr_set_port(alt_addr, alt_port);
-					return 0;
+				size_t ind = (index+i+1) % listener.addrs_number;
+				if(listener.encaddrs && listener.encaddrs[ind]) {
+					ioa_addr *caddr = listener.encaddrs[ind];
+					if(caddr->ss.ss_family == addr->ss.ss_family) {
+						addr_cpy(alt_addr,caddr);
+						addr_set_port(alt_addr, alt_port);
+						return 0;
+					}
 				}
 			}
 		}

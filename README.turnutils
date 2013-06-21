@@ -164,7 +164,7 @@ $ turnutils_stunclient [options] <STUN-Server-IP-address>
   
   DESCRIPTION
   
-It sends a STUN request (over UDP) and shows the reply information.
+It sends a "new" STUN RFC 5389 request (over UDP) and shows the reply information.
 
 Options with required values:  
 
@@ -176,6 +176,8 @@ The turnutils_stunclient program checks the results of the first request,
 and if it finds that the STUN server supports RFC 5780 
 (the binding response reveals that) then the turnutils_stunclient makes a couple more 
 requests with different parameters, to demonstrate the NAT discovery capabilities.
+
+This utility does not support the "old" "classic" STUN protocol (RFC 3489).
   
 =====================================
 

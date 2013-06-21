@@ -979,7 +979,7 @@ public:
 
 		stun_set_binding_response_str(_buffer, &_sz, &tid,
 					&reflexive_addr, error_code,
-					reason);
+					reason, 0 , 0);
 	}
 
 	bool isBindingResponse() const {

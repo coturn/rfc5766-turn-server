@@ -1,3 +1,9 @@
+Smaller stuff:
+
+1) remove libraries warnings in Mac OS X.
+2) use --<arg> arguments in ./configure script.
+
+Larger stuff:
 
 1) DTLS support for Cygwin.
 
