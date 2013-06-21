@@ -2,6 +2,8 @@ Smaller stuff:
 
 1) remove libraries warnings in Mac OS X.
 2) use --<arg> arguments in ./configure script.
+3) Anonymous TLS server ?
+4) TLS certificate ?
 
 Larger stuff:
 
