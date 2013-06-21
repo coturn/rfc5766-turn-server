@@ -1,13 +1,13 @@
 06/10/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com> 
 Version 1.8.7.0 'Black Dow':
-	- Cygwin sockets fixes.
+	- Cygwin sockets fixes; full support on Cygwin.
 	- Makefile and configure script fixes.
 	- Manpages installation and deinstallation fixed.
 	- Relay threads number is set to 1 for TCP/TLS and to CPUs number for UDP/DTLS.
-	- rfc5769check utility removed from installation, is used for the compilation 
-	check only. 
-	- Obsolete "classic" STUN RFC 3489 support.
+	- rfc5769check utility removed from installation, it is used for the compilation 
+	check only and makes no sense for the end user. 
+	- Added support for obsolete "classic" STUN RFC 3489.
 
 06/06/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.6.3 'Black Dow':
