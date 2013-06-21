@@ -67,9 +67,12 @@ testlibpq() {
     POSTCFLAGS="-I${PREFIX}/pgsql/include -I${PREFIX}/include/pgsql/ -I${PREFIX}/include/postgres/ -I${PREFIX}/postgres/include/ -I${PREFIX}/include/postgresql/ -I${PREFIX}/postgresql/include/"
     POSTCFLAGS="${POSTCFLAGS} -I/usr/local/pgsql/include -I/usr/local/include/pgsql/ -I/usr/local/include/postgres/ -I/usr/local/postgres/include/ -I/usr/local/include/postgresql/ -I/usr/local/postgresql/include/"
     POSTCFLAGS="${POSTCFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
-    POSTLIBS="-L${PREFIX}/pgsql/lib -L${PREFIX}/lib/pgsql -L${PREFIX}/lib64/pgsql -L/usr/local/pgsql/lib -L/usr/local/lib/pgsql -L/usr/local/lib64/pgsql -L/usr/pgsql/lib -L/usr/lib/pgsql -L/usr/lib64/pgsql"
-    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgres/lib -L${PREFIX}/lib/postgres -L${PREFIX}/lib64/postgres -L/usr/local/postgres/lib -L/usr/local/lib/postgres -L/usr/local/lib64/postgres -L/usr/postgres/lib -L/usr/lib/postgres -L/usr/lib64/postgres"
-    POSTLIBS="${POSTLIBS} -L${PREFIX}/postgresql/lib -L${PREFIX}/lib/postgresql -L${PREFIX}/lib64/postgresql -L/usr/local/postgresql/lib -L/usr/local/lib/postgresql -L/usr/local/lib64/postgresql -L/usr/postgresql/lib -L/usr/lib/postgresql -L/usr/lib64/postgresql"
+    for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
+    do
+      if [ -d ${ilib} ] ; then
+    	POSTLIBS="${POSTLIBS} -L${ilib}"
+      fi
+    done
     POSTLIBS="${OSLIBS} ${POSTLIBS} -lpq"
     ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>/dev/null 
     ER=$?
@@ -91,9 +94,12 @@ testlibmysql() {
     MYSQL_CFLAGS="-I${PREFIX}/mysql/include -I${PREFIX}/include/mysql/"
     MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/local/mysql/include -I/usr/local/include/mysql/"
     MYSQL_CFLAGS="${MYSQL_CFLAGS} -I/usr/mysql/include -I/usr/include/mysql/"
-    MYSQL_LIBS="-L${PREFIX}/mysql/lib -L${PREFIX}/lib/mysql -L${PREFIX}/lib64/mysql"
-    MYSQL_LIBS="${MYSQL_LIBS} -L/usr/local/mysql/lib -L/usr/local/lib/mysql -L/usr/local/lib64/mysql"
-    MYSQL_LIBS="${MYSQL_LIBS} -L/usr/mysql/lib -L/usr/lib/mysql -L/usr/lib64/mysql"
+    for ilib in ${PREFIX}/mysql/lib ${PREFIX}/lib/mysql ${PREFIX}/lib64/mysql /usr/local/mysql/lib /usr/local/lib/mysql /usr/local/lib64/mysql /usr/mysql/lib /usr/lib/mysql /usr/lib64/mysql
+    do
+      if [ -d ${ilib} ] ; then
+        MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
+      fi
+    done
     MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
     ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>/dev/null
     ER=$?
@@ -264,8 +270,13 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 fi
 
 OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
-OSLIBS="${LDFLAGS} -L${PREFIX}/lib/event2/ -L${PREFIX}/lib/ -L/usr/local/lib/event2/ -L/usr/local/lib/ -L${PREFIX}/lib64/event2/ -L${PREFIX}/lib64/ -L/usr/local/lib64/event2/ -L/usr/local/lib64/"
-
+OSLIBS="${LDFLAGS}"
+for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/
+do
+  if [ -d ${ilib} ] ; then
+    OSLIBS="${OSLIBS} -L${ilib}"
+  fi
+done
 SYSTEM=`uname`
 
 if [ "${SYSTEM}" = "NetBSD" ] ; then
