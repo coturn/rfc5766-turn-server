@@ -311,54 +311,95 @@ fi
 
 if [ -z "${PREFIX}" ] ; then
 
-	SYSTEM=`uname`
+	if [ -z "${prefix}" ] ; then
 
-	if [ "${SYSTEM}" = "NetBSD" ] ; then
-		# A little tough guy
-		PREFIX=/usr/pkg
-	elif [ "${SYSTEM}" = "SunOS" ] ; then
-		# A fat guy
-		PREFIX=/usr
+		SYSTEM=`uname`
+
+		if [ "${SYSTEM}" = "NetBSD" ] ; then
+			# A little tough guy
+			PREFIX=/usr/pkg
+		elif [ "${SYSTEM}" = "SunOS" ] ; then
+			# A fat guy
+			PREFIX=/usr
+		else
+			# An ordinary person
+			PREFIX=/usr/local
+		fi
 	else
-		# An ordinary person
-		PREFIX=/usr/local
+		PREFIX=${prefix}
 	fi
 fi
 
 if [ -z "${BINDIR}" ] ; then
-    BINDIR=${PREFIX}/bin
+    if [ -z "${bindir}" ] ; then
+	BINDIR=${PREFIX}/bin
+    else
+	BINDIR=${bindir}
+    fi
 fi
 
 if [ -z "${CONFDIR}" ] ; then
-    CONFDIR=${PREFIX}/etc
+    if [ -z "${confdir}" ] ; then
+	CONFDIR=${PREFIX}/etc
+    else
+	CONFDIR=${confdir}
+    fi
 fi
 
 if [ -z "${MANPREFIX}" ] ; then
+    if [ -z "${manprefix}" ] ; then
 	MANPREFIX=${PREFIX}
+    else
+	MANPREFIX=${manprefix}
+    fi
 fi
 
 if [ -z "${EXAMPLESDIR}" ] ; then
+    if [ -z "${examplesdir}" ] ; then
 	EXAMPLESDIR=${PREFIX}/share/examples/${PORTNAME}
+    else
+	EXAMPLESDIR=${examplesdir}
+    fi
 fi
 
 if [ -z "${DOCSDIR}" ] ; then
+    if [ -z "${docsdir}" ] ; then
 	DOCSDIR=${PREFIX}/share/doc/${PORTNAME}
+    else
+	DOCSDIR=${docsdir}
+    fi
 fi
 
 if [ -z "${LIBDIR}" ] ; then
+    if [ -z "${libdir}" ] ; then
 	LIBDIR=${PREFIX}/lib
+    else
+	LIBDIR=${libdir}
+    fi
 fi
 
 if [ -z "${SCHEMADIR}" ] ; then
+    if [ -z "${schemadir}" ] ; then
 	SCHEMADIR=${PREFIX}/share/${PORTNAME}
+    else
+	SCHEMADIR=${schemadir}
+    fi
 fi
 
 if [ -z "${INCLUDEDIR}" ] ; then
+    if [ -z "${includedir}" ] ; then
 	INCLUDEDIR=${PREFIX}/include
+    else
+	INCLUDEDIR=${includedir}
+    fi
 fi
 
 if [ -z "${TURNINCLUDEDIR}" ] ; then
+    if [ -z "${turnincludedir}" ] ; then
 	TURNINCLUDEDIR=${INCLUDEDIR}/turn
+    else
+	TURNINCLUDEDIR=${turnincludedir}
+    fi
 fi
 
 ###############################################
@@ -888,14 +929,23 @@ ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "prefix = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
+${ECHO_CMD} "bindir = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
+${ECHO_CMD} "confdir = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
+${ECHO_CMD} "manprefix = ${MANPREFIX}" >> Makefile
 ${ECHO_CMD} "EXAMPLESDIR = ${EXAMPLESDIR}" >> Makefile
+${ECHO_CMD} "examplesdir = ${EXAMPLESDIR}" >> Makefile
 ${ECHO_CMD} "DOCSDIR = ${DOCSDIR}" >> Makefile
+${ECHO_CMD} "docsdir = ${DOCSDIR}" >> Makefile
 ${ECHO_CMD} "LIBDIR = ${LIBDIR}" >> Makefile
+${ECHO_CMD} "libdir = ${LIBDIR}" >> Makefile
 ${ECHO_CMD} "SCHEMADIR = ${SCHEMADIR}" >> Makefile
+${ECHO_CMD} "schemadir = ${SCHEMADIR}" >> Makefile
 ${ECHO_CMD} "INCLUDEDIR = ${INCLUDEDIR}" >> Makefile
+${ECHO_CMD} "includedir = ${INCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "TURNINCLUDEDIR = ${TURNINCLUDEDIR}" >> Makefile
+${ECHO_CMD} "turnincludedir = ${TURNINCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
 ${ECHO_CMD} "MKDIR = ${MKDIR}" >> Makefile

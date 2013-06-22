@@ -1192,12 +1192,16 @@ static int make_local_listeners_list(void)
 					continue;
 				if(strstr(saddr,"169.254.") == saddr)
 					continue;
+				if(!strcmp(saddr,"0.0.0.0"))
+				  continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
 					continue;
 				if(strstr(saddr,"fe80") == saddr)
 					continue;
+				if(!strcmp(saddr,"::"))
+				  continue;
 			} else
 				continue;
 
@@ -1237,12 +1241,16 @@ static int make_local_relays_list(int allow_local)
 					continue;
 				if(strstr(saddr,"169.254.") == saddr)
 					continue;
+				if(!strcmp(saddr,"0.0.0.0"))
+				  continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
 					continue;
 				if(strstr(saddr,"fe80") == saddr)
 					continue;
+				if(!strcmp(saddr,"::"))
+				  continue;
 			} else
 				continue;
 

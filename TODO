@@ -53,4 +53,5 @@
 	That would be a helpful feature for a large enterprise 
 	(for testing and security purposes). 
 
+11) Remove C++ compilation warnings in Solaris.
 
