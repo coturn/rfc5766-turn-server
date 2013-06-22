@@ -217,6 +217,93 @@ if [ -z "${PORTNAME}" ] ; then
 	PORTNAME=turnserver
 fi
 
+#####################
+
+# Installation directory options
+
+ac_prev=
+ac_dashdash=
+for ac_option
+do
+  # If the previous option needs an argument, assign it.
+  if test -n "$ac_prev"; then
+    eval $ac_prev=\$ac_option
+    ac_prev=
+    continue
+  fi
+
+  case $ac_option in
+  *=?*) ac_optarg=`expr "X$ac_option" : '[^=]*=\(.*\)'` ;;
+  *=)   ac_optarg= ;;
+  *)    ac_optarg=yes ;;
+  esac
+
+  # Accept the important Cygnus configure options, so we can diagnose typos.
+
+  case $ac_dashdash$ac_option in
+  --)
+    ac_dashdash=yes ;;
+
+  -bindir | --bindir | --bindi | --bind | --bin | --bi)
+    ac_prev=BINDIR ;;
+  -bindir=* | --bindir=* | --bindi=* | --bind=* | --bin=* | --bi=*)
+    BINDIR=$ac_optarg ;;
+
+  -datadir | --datadir | --datadi | --datad | -schemadir | --schemadir)
+    ac_prev=SCHEMADIR ;;
+  -datadir=* | --datadir=* | --datadi=* | --datad=* | -schemadir=* | --schemadir=*)
+    SCHEMADIR=$ac_optarg ;;
+
+  -docdir | --docdir | --docdi | --doc | --do | -docsdir | --docsdir | --docsdi | --docs)
+    ac_prev=DOCDIR ;;
+  -docdir=* | --docdir=* | --docdi=* | --doc=* | --do=* | -docsdir=* | --docsdir=* | --docsdi=* | --docs=*)
+    DOCSDIR=$ac_optarg ;;
+
+  -examplesdir | --examplesdir | -examples | --examples)
+    ac_prev=EXAMPLESDIR ;;
+  -examplesdir=* | --examplesdir=* | -examples=* | --examples=*)
+    EXAMPLESDIR=$ac_optarg ;;
+
+  -includedir | --includedir | --includedi | --included | --include \
+  | --includ | --inclu | --incl | --inc | -turnincludedir | --turnincludedir)
+    ac_prev=TURNINCLUDEDIR ;;
+  -includedir=* | --includedir=* | --includedi=* | --included=* | --include=* \
+  | --includ=* | --inclu=* | --incl=* | --inc=* | -turnincludedir=* | --turnincludedir=*)
+    TURNINCLUDEDIR=$ac_optarg ;;
+
+  -libdir | --libdir | --libdi | --libd)
+    ac_prev=LIBDIR ;;
+  -libdir=* | --libdir=* | --libdi=* | --libd=*)
+    LIBDIR=$ac_optarg ;;
+
+  -mandir | --mandir | --mandi | --mand | --man | --ma | --m | -manprefix | --manprefix)
+    ac_prev=MAXPREFIX ;;
+  -mandir=* | --mandir=* | --mandi=* | --mand=* | --man=* | --ma=* | --m=* | -manprefix=* | --manprefix=*)
+    MANPREFIX=$ac_optarg ;;
+
+  -prefix | --prefix | --prefi | --pref | --pre | --pr | --p)
+    ac_prev=PREFIX ;;
+  -prefix=* | --prefix=* | --prefi=* | --pref=* | --pre=* | --pr=* | --p=*)
+    PREFIX=$ac_optarg ;;
+
+  -sysconfdir | --sysconfdir | --sysconfdi | --sysconfd | --sysconf \
+  | --syscon | --sysco | --sysc | --sys | --sy | -confdir | --confdir)
+    ac_prev=CONFDIR ;;
+  -sysconfdir=* | --sysconfdir=* | --sysconfdi=* | --sysconfd=* | --sysconf=* \
+  | --syscon=* | --sysco=* | --sysc=* | --sys=* | --sy=* | -confdir=* | --confdir=*)
+    CONFDIR=$ac_optarg ;;
+    
+  esac
+      
+done
+
+if test -n "$ac_prev"; then
+  ac_option=--`echo $ac_prev | sed 's/_/-/g'`
+  as_fn_error $? "missing argument to $ac_option"
+fi
+
+#############################################
+
 if [ -z "${PREFIX}" ] ; then
 
 	SYSTEM=`uname`
@@ -264,6 +351,8 @@ fi
 if [ -z "${TURNINCLUDEDIR}" ] ; then
 	TURNINCLUDEDIR=${PREFIX}/include/turn
 fi
+
+###############################################
 
 if [ -z "${ARCHIVERCMD}" ] ; then
 	ARCHIVERCMD="ar -r"

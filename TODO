@@ -1,9 +1,3 @@
-Smaller stuff:
-
-1) use --<arg> arguments in ./configure script.
-
-Larger stuff:
-
 0) Fedora package.
 
 1) DTLS support for Cygwin.

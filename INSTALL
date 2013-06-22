@@ -62,7 +62,11 @@ also documents, examples and some other files, in separate directories.
 setting PREFIX variable in the 
 configure command line. For example:
 
-	$ PREFIX=/opt ./configure   
+	$ PREFIX=/opt ./configure
+	
+Or:
+
+	$ ./configure --prefix=/opt   
 
  You can change the auxiliary configured destination sub-directories by 
 setting BINDIR, CONFDIR, MANPREFIX, EXAMPLESDIR, DOCSDIR, LIBDIR, SCHEMADIR
@@ -70,12 +74,16 @@ and TURNINCLUDEDIR variables in the
 configure command line. For example:
 
 	$ PREFIX=/opt BINDIR=/opt/bin64 CONFDIR=/opt/conf ./configure
+	
+Or:
+
+	$ ./configure --prefix=/opt --bindir=/opt/bin64 --confdir=/opt/conf 
 
  You also can change the compilation and link options by 
 setting common build variables in the 
 configure command line. For example:
 
-	$ CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure
+	$ CC=clang CFLAGS=-D_CAURIB LDFLAGS=-lshanka ./configure --prefix=/opt/shy
 
 See below a separate INSTALL section for more details.
 
@@ -155,7 +163,7 @@ This command will also:
 The installation destination of "make install" can be changed by
 using DESTDIR variable, for example:
 
- $ PREFIX=/usr ./configure
+ $ ./configure --prefix=/usr
  $ make
  $ make DESTDIR=/opt install
  
@@ -395,7 +403,7 @@ it into /opt:
 
 4) Change directory to rfc5766-turn-server and build it:
 
-    $ PREFIX=/opt ./configure
+    $ ./configure --prefix=/opt
     $ make
 
 After that, you can either use it locally, or install it into /opt. 
