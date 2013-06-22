@@ -5,6 +5,7 @@ Version 1.8.7.0 'Black Dow':
 	- Added support for obsolete "classic" STUN RFC 3489;
 	- Full TURN support for Cygwin implemented: MS-Win UDP sockets fixed;
 	- Relay threads number changed;
+	- Fedora warnings fixed;
 	- Multiple Makefile and ./configure script fixes implemented:
 		* Changes taken from Arch Linux port;
 		* Manpages installation and deinstallation;

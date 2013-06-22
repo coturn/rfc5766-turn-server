@@ -105,9 +105,7 @@ int socket_set_reusable(evutil_socket_t fd) {
 #ifdef SO_REUSEPORT
     {
       const int on = 1;
-      int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
-      if(ret<0)
-	perror(__FUNCTION__);
+      setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
     }
 #endif
 
@@ -116,7 +114,7 @@ int socket_set_reusable(evutil_socket_t fd) {
       const int on = 1;
       int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
       if(ret<0)
-	perror(__FUNCTION__);
+	perror("SO_REUSEADDR");
     }
 #endif
 

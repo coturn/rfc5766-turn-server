@@ -255,11 +255,20 @@ locations - the configure script and the Makefile are assuming that they are
 installed in their default locations. If not, then you will have to modify 
 those.
 
-Several popular systems (FreeBSD, PC-BSD, Linux Ubuntu 11.10+, Debian Wheezy, 
-Linux Mint 14+, Amazon Linux) have a simple way of the third party tools 
+Most modern popular systems (FreeBSD / PC-BSD, Linux Ubuntu 11.10+, Debian Wheezy, 
+Linux Mint 14+, Amazon Linux, Fedora) have a simpler way of the third party tools 
 installation:      
 
-	*) PC-BSD or FreeBSD (the ports database is assumed to be installed):
+	*) PC-BSD or FreeBSD (the FRESH ports database is assumed to be installed, with
+		the turnserver port included):
+
+		$ cd /usr/ports/net/turnserver
+		$ sudo make install clear
+
+		That's it - that command will install the TURN server with all necesary
+		thrid-party tools.
+
+		If you system have no fresh ports repository:
 
 		$ cd /usr/ports/security/openssl/
 		$ sudo make install clean
@@ -283,30 +292,38 @@ installation:
 		
 		or you can use Synaptic or other software center.
 
-	***) Amazon Linux: (you have to install gcc first)
+	***) Fedora:
 
-	$ sudo yum install gcc
 	$ sudo yum install openssl-devel
 	$ sudo yum install libevent
 	$ sudo yum install libevent-devel
 	$ sudo yum install postgresql-devel
-	$ sudo yum install postgresql
 	$ sudo yum install postgresql-server
 	$ sudo yum install mysql-devel
-	$ sudo yum install mysql
 	$ sudo yum install mysql-server
+	$ sudo yum install hiredis
+	$ sudo yum install hiredis-devel
 
-(redis is not available as an Amazon EC2 yum package, so we ignore it - 
-redis support will not be compiled, unless you install it "manually" 
-before the TURN server compilation).
+	****) Amazon Linux is similar to Fedora, but:
+
+	- you have to install gcc first:
+		$ sudo yum install gcc
+
+	- hiredis packages are not available, so do not issue the 
+	hiredis installation commands. Redis support will not be 
+	compiled, unless you install it "manually" before the TURN 
+	server compilation. For Amazon EC2 AMIs, we install the 
+	redis manually in the system. But the TURN server can be 
+	perfectly installed without redis support.
 		
-	****) Some OSes in Debian family (Debian Squeeze and 
+	*****) Some OSes in Debian family (Debian Squeeze and 
 	pre-11.10 Ubuntus) setups are similar to Debian Wheezy, 
 	although some packages have different names. 
 		 
-	*****) On CentOS / RedHat 6.x you have to install libevent2 
-	"manually", and optionally you have to download and install 
-	Hiredis, but everything else can be found in the software repository. 
+	******) On some CentOS / RedHat 6.x systems you have to install 
+	libevent2 "manually", and optionally you have to download and 
+	install Hiredis, but everything else can be found in the software 
+	repository. 
 
 NOTE: If your tools are installed in non-standard locations, you will 
 have to adjust CFLAGS and LDFLAGS environment variables for TURN 
