@@ -265,10 +265,15 @@ do
     EXAMPLESDIR=$ac_optarg ;;
 
   -includedir | --includedir | --includedi | --included | --include \
-  | --includ | --inclu | --incl | --inc | -turnincludedir | --turnincludedir)
-    ac_prev=TURNINCLUDEDIR ;;
+  | --includ | --inclu | --incl | --inc)
+    ac_prev=INCLUDEDIR ;;
   -includedir=* | --includedir=* | --includedi=* | --included=* | --include=* \
-  | --includ=* | --inclu=* | --incl=* | --inc=* | -turnincludedir=* | --turnincludedir=*)
+  | --includ=* | --inclu=* | --incl=* | --inc=*)
+    INCLUDEDIR=$ac_optarg ;;
+
+  -turnincludedir | --turnincludedir)
+    ac_prev=TURNINCLUDEDIR ;;
+  -turnincludedir=* | --turnincludedir=*)
     TURNINCLUDEDIR=$ac_optarg ;;
 
   -libdir | --libdir | --libdi | --libd)
@@ -348,8 +353,12 @@ if [ -z "${SCHEMADIR}" ] ; then
 	SCHEMADIR=${PREFIX}/share/${PORTNAME}
 fi
 
+if [ -z "${INCLUDEDIR}" ] ; then
+	INCLUDEDIR=${PREFIX}/include
+fi
+
 if [ -z "${TURNINCLUDEDIR}" ] ; then
-	TURNINCLUDEDIR=${PREFIX}/include/turn
+	TURNINCLUDEDIR=${INCLUDEDIR}/turn
 fi
 
 ###############################################
@@ -358,7 +367,7 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 	ARCHIVERCMD="ar -r"
 fi
 
-OSCFLAGS="-I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
+OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS}"
 for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/
 do
@@ -877,6 +886,7 @@ ${ECHO_CMD} "DBCFLAGS += ${DBCFLAGS} ${TURN_NO_PQ} ${TURN_NO_MYSQL} ${TURN_NO_HI
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "PORTNAME = ${PORTNAME}" >> Makefile
 ${ECHO_CMD} "PREFIX = ${PREFIX}" >> Makefile
+${ECHO_CMD} "prefix = ${PREFIX}" >> Makefile
 ${ECHO_CMD} "BINDIR = ${BINDIR}" >> Makefile
 ${ECHO_CMD} "CONFDIR = ${CONFDIR}" >> Makefile
 ${ECHO_CMD} "MANPREFIX = ${MANPREFIX}" >> Makefile
@@ -884,6 +894,7 @@ ${ECHO_CMD} "EXAMPLESDIR = ${EXAMPLESDIR}" >> Makefile
 ${ECHO_CMD} "DOCSDIR = ${DOCSDIR}" >> Makefile
 ${ECHO_CMD} "LIBDIR = ${LIBDIR}" >> Makefile
 ${ECHO_CMD} "SCHEMADIR = ${SCHEMADIR}" >> Makefile
+${ECHO_CMD} "INCLUDEDIR = ${INCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "TURNINCLUDEDIR = ${TURNINCLUDEDIR}" >> Makefile
 ${ECHO_CMD} "#" >> Makefile
 ${ECHO_CMD} "ARCHIVERCMD = ${ARCHIVERCMD}" >> Makefile
