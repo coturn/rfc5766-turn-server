@@ -134,7 +134,6 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_DATA} postinstall.txt ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.sql ${DESTDIR}${SCHEMADIR}
-	${INSTALL_DATA} turndb/testredisdbsetup.sh ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/testredisdbsetup.sh ${DESTDIR}${SCHEMADIR}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} turndb/schema.userdb.redis ${DESTDIR}${SCHEMADIR}

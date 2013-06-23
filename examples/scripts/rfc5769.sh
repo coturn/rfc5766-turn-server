@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # This is a script for RFC 5769 STUN protocol check.
+# It checks whether the main code was compiled correctly.
 #
 
 if [ -d examples ] ; then
