@@ -666,13 +666,13 @@ if ! [ ${ER} -eq 0 ] ; then
 	${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
-    else
-    	${ECHO_CMD} "C++ or something..."
-    	OSCFLAGS="${OSCFLAGS}"
-    fi
+		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
+	else
+		${ECHO_CMD} "g++ or something..."
+		OSCFLAGS="-Wall ${OSCFLAGS}"
+	fi
 else
-    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+	OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
 fi
 
 ###########################
