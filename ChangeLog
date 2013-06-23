@@ -15,6 +15,7 @@ Version 1.8.7.0 'Black Dow':
 		* "--parameter" format support in ./configure script; it allows
 		simpler native OS package definitions (like in Debian package);
 		* Mac OS X linking warnings removed.
+		* pthread test fixed.
 
 06/08/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 1.8.6.3 'Black Dow':

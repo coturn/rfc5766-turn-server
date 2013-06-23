@@ -131,14 +131,16 @@ pthread_testlib() {
     	else
     		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>/dev/null
     		ER=$?
-    		if ! [ ${ER} -eq 0 ] ; then
+    		if [ ${ER} -eq 0 ] ; then
+    			OSLIBS="${OSLIBS} -pthread"
+    			return 1
+    		else
     			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>/dev/null
     			ER=$?
     			if [ ${ER} -eq 0 ] ; then
     				OSLIBS="${OSLIBS} -lpthread"
-			fi
-    		else
-    			OSLIBS="${OSLIBS} -pthread"
+    				return 1
+				fi
     		fi
     	fi
     else
@@ -148,20 +150,21 @@ pthread_testlib() {
 
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
+    if [ ${ER} -eq 0 ] ; then
+    	return 1
+    else
     	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
     	ER=$?
-    	if ! [ ${ER} -eq 0 ] ; then
-    		${ECHO_CMD} "Do not use pthreads"
-	    	return 0
-	else 
+    	if [ ${ER} -eq 0 ] ; then
 	    	${ECHO_CMD} "Older GNU pthread library found"
 	    	OSCFLAGS="${OSCFLAGS} -D_GNU_SOURCE"
 	    	return 1
-	fi
-    else
-		return 1
+	    else
+    		${ECHO_CMD} "Do not use pthreads" 
+		fi
     fi
+    
+    return 0
 }
 
 pthread_testbarriers() {
@@ -170,8 +173,8 @@ pthread_testbarriers() {
     ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "pthread barriers not found"
-	OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
+		${ECHO_CMD} "pthread barriers not found"
+		OSCFLAGS="${OSCFLAGS} -DTURN_NO_THREAD_BARRIERS"
     fi
 }
 
@@ -666,7 +669,7 @@ if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
     	${ECHO_CMD} "C++ or something..."
-    	OSCFLAGS="-Wall ${OSCFLAGS}"
+    	OSCFLAGS="${OSCFLAGS}"
     fi
 else
     OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
@@ -700,9 +703,9 @@ if [ -z ${TURN_NO_THREADS} ] ; then
     pthread_testlib
     ER=$?
     if [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "WARNING: Cannot find pthread library functions."
-	${ECHO_CMD} "Using single-thread mode."
-	TURN_NO_THREADS="-DTURN_NO_THREADS"
+		${ECHO_CMD} "WARNING: Cannot find pthread library functions."
+		${ECHO_CMD} "Using single-thread mode."
+		TURN_NO_THREADS="-DTURN_NO_THREADS"
     fi
     
 else
