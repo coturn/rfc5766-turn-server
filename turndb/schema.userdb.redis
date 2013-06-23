@@ -18,3 +18,45 @@ have keys "turn/secret/A", "turn/secret/B", "turn/secret/777" and their values w
 "hero1", "hero2", "hero3". The turnserver will issue command "keys turn/secret/*" it it 
 will try to use the returned keys in arbitrary order.   
  
+4) Example of a Redis user database setup.
+
+This example sets user database for the following security mechanism variants:
+
+  * long-term credentials with open passwords;
+  * long-term credentials with hashed passwords and realm north.gov;
+  * short-term credentials mechanism;
+  * TURN REST API with shared secret "logen"
+  
+The shell command would be:
+
+redis-cli <<!
+
+SELECT 0
+AUTH turn
+
+set turn/user/ninefingers/key "bc807ee29df3c9ffa736523fb2c4e8ee"
+set turn/user/gorst/key "7da2270ccfa49786e0115366d3a3d14d"
+
+set turn/user/ninefingers/password "youhavetoberealistic"
+set turn/user/gorst/password "hero"
+
+set turn/secret/1368426581 "logen"
+!
+
+5) Redis database configuration parameters
+
+TURN Server connects to the Redis and keeps the same connection during the 
+TURN server lifetime. That means that we have to take care about that 
+connection - it must NOT expire.
+
+You have to take care about Redis connection parameters, the timeout and the 
+keepalive. The following settings must be in your Redis config file
+(/etc/redis.conf or /usr/local/etc/redis.conf):
+
+..........
+timeout 0
+..........
+tcp-keepalive 60
+..........
+
+ 

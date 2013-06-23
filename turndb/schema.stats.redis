@@ -21,3 +21,18 @@ Or, to receive all allocation events:
 
 	psubscribe turn/user/*/allocation/*
 
+4) Redis database configuration parameters
+
+TURN Server connects to the Redis and keeps the same connection during the 
+TURN server lifetime. That means that we have to take care about that 
+connection - it must NOT expire.
+
+You have to take care about Redis connection parameters, the timeout and the 
+keepalive. The following settings must be in your Redis config file
+(/etc/redis.conf or /usr/local/etc/redis.conf):
+
+..........
+timeout 0
+..........
+tcp-keepalive 60
+..........

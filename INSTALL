@@ -744,7 +744,15 @@ traffic notifications.
 
 See the explanation in the turndb/schema.stats.redis file.
 
- 
+You also have to take care about Redis connection parameters, the timeout and the 
+keepalive. The following settings must be in your Redis config file
+(/etc/redis.conf or /usr/local/etc/redis.conf):
+
+..........
+timeout 0
+..........
+tcp-keepalive 60
+..........
 
 
   
