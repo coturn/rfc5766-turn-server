@@ -55,3 +55,11 @@
 
 11) Remove C++ compilation warnings in Solaris.
 
+12) Follow the draft ICE endpoint mobility standard and implement it if it is accepted:
+
+http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
+
+13) For mobility standard and for TCP optimization, find a way to route the initial 
+request to a valid thread. With current model, a single-threaded relay is required
+for such operations.
+
