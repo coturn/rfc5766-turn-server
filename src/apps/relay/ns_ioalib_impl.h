@@ -112,8 +112,7 @@ struct _ioa_socket
 	int family;
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
-	SSL* ssl; /* for DTLS sockets only;
-			TLS sockets have it 'hidden' in bufferevent */
+	SSL* ssl;
 	int bound;
 	int local_addr_known;
 	ioa_addr local_addr;
@@ -149,7 +148,6 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
-	TURN_MUTEX_DECLARE(mutex)
 };
 
 typedef struct _timer_event

@@ -109,6 +109,13 @@ void set_do_not_use_df(ioa_socket_handle s)
 
 /************** Buffer List ********************/
 
+static int buffer_list_empty(stun_buffer_list *bufs)
+{
+	if(bufs && bufs->head)
+		return 0;
+	return 1;
+}
+
 static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 {
 	stun_buffer_list_elem *ret = NULL;
@@ -1259,11 +1266,14 @@ static void close_socket_net_data(ioa_socket_handle s)
 			s->conn_bev=NULL;
 		}
 		if(s->bev) {
+			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
+			bufferevent_free(s->bev);
+			s->bev=NULL;
+		}
+
+		if (s->ssl) {
 			if (!s->broken) {
-				if(s->st == TLS_SOCKET) {
-#if !defined(TURN_NO_TLS)
-					SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
-					if (!(SSL_get_shutdown(ctx) & SSL_SENT_SHUTDOWN)) {
+				if(!(SSL_get_shutdown(s->ssl) & SSL_SENT_SHUTDOWN)) {
 					/*
 					 * SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
 					 * received a close notify from the other end.  SSL_shutdown will then
@@ -1275,29 +1285,38 @@ static void close_socket_net_data(ioa_socket_handle s)
 					 * if the socket is not ready for writing, in which case this hack will
 					 * lead to an unclean shutdown and lost session on the other end.
 					 */
-						SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
-						SSL_shutdown(ctx);
-					}
-#endif
+					SSL_set_shutdown(s->ssl, SSL_RECEIVED_SHUTDOWN);
+					SSL_shutdown(s->ssl);
 				}
-			}
-			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
-			bufferevent_free(s->bev);
-			s->bev=NULL;
-			s->fd=-1;
-			s->ssl=NULL;
-		}
-		if (s->ssl) {
-			if(!(SSL_get_shutdown(s->ssl) & SSL_SENT_SHUTDOWN)) {
-				SSL_set_shutdown(s->ssl, SSL_RECEIVED_SHUTDOWN);
-				SSL_shutdown(s->ssl);
 			}
 			SSL_free(s->ssl);
 			s->ssl = NULL;
-			s->fd = -1;
-		} else if (s->fd >= 0) {
+		}
+
+		if (s->fd >= 0) {
 			evutil_closesocket(s->fd);
 			s->fd = -1;
+		}
+	}
+}
+
+static void detach_socket_net_data(ioa_socket_handle s)
+{
+	if(s) {
+		EVENT_DEL(s->read_event);
+		if(s->list_ev) {
+			evconnlistener_free(s->list_ev);
+			s->list_ev = NULL;
+		}
+		if(s->conn_bev) {
+			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
+			bufferevent_free(s->conn_bev);
+			s->conn_bev=NULL;
+		}
+		if(s->bev) {
+			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
+			bufferevent_free(s->bev);
+			s->bev=NULL;
 		}
 	}
 }
@@ -1315,6 +1334,9 @@ void close_ioa_socket(ioa_socket_handle s)
 		}
 		s->done = 1;
 
+		while(!buffer_list_empty(&(s->bufs)))
+			pop_elem_from_buffer_list(&(s->bufs));
+
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
 		if(s->bound && s->e && s->e->tp) {
@@ -1326,6 +1348,34 @@ void close_ioa_socket(ioa_socket_handle s)
 		close_socket_net_data(s);
 
 		free(s);
+	}
+}
+
+void detach_ioa_socket(ioa_socket_handle s)
+{
+	if (s) {
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return;
+		}
+
+		ioa_network_buffer_delete(s->e, s->defer_nbh);
+
+		detach_socket_net_data(s);
+
+		while(!buffer_list_empty(&(s->bufs)))
+			pop_elem_from_buffer_list(&(s->bufs));
+
+		s->ref_counter = 0;
+		s->e = NULL;
+		s->read_cb = NULL;
+		s->read_ctx = NULL;
+		s->session = NULL;
+		s->sub_session = NULL;
+		s->conn_cb = NULL;
+		s->conn_arg = NULL;
+		s->acb = NULL;
+		s->acbarg = NULL;
 	}
 }
 
@@ -1690,12 +1740,13 @@ static int socket_input_worker(ioa_socket_handle s)
 		EVENT_DEL(s->read_event);
 		if(check_tentative_tls(s->fd)) {
 			s->st = TLS_SOCKET;
-			SSL *tls_ssl = SSL_new(s->e->tls_ctx);
+			s->ssl = SSL_new(s->e->tls_ctx);
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
-								tls_ssl,
+								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
-								BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+								BEV_OPT_DEFER_CALLBACKS);
+			BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -1704,7 +1755,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->st = TCP_SOCKET;
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
-							BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+							BEV_OPT_DEFER_CALLBACKS);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -2264,7 +2315,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
-										BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+										BEV_OPT_DEFER_CALLBACKS);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -2280,12 +2331,13 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						}
 					} else {
 #if !defined(TURN_NO_TLS)
-						SSL *tls_ssl = SSL_new(e->tls_ctx);
+						s->ssl = SSL_new(e->tls_ctx);
 						s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
-											tls_ssl,
+											s->ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
-											BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+											BEV_OPT_DEFER_CALLBACKS);
+						BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);

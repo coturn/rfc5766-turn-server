@@ -213,8 +213,9 @@ static void free_ndc(new_dtls_conn *ndc)
 			}
 			SSL_free(ndc->info.ssl);
 			ndc->info.ssl = NULL;
-			ndc->info.fd = -1;
-		} else if(ndc->info.fd>=0) {
+		}
+
+		if(ndc->info.fd>=0) {
 			evutil_closesocket(ndc->info.fd);
 			ndc->info.fd = -1;
 		}
@@ -682,7 +683,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			rc = listen_client_connection(server, &ndc);
 
 			if (rc >= 0) {
-				BIO_set_fd(SSL_get_rbio(connecting_ssl), ndc->info.fd, BIO_CLOSE);
+				BIO_set_fd(SSL_get_rbio(connecting_ssl), ndc->info.fd, BIO_NOCLOSE);
 				BIO_ctrl(SSL_get_rbio(connecting_ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
 								&(ndc->info.remote_addr.ss));
 			} else {
