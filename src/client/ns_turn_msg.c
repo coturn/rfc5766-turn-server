@@ -148,11 +148,14 @@ int old_stun_is_command_message_str(const u08bits* buf, size_t blen, u32bits *co
 	if (buf && blen >= STUN_HEADER_LENGTH) {
 		if (!STUN_VALID_CHANNEL(nswap16(((const u16bits*)buf)[0]))) {
 			if ((((u08bits) buf[0]) & ((u08bits) (0xC0))) == 0) {
-				u16bits len = nswap16(((const u16bits*)(buf))[1]);
-				if ((len & 0x0003) == 0) {
-					if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
-						*cookie = nswap32(((const u32bits*)(buf))[1]);
-						return 1;
+				if (nswap32(((const u32bits*)(buf))[1])
+						!= STUN_MAGIC_COOKIE) {
+					u16bits len = nswap16(((const u16bits*)(buf))[1]);
+					if ((len & 0x0003) == 0) {
+						if ((size_t) (len + STUN_HEADER_LENGTH) == blen) {
+							*cookie = nswap32(((const u32bits*)(buf))[1]);
+							return 1;
+						}
 					}
 				}
 			}
