@@ -1,3 +1,9 @@
+Minor stuff:
+
+0) hiredis heart beat requests  
+
+More serious stuff: 
+
 0) Fedora package.
 
 1) DTLS support for Cygwin.
