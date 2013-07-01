@@ -1571,7 +1571,7 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
-static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, int *read_len)
+static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, int *read_len, s08bits *ecmsg)
 {
 	*read_len = -1;
 
@@ -1591,12 +1591,12 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 #else
 	struct msghdr msg;
 	struct iovec iov;
-	size_t cmsgsz = CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos));
 
-	char *cmsg = (char*)malloc(cmsgsz);
+	char *cmsg = (char*)ecmsg;
 
 	msg.msg_control = cmsg;
-	msg.msg_controllen = cmsgsz;
+	msg.msg_controllen = TURN_CMSG_SZ;
+	/* CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos)) */
 
 	msg.msg_name = orig_addr;
 	msg.msg_namelen = (socklen_t)slen;
@@ -1662,8 +1662,6 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 			};
 		}
 	}
-
-	free(cmsg);
 
 #endif
 
@@ -1838,7 +1836,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		if((ret!=-1)&&(len>0))
 			try_again = 1;
 	} else if(s->fd>=0){ /* UDP */
-		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, &len);
+		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, &len,s->e->cmsg);
 		if((ret!=-1)&&(len>0))
 			try_again = 1;
 	} else {

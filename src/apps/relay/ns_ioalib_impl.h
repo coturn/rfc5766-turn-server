@@ -82,6 +82,8 @@ typedef unsigned long band_limit_t;
  */
 typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd);
 
+#define TURN_CMSG_SZ (65536)
+
 struct _ioa_engine
 {
   struct event_base *event_base;
@@ -99,6 +101,7 @@ struct _ioa_engine
   turn_time_t jiffie;
   band_limit_t max_bpj;
   ioa_timer_handle timer_ev;
+  s08bits cmsg[TURN_CMSG_SZ+1];
 };
 
 struct _ioa_socket
