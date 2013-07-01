@@ -363,18 +363,30 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 
 ////////////////// TCP connections ///////////////////////////////
 
-static void set_new_tc_id(tcp_connection *tc) {
+static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	allocation *a = (allocation*)(tc->owner);
 	ur_map *map = a->tcp_connections;
 	u32bits newid = 0;
+	u32bits sid = server_id;
+	sid = sid<<24;
 	do {
-		while (!newid) newid = (u32bits)random();
+		while (!newid) {
+			newid = (u32bits)random();
+			if(!newid) {
+				continue;
+			}
+			newid = newid & 0x00FFFFFF;
+			if(!newid) {
+				continue;
+			}
+			newid = newid | sid;
+		}
 	} while(ur_map_get(map, (ur_map_key_type)newid, NULL));
 	tc->id = newid;
 	ur_map_put(map, (ur_map_key_type)newid, (ur_map_value_type)tc);
 }
 
-tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
+tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
 {
 	tcp_connection_list *tcl = &(a->tcl);
 	while(tcl->next) {
@@ -392,7 +404,7 @@ tcp_connection *create_tcp_connection(allocation *a, stun_tid *tid, ioa_addr *pe
 	if(tid)
 		ns_bcopy(tid,&(tc->tid),sizeof(stun_tid));
 	tc->owner = a;
-	set_new_tc_id(tc);
+	set_new_tc_id(server_id, tc);
 	return tc;
 }
 
@@ -430,7 +442,7 @@ void delete_tcp_connection(tcp_connection *tc)
 	}
 }
 
-tcp_connection *get_tcp_connection_by_id(ur_map *map, u32bits id)
+tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id)
 {
 	if(map) {
 		ur_map_value_type t = 0;

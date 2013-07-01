@@ -904,7 +904,7 @@ int stun_attr_add_str(u08bits* buf, size_t *len, u16bits attr, const u08bits* av
   }
   int clen = stun_get_command_message_len_str(buf,*len);
   int newlen = clen + 4 + alen;
-  int newlenrem4=newlen%4;
+  int newlenrem4=newlen & 0x00000003;
   if(newlenrem4) {
     newlen=newlen+(4-newlenrem4);
   }

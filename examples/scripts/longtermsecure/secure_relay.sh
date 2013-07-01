@@ -12,7 +12,7 @@
 #
 # 1) set bandwidth limit on client session 3000000 bytes per second (--max-bps).
 # 2) use fingerprints (-f)
-# 3) use 3 relay threads (-m 3)
+# 3) use 10 relay threads (-m 10)
 # 4) use min UDP relay port 32355 and max UDP relay port 65535
 # 5) "-r north.gov" means "use authentication realm north.gov"
 # 6) "--user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee" means 
@@ -31,5 +31,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 3 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v
- 
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v $@

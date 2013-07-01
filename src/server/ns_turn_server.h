@@ -42,6 +42,8 @@ extern "C" {
 
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
 
+typedef u08bits turnserver_id;
+
 struct socket_message {
 	ioa_addr remote_addr;
 	ioa_socket_handle s;
@@ -49,7 +51,13 @@ struct socket_message {
 	u16bits chnum;
 };
 
-typedef u08bits turnserver_id;
+struct cb_socket_message {
+	turnserver_id id;
+	u32bits connection_id;
+	stun_tid tid;
+	ioa_socket_handle s;
+	int message_integrity;
+};
 
 struct _turn_turnserver;
 typedef struct _turn_turnserver turn_turnserver;
@@ -64,6 +72,7 @@ typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_passwo
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
+typedef int (*send_cb_socket_to_relay_cb)(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity);
 
 //////////// ALTERNATE-SERVER /////////////
 
@@ -108,7 +117,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    int no_multicast_peers,
 				    int no_loopback_peers,
 				    ip_range_list_t* ip_whitelist,
-				    ip_range_list_t* ip_blacklist);
+				    ip_range_list_t* ip_blacklist,
+				    send_cb_socket_to_relay_cb rfc6062cb);
 
 void delete_turn_server(turn_turnserver* server);
 
@@ -126,6 +136,8 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss);
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
+
+int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity);
 
 ///////////////////////////////////////////
 

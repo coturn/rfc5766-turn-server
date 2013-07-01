@@ -103,7 +103,6 @@ struct _ioa_engine
 
 struct _ioa_socket
 {
-	int ref_counter;
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
 	ur_addr_map *children_ss;

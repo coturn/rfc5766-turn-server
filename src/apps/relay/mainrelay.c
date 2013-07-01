@@ -223,9 +223,9 @@ static ioa_addr *external_ip = NULL;
 static int fingerprint = 0;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_UDP_SOCKET_CONNECT_BUG)
-static size_t relay_servers_number = 0;
+static turnserver_id relay_servers_number = 0;
 #else
-static size_t relay_servers_number = 1;
+static turnserver_id relay_servers_number = 1;
 #endif
 
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
@@ -233,6 +233,7 @@ static size_t relay_servers_number = 1;
 enum _MESSAGE_TO_RELAY_TYPE {
 	RMT_UNKNOWN,
 	RMT_SOCKET,
+	RMT_CB_SOCKET,
 	RMT_USER_AUTH_INFO
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
@@ -241,6 +242,7 @@ struct message_to_relay {
 	MESSAGE_TO_RELAY_TYPE t;
 	union {
 		struct socket_message sm;
+		struct cb_socket_message cb_sm;
 		struct auth_message am;
 	} m;
 };
@@ -430,10 +432,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	static size_t current_relay_server = 0;
 
-	int is_tcp = ((get_ioa_socket_type(s) == TCP_SOCKET)||
-					(get_ioa_socket_type(s) == TLS_SOCKET)||
-					(get_ioa_socket_type(s) == TENTATIVE_TCP_SOCKET));
-
 	UNUSED_ARG(e);
 
 	current_relay_server = current_relay_server % get_real_relay_servers_number();
@@ -447,18 +445,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	nd->nbh = NULL;
 	sm.m.sm.s = s;
 
-	/* To support RFC 6062, we have to run all TCP connections
-	 * within the same relay server: */
-	size_t dest = 0;
-
-	if((no_tcp && no_tls) || no_tcp_relay || (get_real_relay_servers_number()<2)) {
-		dest = current_relay_server++;
-	} else if(is_tcp) {
-		dest = 0;
-	} else {
-		if(!current_relay_server) ++current_relay_server;
-		dest = current_relay_server++;
-	}
+	size_t dest = current_relay_server++;
 
 	sm.m.sm.chnum = nd->chnum;
 
@@ -477,11 +464,43 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	return 0;
 }
 
+static int send_cb_socket_to_relay(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+{
+	if(id >= get_real_relay_servers_number())
+		id = get_real_relay_servers_number()-1;
+
+	struct message_to_relay sm;
+	ns_bzero(&sm,sizeof(struct message_to_relay));
+
+	sm.t = RMT_CB_SOCKET;
+	sm.m.cb_sm.id = id;
+	sm.m.cb_sm.connection_id = connection_id;
+	stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
+	sm.m.cb_sm.s = s;
+	sm.m.cb_sm.message_integrity = message_integrity;
+
+	size_t dest = id;
+
+	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
+	if(output)
+		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+	else {
+		TURN_LOG_FUNC(
+				TURN_LOG_LEVEL_ERROR,
+				"%s: Empty output buffer\n",
+				__FUNCTION__);
+		IOA_CLOSE_SOCKET(sm.m.cb_sm.s);
+	}
+
+	return 0;
+}
+
 static void relay_receive_message(struct bufferevent *bev, void *ptr)
 {
 	struct message_to_relay sm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
+
 	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 		if (n != sizeof(struct message_to_relay)) {
 			perror("Weird buffer error\n");
@@ -536,6 +555,9 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 				sm.m.am.in_buffer.nbh=NULL;
 			}
 		}
+		break;
+		case RMT_CB_SOCKET:
+			turnserver_accept_tcp_connection(rs->server, sm.m.cb_sm.connection_id, &(sm.m.cb_sm.tid), sm.m.cb_sm.s, sm.m.cb_sm.message_integrity);
 		break;
 		default: {
 			perror("Weird buffer type\n");
@@ -849,7 +871,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					&alternate_servers_list,
 					&tls_alternate_servers_list,
 					no_multicast_peers, no_loopback_peers,
-					&ip_whitelist, &ip_blacklist);
+					&ip_whitelist, &ip_blacklist,
+					send_cb_socket_to_relay);
 	if(rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}

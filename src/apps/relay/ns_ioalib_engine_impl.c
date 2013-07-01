@@ -1324,10 +1324,6 @@ static void detach_socket_net_data(ioa_socket_handle s)
 void close_ioa_socket(ioa_socket_handle s)
 {
 	if (s) {
-		if(s->ref_counter) {
-			s->ref_counter -= 1;
-			return;
-		}
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
@@ -1351,12 +1347,18 @@ void close_ioa_socket(ioa_socket_handle s)
 	}
 }
 
-void detach_ioa_socket(ioa_socket_handle s)
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 {
+	ioa_socket_handle ret = NULL;
+
 	if (s) {
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
-			return;
+			return ret;
+		}
+		if(s->tobeclosed) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on tobeclosed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return ret;
 		}
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
@@ -1366,7 +1368,6 @@ void detach_ioa_socket(ioa_socket_handle s)
 		while(!buffer_list_empty(&(s->bufs)))
 			pop_elem_from_buffer_list(&(s->bufs));
 
-		s->ref_counter = 0;
 		s->e = NULL;
 		s->read_cb = NULL;
 		s->read_ctx = NULL;
@@ -1376,7 +1377,17 @@ void detach_ioa_socket(ioa_socket_handle s)
 		s->conn_arg = NULL;
 		s->acb = NULL;
 		s->acbarg = NULL;
+
+		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+
+		ns_bcopy(s,ret,sizeof(ioa_socket));
+
+		s->ssl = NULL;
+		s->fd = -1;
+		s->tobeclosed = 1;
 	}
+
+	return ret;
 }
 
 void *get_ioa_socket_session(ioa_socket_handle s)
@@ -1406,13 +1417,6 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc)
 {
 	if(s)
 		s->sub_session = tc;
-}
-
-void inc_ioa_socket_ref_counter(ioa_socket_handle s)
-{
-	if(s) {
-		s->ref_counter += 1;
-	}
 }
 
 int get_ioa_socket_address_family(ioa_socket_handle s) {
@@ -1707,6 +1711,9 @@ static int socket_input_worker(ioa_socket_handle s)
 		return -1;
 	}
 
+	if(!(s->e))
+		return 0;
+
 	if(s->tobeclosed)
 		return 0;
 
@@ -1729,6 +1736,9 @@ static int socket_input_worker(ioa_socket_handle s)
 	}
 
 	try_start:
+
+	if(!(s->e))
+		return 0;
 
 	try_again=0;
 	try_ok=0;
@@ -2264,9 +2274,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void* ctx, int clean_preexisting)
 {
+	if(s) {
 
-	if (cb) {
-		if ((event_type & IOA_EV_READ) && s) {
+		if (event_type & IOA_EV_READ) {
 
 			if(e)
 				s->e = e;
@@ -2331,12 +2341,20 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						}
 					} else {
 #if !defined(TURN_NO_TLS)
-						s->ssl = SSL_new(e->tls_ctx);
-						s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+						if(!(s->ssl)) {
+							s->ssl = SSL_new(e->tls_ctx);
+							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
 											BEV_OPT_DEFER_CALLBACKS);
+						} else {
+							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
+											s->fd,
+											s->ssl,
+											BUFFEREVENT_SSL_OPEN,
+											BEV_OPT_DEFER_CALLBACKS);
+						}
 						BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
@@ -2357,7 +2375,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 			return 0;
 		}
 	}
-	/* unsupported event */
+
+	/* unsupported event or else */
 	return -1;
 }
 
@@ -2428,11 +2447,11 @@ size_t ioa_network_buffer_get_capacity(void)
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
 {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
-	elem->buf.len=(ssize_t)len;
+  elem->buf.len=(ssize_t)len;
 }
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
-free_blist_elem(e,elem);
+  free_blist_elem(e,elem);
 }
 
 /////////// REPORTING STATUS /////////////////////

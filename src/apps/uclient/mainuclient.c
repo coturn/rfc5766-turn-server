@@ -67,6 +67,7 @@ u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
 int passive_tcp = 0;
 int mandatory_channel_padding = 0;
+int negative_test = 0;
 
 //////////////// local definitions /////////////////
 
@@ -85,6 +86,8 @@ static char Usage[] =
   "	-c	No rtcp connections.\n"
   "	-x	IPv6 relayed address requested.\n"
   "	-g	Include DONT_FRAGMENT option.\n"
+  "	-D	Mandatory channel padding (like in pjnath).\n"
+  "	-N	Negative tests (some limited cases only).\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
@@ -102,7 +105,6 @@ static char Usage[] =
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
   "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
-  "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-C	TURN REST API username/timestamp separator symbol (character). The default value is ':'.\n";
 
 //////////////////////////////////////////////////
@@ -133,13 +135,16 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPD")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDN")) != -1) {
 		switch (c){
 		case 'C':
 			rest_api_separator=*optarg;
 			break;
 		case 'D':
 			mandatory_channel_padding = 1;
+			break;
+		case 'N':
+			negative_test = 1;
 			break;
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);

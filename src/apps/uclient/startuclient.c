@@ -523,7 +523,11 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 
 		stun_buffer message;
 
-		*chn = stun_set_channel_bind_request(&message, peer_addr, *chn);
+		if(negative_test) {
+			*chn = stun_set_channel_bind_request(&message, peer_addr, (u16bits)random());
+		} else {
+			*chn = stun_set_channel_bind_request(&message, peer_addr, *chn);
+		}
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
@@ -988,9 +992,11 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 		int cb_sent = 0;
 
 		stun_buffer message;
+		u32bits cid = atc->cid;
 
 		stun_init_request(STUN_METHOD_CONNECTION_BIND, &message);
-		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&(atc->cid),4);
+
+		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&cid,4);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 

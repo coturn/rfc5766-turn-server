@@ -76,6 +76,7 @@ struct _turn_turnserver {
 	int no_udp_relay;
 	int no_tcp_relay;
 	ur_map *tcp_relay_connections;
+	send_cb_socket_to_relay_cb rfc6062cb;
 	/* <<== RFC 6062 */
 
 	/* Alternate servers ==>> */
@@ -916,7 +917,7 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 		return -1;
 	}
 
-	tc = create_tcp_connection(a, tid, peer_addr, err_code);
+	tc = create_tcp_connection(server->id, a, tid, peer_addr, err_code);
 	if(!tc) {
 		if(!(*err_code)) {
 			*err_code = 500;
@@ -987,7 +988,7 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 			stun_tid tid;
 			ns_bzero(&tid,sizeof(stun_tid));
 			int err_code=0;
-			tc = create_tcp_connection(a, &tid, peer_addr, &err_code);
+			tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
 			if(!tc) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
 				close_ioa_socket(s);
@@ -1122,42 +1123,10 @@ static int handle_turn_connect(turn_turnserver *server,
 	return 0;
 }
 
-static int bind_tcp_connection(turn_turnserver *server, ts_ur_super_session *ss, u32bits id, int *err_code)
-{
-	tcp_connection *tc = get_tcp_connection_by_id(server->tcp_relay_connections, id);
-	if(!tc) {
-		*err_code = 404;
-		return -1;
-	} else if(tc->state == TC_STATE_READY) {
-		*err_code = 404;
-		return -1;
-	} else if(tc->client_s) {
-		*err_code = 500;
-		return -1;
-	} else {
-		allocation *a = (allocation*)(tc->owner);
-		ts_ur_super_session *ss_orig = (ts_ur_super_session*)(a->owner);
-		tc->state = TC_STATE_READY;
-		tc->client_s = ss->client_session.s;
-		inc_ioa_socket_ref_counter(ss->client_session.s);
-		set_ioa_socket_session(tc->client_s,ss_orig);
-		set_ioa_socket_sub_session(tc->client_s,tc);
-		set_ioa_socket_app_type(tc->client_s,TCP_CLIENT_DATA_SOCKET);
-		if(register_callback_on_ioa_socket(server->e, tc->client_s, IOA_EV_READ, tcp_client_data_input_handler, tc, 1)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
-			*err_code = 500;
-			return -1;
-		}
-		IOA_EVENT_DEL(tc->conn_bind_timeout);
-	}
-
-	return 0;
-}
-
 static int handle_turn_connection_bind(turn_turnserver *server,
 			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
-			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh) {
+			       ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int message_integrity) {
 
 	allocation* a = get_allocation_ss(ss);
 
@@ -1174,7 +1143,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 		*reason = (const u08bits *)"Bad request: CONNECTION_BIND only possible with TCP/TLS";
 
 	} else {
-		u32bits id = 0;
+		tcp_connection_id id = 0;
 
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
 							    ioa_network_buffer_get_size(in_buffer->nbh));
@@ -1215,26 +1184,18 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 			;
 
 		} else {
-
-			if (bind_tcp_connection(server, ss, id, err_code) < 0) {
-
-				if (!(*err_code)) {
-					*err_code = 437;
-					*reason = (const u08bits *)"Cannot bind TCP relay connection (internal error)";
-				}
-
+			if(server->rfc6062cb) {
+				u32bits sid = (id & 0xFF000000)>>24;
+				ioa_socket_handle s = ss->client_session.s;
+				ioa_socket_handle new_s = detach_ioa_socket(s);
+				server->rfc6062cb(sid, id, tid, new_s, message_integrity);
 			} else {
-
-				size_t len = ioa_network_buffer_get_size(nbh);
-				stun_init_success_response_str(method, ioa_network_buffer_data(nbh), &len, tid);
-				ioa_network_buffer_set_size(nbh,len);
-
-				*resp_constructed = 1;
+				*err_code = 500;
 			}
 		}
 	}
 
-	if (!(*resp_constructed)) {
+	if (!(*resp_constructed) && !ioa_socket_tobeclosed(ss->client_session.s)) {
 
 		if (!(*err_code)) {
 			*err_code = 437;
@@ -1248,6 +1209,95 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	}
 
 	return 0;
+}
+
+int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+{
+	FUNCSTART;
+
+	if(tcid && tid && s) {
+
+		int err_code = 0;
+		ts_ur_super_session *ss = NULL;
+
+		tcp_connection *tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		if(!tc) {
+			err_code = 400;
+		} else {
+			allocation *a = (allocation*)(tc->owner);
+			ss = (ts_ur_super_session*)(a->owner);
+			if(tc->state == TC_STATE_READY) {
+				err_code = 400;
+			} else if(tc->client_s) {
+				err_code = 500;
+			} else {
+				tc->state = TC_STATE_READY;
+				tc->client_s = s;
+				set_ioa_socket_session(s,ss);
+				set_ioa_socket_sub_session(s,tc);
+				set_ioa_socket_app_type(s,TCP_CLIENT_DATA_SOCKET);
+				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_client_data_input_handler, tc, 1)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
+					err_code = 500;
+				} else {
+					IOA_EVENT_DEL(tc->conn_bind_timeout);
+				}
+			}
+		}
+
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+
+		if(!err_code) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_init_success_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, tid);
+			ioa_network_buffer_set_size(nbh,len);
+		} else {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_init_error_response_str(STUN_METHOD_CONNECTION_BIND, ioa_network_buffer_data(nbh), &len, err_code, NULL, tid);
+			ioa_network_buffer_set_size(nbh,len);
+		}
+
+		{
+			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		if(message_integrity && ss) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
+			ioa_network_buffer_set_size(nbh,len);
+		}
+
+		if (server->fingerprint || ss->enforce_fingerprints) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		if(ss && !err_code) {
+			send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+			FUNCEND;
+			return 0;
+		} else {
+			/* Just to set the necessary structures for the packet sending: */
+			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, NULL, NULL, 1)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP tmp client data input callback\n", __FUNCTION__);
+			} else {
+				send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+			}
+			close_ioa_socket(s);
+			FUNCEND;
+			return -1;
+		}
+	}
+
+	close_ioa_socket(s);
+
+	FUNCEND;
+	return -1;
 }
 
 /* <<== RFC 6062 */
@@ -2162,7 +2212,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			case STUN_METHOD_CONNECTION_BIND:
 
 				handle_turn_connection_bind(server, ss, &tid, resp_constructed, &err_code, &reason,
-								unknown_attrs, &ua_num, in_buffer, nbh);
+								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
 
 				if(server->verbose) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2307,6 +2357,9 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wrong STUN message received\n");
 		}
 	}
+
+	if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s))
+		return 0;
 
 	if (ua_num > 0) {
 
@@ -2858,6 +2911,11 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
+		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
+			FUNCEND;
+			return 0;
+		}
+
 		if (resp_constructed) {
 
 			if (server->fingerprint || ss->enforce_fingerprints) {
@@ -3150,7 +3208,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		alternate_servers_list_t *alternate_servers_list,
 		alternate_servers_list_t *tls_alternate_servers_list,
 		int no_multicast_peers, int no_loopback_peers,
-		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist) {
+		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
+		send_cb_socket_to_relay_cb rfc6062cb) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -3192,6 +3251,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->ip_whitelist = ip_whitelist;
 	server->ip_blacklist = ip_blacklist;
+
+	server->rfc6062cb = rfc6062cb;
 
 	if (init_server(server) < 0) {
 	  turn_free(server,sizeof(turn_turnserver));

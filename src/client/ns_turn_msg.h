@@ -76,7 +76,7 @@ typedef const void* stun_attr_ref;
 //////////////////////////////////////////////////////////////
 
 int stun_tid_equals(const stun_tid *id1, const stun_tid *id2);
-void stun_tid_cpy(stun_tid *id1, const stun_tid *id2);
+void stun_tid_cpy(stun_tid *id_dst, const stun_tid *id_src);
 void stun_tid_generate(stun_tid* id);
 
 ///////////////////////////////////////////////////////////////

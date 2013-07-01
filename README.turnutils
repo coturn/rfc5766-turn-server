@@ -93,6 +93,8 @@ Flags:
 
 -D		Do mandatory channel padding even for UDP (like pjnath).
 
+-N		do negative tests (some limited cases only).
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).

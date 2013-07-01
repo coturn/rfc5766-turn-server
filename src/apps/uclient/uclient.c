@@ -530,7 +530,14 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			  stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
 			  if(sar) {
 			    u32bits cid = *((const u32bits*)stun_attr_get_value(sar));
-			    tcp_data_connect(elem,cid);
+
+			    if(negative_test) {
+				    tcp_data_connect(elem,(u32bits)random());
+			    } else {
+				    /* positive test */
+				    tcp_data_connect(elem,cid);
+			    }
+
 			    return rc;
 			  }
 			} else if (method != STUN_METHOD_DATA) {
