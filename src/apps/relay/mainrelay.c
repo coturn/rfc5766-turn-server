@@ -2112,6 +2112,70 @@ static int adminmain(int argc, char **argv)
 	return adminuser(user, realm, pwd, secret, ct, is_st);
 }
 
+static void printf_features(void)
+{
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "version %s\n",TURN_SOFTWARE);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+
+#if !defined(TURN_NO_THREADS)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading: enabled\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading: disabled\n");
+#endif
+
+#if defined(TURN_NO_TLS)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS supported\n");
+#endif
+
+#if defined(TURN_NO_DTLS)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS is not supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
+#endif
+
+#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: disabled\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: enabled\n");
+#endif
+
+#if !defined(TURN_NO_HIREDIS)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis is not supported\n");
+#endif
+
+#if !defined(TURN_NO_PQ)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "PostgreSQL is not supported\n");
+#endif
+
+#if !defined(TURN_NO_MYSQL)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL is not supported\n");
+#endif
+
+#if defined(OPENSSL_THREADS)
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading is not supported\n");
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: fresh enough\n");
+#else
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
+#endif
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
@@ -2142,19 +2206,16 @@ int main(int argc, char **argv)
 
 #if defined(TURN_NO_TLS)
 	no_tls = 1;
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TLS is not supported\n");
 #endif
 
 #if defined(TURN_NO_DTLS)
 	no_dtls = 1;
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: DTLS is not supported\n");
 #endif
 
 	set_system_parameters(1);
 
 #if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
 
-	/* UDP threads plus one TCP/TLS thread: */
 	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 
 	if(relay_servers_number<1)
@@ -2174,7 +2235,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server, version %s\n",TURN_SOFTWARE);
+	printf_features();
 
 	read_config_file(argc,argv,0);
 
