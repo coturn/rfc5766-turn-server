@@ -662,17 +662,24 @@ GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnest
 ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "Hm..."
-	${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    ${ECHO_CMD} "Hm..."
+    ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
+    else
+	${ECHO_CMD} "g++ or something..."
+	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
+	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
+	    ${ECHO_CMD} "Not an ordinary g++ compiler"
 	else
-		${ECHO_CMD} "g++ or something..."
-		OSCFLAGS="-Wall ${OSCFLAGS}"
+	    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
 	fi
+    fi
 else
-	OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
 fi
 
 ###########################

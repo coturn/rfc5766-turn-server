@@ -1591,11 +1591,12 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 #else
 	struct msghdr msg;
 	struct iovec iov;
+	size_t cmsgsz = CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos));
 
-	char cmsg[CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos))];
+	char *cmsg = (char*)malloc(cmsgsz);
 
 	msg.msg_control = cmsg;
-	msg.msg_controllen = sizeof(cmsg);
+	msg.msg_controllen = cmsgsz;
 
 	msg.msg_name = orig_addr;
 	msg.msg_namelen = (socklen_t)slen;
@@ -1661,6 +1662,9 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 			};
 		}
 	}
+
+	free(cmsg);
+
 #endif
 
 	*ttl = recv_ttl;
