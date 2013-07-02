@@ -669,7 +669,7 @@ if ! [ ${ER} -eq 0 ] ; then
 	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
 	${ECHO_CMD} "g++ or something..."
-	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
+	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
 	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then

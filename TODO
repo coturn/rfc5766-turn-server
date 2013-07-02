@@ -2,7 +2,6 @@ Minor stuff:
 
 0) hiredis heart beat requests  
 1) possible race condition in TCP sessions authentication to be fixed
-2) print compilation options in the process start stage
 
 More serious stuff: 
 
@@ -71,4 +70,4 @@ http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
 request to a valid thread. With current model, a single-threaded relay is required
 for such operations.
 
-14) For extra difficult NAT/FWs, consider implementing Websockets: 
+14) For extra difficult NAT/FWs, consider implementing Websockets.

@@ -739,8 +739,14 @@ public:
 		throw(WrongStunBufferFormatException) {
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
-		return (0< stun_check_message_integrity_str(ct,_buffer, _sz,
-				(u08bits *)uname.c_str(), (u08bits *)realm.c_str(), (u08bits *)upwd.c_str()));
+		u08bits *suname=(u08bits*)strdup(uname.c_str());
+		u08bits *srealm=(u08bits*)strdup(realm.c_str());
+		u08bits *supwd=(u08bits*)strdup(upwd.c_str());
+		bool ret = (0< stun_check_message_integrity_str(ct,_buffer, _sz, suname, srealm, supwd));
+		free(suname);
+		free(srealm);
+		free(supwd);
+		return ret;
 	}
 
 	/**
@@ -752,8 +758,17 @@ public:
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 
-		stun_attr_add_integrity_by_user_str(_buffer, &_sz,
-			(u08bits *)uname.c_str(), (u08bits *)realm.c_str(), (u08bits *)upwd.c_str(), (u08bits *)nonce.c_str());
+		u08bits *suname=(u08bits*)strdup(uname.c_str());
+		u08bits *srealm=(u08bits*)strdup(realm.c_str());
+		u08bits *supwd=(u08bits*)strdup(upwd.c_str());
+		u08bits *snonce=(u08bits*)strdup(nonce.c_str());
+
+		stun_attr_add_integrity_by_user_str(_buffer, &_sz, suname, srealm, supwd, snonce);
+
+		free(suname);
+		free(srealm);
+		free(supwd);
+		free(snonce);
 	}
 
 	/**
@@ -765,8 +780,13 @@ public:
 		if(!_constructed || !isCommand())
 			throw WrongStunBufferFormatException();
 
-		stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz,
-			(u08bits *)uname.c_str(), (u08bits *)upwd.c_str());
+		u08bits *suname=(u08bits*)strdup(uname.c_str());
+		u08bits *supwd=(u08bits*)strdup(upwd.c_str());
+
+		stun_attr_add_integrity_by_user_short_term_str(_buffer, &_sz, suname, supwd);
+
+		free(suname);
+		free(supwd);
 	}
 
 protected:
@@ -1012,7 +1032,7 @@ public:
 protected:
 	virtual void constructBuffer() {
 		if(_err) {
-			stun_init_error_response_str(_method, _buffer, &_sz, _err, (u08bits*)_reason.c_str(), &_tid);
+			stun_init_error_response_str(_method, _buffer, &_sz, _err, (const u08bits*)_reason.c_str(), &_tid);
 		} else {
 			stun_init_success_response_str(_method, _buffer, &_sz, &_tid);
 		}

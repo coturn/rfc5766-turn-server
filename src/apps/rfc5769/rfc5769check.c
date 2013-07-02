@@ -300,7 +300,7 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 
-			make_ioa_addr((u08bits*)"192.0.2.1", 32853, &addr4_test);
+			make_ioa_addr((const u08bits*)"192.0.2.1", 32853, &addr4_test);
 			if(addr_eq(&addr4,&addr4_test)) {
 				printf("success\n");
 			} else {
@@ -389,7 +389,7 @@ int main(int argc, const char **argv)
 				exit(-1);
 			}
 
-			make_ioa_addr((u08bits*) "2001:db8:1234:5678:11:2233:4455:6677", 32853, &addr6_test);
+			make_ioa_addr((const u08bits*) "2001:db8:1234:5678:11:2233:4455:6677", 32853, &addr6_test);
 			if (addr_eq(&addr6, &addr6_test)) {
 				printf("success\n");
 			} else {
