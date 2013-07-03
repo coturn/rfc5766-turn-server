@@ -42,10 +42,13 @@ extern "C" {
 
 //////////////// session info //////////////////////
 
+typedef u64bits turnsession_id;
+
 #define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
 
 typedef struct {
   void* server; 
+  turnsession_id id;
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
   allocation alloc;

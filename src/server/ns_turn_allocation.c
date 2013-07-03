@@ -46,7 +46,7 @@ void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   }
 }
 
-void clean_allocation(allocation *a)
+void clear_allocation(allocation *a)
 {
 	if (a) {
 
@@ -59,7 +59,7 @@ void clean_allocation(allocation *a)
 		}
 
 		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
-		delete_ur_map_session_elem_data(&(a->relay_session));
+		clear_ts_ur_session_data(&(a->relay_session));
 
 		IOA_EVENT_DEL(a->lifetime_ev);
 

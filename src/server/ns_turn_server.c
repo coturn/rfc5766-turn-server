@@ -50,6 +50,10 @@ int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 struct _turn_turnserver {
 
 	turnserver_id id;
+
+	turnsession_id session_id_counter;
+	ur_map *sessions_map;
+
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
@@ -213,10 +217,43 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
 
 /////////// SS /////////////////
 
+static void put_session_into_map(ts_ur_super_session *ss)
+{
+	if(ss) {
+		turn_turnserver* server = (turn_turnserver*)(ss->server);
+		if(!(ss->id)) {
+			ss->id = ++(server->session_id_counter);
+		}
+		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
+	}
+
+}
+
+static void delete_session_from_map(ts_ur_super_session *ss)
+{
+	if(ss && ss->server) {
+		turn_turnserver* server = (turn_turnserver*)(ss->server);
+		ur_map_del(server->sessions_map, (ur_map_key_type)(ss->id), NULL);
+	}
+}
+
+static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnsession_id sid)
+{
+	ts_ur_super_session *ss = NULL;
+	if(server) {
+		ur_map_value_type value = 0;
+		if(ur_map_get(server->sessions_map, (ur_map_key_type)sid, &value) && value) {
+			ss = (ts_ur_super_session*)value;
+		}
+	}
+	return ss;
+}
+
 static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
+	put_session_into_map(ss);
 	init_allocation(ss,&(ss->alloc), server->tcp_relay_connections);
 	return ss;
 }
@@ -224,8 +261,9 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 static void delete_ur_map_ss(void *p) {
 	if (p) {
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
-		delete_ur_map_session_elem_data(&(ss->client_session));
-		clean_allocation(get_allocation_ss(ss));
+		delete_session_from_map(ss);
+		clear_ts_ur_session_data(&(ss->client_session));
+		clear_allocation(get_allocation_ss(ss));
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 		turn_free(p,sizeof(ts_ur_super_session));
 	}
@@ -1899,24 +1937,26 @@ static int create_challenge_response(turn_turnserver *server,
 #define min(a,b) ((a)<=(b) ? (a) : (b))
 #endif
 
-static void resume_processing_after_username_check(int success,  hmackey_t hmackey, st_password_t pwd, void *ctx, ioa_net_data *in_buffer)
+static void resume_processing_after_username_check(int success,  hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer)
 {
 
-	if(ctx && in_buffer && in_buffer->nbh) {
+	if(server && in_buffer && in_buffer->nbh) {
 
-		ts_ur_super_session *ss = (ts_ur_super_session*)ctx;
-		turn_turnserver *server = (turn_turnserver *)ss->server;
-		ts_ur_session *elem = &(ss->client_session);
+		ts_ur_super_session *ss = get_session_from_map(server,(turnsession_id)ctxkey);
+		if(ss) {
+			turn_turnserver *server = (turn_turnserver *)ss->server;
+			ts_ur_session *elem = &(ss->client_session);
 
-		if(success) {
-			ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
-			ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
+			if(success) {
+				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
+				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
+			}
+
+			read_client_connection(server,elem,ss,in_buffer,0);
+
+			ioa_network_buffer_delete(server->e, in_buffer->nbh);
+			in_buffer->nbh=NULL;
 		}
-
-		read_client_connection(server,elem,ss,in_buffer,0);
-
-		ioa_network_buffer_delete(server->e, in_buffer->nbh);
-		in_buffer->nbh=NULL;
 	}
 }
 
@@ -2049,7 +2089,7 @@ static int check_stun_auth(turn_turnserver *server,
 	if((ss->hmackey[0] == 0) && (ss->pwd[0] == 0)) {
 		ur_string_map_value_type ukey = NULL;
 		if(can_resume) {
-			ukey = (server->userkeycb)(server->id, uname, resume_processing_after_username_check, in_buffer, ss, postpone_reply);
+			ukey = (server->userkeycb)(server->id, uname, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
@@ -2712,7 +2752,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 	turn_turnserver* server = (turn_turnserver*) (ss->server);
 
 	if (!server) {
-		clean_allocation(a);
+		clear_allocation(a);
 		return;
 	}
 
@@ -3220,6 +3260,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	ns_bzero(server,sizeof(turn_turnserver));
 
 	server->id = id;
+	server->session_id_counter = 0;
+	server->sessions_map = ur_map_create();
 	server->tcp_relay_connections = ur_map_create();
 	server->ct = ct;
 	STRCPY(server->realm,realm);

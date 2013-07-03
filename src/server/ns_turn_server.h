@@ -68,8 +68,8 @@ typedef enum {
 	DONT_FRAGMENT_SUPPORT_EMULATED
 } dont_fragment_option_t;
 
-typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_password_t pwd, void *ctx, ioa_net_data *in_buffer);
-typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, void *ctx, int *postpone_reply);
+typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer);
+typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
 typedef int (*send_cb_socket_to_relay_cb)(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity);

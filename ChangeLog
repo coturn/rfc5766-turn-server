@@ -1,6 +1,7 @@
-06/26/2013 Oleg Moskalenko <mom040267@gmail.com> 
-Version 1.8.7.1 'Black Dow':
-	- sockets can be "detached" from the current thread.
+07/01/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 1.8.8.1 'Black Dow':
+	- multithreaded TCP relay implemented.
+	- race condition fixed in authentication of TCP sessions. 
 
 06/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com> 

@@ -65,7 +65,7 @@ typedef struct
 	int known_mtu;
 } ts_ur_session;
 
-static inline void delete_ur_map_session_elem_data(ts_ur_session* cdi)
+static inline void clear_ts_ur_session_data(ts_ur_session* cdi)
 {
 	if (cdi)
 		IOA_CLOSE_SOCKET(cdi->s);
@@ -165,7 +165,7 @@ void turn_channel_delete(ch_info* chn);
 /////////// ALLOCATION ////////////
 
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections);
-void clean_allocation(allocation *a);
+void clear_allocation(allocation *a);
 
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time_interval, ioa_timer_handle ev);
 int is_allocation_valid(const allocation* a);

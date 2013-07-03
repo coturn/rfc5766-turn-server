@@ -549,7 +549,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 		}
 		break;
 		case RMT_USER_AUTH_INFO: {
-			sm.m.am.resume_func(sm.m.am.success, sm.m.am.key, sm.m.am.pwd, sm.m.am.ctx, &(sm.m.am.in_buffer));
+			sm.m.am.resume_func(sm.m.am.success, sm.m.am.key, sm.m.am.pwd, rs->server, sm.m.am.ctxkey, &(sm.m.am.in_buffer));
 			if(sm.m.am.in_buffer.nbh) {
 				ioa_network_buffer_delete(rs->ioa_eng, sm.m.am.in_buffer.nbh);
 				sm.m.am.in_buffer.nbh=NULL;
