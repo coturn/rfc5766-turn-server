@@ -735,6 +735,8 @@ static int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
+static unsigned int _sc = 0;
+
 ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_handle parent_s, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
@@ -763,6 +765,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+	printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
@@ -1098,6 +1101,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+	printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
@@ -1330,6 +1334,8 @@ void close_ioa_socket(ioa_socket_handle s)
 		}
 		s->done = 1;
 
+		printf("%s: 111.111: %u\n",__FUNCTION__,_sc--);
+
 		while(!buffer_list_empty(&(s->bufs)))
 			pop_elem_from_buffer_list(&(s->bufs));
 
@@ -1361,26 +1367,23 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 			return ret;
 		}
 
-		ioa_network_buffer_delete(s->e, s->defer_nbh);
-
 		detach_socket_net_data(s);
 
-		while(!buffer_list_empty(&(s->bufs)))
-			pop_elem_from_buffer_list(&(s->bufs));
-
-		s->e = NULL;
-		s->read_cb = NULL;
-		s->read_ctx = NULL;
-		s->session = NULL;
-		s->sub_session = NULL;
-		s->conn_cb = NULL;
-		s->conn_arg = NULL;
-		s->acb = NULL;
-		s->acbarg = NULL;
-
 		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+		printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
+		ns_bzero(ret,sizeof(ioa_socket));
 
-		ns_bcopy(s,ret,sizeof(ioa_socket));
+		ret->ssl = s->ssl;
+		ret->fd = s->fd;
+
+		ret->family = s->family;
+		ret->st = s->st;
+		ret->sat = s->sat;
+		ret->bound = s->bound;
+		ret->local_addr_known = s->local_addr_known;
+		addr_cpy(&(ret->local_addr),&(s->local_addr));
+		ret->connected = s->connected;
+		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
 		s->ssl = NULL;
 		s->fd = -1;
@@ -1737,21 +1740,19 @@ static int socket_input_worker(ioa_socket_handle s)
 		}
 	}
 
-	try_start:
-
 	if(!(s->e))
 		return 0;
-
-	try_again=0;
-	try_ok=0;
-
-	stun_buffer_list_elem *elem = new_blist_elem(s->e);
-	len = -1;
 
 	if(s->st == TENTATIVE_TCP_SOCKET) {
 		EVENT_DEL(s->read_event);
 		if(check_tentative_tls(s->fd)) {
 			s->st = TLS_SOCKET;
+			if(s->ssl) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: ssl already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
+			}
+			if(s->bev) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
+			}
 			s->ssl = SSL_new(s->e->tls_ctx);
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -1765,6 +1766,9 @@ static int socket_input_worker(ioa_socket_handle s)
 			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 		} else {
 			s->st = TCP_SOCKET;
+			if(s->bev) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
+			}
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
 							BEV_OPT_DEFER_CALLBACKS);
@@ -1774,6 +1778,17 @@ static int socket_input_worker(ioa_socket_handle s)
 			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 		}
 	}
+
+	try_start:
+
+	if(!(s->e))
+		return 0;
+
+	try_again=0;
+	try_ok=0;
+
+	stun_buffer_list_elem *elem = new_blist_elem(s->e);
+	len = -1;
 
 	if(s->bev) { /* TCP & TLS */
 		struct evbuffer *inbuf = bufferevent_get_input(s->bev);
@@ -1925,27 +1940,32 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 		return;
 	}
 
+	close_ioa_socket_after_processing_if_necessary(s);
+}
+
+void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
+{
 	if (ioa_socket_tobeclosed(s)) {
-		switch(s->sat) {
+		switch (s->sat){
 		case TCP_CLIENT_DATA_SOCKET:
 		case TCP_RELAY_DATA_SOCKET:
 		{
-			tcp_connection *tc = (tcp_connection *)(s->sub_session);
-			if(tc) {
+			tcp_connection *tc = (tcp_connection *) (s->sub_session);
+			if (tc) {
 				s->sub_session = NULL;
 				s->session = NULL;
 				delete_tcp_connection(tc);
 			}
 		}
-		break;
+			break;
 		default:
 		{
-			ts_ur_super_session *ss = (ts_ur_super_session *)(s->session);
+			ts_ur_super_session *ss = (ts_ur_super_session *) (s->session);
 			if (ss) {
-				turn_turnserver *server = (turn_turnserver *)ss->server;
+				turn_turnserver *server = (turn_turnserver *) ss->server;
 				if (server) {
-					s->session=NULL;
-					s->sub_session=NULL;
+					s->session = NULL;
+					s->sub_session = NULL;
 					shutdown_client_connection(server, ss);
 				}
 			}

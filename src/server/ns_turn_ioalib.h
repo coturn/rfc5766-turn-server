@@ -202,6 +202,7 @@ int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);
 int ioa_socket_tobeclosed(ioa_socket_handle s);
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
+void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);
 
 void* create_ioa_socket_channel(ioa_socket_handle s, void *channel_info);
 void refresh_ioa_socket_channel(void *socket_channel);

@@ -249,7 +249,10 @@ static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnse
 	return ss;
 }
 
+static unsigned int ssc=0;
+
 static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
+	printf("%s: 111.111: %u\n",__FUNCTION__,ssc++);
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
@@ -260,6 +263,7 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 
 static void delete_ur_map_ss(void *p) {
 	if (p) {
+		printf("%s: 111.111: %u\n",__FUNCTION__,ssc--);
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_session_from_map(ss);
 		clear_ts_ur_session_data(&(ss->client_session));
@@ -1326,7 +1330,6 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 			} else {
 				send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
 			}
-			close_ioa_socket(s);
 			FUNCEND;
 			return -1;
 		}
@@ -1956,6 +1959,8 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 
 			ioa_network_buffer_delete(server->e, in_buffer->nbh);
 			in_buffer->nbh=NULL;
+
+			close_ioa_socket_after_processing_if_necessary(ss->client_session.s);
 		}
 	}
 }
