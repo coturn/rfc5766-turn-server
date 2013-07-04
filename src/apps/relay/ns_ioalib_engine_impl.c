@@ -158,6 +158,8 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 	}
 }
 
+
+
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 {
 	stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
@@ -735,8 +737,6 @@ static int set_socket_options(ioa_socket_handle s)
 
 /* <<== Socket options helpers */
 
-static unsigned int _sc = 0;
-
 ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_handle parent_s, int family, SOCKET_TYPE st, SOCKET_APP_TYPE sat)
 {
 	evutil_socket_t fd = -1;
@@ -765,7 +765,6 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
@@ -1101,7 +1100,6 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-	printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->fd = fd;
@@ -1334,8 +1332,6 @@ void close_ioa_socket(ioa_socket_handle s)
 		}
 		s->done = 1;
 
-		printf("%s: 111.111: %u\n",__FUNCTION__,_sc--);
-
 		while(!buffer_list_empty(&(s->bufs)))
 			pop_elem_from_buffer_list(&(s->bufs));
 
@@ -1369,8 +1365,12 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		detach_socket_net_data(s);
 
+		while(!buffer_list_empty(&(s->bufs)))
+					pop_elem_from_buffer_list(&(s->bufs));
+
+		ioa_network_buffer_delete(s->e, s->defer_nbh);
+
 		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
-		printf("%s: 111.111: %u\n",__FUNCTION__,_sc++);
 		ns_bzero(ret,sizeof(ioa_socket));
 
 		ret->ssl = s->ssl;

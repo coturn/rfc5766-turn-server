@@ -1,6 +1,8 @@
 Minor stuff:
 
 0) hiredis heart beat requests
+1) UDP sockets optimization
+2) run mtrace
 
 More serious stuff: 
 

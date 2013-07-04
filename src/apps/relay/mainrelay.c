@@ -2112,7 +2112,7 @@ static int adminmain(int argc, char **argv)
 	return adminuser(user, realm, pwd, secret, ct, is_st);
 }
 
-static void printf_features(void)
+static void print_features(void)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\n");
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "version %s\n",TURN_SOFTWARE);
@@ -2137,7 +2137,7 @@ static void printf_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
-#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if defined(TURN_UDP_SOCKET_CONNECT_BUG) || defined(TURN_NO_THREADS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: disabled\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: enabled\n");
@@ -2161,7 +2161,7 @@ static void printf_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "MySQL is not supported\n");
 #endif
 
-#if defined(OPENSSL_THREADS)
+#if defined(OPENSSL_THREADS) && !defined(TURN_NO_THREADS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading is not supported\n");
@@ -2235,7 +2235,7 @@ int main(int argc, char **argv)
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
 
-	printf_features();
+	print_features();
 
 	read_config_file(argc,argv,0);
 

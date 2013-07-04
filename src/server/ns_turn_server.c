@@ -249,10 +249,7 @@ static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnse
 	return ss;
 }
 
-static unsigned int ssc=0;
-
 static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
-	printf("%s: 111.111: %u\n",__FUNCTION__,ssc++);
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
@@ -263,7 +260,6 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 
 static void delete_ur_map_ss(void *p) {
 	if (p) {
-		printf("%s: 111.111: %u\n",__FUNCTION__,ssc--);
 		ts_ur_super_session* ss = (ts_ur_super_session*) p;
 		delete_session_from_map(ss);
 		clear_ts_ur_session_data(&(ss->client_session));
@@ -1327,6 +1323,7 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 			/* Just to set the necessary structures for the packet sending: */
 			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, NULL, NULL, 1)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP tmp client data input callback\n", __FUNCTION__);
+				ioa_network_buffer_delete(server->e, nbh);
 			} else {
 				send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
 			}
@@ -2958,6 +2955,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
 			FUNCEND;
+			ioa_network_buffer_delete(server->e, nbh);
 			return 0;
 		}
 
