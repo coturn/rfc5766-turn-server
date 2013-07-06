@@ -476,7 +476,10 @@ static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, voi
 #endif
 
 static evutil_socket_t udp_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
+
+#if !defined(TURN_NO_DTLS)
 static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
+#endif
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
@@ -724,6 +727,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 ///////////////////// operations //////////////////////////
 
+#if !defined(TURN_NO_DTLS)
+
 static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
 
   FUNCSTART;
@@ -783,6 +788,8 @@ static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_se
 
   return pinfo->fd;
 }
+
+#endif
 
 static evutil_socket_t udp_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
 

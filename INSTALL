@@ -198,11 +198,11 @@ The following platforms have been used in the development:
 	- Linux Debian 'Squeeze', i386
 	- Linux Mint 14.1 'Nadia', i386
 	- Linux Debian 'Wheezy', x86_64 
-	- Cygwin 1.7.17
+	- Cygwin 1.7.20
 	- NetBSD 6.0.1
 	- OpenBSD 5.3
 	- Amazon Linux
-	- Mac OS X
+	- Mac OS X Mountain Lion
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
