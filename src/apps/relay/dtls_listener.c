@@ -475,7 +475,8 @@ static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, voi
 
 #endif
 
-static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
+static evutil_socket_t udp_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
+static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
@@ -549,7 +550,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 			addr_cpy(&(info.remote_addr), &client_addr);
 			addr_cpy(&(info.local_addr), &(server->addr));
 
-			if (open_client_connection_socket(server, &info) >= 0) {
+			if (udp_open_client_connection_socket(server, &info) >= 0) {
 
 				ioa_socket_handle ioas = create_ioa_socket_from_fd(server->e,
 								info.fd, server->udp_listen_s,
@@ -651,7 +652,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		addr_cpy(&(info.local_addr), &(server->addr));
 		info.ssl = connecting_ssl;
 
-		if ((open_client_connection_socket(server, &info) >= 0) && info.ssl) {
+		if ((dtls_open_client_connection_socket(server, &info) >= 0) && info.ssl) {
 
 			new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
 			ns_bzero(ndc, sizeof(new_dtls_conn));
@@ -723,7 +724,67 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 ///////////////////// operations //////////////////////////
 
-static evutil_socket_t open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
+static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
+
+  FUNCSTART;
+
+  if(!server) return -1;
+
+  if(!pinfo) return -1;
+
+  if(server->verbose)
+  {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: AF: %d:%d\n",__FUNCTION__,
+	   (int)pinfo->remote_addr.ss.ss_family,(int)server->addr.ss.ss_family);
+  }
+
+  if(pinfo->remote_addr.ss.ss_family != server->addr.ss.ss_family)
+	  return -1;
+
+  pinfo->fd = socket(pinfo->remote_addr.ss.ss_family, SOCK_DGRAM, 0);
+  if (pinfo->fd < 0) {
+    perror("socket");
+    return -1;
+  }
+
+  if(sock_bind_to_device(pinfo->fd, (unsigned char*)server->ifname)<0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind client socket to device %s\n",server->ifname);
+  }
+
+  set_sock_buf_size(pinfo->fd,UR_CLIENT_SOCK_BUF_SIZE);
+
+  socket_set_reusable(pinfo->fd);
+
+  if(server->verbose) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Binding socket %d to addr\n",pinfo->fd);
+	  addr_debug_print(server->verbose,&server->addr,"Bind to");
+  }
+
+  if(addr_bind(pinfo->fd,&server->addr)<0) {
+    evutil_closesocket(pinfo->fd);
+    pinfo->fd=-1;
+    return -1;
+  }
+
+  if(addr_connect(pinfo->fd,&pinfo->remote_addr,NULL)<0) {
+    evutil_closesocket(pinfo->fd);
+    pinfo->fd=-1;
+    return -1;
+  }
+
+  addr_debug_print(server->verbose, &pinfo->remote_addr,"UDP connected to");
+
+  evutil_make_socket_nonblocking(pinfo->fd);
+
+  if(server->dtls_ctx)
+	  set_socket_df(pinfo->fd, pinfo->remote_addr.ss.ss_family, 1);
+
+  FUNCEND;
+
+  return pinfo->fd;
+}
+
+static evutil_socket_t udp_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo) {
 
   FUNCSTART;
 
