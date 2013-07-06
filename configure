@@ -19,10 +19,11 @@ cleanup() {
 	rm -rf ${E_TMPCPROGO}
 	rm -rf ${HR_TMPCPROGC}
 	rm -rf ${HR_TMPCPROGB}
+	rm -rf ${TMPCADDRPROGO}
 }
 
 testlibraw() {
-    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>/dev/null
+    ${CC} ${TMPCPROGC} -o ${TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -${1} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "Do not use -${1}"
@@ -34,7 +35,7 @@ testlibraw() {
 }
 
 testlibevent2_comp() {
-    ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>/dev/null
+    ${CC} -c ${E_TMPCPROGC} -o ${E_TMPCPROGO} ${OSCFLAGS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "Libevent2 development is not installed properly"
@@ -47,7 +48,7 @@ testlibevent2_comp() {
 testhiredis() {
 	HIREDISCFLAGS=
 	HIREDISLIBS=-lhiredis
-    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>/dev/null
+    ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD}
@@ -74,7 +75,7 @@ testlibpq() {
       fi
     done
     POSTLIBS="${OSLIBS} ${POSTLIBS} -lpq"
-    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>/dev/null 
+    ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>>/dev/null 
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD}
@@ -101,7 +102,7 @@ testlibmysql() {
       fi
     done
     MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
-    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>/dev/null
+    ${CC} ${MYSQL_TMPCPROGC} -o ${MYSQL_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${DBLIBS} ${MYSQL_CFLAGS} ${MYSQL_LIBS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
     	${ECHO_CMD}
@@ -124,18 +125,18 @@ testlib() {
 pthread_testlib() {
 
     if [ -z "${PTHREAD_LIBS}" ] ; then
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
     		return 1
     	else
-    		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>/dev/null
+    		${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -pthread 2>>/dev/null
     		ER=$?
     		if [ ${ER} -eq 0 ] ; then
     			OSLIBS="${OSLIBS} -pthread"
     			return 1
     		else
-    			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>/dev/null
+    			${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -lpthread 2>>/dev/null
     			ER=$?
     			if [ ${ER} -eq 0 ] ; then
     				OSLIBS="${OSLIBS} -lpthread"
@@ -148,12 +149,12 @@ pthread_testlib() {
     fi
 		
 
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
     	return 1
     else
-    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>/dev/null
+    	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} -D_GNU_SOURCE 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
 	    	${ECHO_CMD} "Older GNU pthread library found"
@@ -170,7 +171,7 @@ pthread_testlib() {
 pthread_testbarriers() {
 
     ${ECHO_CMD} "pthread_barrier_t barrier;" >> ${TH_TMPCPROGC}
-    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    ${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 		${ECHO_CMD} "pthread barriers not found"
@@ -181,7 +182,7 @@ pthread_testbarriers() {
 dtls_testlib() {
 
     if [ -z "${TURN_NO_DTLS}" ] ; then
-    	${CC} ${DTLS_TMPCPROGC} -o ${DTLS_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+    	${CC} ${DTLS_TMPCPROGC} -o ${DTLS_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
     	if [ ${ER} -eq 0 ] ; then
     	    return 1
@@ -195,11 +196,29 @@ dtls_testlib() {
 
 testdaemon() {
 
-	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>/dev/null
+	${CC} ${D_TMPCPROGC} -o ${D_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
-	    OSCFLAGS="${OSCFLAGS} -DHAS_DAEMON"
+	    OSCFLAGS="${OSCFLAGS} -DTURN_HAS_DAEMON"
 	fi
+}
+
+test_sin_len() {
+    TMPCADDRPROGC=src/client/ns_turn_ioaddr.c
+    ${CC} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+	OSCFLAGS="${OSCFLAGS} -DTURN_HAS_SIN_LEN"
+	${ECHO_CMD} "Sockets code is fine: sin_len field present"
+    else
+	${CC} -c ${OSCFLAGS} ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+	ER=$?
+	if [ ${ER} -eq 0 ] ; then
+	    ${ECHO_CMD} "Sockets code is fine: no sin_len field present"
+	else
+	    ${ECHO_CMD} "WARNING: trial compilation failed: src/client/ns_turn_ioaddr.c"
+	fi
+    fi
 }
 
 #########################
@@ -430,7 +449,7 @@ fi
 # Install shell commands
 ###########################
 
-type ginstall 2>/dev/null
+type ginstall 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
 	INSTALL_PROGRAM="ginstall"
@@ -441,7 +460,7 @@ if [ ${ER} -eq 0 ] ; then
 	INSTALL_DATA="ginstall"
 	MKDIR="ginstall -d"
 else
-	type install 2>/dev/null
+	type install 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 		INSTALL_PROGRAM="install"
@@ -462,7 +481,7 @@ else
 	fi
 fi
 
-type pkill 2>/dev/null
+type pkill 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
 	PKILL_PROGRAM="pkill"
@@ -474,12 +493,12 @@ INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
 
-type more 2>/dev/null
+type more 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
     MORECMD="more"
 else
-    type less 2>/dev/null
+    type less 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 		MORECMD="less"
@@ -516,6 +535,8 @@ ${ECHO_CMD} Use TMP dir ${TMPDIR}
 #########################
 # Basic C test programs
 #########################
+
+TMPCADDRPROGO=${TMPDIR}/__test__ccomp_addr_$$.o
 
 TMPCPROG=__test__ccomp__$$
 TMPCPROGC=${TMPDIR}/${TMPCPROG}.c
@@ -625,15 +646,15 @@ int main(int argc, char** argv) {
 
 if [ -z "${CC}" ] ; then
     CC=cc
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 		CC=gcc
-    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    	${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 		ER=$?
 		if ! [ ${ER} -eq 0 ] ; then
 			CC=clang
-    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    		${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 			ER=$?
 			if ! [ ${ER} -eq 0 ] ; then
 				CC=unknown
@@ -659,18 +680,18 @@ fi
 
 GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
 
-${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     ${ECHO_CMD} "Hm..."
-    ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+    ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
 	${ECHO_CMD} "g++ or something..."
 	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>/dev/null
+	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 	    ${ECHO_CMD} "Not an ordinary g++ compiler"
@@ -701,6 +722,12 @@ if ! [ ${ER} -eq 0 ] ; then
 fi
 testlib wldap64
 testlib intl
+
+###########################
+# Test sockets compilation
+###########################
+
+test_sin_len
 
 ###########################
 # Can we use multi-threading ?

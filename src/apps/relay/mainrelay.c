@@ -2364,7 +2364,7 @@ int main(int argc, char **argv)
 	}
 
 	if(turn_daemon) {
-#if !defined(HAS_DAEMON)
+#if !defined(TURN_HAS_DAEMON)
 		pid_t pid = fork();
 		if(pid>0)
 			exit(0);

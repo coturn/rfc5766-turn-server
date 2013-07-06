@@ -165,7 +165,7 @@ int make_ioa_addr(const u08bits* saddr, int port, ioa_addr *addr) {
   if((strlen((const s08bits*)saddr) == 0)||
      (inet_pton(AF_INET, (const s08bits*)saddr, &addr->s4.sin_addr) == 1)) {
     addr->s4.sin_family = AF_INET;
-#if defined(__BSD_VISIBLE) /* no easy test for this one */
+#if defined(TURN_HAS_SIN_LEN) /* tested when configured */
     addr->s4.sin_len = sizeof(struct sockaddr_in);
 #endif
     addr->s4.sin_port = nswap16(port);
