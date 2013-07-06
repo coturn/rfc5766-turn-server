@@ -373,8 +373,6 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 									"client_ss_channel_timeout_handler");
 				}
 
-				refresh_ioa_socket_channel(chn->socket_channel);
-
 				return 0;
 			}
 		}
@@ -833,7 +831,7 @@ static void tcp_peer_data_input_handler(ioa_socket_handle s, int event_type, ioa
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
-	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	}
@@ -857,7 +855,7 @@ static void tcp_client_data_input_handler(ioa_socket_handle s, int event_type, i
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
-	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	}
@@ -1316,7 +1314,7 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 		}
 
 		if(ss && !err_code) {
-			send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			FUNCEND;
 			return 0;
 		} else {
@@ -1325,7 +1323,7 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP tmp client data input callback\n", __FUNCTION__);
 				ioa_network_buffer_delete(server->e, nbh);
 			} else {
-				send_data_from_ioa_socket_nbh(s, NULL, nbh, 0, NULL, TTL_IGNORE, TOS_IGNORE);
+				send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			}
 			FUNCEND;
 			return -1;
@@ -1467,10 +1465,6 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 								*err_code = 500;
 								*reason
 									= (const u08bits *) "Wrong turn permission info";
-							}
-							if (!(chn->socket_channel)) {
-								chn->socket_channel = create_ioa_socket_channel(
-									get_relay_socket(a), chn);
 							}
 						}
 					}
@@ -1775,7 +1769,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				ns_bcopy(value,ioa_network_buffer_data(nbh),len);
 				ioa_network_buffer_header_init(nbh);
 				ioa_network_buffer_set_size(nbh,len);
-				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, 1, NULL, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;
 			}
 
@@ -2620,7 +2614,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 				  ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
 			ioa_network_buffer_header_init(nbh);
 			ioa_network_buffer_set_size(nbh,ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
-			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, 1, chn->socket_channel, in_buffer->recv_ttl-1, in_buffer->recv_tos);
+			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 			in_buffer->nbh = NULL;
 		}
 	}
@@ -2730,7 +2724,7 @@ static int write_client_connection(turn_turnserver *server, ts_ur_super_session*
 				(long) (elem->s));
 		}
 
-		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, 0, NULL, ttl, tos);
+		int ret = send_data_from_ioa_socket_nbh(elem->s, NULL, nbh, ttl, tos);
 
 		FUNCEND;
 		return ret;

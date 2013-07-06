@@ -1138,117 +1138,6 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 	return ret;
 }
 
-static void channel_input_handler(ioa_socket_handle s, int event_type,
-		ioa_net_data *in_buffer, void *arg) {
-
-	if (!(event_type & IOA_EV_READ) || !arg)
-		return;
-
-	ch_info* chn = (ch_info*)arg;
-
-	ts_ur_super_session* ss = (ts_ur_super_session*)s->session;
-
-	if(!ss) return;
-
-	turn_turnserver *server = (turn_turnserver *)ss->server;
-
-	if (!server) {
-		return;
-	}
-
-	int offset = STUN_CHANNEL_HEADER_LENGTH;
-
-	int ilen = min((int)ioa_network_buffer_get_size(in_buffer->nbh),
-					(int)(ioa_network_buffer_get_capacity() - offset));
-
-	if (ilen >= 0) {
-
-		size_t len = (size_t)(ilen);
-
-		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
-		int do_padding = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
-
-		u16bits chnum = chn->chnum;
-
-		if (chnum) {
-
-			ioa_network_buffer_handle nbh = in_buffer->nbh;
-			ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
-			ioa_network_buffer_header_init(nbh);
-			stun_init_channel_message_str(chnum, ioa_network_buffer_data(nbh), &len, len, do_padding);
-
-			ioa_network_buffer_set_size(nbh,len);
-			in_buffer->nbh = NULL;
-			if (eve(s->e->verbose)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-						"%s: send channel 0x%x\n", __FUNCTION__,
-						(int) (chnum));
-			}
-
-			++(ss->sent_packets);
-			ss->sent_bytes += (u32bits)len;
-			turn_report_session_usage(ss);
-
-			send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh, 0, NULL, in_buffer->recv_ttl-1, in_buffer->recv_tos);
-		}
-	}
-}
-
-void refresh_ioa_socket_channel(void *socket_channel)
-{
-	UNUSED_ARG(socket_channel);
-}
-
-void *create_ioa_socket_channel(ioa_socket_handle s, void *channel_info)
-{
-  if(!use_colocated_udp_sockets) {
-	  return NULL;
-  } else {
-	ch_info *chn = (ch_info*)channel_info;
-
-	ioa_socket_handle cs = create_unbound_ioa_socket(s->e, NULL, s->local_addr.ss.ss_family, UDP_SOCKET, CHANNEL_SOCKET);
-	if (cs == NULL) {
-		perror("socket");
-		return NULL;
-	}
-
-	sock_bind_to_device(cs->fd, (unsigned char*)cs->e->relay_ifname);
-
-	if(bind_ioa_socket(cs, &(s->local_addr))<0) {
-		IOA_CLOSE_SOCKET(cs);
-		return NULL;
-	}
-
-	if (addr_connect(cs->fd, &(chn->peer_addr),NULL) < 0) {
-		IOA_CLOSE_SOCKET(cs);
-		return NULL;
-	}
-
-	addr_cpy(&(cs->remote_addr),&(chn->peer_addr));
-	cs->connected = 1;
-
-	set_ioa_socket_session(cs, s->session);
-
-	cs->do_not_use_df = s->do_not_use_df;
-
-	if(s->current_df_relay_flag)
-		set_df_on_ioa_socket(cs,s->current_df_relay_flag);
-
-	register_callback_on_ioa_socket(cs->e, cs, IOA_EV_READ, channel_input_handler, chn, 0);
-
-	return cs;
-  }
-}
-
-void delete_ioa_socket_channel(void **socket_channel)
-{
-	if(socket_channel) {
-	  ioa_socket_handle cs = (ioa_socket_handle)*socket_channel;
-	  IOA_CLOSE_SOCKET(cs);
-	  *socket_channel = NULL;
-	}
-}
-
 static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
@@ -2207,8 +2096,8 @@ int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffe
 }
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
-				ioa_network_buffer_handle nbh, int to_peer,
-				void *socket_channel, int ttl, int tos)
+				ioa_network_buffer_handle nbh,
+				int ttl, int tos)
 {
 	int ret = -1;
 	if (s->done || (s->fd == -1)) {
@@ -2224,8 +2113,6 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 			ret = (int)(ioa_network_buffer_get_size(nbh));
 		} else {
 			if (!ioa_socket_tobeclosed(s) && s->e) {
-				if (to_peer && socket_channel)
-				  s = (ioa_socket*)socket_channel; //Use dedicated socket
 
 				if (!(s->done || (s->fd == -1))) {
 					set_socket_ttl(s, ttl);

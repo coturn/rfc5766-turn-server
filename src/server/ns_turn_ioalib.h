@@ -89,7 +89,6 @@ enum _SOCKET_APP_TYPE {
 	CLIENT_SOCKET,
 	RELAY_SOCKET,
 	RELAY_RTCP_SOCKET,
-	CHANNEL_SOCKET,
 	TCP_CLIENT_DATA_SOCKET,
 	TCP_RELAY_DATA_SOCKET,
 	LISTENER_SOCKET
@@ -194,7 +193,7 @@ void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss);
 void *get_ioa_socket_sub_session(ioa_socket_handle s);
 void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc);
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx, int clean_preexisting);
-int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int to_peer, void *socket_channel, int ttl, int tos);
+int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int ttl, int tos);
 void close_ioa_socket(ioa_socket_handle s);
 ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)
@@ -203,10 +202,6 @@ void set_do_not_use_df(ioa_socket_handle s);
 int ioa_socket_tobeclosed(ioa_socket_handle s);
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);
-
-void* create_ioa_socket_channel(ioa_socket_handle s, void *channel_info);
-void refresh_ioa_socket_channel(void *socket_channel);
-void delete_ioa_socket_channel(void **socket_channel);
 
 ///////////////////////////////////////
 

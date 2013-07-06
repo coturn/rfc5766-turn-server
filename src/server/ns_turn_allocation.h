@@ -114,7 +114,6 @@ typedef struct _ch_info {
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   void *owner; //perm
-  void *socket_channel; //optimization
 } ch_info;
 
 typedef struct _perm_list {

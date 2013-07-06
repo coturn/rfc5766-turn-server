@@ -430,11 +430,9 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 
 static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
 {
-	static size_t current_relay_server = 0;
-
 	UNUSED_ARG(e);
 
-	current_relay_server = current_relay_server % get_real_relay_servers_number();
+	size_t dest = addr_hash(&(nd->src_addr)) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
 	ns_bzero(&sm,sizeof(struct message_to_relay));
@@ -444,8 +442,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	sm.m.sm.nbh = nd->nbh;
 	nd->nbh = NULL;
 	sm.m.sm.s = s;
-
-	size_t dest = current_relay_server++;
 
 	sm.m.sm.chnum = nd->chnum;
 
