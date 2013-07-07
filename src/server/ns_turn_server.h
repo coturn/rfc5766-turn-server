@@ -48,7 +48,6 @@ struct socket_message {
 	ioa_addr remote_addr;
 	ioa_socket_handle s;
 	ioa_network_buffer_handle nbh;
-	u16bits chnum;
 };
 
 struct cb_socket_message {

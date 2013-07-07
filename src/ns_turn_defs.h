@@ -150,14 +150,6 @@ typedef u32bits turn_time_t;
 		}\
 	} while(0)
 
-////////////////////////// UDP /////////////////////////
-
-#if !defined(TURN_UDP_SOCKET_CONNECT_BUG)
-#define use_colocated_udp_sockets (1)
-#else
-#define use_colocated_udp_sockets (0)
-#endif
-
 ////////////////////////////////////////////////////////
 
 #ifdef __cplusplus

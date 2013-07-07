@@ -273,7 +273,7 @@ static const double __ac_HASH_UPPER = 0.77;
 
 /* --- BEGIN OF HASH FUNCTIONS --- */
 
-#define kh_int_hash_func(key) ((u32bits)(key)+nswap32((u32bits)key))
+#define kh_int_hash_func(key) (u32bits)((key)>>11^(key)^(key)<<7)
 #define kh_int_hash_equal(a, b) (a == b)
 #define kh_int64_hash_func(key) (u32bits)((key)>>33^(key)^(key)<<11)
 #define kh_int64_hash_equal(a, b) (a == b)

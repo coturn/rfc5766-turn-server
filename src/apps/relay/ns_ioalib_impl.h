@@ -48,6 +48,7 @@
 #include "ns_turn_ioalib.h"
 #include "turn_ports.h"
 #include "ns_turn_maps_rtcp.h"
+#include "ns_turn_maps.h"
 
 #include "apputils.h"
 #include "stun_buffer.h"
@@ -108,7 +109,7 @@ struct _ioa_socket
 {
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
-	ur_addr_map *children_ss;
+	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;
 	ioa_network_buffer_handle defer_nbh;
 	int family;
@@ -179,7 +180,13 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
 void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
 
+void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
+void delete_socket_from_map(ioa_socket_handle s);
+
 int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len);
+
+int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
+int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 
 /////////////////////////////////////////////////
 

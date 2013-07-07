@@ -632,7 +632,7 @@ static int set_socket_tos(ioa_socket_handle s, int tos)
 	return 0;
 }
 
-static int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
+int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
 {
 	if (family == AF_INET6) {
 #if !defined(IPV6_RECVHOPLIMIT)
@@ -659,7 +659,7 @@ static int set_raw_socket_ttl_options(evutil_socket_t fd, int family)
 	return 0;
 }
 
-static int set_raw_socket_tos_options(evutil_socket_t fd, int family)
+int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 {
 	if (family == AF_INET6) {
 #if !defined(IPV6_RECVTCLASS)
@@ -1067,24 +1067,36 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 {
 	if(parent_s && s) {
-		if(!(parent_s->children_ss))
-			parent_s->children_ss = ur_addr_map_create(0);
-
-		ur_addr_map_put(parent_s->children_ss,
-				&(s->remote_addr),
-				(ur_addr_map_value_type)s);
-
+		delete_socket_from_parent(s->parent_s,s);
 		s->parent_s = parent_s;
 	}
 }
 
 void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 {
-	if(parent_s && s && parent_s->children_ss) {
-		ur_addr_map_del(parent_s->children_ss,
+	if(parent_s && s) {
+		s->parent_s = NULL;
+	}
+}
+
+void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
+{
+	if(amap && s) {
+		delete_socket_from_map(s);
+		ur_addr_map_put(amap,
+				&(s->remote_addr),
+				(ur_addr_map_value_type)s);
+		s->sockets_container = amap;
+	}
+}
+
+void delete_socket_from_map(ioa_socket_handle s)
+{
+	if(s && s->sockets_container) {
+		ur_addr_map_del(s->sockets_container,
 				&(s->remote_addr),
 				NULL);
-		s->parent_s = NULL;
+		s->sockets_container = NULL;
 	}
 }
 
@@ -1145,6 +1157,8 @@ static void close_socket_net_data(ioa_socket_handle s)
 			delete_socket_from_parent(s->parent_s, s);
 			return;
 		}
+
+		delete_socket_from_map(s);
 
 		EVENT_DEL(s->read_event);
 		if(s->list_ev) {
@@ -1762,7 +1776,6 @@ static int socket_input_worker(ioa_socket_handle s)
 				ns_bzero(&nd,sizeof(ioa_net_data));
 				addr_cpy(&(nd.src_addr),&remote_addr);
 				nd.nbh = elem;
-				nd.chnum = 0;
 				nd.recv_ttl = ttl;
 				nd.recv_tos = tos;
 
@@ -2073,8 +2086,10 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
 {
 	int rc = 0;
+
 	if (dest_addr) {
 		int slen = get_ioa_addr_len(dest_addr);
+
 		do {
 			rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
 		} while (rc < 0 && (errno == EINTR));
@@ -2100,6 +2115,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				int ttl, int tos)
 {
 	int ret = -1;
+
 	if (s->done || (s->fd == -1)) {
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_INFO,
@@ -2158,10 +2174,12 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									(s08bits*) ioa_network_buffer_data(nbh),
 									ioa_network_buffer_get_size(nbh));
 					} else if (s->fd >= 0) {
-						if (s->connected && !(s->parent_s))
+
+						if (s->connected && !(s->parent_s)) {
 							dest_addr = NULL; /* ignore dest_addr */
-						else if (!dest_addr)
+						} else if (!dest_addr) {
 							dest_addr = &(s->remote_addr);
+						}
 
 						ret = udp_send(s->fd,
 								dest_addr,

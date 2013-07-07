@@ -61,6 +61,7 @@
 #include <openssl/opensslv.h>
 
 #include "ns_turn_utils.h"
+#include "ns_turn_khash.h"
 
 #include "userdb.h"
 
@@ -85,7 +86,7 @@ static void openssl_cleanup(void);
 
 //////////// Barrier for the threads //////////////
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 static unsigned int barrier_count = 0;
 static pthread_barrier_t barrier;
 #endif
@@ -228,7 +229,7 @@ static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
 
-#if defined(TURN_NO_THREADS) || defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if defined(TURN_NO_THREADS)
 static turnserver_id relay_servers_number = 0;
 #else
 static turnserver_id relay_servers_number = 1;
@@ -260,6 +261,7 @@ struct relay_server {
 	struct bufferevent *out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
+	ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
 #if !defined(TURN_NO_THREADS)
 	pthread_t thr;
 #endif
@@ -438,7 +440,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	UNUSED_ARG(e);
 
-	size_t dest = addr_hash(&(nd->src_addr)) % get_real_relay_servers_number();
+	size_t dest = (kh_int_hash_func(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
 	ns_bzero(&sm,sizeof(struct message_to_relay));
@@ -448,8 +450,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	sm.m.sm.nbh = nd->nbh;
 	nd->nbh = NULL;
 	sm.m.sm.s = s;
-
-	sm.m.sm.chnum = nd->chnum;
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 	if(output)
@@ -502,15 +502,17 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 	struct message_to_relay sm;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
+	struct relay_server *rs = (struct relay_server *)ptr;
 
 	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 		if (n != sizeof(struct message_to_relay)) {
 			perror("Weird buffer error\n");
 			continue;
 		}
-		struct relay_server *rs = (struct relay_server *)ptr;
 		switch(sm.t) {
+
 		case RMT_SOCKET: {
+
 			if (sm.m.sm.s->defer_nbh) {
 				if (!sm.m.sm.nbh) {
 					sm.m.sm.nbh = sm.m.sm.s->defer_nbh;
@@ -523,19 +525,77 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 
 			ioa_socket_handle s = sm.m.sm.s;
 
-			if (s->read_event || s->bev) {
-				TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_ERROR,
-								"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
-								__FUNCTION__, (long) s->read_event,
-								(long) s->bev);
-				IOA_CLOSE_SOCKET(sm.m.sm.s);
-				return;
+			/* Special case: 'virtual' UDP socket */
+			if(get_ioa_socket_type(s) == UDP_SOCKET) {
+
+				ur_addr_map_value_type mvt = 0;
+				ur_addr_map *amap = NULL;
+				if((ur_addr_map_get(rs->children_ss,
+					get_local_addr_from_ioa_socket(s),
+					&mvt)>0) && mvt) {
+					amap = (ur_addr_map*)mvt;
+				}
+				if(!amap) {
+					amap = ur_addr_map_create(123457); /* large map */
+					mvt = (ur_addr_map_value_type)amap;
+					ur_addr_map_put(rs->children_ss, get_local_addr_from_ioa_socket(s), mvt);
+				}
+
+				mvt = 0;
+
+				ioa_socket_handle chs = 0;
+				if((ur_addr_map_get(amap,
+						&(sm.m.sm.remote_addr),
+						&mvt)>0) && mvt) {
+					chs = (ioa_socket_handle)mvt;
+				}
+
+				if(chs) {
+					s = chs;
+					if(s->read_cb) {
+						s->e = rs->ioa_eng;
+						ioa_net_data nd;
+						ns_bzero(&nd,sizeof(ioa_net_data));
+						nd.nbh = sm.m.sm.nbh;
+						sm.m.sm.nbh = NULL;
+						nd.recv_tos = TOS_IGNORE;
+						nd.recv_ttl = TTL_IGNORE;
+						addr_cpy(&(nd.src_addr),&(sm.m.sm.remote_addr));
+						s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
+						ioa_network_buffer_delete(rs->ioa_eng, nd.nbh);
+					}
+				} else {
+					chs = create_ioa_socket_from_fd(rs->ioa_eng,
+									s->fd,
+									s,
+									UDP_SOCKET, CLIENT_SOCKET,
+									&(sm.m.sm.remote_addr),
+									get_local_addr_from_ioa_socket(s));
+
+					if (chs) {
+						s = chs;
+						sm.m.sm.s = s;
+						s->e = rs->ioa_eng;
+						add_socket_to_map(s,amap);
+						open_client_connection_session(rs->server, &(sm.m.sm));
+					}
+				}
+
+			} else {
+
+				if (s->read_event || s->bev) {
+					TURN_LOG_FUNC(
+						TURN_LOG_LEVEL_ERROR,
+						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
+						__FUNCTION__, (long) s->read_event,
+						(long) s->bev);
+					IOA_CLOSE_SOCKET(s);
+				} else {
+					s->e = rs->ioa_eng;
+					open_client_connection_session(rs->server, &(sm.m.sm));
+				}
 			}
 
-			s->e = rs->ioa_eng;
-
-			open_client_connection_session(rs->server, &(sm.m.sm));
 			ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
 			sm.m.sm.nbh=NULL;
 
@@ -858,6 +918,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
+	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
@@ -888,7 +949,7 @@ static void *run_relay_thread(void *arg)
   
   setup_relay_server(rs, NULL);
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
 	  perror("barrier wait");
 #endif
@@ -904,7 +965,7 @@ static void setup_relay_servers(void)
 {
 	size_t i = 0;
 
-#if defined(TURN_NO_THREADS) || defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if defined(TURN_NO_THREADS)
 	relay_servers_number = 0;
 #endif
 
@@ -942,7 +1003,7 @@ static void* run_auth_server_thread(void *arg)
 {
 	struct event_base *eb = (struct event_base*)arg;
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
@@ -996,7 +1057,7 @@ static void setup_server(void)
 	evthread_use_pthreads();
 #endif
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth thread plus current (listener) thread */
 	barrier_count = relay_servers_number+2;
@@ -1009,7 +1070,7 @@ static void setup_server(void)
 	setup_relay_servers();
 	setup_auth_server();
 
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
@@ -1613,9 +1674,7 @@ static void set_option(int c, char *value)
 		STRCPY(relay_ifname, value);
 		break;
 	case 'm':
-#if defined(TURN_UDP_SOCKET_CONNECT_BUG)
-	  //No relay threads
-#elif defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported,\n I am using single thread.\n");
 #elif defined(OPENSSL_THREADS) 
 		relay_servers_number = atoi(value);
@@ -2135,7 +2194,7 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
-#if defined(TURN_UDP_SOCKET_CONNECT_BUG) || defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: disabled\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: enabled\n");
@@ -2212,7 +2271,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(1);
 
-#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_UDP_SOCKET_CONNECT_BUG)
+#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS)
 
 	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 

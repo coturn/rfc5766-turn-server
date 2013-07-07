@@ -112,7 +112,6 @@ typedef void *ioa_network_buffer_handle;
 typedef struct _ioa_net_data {
 	ioa_addr			src_addr;
 	ioa_network_buffer_handle	nbh;
-	u16bits				chnum;
 	int				recv_ttl;
 	int				recv_tos;
 } ioa_net_data;

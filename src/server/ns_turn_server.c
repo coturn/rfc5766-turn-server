@@ -3039,7 +3039,6 @@ int open_client_connection_session(turn_turnserver* server,
 		ns_bzero(&nd,sizeof(nd));
 		addr_cpy(&(nd.src_addr),&(sm->remote_addr));
 		nd.nbh = sm->nbh;
-		nd.chnum = sm->chnum;
 		nd.recv_ttl = TTL_IGNORE;
 		nd.recv_tos = TOS_IGNORE;
 
@@ -3094,22 +3093,16 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 		allocation* a = get_allocation_ss(ss);
 		if (is_allocation_valid(a)) {
 
-			u16bits chnum = in_buffer->chnum;
+			u16bits chnum = 0;
 
 			ioa_network_buffer_handle nbh = NULL;
 
-			if(!chnum) {
-				/*
-				 * If chnum hint is provided, then
-				 * we do not need to go through this expensive block.
-				 */
-				turn_permission_info* tinfo = allocation_get_permission(a,
-								&(in_buffer->src_addr));
-					if (tinfo) {
-						chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-					} else {
-						return;
-					}
+			turn_permission_info* tinfo = allocation_get_permission(a,
+							&(in_buffer->src_addr));
+			if (tinfo) {
+				chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
+			} else {
+				return;
 			}
 
 			if (chnum) {
