@@ -518,6 +518,12 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &client_addr, (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
+	if(bsize<0) {
+		int ern=errno;
+		perror(__FUNCTION__);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
+	}
+
 	if (bsize > 0) {
 
 		addr_cpy(&(nd.src_addr),&client_addr);
@@ -573,6 +579,11 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	} while (rc < 0 && (errno == EINTR));
 
 	if(rc<0) {
+		if(errno != EAGAIN) {
+			int ern=errno;
+			perror(__FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
+		}
 		FUNCEND;
 		return;
 	}
