@@ -1047,7 +1047,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 
 	ret->conn_bev = bufferevent_socket_new(ret->e->event_base,
 					ret->fd,
-					BEV_OPT_DEFER_CALLBACKS);
+					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 	bufferevent_setcb(ret->conn_bev, NULL, NULL, connect_eventcb, ret);
 
 	ret->conn_arg = arg;
@@ -1055,6 +1055,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 
 	if (bufferevent_socket_connect(ret->conn_bev, (struct sockaddr *) peer_addr, get_ioa_addr_len(peer_addr)) < 0) {
 		/* Error starting connection */
+		set_ioa_socket_session(ret, NULL);
 		IOA_CLOSE_SOCKET(ret);
 		return NULL;
 	}
@@ -1081,8 +1082,9 @@ void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
 {
-	if(amap && s) {
+	if(amap && s && (s->sockets_container != amap)) {
 		delete_socket_from_map(s);
+		ur_addr_map_del(amap, &(s->remote_addr),NULL);
 		ur_addr_map_put(amap,
 				&(s->remote_addr),
 				(ur_addr_map_value_type)s);
@@ -1661,7 +1663,7 @@ static int socket_input_worker(ioa_socket_handle s)
 								s->fd,
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
-								BEV_OPT_DEFER_CALLBACKS);
+								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 			BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
@@ -1674,7 +1676,7 @@ static int socket_input_worker(ioa_socket_handle s)
 			}
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
-							BEV_OPT_DEFER_CALLBACKS);
+							BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -2031,7 +2033,7 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 		{
 			int err = errno;
 			if (!handle_socket_error()) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer, (int)len, (long)ssl);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer, (int)len, (long)ssl);
 				BIO* rbio = SSL_get_rbio(ssl);
 				int rfd = -1;
 				if(rbio)
@@ -2044,7 +2046,7 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 						(long)ssl,(long)rbio,rfd,(long)wbio,wfd);
 				return -1;
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket write error recoverable: %d\n", err);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error recoverable: %d\n", err);
 				return 0;
 			}
 		}
@@ -2252,7 +2254,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else {
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
-										BEV_OPT_DEFER_CALLBACKS);
+										BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
@@ -2274,13 +2276,13 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_ACCEPTING,
-											BEV_OPT_DEFER_CALLBACKS);
+											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						} else {
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
 											BUFFEREVENT_SSL_OPEN,
-											BEV_OPT_DEFER_CALLBACKS);
+											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						}
 						BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
@@ -2307,11 +2309,11 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 	return -1;
 }
 
-int ioa_socket_tobeclosed(ioa_socket_handle s)
+int ioa_socket_tobeclosed_func(ioa_socket_handle s, const char *func, const char *file, int line)
 {
 	if(s) {
 		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: from %s:%s:%d: check on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,func,file,line,(long)s,s->st,s->sat);
 			return 1;
 		}
 		if(s->broken)

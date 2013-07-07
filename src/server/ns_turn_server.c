@@ -33,6 +33,7 @@
 #include "ns_turn_utils.h"
 #include "ns_turn_allocation.h"
 #include "ns_turn_msg_addr.h"
+#include "ns_turn_ioalib.h"
 
 ///////////////////////////////////////////
 
@@ -1251,12 +1252,14 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 {
 	FUNCSTART;
 
+	tcp_connection *tc = NULL;
+
 	if(tcid && tid && s) {
 
 		int err_code = 0;
 		ts_ur_super_session *ss = NULL;
 
-		tcp_connection *tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 		if(!tc) {
 			err_code = 400;
 		} else {
@@ -1268,6 +1271,7 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 				err_code = 500;
 			} else {
 				tc->state = TC_STATE_READY;
+				IOA_CLOSE_SOCKET(tc->client_s);
 				tc->client_s = s;
 				set_ioa_socket_session(s,ss);
 				set_ioa_socket_sub_session(s,tc);
@@ -1330,7 +1334,15 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 		}
 	}
 
-	close_ioa_socket(s);
+	if(s) {
+		set_ioa_socket_session(s,NULL);
+		set_ioa_socket_sub_session(s,NULL);
+		if(tc && (s==tc->client_s)) {
+			IOA_CLOSE_SOCKET(tc->client_s);
+		} else {
+			close_ioa_socket(s);
+		}
+	}
 
 	FUNCEND;
 	return -1;
@@ -1950,8 +1962,6 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 
 			ioa_network_buffer_delete(server->e, in_buffer->nbh);
 			in_buffer->nbh=NULL;
-
-			close_ioa_socket_after_processing_if_necessary(ss->client_session.s);
 		}
 	}
 }

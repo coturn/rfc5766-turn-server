@@ -198,7 +198,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket(S); S = NULL; } } while(0)
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);
-int ioa_socket_tobeclosed(ioa_socket_handle s);
+int ioa_socket_tobeclosed_func(ioa_socket_handle s, const char *func, const char *file, int line);
+#define ioa_socket_tobeclosed(s) ioa_socket_tobeclosed_func((s),__FUNCTION__,__FILE__,__LINE__)
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);
 

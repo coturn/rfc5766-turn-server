@@ -371,8 +371,8 @@ static int ur_addr_map_init(ur_addr_map* map, u32bits size) {
     else
 	    map->size = DEFAULT_ADDR_MAP_SIZE;
 
-    map->lists = (addr_list_header*)turn_malloc(sizeof(addr_list_header) * map->size);
-    ns_bzero(map->lists,sizeof(addr_list_header) * map->size);
+    map->lists = (addr_list_header*)turn_malloc(sizeof(addr_list_header) * (map->size));
+    ns_bzero(map->lists,sizeof(addr_list_header) * (map->size));
 
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
     return 0;

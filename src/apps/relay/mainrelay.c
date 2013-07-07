@@ -259,6 +259,8 @@ struct relay_server {
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
+	struct bufferevent *udp_in_buf;
+	struct bufferevent *udp_out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
 	ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
@@ -400,6 +402,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 	struct auth_message am;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
+
 	while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
 		if (n != sizeof(struct auth_message)) {
 			fprintf(stderr,"%s: Weird buffer error: size=%d\n",__FUNCTION__,n);
@@ -440,6 +443,8 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	UNUSED_ARG(e);
 
+	int success = 0;
+
 	size_t dest = (hash_int32(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
@@ -451,19 +456,38 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	nd->nbh = NULL;
 	sm.m.sm.s = s;
 
-	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
-	if(output)
-		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
-	else {
+	struct evbuffer *output = NULL;
+
+	if(get_ioa_socket_type(s) == UDP_SOCKET) {
+		output = bufferevent_get_output(relay_servers[dest]->udp_out_buf);
+	} else {
+		output = bufferevent_get_output(relay_servers[dest]->out_buf);
+	}
+
+	if(output) {
+		if(evbuffer_add(output,&sm,sizeof(struct message_to_relay))<0) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Cannot add message to relay output buffer\n",
+					__FUNCTION__);
+		} else {
+			success = 1;
+		}
+	} else {
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_ERROR,
 				"%s: Empty output buffer\n",
 				__FUNCTION__);
+	}
+
+	if(!success) {
 		ioa_network_buffer_delete(e, sm.m.sm.nbh);
 
 		if(get_ioa_socket_type(s) != UDP_SOCKET) {
 			IOA_CLOSE_SOCKET(sm.m.sm.s);
 		}
+
+		return -1;
 	}
 
 	return 0;
@@ -487,9 +511,9 @@ static int send_cb_socket_to_relay(turnserver_id id, u32bits connection_id, stun
 	size_t dest = id;
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
-	if(output)
+	if(output) {
 		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
-	else {
+	} else {
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_ERROR,
 				"%s: Empty output buffer\n",
@@ -506,8 +530,10 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	struct relay_server *rs = (struct relay_server *)ptr;
+	int counter = 0;
 
-	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
+	while (((counter++)<128) &&
+		(n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 		if (n != sizeof(struct message_to_relay)) {
 			perror("Weird buffer error\n");
 			continue;
@@ -553,7 +579,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 					chs = (ioa_socket_handle)mvt;
 				}
 
-				if(chs) {
+				if(chs && (chs->sockets_container == amap)) {
 					s = chs;
 					sm.m.sm.s = s;
 					if(s->read_cb) {
@@ -569,6 +595,12 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 						ioa_network_buffer_delete(rs->ioa_eng, nd.nbh);
 					}
 				} else {
+					if(chs && (chs->sockets_container != amap)) {
+						TURN_LOG_FUNC(
+							TURN_LOG_LEVEL_ERROR,
+							"%s: wrong socket container\n",
+							__FUNCTION__);
+					}
 					chs = create_ioa_socket_from_fd(rs->ioa_eng,
 									s->fd,
 									s,
@@ -746,10 +778,10 @@ static void setup_listener_servers(void)
 
 	{
 		struct bufferevent *pair[2];
-		int opts = 0;
+		int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
 #if !defined(TURN_NO_THREADS)
-		opts = BEV_OPT_THREADSAFE;
+		opts |= BEV_OPT_THREADSAFE;
 #endif
 
 		bufferevent_pair_new(listener.event_base, opts, pair);
@@ -901,7 +933,7 @@ static void run_listener_server(struct event_base *eb)
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 {
 	struct bufferevent *pair[2];
-	int opts = 0;
+	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
 	if(e) {
 		rs->event_base = e->event_base;
@@ -915,7 +947,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	}
 
 #if !defined(TURN_NO_THREADS)
-	opts = BEV_OPT_THREADSAFE;
+	opts |= BEV_OPT_THREADSAFE;
 #endif
 
 	bufferevent_pair_new(rs->event_base, opts, pair);
@@ -923,6 +955,11 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
+	bufferevent_pair_new(rs->event_base, opts, pair);
+	rs->udp_in_buf = pair[0];
+	rs->udp_out_buf = pair[1];
+	bufferevent_setcb(rs->udp_in_buf, relay_receive_message, NULL, NULL, rs);
+	bufferevent_enable(rs->udp_in_buf, EV_READ);
 	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
@@ -1035,10 +1072,10 @@ static void setup_auth_server(void)
 #endif
 
 	struct bufferevent *pair[2];
-	int opts = 0;
+	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
 #if !defined(TURN_NO_THREADS)
-	opts = BEV_OPT_THREADSAFE;
+	opts |= BEV_OPT_THREADSAFE;
 #endif
 
 	bufferevent_pair_new(authserver.event_base, opts, pair);
@@ -1100,6 +1137,14 @@ static void clean_server(void)
 				if(relay_servers[i]->out_buf) {
 					bufferevent_disable(relay_servers[i]->out_buf,EV_READ|EV_WRITE);
 					bufferevent_free(relay_servers[i]->out_buf);
+				}
+				if(relay_servers[i]->udp_in_buf) {
+					bufferevent_disable(relay_servers[i]->udp_in_buf,EV_READ|EV_WRITE);
+					bufferevent_free(relay_servers[i]->udp_in_buf);
+				}
+				if(relay_servers[i]->udp_out_buf) {
+					bufferevent_disable(relay_servers[i]->udp_out_buf,EV_READ|EV_WRITE);
+					bufferevent_free(relay_servers[i]->udp_out_buf);
 				}
 				if(relay_servers[i]->event_base != listener.event_base)
 					event_base_free(relay_servers[i]->event_base);
