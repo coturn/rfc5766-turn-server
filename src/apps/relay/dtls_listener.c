@@ -572,7 +572,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
 
-	if(rc<=0) {
+	if(rc<0) {
 		FUNCEND;
 		return;
 	}

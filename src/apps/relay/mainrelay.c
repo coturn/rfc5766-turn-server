@@ -539,7 +539,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 					amap = (ur_addr_map*)mvt;
 				}
 				if(!amap) {
-					amap = ur_addr_map_create(123457); /* large map */
+					amap = ur_addr_map_create(12345); /* large map */
 					mvt = (ur_addr_map_value_type)amap;
 					ur_addr_map_put(rs->children_ss, get_local_addr_from_ioa_socket(s), mvt);
 				}
