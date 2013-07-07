@@ -460,7 +460,10 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 				"%s: Empty output buffer\n",
 				__FUNCTION__);
 		ioa_network_buffer_delete(e, sm.m.sm.nbh);
-		IOA_CLOSE_SOCKET(sm.m.sm.s);
+
+		if(get_ioa_socket_type(s) != UDP_SOCKET) {
+			IOA_CLOSE_SOCKET(sm.m.sm.s);
+		}
 	}
 
 	return 0;
@@ -552,6 +555,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 
 				if(chs) {
 					s = chs;
+					sm.m.sm.s = s;
 					if(s->read_cb) {
 						s->e = rs->ioa_eng;
 						ioa_net_data nd;
@@ -572,9 +576,10 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 									&(sm.m.sm.remote_addr),
 									get_local_addr_from_ioa_socket(s));
 
-					if (chs) {
-						s = chs;
-						sm.m.sm.s = s;
+					s = chs;
+					sm.m.sm.s = s;
+
+					if (s) {
 						s->e = rs->ioa_eng;
 						add_socket_to_map(s,amap);
 						open_client_connection_session(rs->server, &(sm.m.sm));
@@ -599,7 +604,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
 			sm.m.sm.nbh=NULL;
 
-			if (ioa_socket_tobeclosed(s)) {
+			if (s && ioa_socket_tobeclosed(s)) {
 				ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *)ss->server;
