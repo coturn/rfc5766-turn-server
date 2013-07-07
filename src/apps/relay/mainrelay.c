@@ -440,7 +440,7 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	UNUSED_ARG(e);
 
-	size_t dest = (kh_int_hash_func(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
+	size_t dest = (hash_int32(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
 	ns_bzero(&sm,sizeof(struct message_to_relay));

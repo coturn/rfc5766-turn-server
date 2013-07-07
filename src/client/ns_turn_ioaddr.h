@@ -75,6 +75,9 @@ int addr_get_port(const ioa_addr* addr);
 int addr_to_string(const ioa_addr* addr, u08bits* saddr);
 int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr);
 
+u32bits hash_int32(u32bits a);
+u64bits hash_int64(u64bits a);
+
 ///////////////////////////////////////////
 
 void ioa_addr_range_set(ioa_addr_range* range, const ioa_addr* addr_min, const ioa_addr* addr_max);

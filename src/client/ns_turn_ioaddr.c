@@ -71,14 +71,20 @@ int addr_any_no_port(const ioa_addr* addr) {
   return 1;
 }
 
-static u32bits hash_int32(u32bits a)
+u32bits hash_int32(u32bits a)
 {
-	return (a+nswap32(a));
+	a = a ^ (a>>4);
+	a = (a^0xdeadbeef) + (a<<5);
+	a = a ^ (a>>11);
+	return a;
 }
 
-static u64bits hash_int64(u64bits a)
+u64bits hash_int64(u64bits a)
 {
-	return (a+nswap64(a));
+	a = a ^ (a>>4);
+	a = (a^0xdeadbeef) + (a<<5);
+	a = a ^ (a>>11);
+	return a;
 }
 
 u32bits addr_hash(const ioa_addr *addr)
