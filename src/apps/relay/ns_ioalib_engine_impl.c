@@ -714,6 +714,14 @@ static int set_socket_options(ioa_socket_handle s)
 	if ((s->st == UDP_SOCKET) || (s->st == DTLS_SOCKET)) {
 		set_raw_socket_ttl_options(s->fd, s->family);
 		set_raw_socket_tos_options(s->fd, s->family);
+
+#ifdef SO_BSDCOMPAT
+		{
+			int on = 1;
+        	setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on));
+        }
+#endif
+
 	} else {
 		int flag = 1;
 		int result = setsockopt(s->fd, /* socket affected */
