@@ -105,10 +105,13 @@ struct _ioa_engine
   s08bits cmsg[TURN_CMSG_SZ+1];
 };
 
+#define SOCKET_MAGIC (0xABACADEF)
+
 struct _ioa_socket
 {
 	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
+	u32bits magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;
 	ioa_network_buffer_handle defer_nbh;
@@ -151,6 +154,9 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
+	const char *func;
+	const char *file;
+	int line;
 };
 
 typedef struct _timer_event

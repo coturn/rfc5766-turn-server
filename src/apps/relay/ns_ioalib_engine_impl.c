@@ -111,7 +111,7 @@ void set_do_not_use_df(ioa_socket_handle s)
 
 static int buffer_list_empty(stun_buffer_list *bufs)
 {
-	if(bufs && bufs->head)
+	if(bufs && bufs->head && bufs->tsz)
 		return 0;
 	return 1;
 }
@@ -120,7 +120,7 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 {
 	stun_buffer_list_elem *ret = NULL;
 
-	if(bufs && bufs->head) {
+	if(bufs && bufs->head && bufs->tsz) {
 
 		ret=bufs->head;
 		bufs->head=ret->next;
@@ -140,7 +140,7 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 
 static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 {
-	if(bufs && bufs->head) {
+	if(bufs && bufs->head && bufs->tsz) {
 
 		if(bufs->head == bufs->tail) {
 			free(bufs->head);
@@ -166,7 +166,9 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 
 	if(!ret) {
 	  ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-		ns_bzero(ret,sizeof(stun_buffer_list_elem));
+	  ret->buf.len = 0;
+	  ret->next = NULL;
+	  ret->prev = NULL;
 	}
 
 	return ret;
@@ -175,7 +177,7 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 static void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *elem)
 {
 	if (bufs && elem) {
-		if (bufs->tail) {
+		if (bufs->tail && bufs->tsz) {
 			elem->next = NULL;
 			elem->prev = bufs->tail;
 			bufs->tail->next = elem;
@@ -195,11 +197,11 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
 	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
-		elem->next = NULL;
-		elem->prev = NULL;
-		ns_bcopy(buf,elem->buf.buf,len);
-		elem->buf.len = (ssize_t)len;
-		add_elem_to_buffer_list(bufs,elem);
+	  elem->next = NULL;
+	  elem->prev = NULL;
+	  ns_bcopy(buf,elem->buf.buf,len);
+	  elem->buf.len = (ssize_t)len;
+	  add_elem_to_buffer_list(bufs,elem);
 	}
 }
 
@@ -718,17 +720,17 @@ static int set_socket_options(ioa_socket_handle s)
 #ifdef SO_BSDCOMPAT
 		{
 			int on = 1;
-        	if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
-        		perror("SO_BSDCOMPAT");
-        }
+			if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
+			perror("SO_BSDCOMPAT");
+		}
 #endif
 
 #ifdef IP_RECVERR
 		{
 			int on = 1;
-        	if(setsockopt(s->fd, SOL_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
-        		perror("IP_RECVERR");
-        }
+			if(setsockopt(s->fd, SOL_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
+			perror("IP_RECVERR");
+		}
 #endif
 
 	} else {
@@ -783,6 +785,8 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
+
+	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
 	ret->family = family;
@@ -1087,6 +1091,7 @@ void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 	if(parent_s && s) {
 		delete_socket_from_parent(s->parent_s,s);
 		s->parent_s = parent_s;
+		s->fd = s->parent_s->fd;
 	}
 }
 
@@ -1094,6 +1099,7 @@ void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 {
 	if(parent_s && s) {
 		s->parent_s = NULL;
+		s->fd = -1;
 	}
 }
 
@@ -1132,6 +1138,8 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
+
+	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
 	ret->family = local_addr->ss.ss_family;
@@ -1172,12 +1180,12 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
+		delete_socket_from_map(s);
+
 		if(s->parent_s) {
 			delete_socket_from_parent(s->parent_s, s);
 			return;
 		}
-
-		delete_socket_from_map(s);
 
 		EVENT_DEL(s->read_event);
 		if(s->list_ev) {
@@ -1245,14 +1253,25 @@ static void detach_socket_net_data(ioa_socket_handle s)
 	}
 }
 
-void close_ioa_socket(ioa_socket_handle s)
+void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *file, int line)
 {
 	if (s) {
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		if(s->magic != SOCKET_MAGIC) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s wrong magic on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return;
 		}
+
+		if(s->done) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s double free on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
+			return;
+		}
+
 		s->done = 1;
+
+		s->func = func;
+		s->file = file;
+		s->line = line;
 
 		while(!buffer_list_empty(&(s->bufs)))
 			pop_elem_from_buffer_list(&(s->bufs));
@@ -1278,6 +1297,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 	if (s) {
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 			return ret;
 		}
 		if(s->tobeclosed) {
@@ -1294,6 +1314,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
 		ns_bzero(ret,sizeof(ioa_socket));
+
+		ret->magic = SOCKET_MAGIC;
 
 		ret->ssl = s->ssl;
 		ret->fd = s->fd;
@@ -1635,6 +1657,7 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 		return -1;
 	}
 
@@ -1845,6 +1868,7 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 	if(s->done) {
 		read_spare_buffer(fd);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 		return;
 	}
 
@@ -1858,6 +1882,7 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 		return;
 	}
 
@@ -1904,6 +1929,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 		if (s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 			return;
 		}
 
@@ -1914,6 +1940,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 		if (s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 			return;
 		}
 
@@ -1960,6 +1987,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			if (s->done) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n", __FUNCTION__, (long) s, (int) s->done,
 								(int) s->fd, s->broken, s->st, s->sat, s->tobeclosed);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 				return;
 			}
 
@@ -2141,6 +2169,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				"!!! %s: (1) Trying to send data from closed socket: 0x%lx (1): done=%d, fd=%d, st=%d, sat=%d\n",
 				__FUNCTION__, (long) s, (int) s->done,
 				(int) s->fd, s->st, s->sat);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 
 	} else if (nbh) {
 		if(!ioa_socket_check_bandwidth(s,ioa_network_buffer_get_size(nbh))) {
@@ -2329,8 +2358,14 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int ioa_socket_tobeclosed_func(ioa_socket_handle s, const char *func, const char *file, int line)
 {
 	if(s) {
+		if(s->magic != SOCKET_MAGIC) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: from %s:%s:%d: magic is wrong on the socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,func,file,line,(long)s,s->st,s->sat);
+			return 1;
+		}
+
 		if(s->done) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: from %s:%s:%d: check on already closed socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,func,file,line,(long)s,s->st,s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 			return 1;
 		}
 		if(s->broken)

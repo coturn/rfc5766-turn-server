@@ -440,11 +440,8 @@ int handle_socket_error() {
     return 1;
   case ECONNRESET:
   case ECONNREFUSED:
-    /* Connection reset by peer.
-     * Just ignore, might be an attacker
-     * sending fake ICMP messages.
-     */
-    return 1;
+    /* Connection reset by peer. */
+    return 0;
   case ENOMEM:
     /* Out of memory.
      * Must close connection.
