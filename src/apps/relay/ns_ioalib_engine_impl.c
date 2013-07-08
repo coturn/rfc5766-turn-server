@@ -718,7 +718,16 @@ static int set_socket_options(ioa_socket_handle s)
 #ifdef SO_BSDCOMPAT
 		{
 			int on = 1;
-        	setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on));
+        	if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
+        		perror("SO_BSDCOMPAT");
+        }
+#endif
+
+#ifdef IP_RECVERR
+		{
+			int on = 1;
+        	if(setsockopt(s->fd, SOL_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
+        		perror("IP_RECVERR");
         }
 #endif
 
