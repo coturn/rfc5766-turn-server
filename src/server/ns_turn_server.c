@@ -1960,6 +1960,8 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 
 			read_client_connection(server,elem,ss,in_buffer,0);
 
+			close_ioa_socket_after_processing_if_necessary(ss->client_session.s);
+
 			ioa_network_buffer_delete(server->e, in_buffer->nbh);
 			in_buffer->nbh=NULL;
 		}
