@@ -82,6 +82,12 @@ typedef struct _new_dtls_conn {
 	dtls_listener_relay_server_type *server;
 } new_dtls_conn;
 
+///////////// forward declarations ////////
+
+static int create_server_socket(dtls_listener_relay_server_type* server);
+static int reopen_server_socket(dtls_listener_relay_server_type* server);
+static int clean_server(dtls_listener_relay_server_type* server);
+
 ///////////// dtls message types //////////
 
 int is_dtls_handshake_message(const unsigned char* buf, int len);
@@ -535,6 +541,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &client_addr, (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
+	if(errno == ECONNRESET)
+	  reopen_server_socket(server);
+
 	if(bsize<0) {
 		int ern=errno;
 		perror(__FUNCTION__);
@@ -594,6 +603,9 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	do {
 		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &si_other, (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
+
+	if(errno == ECONNRESET)
+	  reopen_server_socket(server);
 
 	if(rc<0) {
 		if(errno != EAGAIN) {
@@ -698,6 +710,9 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		do {
 			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &si_other, (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
+
+		if(errno == ECONNRESET)
+		  reopen_server_socket(server);
 	}
 
 	if (server->stats)
@@ -777,6 +792,8 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
   if(!server) return -1;
 
+  clean_server(server);
+
   ioa_socket_raw udp_listen_fd = -1;
 
   udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
@@ -814,6 +831,64 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
   FUNCEND;
   
+  return 0;
+}
+
+static int reopen_server_socket(dtls_listener_relay_server_type* server) 
+{
+  FUNCSTART;
+
+  int can_reopen = 0;
+
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
+  can_reopen = 1;
+#endif
+
+  if(!can_reopen)
+    return -1;
+
+  if(!server) return -1;
+
+  if(!(server->udp_listen_s))
+    return create_server_socket(server);
+  
+  EVENT_DEL(server->udp_listen_ev);
+  close(server->udp_listen_s->fd);
+
+  ioa_socket_raw udp_listen_fd = -1;
+
+  udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
+  if (udp_listen_fd < 0) {
+    perror("socket");
+    return -1;
+  }
+
+  server->udp_listen_s->fd = udp_listen_fd;
+
+  set_socket_options(server->udp_listen_s);
+
+  set_sock_buf_size(udp_listen_fd,UR_SERVER_SOCK_BUF_SIZE);
+
+  if(sock_bind_to_device(udp_listen_fd, (unsigned char*)server->ifname)<0) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
+  }
+
+  addr_bind(udp_listen_fd,&server->addr);
+
+  server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
+				    EV_READ|EV_PERSIST,server_input_handler,server);
+
+  event_add(server->udp_listen_ev,NULL);
+
+  if(!no_udp && !no_dtls)
+    addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on ");
+  else if(!no_dtls)
+    addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on ");
+  else if(!no_udp)
+    addr_debug_print(server->verbose, &server->addr,"UDP listener opened on ");
+
+  FUNCEND;
+
   return 0;
 }
 

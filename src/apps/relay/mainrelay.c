@@ -223,7 +223,7 @@ static ioa_addr *external_ip = NULL;
 
 static int fingerprint = 0;
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 static turnserver_id relay_servers_number = 0;
 #else
 static turnserver_id relay_servers_number = 1;
@@ -976,7 +976,7 @@ static void run_listener_server(struct event_base *eb)
 
 		rollover_logfile();
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		/* If there are no threads, then we run it here */
 		read_userdb_file(0);
 #endif
@@ -1036,7 +1036,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	}
 }
 
-#if !defined(TURN_NO_THREADS)
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 static void *run_relay_thread(void *arg)
 {
   static int always_true = 1;
@@ -1060,7 +1060,7 @@ static void setup_relay_servers(void)
 {
 	size_t i = 0;
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 	relay_servers_number = 0;
 #endif
 
@@ -1073,7 +1073,7 @@ static void setup_relay_servers(void)
 		ns_bzero(relay_servers[i], sizeof(struct relay_server));
 		relay_servers[i]->id = (turnserver_id)i;
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		setup_relay_server(relay_servers[i], listener.ioa_eng);
 #else
 		if(relay_servers_number == 0) {
@@ -1778,8 +1778,8 @@ static void set_option(int c, char *value)
 		STRCPY(relay_ifname, value);
 		break;
 	case 'm':
-#if defined(TURN_NO_THREADS)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported,\n I am using single thread.\n");
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported for relay,\n I am using single thread.\n");
 #elif defined(OPENSSL_THREADS) 
 		relay_servers_number = atoi(value);
 #else
@@ -2298,7 +2298,7 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
 
-#if defined(TURN_NO_THREADS)
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: disabled\n");
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: enabled\n");
@@ -2376,7 +2376,7 @@ int main(int argc, char **argv)
 
 	set_system_parameters(1);
 
-#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS)
+#if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 
 	relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 

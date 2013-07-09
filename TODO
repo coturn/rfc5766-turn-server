@@ -1,11 +1,9 @@
 Minor stuff:
 
 0) hiredis heart beat requests
-1) UDP sockets optimization
-2) run mtrace
-3) memory buffers optimization
-4) input UDP queue size limitation
-5) optimize UDP input socket size
+1) run mtrace
+2) memory buffers optimization
+3) input UDP queue size limitation
 
 More serious stuff: 
 

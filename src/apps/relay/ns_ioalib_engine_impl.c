@@ -688,7 +688,7 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 	return 0;
 }
 
-static int set_socket_options(ioa_socket_handle s)
+int set_socket_options(ioa_socket_handle s)
 {
 
 	if(!s || (s->parent_s))

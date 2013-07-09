@@ -194,6 +194,8 @@ int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffe
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 
+int set_socket_options(ioa_socket_handle s);
+
 /////////////////////////////////////////////////
 
 #ifdef __cplusplus
