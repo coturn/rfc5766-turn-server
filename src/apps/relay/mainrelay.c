@@ -189,7 +189,6 @@ struct listener_server {
 	tls_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
 	dtls_listener_relay_server_type **dtls_services;
-	TURN_MUTEX_DECLARE(mutex)
 #if !defined(TURN_NO_HIREDIS)
 	redis_context_handle rch;
 #endif
@@ -259,7 +258,6 @@ struct relay_server {
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
 	ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
-	TURN_MUTEX_DECLARE(mutex)
 #if !defined(TURN_NO_THREADS)
 	pthread_t thr;
 #endif
@@ -272,7 +270,6 @@ struct auth_server {
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
-	TURN_MUTEX_DECLARE(mutex)
 #if !defined(TURN_NO_THREADS)
 	pthread_t thr;
 #endif
@@ -386,12 +383,10 @@ static int add_ip_list_range(char* range, ip_range_list_t * list)
 
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
-	TURN_MUTEX_LOCK(&(authserver.mutex));
 	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
 	if(evbuffer_add(output,am,sizeof(struct auth_message))<0) {
 		fprintf(stderr,"%s: Weird buffer error\n",__FUNCTION__);
 	}
-	TURN_MUTEX_UNLOCK(&(authserver.mutex));
 }
 
 static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
@@ -401,8 +396,6 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 	struct auth_message am;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
-
-	TURN_MUTEX_LOCK(&(authserver.mutex));
 
 	while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
 		if (n != sizeof(struct auth_message)) {
@@ -435,19 +428,9 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		ns_bcopy(&am,&(sm.m.am),sizeof(struct auth_message));
 
-		TURN_MUTEX_UNLOCK(&(authserver.mutex));
-
-		TURN_MUTEX_LOCK(&(relay_servers[dest]->mutex));
-
 		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
-
-		TURN_MUTEX_UNLOCK(&(relay_servers[dest]->mutex));
-
-		TURN_MUTEX_LOCK(&(authserver.mutex));
 	}
-
-	TURN_MUTEX_UNLOCK(&(authserver.mutex));
 }
 
 static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
@@ -477,8 +460,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	if(output) {
 
-		TURN_MUTEX_LOCK(&(relay_servers[dest]->mutex));
-
 		if(evbuffer_add(output,&sm,sizeof(struct message_to_relay))<0) {
 			TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_ERROR,
@@ -487,8 +468,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 		} else {
 			success = 1;
 		}
-
-		TURN_MUTEX_UNLOCK(&(relay_servers[dest]->mutex));
 
 	} else {
 		TURN_LOG_FUNC(
@@ -529,9 +508,7 @@ static int send_cb_socket_to_relay(turnserver_id id, u32bits connection_id, stun
 
 	struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
 	if(output) {
-		TURN_MUTEX_LOCK(&(relay_servers[dest]->mutex));
 		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
-		TURN_MUTEX_UNLOCK(&(relay_servers[dest]->mutex));
 	} else {
 		TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_ERROR,
@@ -551,8 +528,6 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 	struct relay_server *rs = (struct relay_server *)ptr;
 	int counter = 0;
 
-	TURN_MUTEX_LOCK(&(rs->mutex));
-
 	while (((counter++)<128) &&
 		(n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 
@@ -560,8 +535,6 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer error\n");
 			continue;
 		}
-
-		TURN_MUTEX_UNLOCK(&(rs->mutex));
 
 		switch(sm.t) {
 
@@ -739,11 +712,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer type\n");
 		}
 		}
-
-		TURN_MUTEX_LOCK(&(rs->mutex));
 	}
-
-	TURN_MUTEX_UNLOCK(&(rs->mutex));
 }
 
 static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination)
@@ -760,9 +729,7 @@ static int send_message_from_listener_to_client(ioa_engine_handle e, ioa_network
 
 	struct evbuffer *output = bufferevent_get_output(listener.out_buf);
 
-	TURN_MUTEX_LOCK(&(listener.mutex));
 	evbuffer_add(output,&mm,sizeof(struct message_to_listener));
-	TURN_MUTEX_UNLOCK(&(listener.mutex));
 
 	return 0;
 }
@@ -775,8 +742,6 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 
-	TURN_MUTEX_LOCK(&(listener.mutex));
-
 	while ((n = evbuffer_remove(input, &mm, sizeof(struct message_to_listener))) > 0) {
 		if (n != sizeof(struct message_to_listener)) {
 			perror("Weird buffer error\n");
@@ -787,8 +752,6 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 			perror("Weird buffer type\n");
 			continue;
 		}
-
-		TURN_MUTEX_UNLOCK(&(listener.mutex));
 
 		size_t i;
 		int found = 0;
@@ -832,11 +795,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 		}
 
 		ioa_network_buffer_delete(listener.ioa_eng, mm.m.tc.nbh);
-
-		TURN_MUTEX_LOCK(&(listener.mutex));
 	}
-
-	TURN_MUTEX_UNLOCK(&(listener.mutex));
 }
 
 // <<== communications between listener and relays
@@ -848,8 +807,6 @@ static void setup_listener_servers(void)
 	listener.tp = turnipports_create(min_port, max_port);
 
 	listener.event_base = event_base_new();
-
-	TURN_MUTEX_INIT(&(listener.mutex));
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (listener thread): %s\n",event_base_get_method(listener.event_base));
 
@@ -1057,7 +1014,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	bufferevent_setcb(rs->udp_in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->udp_in_buf, EV_READ);
 	rs->children_ss = ur_addr_map_create(0);
-	TURN_MUTEX_INIT(&(rs->mutex));
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
@@ -1161,8 +1117,6 @@ static void setup_auth_server(void)
 {
 	ns_bzero(&authserver,sizeof(struct auth_server));
 
-	TURN_MUTEX_INIT(&(authserver.mutex));
-
 #if defined(TURN_NO_THREADS)
 	authserver.event_base = listener.event_base;
 #else
@@ -1248,8 +1202,6 @@ static void clean_server(void)
 				if(relay_servers[i]->event_base != listener.event_base)
 					event_base_free(relay_servers[i]->event_base);
 
-				TURN_MUTEX_DESTROY(&(relay_servers[i]->mutex));
-
 				free(relay_servers[i]);
 				relay_servers[i] = NULL;
 			}
@@ -1320,8 +1272,6 @@ static void clean_server(void)
 	if (listener.tp) {
 	  turnipports_destroy(&(listener.tp));
 	}
-
-	TURN_MUTEX_DESTROY(&(listener.mutex));
 
 	if (relay_addrs) {
 		for (i = 0; i < relays_number; i++) {
@@ -1400,8 +1350,6 @@ static void clean_server(void)
 		free(ip_blacklist.encaddrsranges);
 		ip_blacklist.encaddrsranges = NULL;
 	}
-
-	TURN_MUTEX_DESTROY(&(authserver.mutex));
 
 	if(users) {
 		ur_string_map_free(&(users->static_accounts));

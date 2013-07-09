@@ -761,26 +761,28 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	evutil_socket_t fd = -1;
 	ioa_socket_handle ret = NULL;
 
-	switch (st){
-	case UDP_SOCKET:
-		fd = socket(family, SOCK_DGRAM, 0);
-		if (fd < 0) {
-			perror("socket");
+	if(!parent_s) {
+		switch (st){
+		case UDP_SOCKET:
+			fd = socket(family, SOCK_DGRAM, 0);
+			if (fd < 0) {
+				perror("socket");
+				return NULL;
+			}
+			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
+			break;
+		case TCP_SOCKET:
+			fd = socket(family, SOCK_STREAM, 0);
+			if (fd < 0) {
+				perror("socket");
+				return NULL;
+			}
+			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
+			break;
+		default:
+			/* we do not support other sockets in the relay position */
 			return NULL;
 		}
-		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
-		break;
-	case TCP_SOCKET:
-		fd = socket(family, SOCK_STREAM, 0);
-		if (fd < 0) {
-			perror("socket");
-			return NULL;
-		}
-		set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
-		break;
-	default:
-		/* we do not support other sockets in the relay position */
-		return NULL;
 	}
 
 	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
@@ -794,7 +796,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	ret->sat = sat;
 	ret->e = e;
 
-	if(parent_s && (parent_s->fd == fd)) {
+	if(parent_s) {
 		add_socket_to_parent(parent_s, ret);
 	} else {
 		set_socket_options(ret);
@@ -986,6 +988,9 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg)
 {
+	if(!s || s->parent_s)
+		return -1;
+
 	if(s->st == TCP_SOCKET) {
 		s->list_ev = evconnlistener_new(s->e->event_base,
 			  tcp_listener_input_handler, s,
@@ -1089,15 +1094,15 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
 {
 	if(parent_s && s) {
-		delete_socket_from_parent(s->parent_s,s);
+		delete_socket_from_parent(s);
 		s->parent_s = parent_s;
-		s->fd = s->parent_s->fd;
+		s->fd = parent_s->fd;
 	}
 }
 
-void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s)
+void delete_socket_from_parent(ioa_socket_handle s)
 {
-	if(parent_s && s) {
+	if(s && s->parent_s) {
 		s->parent_s = NULL;
 		s->fd = -1;
 	}
@@ -1132,7 +1137,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 {
 	ioa_socket_handle ret = NULL;
 
-	if (fd < 0) {
+	if ((fd < 0) && !parent_s) {
 		return NULL;
 	}
 
@@ -1157,7 +1162,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		addr_cpy(&(ret->remote_addr), remote_addr);
 	}
 
-	if(parent_s && (fd == parent_s->fd)) {
+	if(parent_s) {
 		add_socket_to_parent(parent_s, ret);
 	} else {
 		set_socket_options(ret);
@@ -1180,12 +1185,9 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw
 static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
-		delete_socket_from_map(s);
 
-		if(s->parent_s) {
-			delete_socket_from_parent(s->parent_s, s);
-			return;
-		}
+		delete_socket_from_map(s);
+		delete_socket_from_parent(s);
 
 		EVENT_DEL(s->read_event);
 		if(s->list_ev) {
@@ -2229,9 +2231,19 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							dest_addr = &(s->remote_addr);
 						}
 
-						ret = udp_send(s->fd,
+						evutil_socket_t fd;
+						if(s->parent_s)
+							fd = s->parent_s->fd;
+						else
+							fd = s->fd;
+
+						if(fd<0) {
+							ret = -1;
+						} else {
+							ret = udp_send(fd,
 								dest_addr,
 								(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
+						}
 						if (ret < 0) {
 							s->tobeclosed = 1;
 							perror("udp send");

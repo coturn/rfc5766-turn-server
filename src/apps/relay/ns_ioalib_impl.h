@@ -109,7 +109,7 @@ struct _ioa_engine
 
 struct _ioa_socket
 {
-	evutil_socket_t fd;
+	volatile evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
 	u32bits magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
@@ -184,7 +184,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw 
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
-void delete_socket_from_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
+void delete_socket_from_parent(ioa_socket_handle s);
 
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);

@@ -89,6 +89,8 @@ int is_dtls_data_message(const unsigned char* buf, int len);
 int is_dtls_alert_message(const unsigned char* buf, int len);
 int is_dtls_cipher_change_message(const unsigned char* buf, int len);
 
+int is_dtls_message(const unsigned char* buf, int len);
+
 int is_dtls_handshake_message(const unsigned char* buf, int len) {
   return (buf && len>3 && buf[0]==0x16 && buf[1]==0xfe && buf[2]==0xff);
 }
@@ -103,6 +105,21 @@ int is_dtls_alert_message(const unsigned char* buf, int len) {
 
 int is_dtls_cipher_change_message(const unsigned char* buf, int len) {
   return (buf && len>3 && buf[0]==0x14 && buf[1]==0xfe && buf[2]==0xff);
+}
+
+int is_dtls_message(const unsigned char* buf, int len) {
+  if(buf && (len>3) && (buf[1])==0xfe && (buf[2]==0xff)) {
+	  switch (buf[0]) {
+	  case 0x14:
+	  case 0x15:
+	  case 0x16:
+	  case 0x17:
+		  return 1;
+	  default:
+		  ;
+	  }
+  }
+  return 0;
 }
 
 ///////////// utils /////////////////////
@@ -313,7 +330,7 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	}
 
 	{
-		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, server->udp_listen_s, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
+		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, NULL, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
 		if(ioas) {
 			ioa_net_data nd;
 
@@ -592,7 +609,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 #if !defined(TURN_NO_DTLS)
 
-	if (!no_dtls && is_dtls_handshake_message(peekbuf, rc)) {
+	if (!no_dtls && is_dtls_message(peekbuf, rc)) {
 
 		SSL* connecting_ssl = NULL;
 

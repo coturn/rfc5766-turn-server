@@ -734,6 +734,80 @@ static int get_auth_secrets(secrets_list_t *sl)
 #endif
 
 /*
+ * Timestamp retrieval
+ */
+static turn_time_t get_rest_api_timestamp(char *uname)
+{
+	turn_time_t ts = 0;
+	int ts_set = 0;
+
+	char *col = strchr(uname,rest_api_separator);
+
+	if(col) {
+		if(col == uname) {
+			uname +=1;
+		} else {
+			char *ptr = uname;
+			int found_non_figure = 0;
+			while(ptr < col) {
+				if(!(ptr[0]>='0' && ptr[0]<='9')) {
+					found_non_figure=1;
+					break;
+				}
+				++ptr;
+			}
+			if(found_non_figure) {
+				ts = (turn_time_t)atol(col+1);
+				ts_set = 1;
+			} else {
+				*col=0;
+				ts = (turn_time_t)atol(uname);
+				ts_set = 1;
+				*col=rest_api_separator;
+			}
+		}
+	}
+
+	if(!ts_set) {
+		ts = (turn_time_t)atol(uname);
+	}
+
+	return ts;
+}
+
+static char *get_real_username(char *uname)
+{
+	if(use_auth_secret_with_timestamp) {
+		char *col=strchr(uname,rest_api_separator);
+		if(col) {
+			if(col == uname) {
+				uname +=1;
+			} else {
+				char *ptr = uname;
+				int found_non_figure = 0;
+				while(ptr < col) {
+					if(!(ptr[0]>='0' && ptr[0]<='9')) {
+						found_non_figure=1;
+						break;
+					}
+					++ptr;
+				}
+				if(!found_non_figure) {
+					uname = col+1;
+				} else {
+					*col=0;
+					uname = strdup(uname);
+					*col=rest_api_separator;
+					return uname;
+				}
+			}
+		}
+	}
+
+	return strdup(uname);
+}
+
+/*
  * Long-term mechanism password retrieval
  */
 int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
@@ -752,13 +826,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		if(get_auth_secrets(&sl)<0)
 			return ret;
 
-		char *col = strchr((char*)uname,rest_api_separator);
-
-		if(col) {
-			ts = (turn_time_t)atol(col+1);
-		} else {
-			ts = (turn_time_t)atol((char*)uname);
-		}
+		ts = get_rest_api_timestamp((char*)uname);
 
 		if(!turn_time_before((ts + auth_secret_timestamp_expiration_time), ctime)) {
 
@@ -1050,22 +1118,11 @@ u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_
 	return NULL;
 }
 
-static u08bits *get_real_username(u08bits *user) {
-	u08bits *ret = (u08bits*)strdup((char*)user);
-	if(use_auth_secret_with_timestamp) {
-		char *col=strchr((char*)ret,rest_api_separator);
-		if(col) {
-			*col=0;
-		}
-	}
-	return ret;
-}
-
 int check_new_allocation_quota(u08bits *user)
 {
 	int ret = 0;
 	if (user) {
-		u08bits *username = get_real_username(user);
+		u08bits *username = (u08bits*)get_real_username((char*)user);
 		ur_string_map_lock(users->alloc_counters);
 		if (users->total_quota && (users->total_current_allocs >= users->total_quota)) {
 			ret = -1;
@@ -1094,7 +1151,7 @@ int check_new_allocation_quota(u08bits *user)
 void release_allocation_quota(u08bits *user)
 {
 	if (user) {
-		u08bits *username = get_real_username(user);
+		u08bits *username = (u08bits*)get_real_username((char*)user);
 		ur_string_map_lock(users->alloc_counters);
 		ur_string_map_value_type value = 0;
 		ur_string_map_get(users->alloc_counters, (ur_string_map_key_type) username, &value);

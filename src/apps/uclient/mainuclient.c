@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 		{
 			char new_uname[1025];
 			if(g_uname[0]) {
-			  snprintf(new_uname,sizeof(new_uname),"%s%c%lu", (char*)g_uname,rest_api_separator,(unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname),"%lu%c%s",(unsigned long)time(NULL),rest_api_separator, (char*)g_uname);
 			} else {
 			  snprintf(new_uname,sizeof(new_uname),"%lu", (unsigned long)time(NULL));
 			}
