@@ -82,7 +82,6 @@
 //////////////// OpenSSL Init //////////////////////
 
 static void openssl_setup(void);
-static void openssl_cleanup(void);
 
 //////////// Barrier for the threads //////////////
 
@@ -234,8 +233,7 @@ static turnserver_id relay_servers_number = 1;
 enum _MESSAGE_TO_RELAY_TYPE {
 	RMT_UNKNOWN,
 	RMT_SOCKET,
-	RMT_CB_SOCKET,
-	RMT_USER_AUTH_INFO
+	RMT_CB_SOCKET
 };
 typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
@@ -244,7 +242,6 @@ struct message_to_relay {
 	union {
 		struct socket_message sm;
 		struct cb_socket_message cb_sm;
-		struct auth_message am;
 	} m;
 };
 
@@ -255,6 +252,8 @@ struct relay_server {
 	struct bufferevent *out_buf;
 	struct bufferevent *udp_in_buf;
 	struct bufferevent *udp_out_buf;
+	struct bufferevent *auth_in_buf;
+	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
 	ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
@@ -423,15 +422,10 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 			}
 		}
 
-		struct message_to_relay sm;
-		sm.t = RMT_USER_AUTH_INFO;
-
 		size_t dest = am.id;
 
-		ns_bcopy(&am,&(sm.m.am),sizeof(struct auth_message));
-
-		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->out_buf);
-		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+		struct evbuffer *output = bufferevent_get_output(relay_servers[dest]->auth_out_buf);
+		evbuffer_add(output,&am,sizeof(struct auth_message));
 	}
 }
 
@@ -703,15 +697,6 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 		sm->m.sm.nbh = NULL;
 	}
 		break;
-	case RMT_USER_AUTH_INFO: {
-		sm->m.am.resume_func(sm->m.am.success, sm->m.am.key, sm->m.am.pwd,
-				rs->server, sm->m.am.ctxkey, &(sm->m.am.in_buffer));
-		if (sm->m.am.in_buffer.nbh) {
-			ioa_network_buffer_delete(rs->ioa_eng, sm->m.am.in_buffer.nbh);
-			sm->m.am.in_buffer.nbh = NULL;
-		}
-	}
-		break;
 	case RMT_CB_SOCKET:
 		turnserver_accept_tcp_connection(rs->server, sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
@@ -719,6 +704,16 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 	default: {
 		perror("Weird buffer type\n");
 	}
+	}
+}
+
+static void handle_relay_auth_message(struct relay_server *rs, struct auth_message *am)
+{
+	am->resume_func(am->success, am->key, am->pwd,
+				rs->server, am->ctxkey, &(am->in_buffer));
+	if (am->in_buffer.nbh) {
+		ioa_network_buffer_delete(rs->ioa_eng, am->in_buffer.nbh);
+		am->in_buffer.nbh = NULL;
 	}
 }
 
@@ -739,6 +734,24 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 		}
 
 		handle_relay_message(rs, &sm);
+	}
+}
+
+static void relay_receive_auth_message(struct bufferevent *bev, void *ptr)
+{
+	struct auth_message am;
+	int n = 0;
+	struct evbuffer *input = bufferevent_get_input(bev);
+	struct relay_server *rs = (struct relay_server *)ptr;
+
+	while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
+
+		if (n != sizeof(struct auth_message)) {
+			perror("Weird auth_buffer error\n");
+			continue;
+		}
+
+		handle_relay_auth_message(rs, &am);
 	}
 }
 
@@ -1040,6 +1053,11 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->udp_out_buf = pair[1];
 	bufferevent_setcb(rs->udp_in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->udp_in_buf, EV_READ);
+	bufferevent_pair_new(rs->event_base, opts, pair);
+	rs->auth_in_buf = pair[0];
+	rs->auth_out_buf = pair[1];
+	bufferevent_setcb(rs->auth_in_buf, relay_receive_auth_message, NULL, NULL, rs);
+	bufferevent_enable(rs->auth_in_buf, EV_READ);
 	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
@@ -1196,194 +1214,6 @@ static void setup_server(void)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
-}
-
-///////////////////////////////////////////////////////////////
-
-static void clean_server(void)
-{
-	size_t i = 0;
-
-	if (relay_servers) {
-		for(i=0;i<get_real_relay_servers_number();i++) {
-			if(relay_servers[i]) {
-				delete_turn_server(relay_servers[i]->server);
-				if(relay_servers[i]->ioa_eng != listener.ioa_eng)
-					close_ioa_engine(relay_servers[i]->ioa_eng);
-				if(relay_servers[i]->in_buf) {
-					bufferevent_disable(relay_servers[i]->in_buf,EV_READ|EV_WRITE);
-					bufferevent_free(relay_servers[i]->in_buf);
-				}
-				if(relay_servers[i]->out_buf) {
-					bufferevent_disable(relay_servers[i]->out_buf,EV_READ|EV_WRITE);
-					bufferevent_free(relay_servers[i]->out_buf);
-				}
-				if(relay_servers[i]->udp_in_buf) {
-					bufferevent_disable(relay_servers[i]->udp_in_buf,EV_READ|EV_WRITE);
-					bufferevent_free(relay_servers[i]->udp_in_buf);
-				}
-				if(relay_servers[i]->udp_out_buf) {
-					bufferevent_disable(relay_servers[i]->udp_out_buf,EV_READ|EV_WRITE);
-					bufferevent_free(relay_servers[i]->udp_out_buf);
-				}
-				if(relay_servers[i]->event_base != listener.event_base)
-					event_base_free(relay_servers[i]->event_base);
-
-				free(relay_servers[i]);
-				relay_servers[i] = NULL;
-			}
-		}
-		free(relay_servers);
-	}
-
-	if(listener.udp_services) {
-		for(i=0;i<listener.services_number; i++) {
-			if (listener.udp_services[i]) {
-				delete_dtls_listener_server(listener.udp_services[i],0);
-				listener.udp_services[i] = NULL;
-			}
-		}
-		free(listener.udp_services);
-		listener.udp_services = NULL;
-	}
-
-	if(listener.tcp_services) {
-		for(i=0;i<listener.services_number; i++) {
-			if (listener.tcp_services[i]) {
-				delete_tls_listener_server(listener.tcp_services[i],0);
-				listener.tcp_services[i] = NULL;
-			}
-		}
-		free(listener.tcp_services);
-		listener.tcp_services = NULL;
-	}
-
-	if(listener.tls_services) {
-		for(i=0;i<listener.services_number; i++) {
-			if (listener.tls_services[i]) {
-				delete_tls_listener_server(listener.tls_services[i],0);
-				listener.tls_services[i] = NULL;
-			}
-		}
-		free(listener.tls_services);
-		listener.tls_services = NULL;
-	}
-
-	if(listener.dtls_services) {
-		for(i=0;i<listener.services_number; i++) {
-			if (listener.dtls_services[i]) {
-				delete_dtls_listener_server(listener.dtls_services[i],0);
-				listener.dtls_services[i] = NULL;
-			}
-		}
-		free(listener.dtls_services);
-		listener.dtls_services = NULL;
-	}
-
-	listener.services_number = 0;
-
-	if (listener.ioa_eng) {
-		close_ioa_engine(listener.ioa_eng);
-		listener.ioa_eng = NULL;
-	}
-
-	if (listener.event_base) {
-		event_base_free(listener.event_base);
-		listener.event_base = NULL;
-	}
-
-	if (listener.rtcpmap) {
-		rtcp_map_free(&(listener.rtcpmap));
-	}
-
-	if (listener.tp) {
-	  turnipports_destroy(&(listener.tp));
-	}
-
-	if (relay_addrs) {
-		for (i = 0; i < relays_number; i++) {
-			if (relay_addrs[i]) {
-				free(relay_addrs[i]);
-				relay_addrs[i] = NULL;
-			}
-		}
-		free(relay_addrs);
-	}
-
-	if(listener.addrs) {
-		for(i=0;i<listener.addrs_number; i++) {
-			if (listener.addrs[i]) {
-				free(listener.addrs[i]);
-				listener.addrs[i] = NULL;
-			}
-		}
-		free(listener.addrs);
-		listener.addrs = NULL;
-	}
-
-	if(listener.encaddrs) {
-		for(i=0;i<listener.addrs_number; i++) {
-			if (listener.encaddrs[i]) {
-				free(listener.encaddrs[i]);
-				listener.encaddrs[i] = NULL;
-			}
-		}
-		free(listener.encaddrs);
-		listener.encaddrs = NULL;
-	}
-
-	listener.addrs_number = 0;
-
-	if (ip_whitelist.ranges) {
-		for (i = 0; i < ip_whitelist.ranges_number; i++) {
-			if (ip_whitelist.ranges[i]) {
-				free(ip_whitelist.ranges[i]);
-				ip_whitelist.ranges[i] = NULL;
-			}
-		}
-		free(ip_whitelist.ranges);
-		ip_whitelist.ranges = NULL;
-	}
-
-	if (ip_whitelist.encaddrsranges) {
-		for (i = 0; i < ip_whitelist.ranges_number; i++) {
-			if (ip_whitelist.encaddrsranges[i]) {
-				free(ip_whitelist.encaddrsranges[i]);
-				ip_whitelist.encaddrsranges[i] = NULL;
-			}
-		}
-		free(ip_whitelist.encaddrsranges);
-		ip_whitelist.encaddrsranges = NULL;
-	}
-
-	if (ip_blacklist.ranges) {
-		for (i = 0; i < ip_blacklist.ranges_number; i++) {
-			if (ip_blacklist.ranges[i]) {
-				free(ip_blacklist.ranges[i]);
-				ip_blacklist.ranges[i] = NULL;
-			}
-		}
-		free(ip_blacklist.ranges);
-		ip_blacklist.ranges = NULL;
-	}
-
-	if (ip_blacklist.encaddrsranges) {
-		for (i = 0; i < ip_blacklist.ranges_number; i++) {
-			if (ip_blacklist.encaddrsranges[i]) {
-				free(ip_blacklist.encaddrsranges[i]);
-				ip_blacklist.encaddrsranges[i] = NULL;
-			}
-		}
-		free(ip_blacklist.encaddrsranges);
-		ip_blacklist.encaddrsranges = NULL;
-	}
-
-	if(users) {
-		ur_string_map_free(&(users->static_accounts));
-		ur_string_map_free(&(users->dynamic_accounts));
-		ur_string_map_free(&(users->alloc_counters));
-		free(users);
-	}
 }
 
 //////////////////////////////////////////////////
@@ -2572,10 +2402,6 @@ int main(int argc, char **argv)
 
 	run_listener_server(listener.event_base);
 
-	clean_server();
-
-	openssl_cleanup();
-
 	return 0;
 }
 
@@ -2633,7 +2459,8 @@ static int THREAD_setup(void) {
 	return 1;
 }
 
-static int THREAD_cleanup(void) {
+int THREAD_cleanup(void);
+int THREAD_cleanup(void) {
 
 #if defined(OPENSSL_THREADS) && !defined(TURN_NO_THREADS)
 
@@ -2773,21 +2600,6 @@ static void openssl_setup(void)
 		set_ctx(dtls_ctx,"DTLS");
 #endif
 	}
-}
-
-static void openssl_cleanup(void)
-{
-	if(tls_ctx) {
-		SSL_CTX_free(tls_ctx);
-		tls_ctx = NULL;
-	}
-
-	if(dtls_ctx) {
-		SSL_CTX_free(dtls_ctx);
-		dtls_ctx = NULL;
-	}
-
-	THREAD_cleanup();
 }
 
 ///////////////////////////////

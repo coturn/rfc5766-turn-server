@@ -3,9 +3,7 @@ Minor stuff to finish in 2.0.0.0:
 0) hiredis heart beat requests
 1) run mtrace
 2) memory buffers optimization
-3) input UDP queue size limitation
-4) run gprof
-5) separate auth message queue
+3) run gprof
 
 More serious stuff: 
 

@@ -69,16 +69,17 @@ int set_sock_buf_size(evutil_socket_t fd, int sz)
 {
   while(sz>0) {
 	  if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,(const void*)(&sz),(socklen_t)sizeof(sz))<0) {
-		  perror("Cannot set socket size");
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot set sock size %d on fd %d\n",sz,fd);
 		  sz = sz / 2;
 	  } else {
 		  break;
 	  }
   }
 
-  if(sz<1)
+  if(sz<1) {
+	  perror("Cannot set socket size");
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot set sock size %d on fd %d\n",sz,fd);
 	  return -1;
+  }
 
   return 0;
 }
