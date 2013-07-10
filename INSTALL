@@ -754,7 +754,7 @@ timeout 0
 tcp-keepalive 60
 ..........
 
-XV. OS Performance tuning
+XV. Performance tuning
 
 The TURN Server performance depends on how efficiently the operational system handles 
 the TCP/IP stack. Usually, the TCP part of it is properly optimized, but the UDP 
@@ -776,3 +776,18 @@ kernel variable (for example, in /etc/grub.conf). For best performance, set it t
  
 Other OSs have similar issues. Check documentation to your OS for configuration 
 instructions.
+
+The TURN Server designed as a multi-threaded network packets routing system. 
+But multi-threading is not always the best option for a particular system configuration.
+The server parameter -m allows tuning of the threading configuration. You can turn off 
+the multi-threading by using "-m 0" parameter (or "--relay-threads=0"). It will keep all 
+network packets processing within one thread, eliminating context switch etc - it may 
+be a more efficient option for your system. There still will be a separate authentication 
+thread because the authentication process must not be holding the normalpackets routing.
+
+You can use "-m 0" option and run multiple TURN servers on your system, one per CPU core. 
+That would be probably the best performance option in terms of scalability. Each TURN
+server must have its own network listening address and its own relay IP and/or relay 
+ports range - so the configuration will be complicated - but the performance will be the 
+best possible. You can use ALTERNATE-SERVER mechanism to present the whole "pack" as a 
+single "initial" TURN server front-end to the external world.

@@ -1,8 +1,6 @@
 Minor stuff to finish in 2.0.0.0:
 
 0) hiredis heart beat requests
-1) run mtrace
-2) run gprof
 
 More serious stuff: 
 
