@@ -2132,33 +2132,6 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	return ret;
 }
 
-int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len)
-{
-	int rc = 0;
-
-	if (dest_addr) {
-		int slen = get_ioa_addr_len(dest_addr);
-
-		do {
-			rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-		} while (rc < 0 && (errno == EINTR));
-		if(rc<0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
-			//Lost packet
-			rc = len;
-		}
-	} else {
-		do {
-			rc = send(fd, buffer, len, 0);
-		} while (rc < 0 && (errno == EINTR));
-		if(rc<0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
-			//Lost packet
-			rc = len;
-		}
-	}
-
-	return rc;
-}
-
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				ioa_network_buffer_handle nbh,
 				int ttl, int tos)
@@ -2231,19 +2204,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 							dest_addr = &(s->remote_addr);
 						}
 
-						evutil_socket_t fd;
-						if(s->parent_s)
-							fd = s->parent_s->fd;
-						else
-							fd = s->fd;
-
-						if(fd<0) {
-							ret = -1;
-						} else {
-							ret = udp_send(fd,
-								dest_addr,
-								(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
-						}
+						ret = udp_send(s,
+									dest_addr,
+									(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
 						if (ret < 0) {
 							s->tobeclosed = 1;
 							perror("udp send");

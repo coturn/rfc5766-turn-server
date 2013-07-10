@@ -111,6 +111,7 @@ struct _ioa_socket
 {
 	volatile evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
+	void *listener_server;
 	u32bits magic;
 	ur_addr_map *sockets_container; /* relay container for UDP sockets */
 	struct bufferevent *bev;
@@ -189,7 +190,7 @@ void delete_socket_from_parent(ioa_socket_handle s);
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);
 
-int udp_send(evutil_socket_t fd, const ioa_addr* dest_addr, const s08bits* buffer, int len);
+int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len);
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);

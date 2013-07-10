@@ -1,12 +1,10 @@
-07/06/2013 Oleg Moskalenko <mom040267@gmail.com> 
-Version 1.9.9.9 'Shivers':
-	- working on new networking engine. 
-	
-07/01/2013 Oleg Moskalenko <mom040267@gmail.com> 
-Version 1.8.8.1 'Black Dow':
-	- multithreaded TCP relay implemented.
-	- race condition fixed in authentication of TCP sessions.
-	- Cygwin compilation fixed. 
+07/XX/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 2.0.0.0 'Shivers':
+	- new networking engine:
+		- scalable UDP socket model. 
+		- multithreaded TCP relay implemented.
+		- race condition fixed in authentication of TCP sessions.
+		- Cygwin "port" fixed. 
 
 06/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com> 

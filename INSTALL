@@ -754,5 +754,25 @@ timeout 0
 tcp-keepalive 60
 ..........
 
+XV. OS Performance tuning
 
-  
+The TURN Server performance depends on how efficiently the operational system handles 
+the TCP/IP stack. Usually, the TCP part of it is properly optimized, but the UDP 
+handling is often suboptimal. For example, by default the Linux kernel hashes all UDP
+sockets in just 128 buckets; if you have thousands connections then you have lots of
+UDP sockets which are handled inefficiently. 
+
+In other words, the implementation of UDP in the Linux kernel makes use a hash table to 
+store socket structures. In kernel 2.6.32 (default in CentOS 6) this hash table is 
+hardcoded to have 128 entries. So with a large number of sockets, the performance of 
+the table degrades to a linked list which must be traversed for each incoming packet. 
+
+If you have a Linux kernel <=2.6.32 then you can change the hardcoded hash size in the 
+kernel code and re-compile the kernel. If you have a more recent kernel then you can do
+that without kernel recompilation. Kernel 2.6.33 introduced a configurable UDP hash 
+table size, and a second UDP hash table, keyed by IP+port (previous to this it was only 
+by port). You can configure the hash table size by setting the "uhash_entries" boot-time 
+kernel variable (for example, in /etc/grub.conf). For best performance, set it to 65536.
+ 
+Other OSs have similar issues. Check documentation to your OS for configuration 
+instructions.

@@ -49,7 +49,7 @@ extern "C" {
 #define DTLS_MAX_CONNECT_TIMEOUT (5)
 
 #define UR_CLIENT_SOCK_BUF_SIZE (65536)
-#define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE * 16)
+#define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE * 32)
 
 //////////////////////////////////////////
 

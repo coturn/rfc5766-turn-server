@@ -65,13 +65,21 @@ void read_spare_buffer(evutil_socket_t fd)
 	}
 }
 
-int set_sock_buf_size(evutil_socket_t fd, int sz) {
-
-  if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,(const void*)(&sz),(socklen_t)sizeof(sz))<0) {
-    perror("Cannot set socket size");
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot set sock size on %d\n",fd);
-    return -1;
+int set_sock_buf_size(evutil_socket_t fd, int sz)
+{
+  while(sz>0) {
+	  if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,(const void*)(&sz),(socklen_t)sizeof(sz))<0) {
+		  perror("Cannot set socket size");
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot set sock size %d on fd %d\n",sz,fd);
+		  sz = sz / 2;
+	  } else {
+		  break;
+	  }
   }
+
+  if(sz<1)
+	  return -1;
+
   return 0;
 }
 

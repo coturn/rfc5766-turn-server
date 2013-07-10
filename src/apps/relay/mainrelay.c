@@ -381,6 +381,8 @@ static int add_ip_list_range(char* range, ip_range_list_t * list)
 
 // communications between listener and relays ==>>
 
+static void handle_relay_message(struct relay_server *rs, struct message_to_relay *sm);
+
 void send_auth_message_to_auth_server(struct auth_message *am)
 {
 	struct evbuffer *output = bufferevent_get_output(authserver.out_buf);
@@ -437,8 +439,6 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 {
 	UNUSED_ARG(e);
 
-	int success = 0;
-
 	size_t dest = (hash_int32(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
@@ -450,40 +450,57 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	nd->nbh = NULL;
 	sm.m.sm.s = s;
 
-	struct evbuffer *output = NULL;
+	int direct_message = 0;
 
-	if(get_ioa_socket_type(s) == UDP_SOCKET) {
-		output = bufferevent_get_output(relay_servers[dest]->udp_out_buf);
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
+	direct_message = 1;
+#endif
+
+	if(relay_servers_number == 0)
+		direct_message = 1;
+
+	if(direct_message) {
+
+		handle_relay_message(relay_servers[dest],&sm);
+
 	} else {
-		output = bufferevent_get_output(relay_servers[dest]->out_buf);
-	}
 
-	if(output) {
+		struct evbuffer *output = NULL;
+		int success = 0;
 
-		if(evbuffer_add(output,&sm,sizeof(struct message_to_relay))<0) {
-			TURN_LOG_FUNC(
+		if(get_ioa_socket_type(s) == UDP_SOCKET) {
+			output = bufferevent_get_output(relay_servers[dest]->udp_out_buf);
+		} else {
+			output = bufferevent_get_output(relay_servers[dest]->out_buf);
+		}
+
+		if(output) {
+
+			if(evbuffer_add(output,&sm,sizeof(struct message_to_relay))<0) {
+				TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Cannot add message to relay output buffer\n",
 					__FUNCTION__);
-		} else {
-			success = 1;
-		}
+			} else {
+				success = 1;
+			}
 
-	} else {
-		TURN_LOG_FUNC(
+		} else {
+			TURN_LOG_FUNC(
 				TURN_LOG_LEVEL_ERROR,
 				"%s: Empty output buffer\n",
 				__FUNCTION__);
-	}
-
-	if(!success) {
-		ioa_network_buffer_delete(e, sm.m.sm.nbh);
-
-		if(get_ioa_socket_type(s) != UDP_SOCKET) {
-			IOA_CLOSE_SOCKET(sm.m.sm.s);
 		}
 
-		return -1;
+		if(!success) {
+			ioa_network_buffer_delete(e, sm.m.sm.nbh);
+
+			if(get_ioa_socket_type(s) != UDP_SOCKET) {
+				IOA_CLOSE_SOCKET(sm.m.sm.s);
+			}
+
+			return -1;
+		}
 	}
 
 	return 0;
@@ -520,6 +537,191 @@ static int send_cb_socket_to_relay(turnserver_id id, u32bits connection_id, stun
 	return 0;
 }
 
+static void handle_relay_message(struct relay_server *rs, struct message_to_relay *sm)
+{
+	switch (sm->t) {
+
+	case RMT_SOCKET: {
+
+		if (sm->m.sm.s->defer_nbh) {
+			if (!sm->m.sm.nbh) {
+				sm->m.sm.nbh = sm->m.sm.s->defer_nbh;
+				sm->m.sm.s->defer_nbh = NULL;
+			} else {
+				ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.s->defer_nbh);
+				sm->m.sm.s->defer_nbh = NULL;
+			}
+		}
+
+		ioa_socket_handle s = sm->m.sm.s;
+
+		/* Special case: 'virtual' UDP socket */
+		if (get_ioa_socket_type(s) == UDP_SOCKET) {
+
+			ur_addr_map_value_type mvt = 0;
+			ur_addr_map *amap = NULL;
+			if ((ur_addr_map_get(rs->children_ss,
+					get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
+				amap = (ur_addr_map*) mvt;
+			}
+			if (!amap) {
+				amap = ur_addr_map_create(12345); /* large map */
+				mvt = (ur_addr_map_value_type) amap;
+				ur_addr_map_put(rs->children_ss,
+						get_local_addr_from_ioa_socket(s), mvt);
+
+				{
+					u08bits saddr[129];
+					long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+					thrid = (long) pthread_self();
+#endif
+					addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"%s: thrid=0x%lx: New amap 0x%lx for local addr %s\n",
+							__FUNCTION__, thrid, (long) amap, (char*) saddr);
+				}
+			}
+
+			mvt = 0;
+
+			ioa_socket_handle chs = 0;
+			if ((ur_addr_map_get(amap, &(sm->m.sm.remote_addr), &mvt) > 0)
+					&& mvt) {
+				chs = (ioa_socket_handle) mvt;
+			}
+
+			if (chs && !ioa_socket_tobeclosed(chs)
+					&& (chs->sockets_container == amap)
+					&& (chs->magic == SOCKET_MAGIC)) {
+				s = chs;
+				sm->m.sm.s = s;
+				if (s->read_cb) {
+					s->e = rs->ioa_eng;
+					ioa_net_data nd;
+					ns_bzero(&nd, sizeof(ioa_net_data));
+					nd.nbh = sm->m.sm.nbh;
+					sm->m.sm.nbh = NULL;
+					nd.recv_tos = TOS_IGNORE;
+					nd.recv_ttl = TTL_IGNORE;
+					addr_cpy(&(nd.src_addr), &(sm->m.sm.remote_addr));
+					s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
+					ioa_network_buffer_delete(rs->ioa_eng, nd.nbh);
+
+					if (ioa_socket_tobeclosed(s)) {
+						ts_ur_super_session *ss =
+								(ts_ur_super_session *) s->session;
+						if (ss) {
+							turn_turnserver *server =
+									(turn_turnserver *) ss->server;
+							if (server) {
+								shutdown_client_connection(server, ss);
+							}
+						}
+					}
+				}
+			} else {
+				if (chs && ioa_socket_tobeclosed(chs)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: socket to be closed\n", __FUNCTION__);
+					{
+						u08bits saddr[129];
+						u08bits rsaddr[129];
+						long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+						thrid = (long) pthread_self();
+#endif
+						addr_to_string(get_local_addr_from_ioa_socket(chs),
+								saddr);
+						addr_to_string(get_remote_addr_from_ioa_socket(chs),
+								rsaddr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
+								__FUNCTION__, thrid, (long) amap,
+								(long) (chs->sockets_container), (char*) saddr,
+								(char*) rsaddr, (long) s, (int) (chs->done),
+								(int) (chs->tobeclosed));
+					}
+				}
+
+				if (chs && (chs->magic != SOCKET_MAGIC)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: wrong socket magic\n", __FUNCTION__);
+				}
+
+				if (chs && (chs->sockets_container != amap)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: wrong socket container\n", __FUNCTION__);
+					{
+						u08bits saddr[129];
+						u08bits rsaddr[129];
+						long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+						thrid = (long) pthread_self();
+#endif
+						addr_to_string(get_local_addr_from_ioa_socket(chs),
+								saddr);
+						addr_to_string(get_remote_addr_from_ioa_socket(chs),
+								rsaddr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
+								__FUNCTION__, thrid, (long) amap,
+								(long) (chs->sockets_container), (char*) saddr,
+								(char*) rsaddr, (long) chs, (int) (chs->done),
+								(int) (chs->tobeclosed), (int) (chs->st),
+								(int) (chs->sat));
+					}
+				}
+				chs = create_ioa_socket_from_fd(rs->ioa_eng, s->fd, s,
+						UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.remote_addr),
+						get_local_addr_from_ioa_socket(s));
+
+				s = chs;
+				sm->m.sm.s = s;
+
+				if (s) {
+					s->e = rs->ioa_eng;
+					add_socket_to_map(s, amap);
+					open_client_connection_session(rs->server, &(sm->m.sm));
+				}
+			}
+
+		} else {
+
+			if (s->read_event || s->bev) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
+						__FUNCTION__, (long) s->read_event, (long) s->bev);
+				IOA_CLOSE_SOCKET(s);
+			} else {
+				s->e = rs->ioa_eng;
+				open_client_connection_session(rs->server, &(sm->m.sm));
+			}
+		}
+
+		ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nbh);
+		sm->m.sm.nbh = NULL;
+	}
+		break;
+	case RMT_USER_AUTH_INFO: {
+		sm->m.am.resume_func(sm->m.am.success, sm->m.am.key, sm->m.am.pwd,
+				rs->server, sm->m.am.ctxkey, &(sm->m.am.in_buffer));
+		if (sm->m.am.in_buffer.nbh) {
+			ioa_network_buffer_delete(rs->ioa_eng, sm->m.am.in_buffer.nbh);
+			sm->m.am.in_buffer.nbh = NULL;
+		}
+	}
+		break;
+	case RMT_CB_SOCKET:
+		turnserver_accept_tcp_connection(rs->server, sm->m.cb_sm.connection_id,
+				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
+		break;
+	default: {
+		perror("Weird buffer type\n");
+	}
+	}
+}
+
 static void relay_receive_message(struct bufferevent *bev, void *ptr)
 {
 	struct message_to_relay sm;
@@ -536,182 +738,7 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 			continue;
 		}
 
-		switch(sm.t) {
-
-		case RMT_SOCKET: {
-
-			if (sm.m.sm.s->defer_nbh) {
-				if (!sm.m.sm.nbh) {
-					sm.m.sm.nbh = sm.m.sm.s->defer_nbh;
-					sm.m.sm.s->defer_nbh = NULL;
-				} else {
-					ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.s->defer_nbh);
-					sm.m.sm.s->defer_nbh = NULL;
-				}
-			}
-
-			ioa_socket_handle s = sm.m.sm.s;
-
-			/* Special case: 'virtual' UDP socket */
-			if(get_ioa_socket_type(s) == UDP_SOCKET) {
-
-				ur_addr_map_value_type mvt = 0;
-				ur_addr_map *amap = NULL;
-				if((ur_addr_map_get(rs->children_ss,
-					get_local_addr_from_ioa_socket(s),
-					&mvt)>0) && mvt) {
-					amap = (ur_addr_map*)mvt;
-				}
-				if(!amap) {
-					amap = ur_addr_map_create(12345); /* large map */
-					mvt = (ur_addr_map_value_type)amap;
-					ur_addr_map_put(rs->children_ss, get_local_addr_from_ioa_socket(s), mvt);
-
-					{
-						u08bits saddr[129];
-						long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-						thrid = (long)pthread_self();
-#endif
-						addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
-						TURN_LOG_FUNC(
-							TURN_LOG_LEVEL_INFO,
-							"%s: thrid=0x%lx: New amap 0x%lx for local addr %s\n",__FUNCTION__,thrid,(long)amap,(char*)saddr);
-					}
-				}
-
-				mvt = 0;
-
-				ioa_socket_handle chs = 0;
-				if((ur_addr_map_get(amap,
-						&(sm.m.sm.remote_addr),
-						&mvt)>0) && mvt) {
-					chs = (ioa_socket_handle)mvt;
-				}
-
-				if(chs && !ioa_socket_tobeclosed(chs) && (chs->sockets_container == amap) && (chs->magic == SOCKET_MAGIC)) {
-					s = chs;
-					sm.m.sm.s = s;
-					if(s->read_cb) {
-						s->e = rs->ioa_eng;
-						ioa_net_data nd;
-						ns_bzero(&nd,sizeof(ioa_net_data));
-						nd.nbh = sm.m.sm.nbh;
-						sm.m.sm.nbh = NULL;
-						nd.recv_tos = TOS_IGNORE;
-						nd.recv_ttl = TTL_IGNORE;
-						addr_cpy(&(nd.src_addr),&(sm.m.sm.remote_addr));
-						s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
-						ioa_network_buffer_delete(rs->ioa_eng, nd.nbh);
-
-						if (ioa_socket_tobeclosed(s)) {
-							ts_ur_super_session *ss = (ts_ur_super_session *)s->session;
-							if (ss) {
-								turn_turnserver *server = (turn_turnserver *)ss->server;
-								if (server) {
-									shutdown_client_connection(server, ss);
-								}
-							}
-						}
-					}
-				} else {
-					if (chs && ioa_socket_tobeclosed(chs)) {
-						TURN_LOG_FUNC(
-							TURN_LOG_LEVEL_ERROR,
-							"%s: socket to be closed\n",
-							__FUNCTION__);
-						{
-							u08bits saddr[129];
-							u08bits rsaddr[129];
-							long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-							thrid = (long)pthread_self();
-#endif
-							addr_to_string(get_local_addr_from_ioa_socket(chs), saddr);
-							addr_to_string(get_remote_addr_from_ioa_socket(chs), rsaddr);
-							TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_INFO,
-								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",__FUNCTION__,thrid,(long)amap,(long)(chs->sockets_container),(char*)saddr,(char*)rsaddr,(long)s,(int)(chs->done),(int)(chs->tobeclosed));
-						}
-					}
-
-					if(chs && (chs->magic != SOCKET_MAGIC)) {
-						TURN_LOG_FUNC(
-							TURN_LOG_LEVEL_ERROR,
-							"%s: wrong socket magic\n",
-							__FUNCTION__);
-					}
-
-					if(chs && (chs->sockets_container != amap)) {
-						TURN_LOG_FUNC(
-							TURN_LOG_LEVEL_ERROR,
-							"%s: wrong socket container\n",
-							__FUNCTION__);
-						{
-							u08bits saddr[129];
-							u08bits rsaddr[129];
-							long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-							thrid = (long)pthread_self();
-#endif
-							addr_to_string(get_local_addr_from_ioa_socket(chs), saddr);
-							addr_to_string(get_remote_addr_from_ioa_socket(chs), rsaddr);
-							TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_INFO,
-								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",__FUNCTION__,thrid,(long)amap,(long)(chs->sockets_container),(char*)saddr,(char*)rsaddr,(long)chs,(int)(chs->done),(int)(chs->tobeclosed),(int)(chs->st),(int)(chs->sat));
-						}
-					}
-					chs = create_ioa_socket_from_fd(rs->ioa_eng,
-									s->fd,
-									s,
-									UDP_SOCKET, CLIENT_SOCKET,
-									&(sm.m.sm.remote_addr),
-									get_local_addr_from_ioa_socket(s));
-
-					s = chs;
-					sm.m.sm.s = s;
-
-					if (s) {
-						s->e = rs->ioa_eng;
-						add_socket_to_map(s,amap);
-						open_client_connection_session(rs->server, &(sm.m.sm));
-					}
-				}
-
-			} else {
-
-				if (s->read_event || s->bev) {
-					TURN_LOG_FUNC(
-						TURN_LOG_LEVEL_ERROR,
-						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
-						__FUNCTION__, (long) s->read_event,
-						(long) s->bev);
-					IOA_CLOSE_SOCKET(s);
-				} else {
-					s->e = rs->ioa_eng;
-					open_client_connection_session(rs->server, &(sm.m.sm));
-				}
-			}
-
-			ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nbh);
-			sm.m.sm.nbh=NULL;
-		}
-		break;
-		case RMT_USER_AUTH_INFO: {
-			sm.m.am.resume_func(sm.m.am.success, sm.m.am.key, sm.m.am.pwd, rs->server, sm.m.am.ctxkey, &(sm.m.am.in_buffer));
-			if(sm.m.am.in_buffer.nbh) {
-				ioa_network_buffer_delete(rs->ioa_eng, sm.m.am.in_buffer.nbh);
-				sm.m.am.in_buffer.nbh=NULL;
-			}
-		}
-		break;
-		case RMT_CB_SOCKET:
-			turnserver_accept_tcp_connection(rs->server, sm.m.cb_sm.connection_id, &(sm.m.cb_sm.tid), sm.m.cb_sm.s, sm.m.cb_sm.message_integrity);
-		break;
-		default: {
-			perror("Weird buffer type\n");
-		}
-		}
+		handle_relay_message(rs, &sm);
 	}
 }
 
