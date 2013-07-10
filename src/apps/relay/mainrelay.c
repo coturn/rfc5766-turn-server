@@ -2138,9 +2138,9 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 
 #if !defined(TURN_NO_THREADS)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading: enabled\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading: disabled\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading is not supported\n");
 #endif
 
 #if defined(TURN_NO_TLS)
@@ -2156,9 +2156,9 @@ static void print_features(void)
 #endif
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: disabled\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay is not supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay: enabled\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay supported\n");
 #endif
 
 #if !defined(TURN_NO_HIREDIS)
