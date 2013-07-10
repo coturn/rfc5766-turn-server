@@ -162,7 +162,9 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 
 static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 {
+	TURN_MUTEX_LOCK(&(e->mutex));
 	stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
+	TURN_MUTEX_UNLOCK(&(e->mutex));
 
 	if(!ret) {
 	  ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
@@ -170,6 +172,8 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 	  ret->next = NULL;
 	  ret->prev = NULL;
 	}
+
+	ret->origin = e;
 
 	return ret;
 }
@@ -208,9 +212,20 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size
 static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 {
 	if(elem) {
-		if(e && (e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)) {
-			add_elem_to_buffer_list(&(e->bufs), elem);
-		} else {
+
+		if(elem->origin)
+			e = (ioa_engine_handle)(elem->origin);
+
+		if(e) {
+			TURN_MUTEX_LOCK(&(e->mutex));
+			if(e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE) {
+				add_elem_to_buffer_list(&(e->bufs), elem);
+				elem=NULL;
+			}
+			TURN_MUTEX_UNLOCK(&(e->mutex));
+		}
+
+		if(elem) {
 			free(elem);
 		}
 	}
@@ -255,6 +270,9 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	} else {
 	  ioa_engine_handle e = (ioa_engine_handle)malloc(sizeof(ioa_engine));
 		ns_bzero(e,sizeof(ioa_engine));
+
+		TURN_MUTEX_INIT_RECURSIVE(&(e->mutex));
+
 		e->max_bpj = max_bps * SECS_PER_JIFFIE;
 		e->verbose = verbose;
 		e->tp = tp;
@@ -304,6 +322,8 @@ void close_ioa_engine(ioa_engine_handle e)
 
 		if (e->relay_addrs)
 			free(e->relay_addrs);
+
+		TURN_MUTEX_DESTROY(&(e->mutex));
 
 		free(e);
 	}
