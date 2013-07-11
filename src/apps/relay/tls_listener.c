@@ -49,7 +49,7 @@ struct tls_listener_relay_server_info
 	ioa_engine_handle e;
 	int verbose;
 	struct evconnlistener *l;
-	ioa_net_data nd;
+	struct message_to_relay sm;
 	ioa_engine_new_connection_event_handler connect_cb;
 };
 
@@ -73,10 +73,9 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	if (!server)
 		return;
 
-	ioa_addr client_addr;
-	ns_bcopy(sa,&client_addr,socklen);
+	ns_bcopy(sa,&(server->sm.m.sm.nd.src_addr),socklen);
 
-	addr_debug_print(server->verbose, &client_addr,"tcp or tls connected to");
+	addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),"tcp or tls connected to");
 
 	SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
 
@@ -92,19 +91,19 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 							NULL,
 							st,
 							CLIENT_SOCKET,
-							&client_addr,
+							&(server->sm.m.sm.nd.src_addr),
 							&(server->addr));
 
 	if (ioas) {
 
 		ioas->listener_server = server;
 
-		addr_cpy(&(server->nd.src_addr),&client_addr);
-		server->nd.recv_ttl = TTL_IGNORE;
-		server->nd.recv_tos = TOS_IGNORE;
-		server->nd.nbh = NULL;
+		server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
+		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+		server->sm.m.sm.nd.nbh = NULL;
+		server->sm.m.sm.s = ioas;
 
-		int rc = server->connect_cb(server->e, ioas, &(server->nd));
+		int rc = server->connect_cb(server->e, &(server->sm));
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

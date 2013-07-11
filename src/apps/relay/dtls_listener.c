@@ -64,7 +64,7 @@ struct dtls_listener_relay_server_info {
   SSL_CTX *dtls_ctx;
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
-  ioa_net_data nd;
+  struct message_to_relay sm;
   int slen0;
   ioa_engine_new_connection_event_handler connect_cb;
 };
@@ -342,12 +342,13 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 
 			ioas->listener_server = server;
 
-			addr_cpy(&(server->nd.src_addr),&((*ndc)->info.remote_addr));
-			server->nd.nbh = NULL;
-			server->nd.recv_ttl = TTL_IGNORE;
-			server->nd.recv_tos = TOS_IGNORE;
+			addr_cpy(&(server->sm.m.sm.nd.src_addr),&((*ndc)->info.remote_addr));
+			server->sm.m.sm.nd.nbh = NULL;
+			server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
+			server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
+			server->sm.m.sm.s = ioas;
 
-			server->connect_cb(server->e, ioas, &(server->nd));
+			server->connect_cb(server->e, &(server->sm));
 			(*ndc)->info.ssl = NULL;
 			(*ndc)->info.fd = -1;
 		} else {
@@ -509,9 +510,9 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
 	  ioa_network_buffer_allocate(server->e);
 
-	server->nd.nbh = elem;
-	server->nd.recv_ttl = TTL_IGNORE;
-	server->nd.recv_tos = TOS_IGNORE;
+	server->sm.m.sm.nd.nbh = elem;
+	server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
+	server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 
 	int slen = server->slen0;
 	ssize_t bsize = 0;
@@ -519,7 +520,7 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	int flags = 0;
 
 	do {
-		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->nd.src_addr), (socklen_t*) &slen);
+		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
 	if((bsize<0) && (errno == ECONNRESET))
@@ -534,15 +535,17 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	if (bsize > 0) {
 
 		ioa_network_buffer_set_size(elem, (size_t)bsize);
+		server->sm.m.sm.s = server->udp_listen_s;
 
-		int rc = server->connect_cb(server->e, server->udp_listen_s, &(server->nd));
+		int rc = server->connect_cb(server->e, &(server->sm));
 
 		if(rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
 		}
 	}
 
-	ioa_network_buffer_delete(server->e, server->nd.nbh);
+	ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
+	server->sm.m.sm.nd.nbh = NULL;
 
 	return;
 }
@@ -577,7 +580,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	slen = server->slen0;
 
 	do {
-		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->nd.src_addr), (socklen_t*) &slen);
+		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
 
 	if((rc<0) && (errno == ECONNRESET))
@@ -621,7 +624,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		ns_bzero(&info, sizeof(ur_conn_info));
 		info.fd = -1;
-		addr_cpy(&(info.remote_addr), &(server->nd.src_addr));
+		addr_cpy(&(info.remote_addr), &(server->sm.m.sm.nd.src_addr));
 		addr_cpy(&(info.local_addr), &(server->addr));
 		info.ssl = connecting_ssl;
 
@@ -682,7 +685,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		char sbuf[0xFFFF+1];
 		do {
-			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->nd.src_addr), (socklen_t*) &slen);
+			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
 
 		if((rc<0) && (errno == ECONNRESET))

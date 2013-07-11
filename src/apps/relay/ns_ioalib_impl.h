@@ -49,6 +49,7 @@
 #include "turn_ports.h"
 #include "ns_turn_maps_rtcp.h"
 #include "ns_turn_maps.h"
+#include "ns_turn_server.h"
 
 #include "apputils.h"
 #include "stun_buffer.h"
@@ -82,7 +83,23 @@ typedef unsigned long band_limit_t;
 /*
  * New connection callback
  */
-typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd);
+
+enum _MESSAGE_TO_RELAY_TYPE {
+	RMT_UNKNOWN,
+	RMT_SOCKET,
+	RMT_CB_SOCKET
+};
+typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
+
+struct message_to_relay {
+	MESSAGE_TO_RELAY_TYPE t;
+	union {
+		struct socket_message sm;
+		struct cb_socket_message cb_sm;
+	} m;
+};
+
+typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, struct message_to_relay *sm);
 
 #define TURN_CMSG_SZ (65536)
 

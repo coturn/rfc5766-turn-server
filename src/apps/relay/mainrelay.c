@@ -228,21 +228,6 @@ static turnserver_id relay_servers_number = 1;
 
 #define get_real_relay_servers_number() (relay_servers_number > 1 ? relay_servers_number : 1)
 
-enum _MESSAGE_TO_RELAY_TYPE {
-	RMT_UNKNOWN,
-	RMT_SOCKET,
-	RMT_CB_SOCKET
-};
-typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
-
-struct message_to_relay {
-	MESSAGE_TO_RELAY_TYPE t;
-	union {
-		struct socket_message sm;
-		struct cb_socket_message cb_sm;
-	} m;
-};
-
 struct relay_server {
 	turnserver_id id;
 	struct event_base* event_base;
@@ -427,18 +412,13 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 	}
 }
 
-static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_net_data *nd)
+static int send_socket_to_relay(ioa_engine_handle e, struct message_to_relay *sm)
 {
-	UNUSED_ARG(e);
+	size_t dest = (hash_int32(addr_get_port(&(sm->m.sm.nd.src_addr)))) % get_real_relay_servers_number();
 
-	size_t dest = (hash_int32(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
+	struct message_to_relay *smptr = sm;
 
-	struct message_to_relay sm;
-
-	sm.t = RMT_SOCKET;
-	ns_bcopy(nd,&(sm.m.sm.nd),sizeof(ioa_net_data));
-	sm.m.sm.s = s;
-	nd->nbh = NULL;
+	smptr->t = RMT_SOCKET;
 
 	int direct_message = 0;
 
@@ -451,14 +431,19 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 	if(direct_message) {
 
-		handle_relay_message(relay_servers[dest],&sm);
+		handle_relay_message(relay_servers[dest],smptr);
+
+		if(smptr->m.sm.nd.nbh) {
+			ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
+			smptr->m.sm.nd.nbh=NULL;
+		}
 
 	} else {
 
 		struct evbuffer *output = NULL;
 		int success = 0;
 
-		if(get_ioa_socket_type(s) == UDP_SOCKET) {
+		if(get_ioa_socket_type(smptr->m.sm.s) == UDP_SOCKET) {
 			output = bufferevent_get_output(relay_servers[dest]->udp_out_buf);
 		} else {
 			output = bufferevent_get_output(relay_servers[dest]->out_buf);
@@ -466,13 +451,14 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 
 		if(output) {
 
-			if(evbuffer_add(output,&sm,sizeof(struct message_to_relay))<0) {
+			if(evbuffer_add(output,smptr,sizeof(struct message_to_relay))<0) {
 				TURN_LOG_FUNC(
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Cannot add message to relay output buffer\n",
 					__FUNCTION__);
 			} else {
 				success = 1;
+				smptr->m.sm.nd.nbh=NULL;
 			}
 
 		} else {
@@ -483,11 +469,11 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 		}
 
 		if(!success) {
-			ioa_network_buffer_delete(e, sm.m.sm.nd.nbh);
-			sm.m.sm.nd.nbh=NULL;
+			ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
+			smptr->m.sm.nd.nbh=NULL;
 
-			if(get_ioa_socket_type(s) != UDP_SOCKET) {
-				IOA_CLOSE_SOCKET(sm.m.sm.s);
+			if(get_ioa_socket_type(smptr->m.sm.s) != UDP_SOCKET) {
+				IOA_CLOSE_SOCKET(smptr->m.sm.s);
 			}
 
 			return -1;
