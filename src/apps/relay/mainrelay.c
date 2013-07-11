@@ -198,8 +198,6 @@ static struct listener_server listener;
 static ip_range_list_t ip_whitelist = {NULL, NULL, 0};
 static ip_range_list_t ip_blacklist = {NULL, NULL, 0};
 
-static uint32_t stats=0;
-
 //////////////// Relay servers //////////////////////////////////
 
 static band_limit_t max_bps = 0;
@@ -436,13 +434,11 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 	size_t dest = (hash_int32(addr_get_port(&(nd->src_addr)))) % get_real_relay_servers_number();
 
 	struct message_to_relay sm;
-	ns_bzero(&sm,sizeof(struct message_to_relay));
 
 	sm.t = RMT_SOCKET;
-	addr_cpy(&(sm.m.sm.remote_addr),&(nd->src_addr));
-	sm.m.sm.nbh = nd->nbh;
-	nd->nbh = NULL;
+	ns_bcopy(nd,&(sm.m.sm.nd),sizeof(ioa_net_data));
 	sm.m.sm.s = s;
+	nd->nbh = NULL;
 
 	int direct_message = 0;
 
@@ -487,7 +483,8 @@ static int send_socket_to_relay(ioa_engine_handle e, ioa_socket_handle s, ioa_ne
 		}
 
 		if(!success) {
-			ioa_network_buffer_delete(e, sm.m.sm.nbh);
+			ioa_network_buffer_delete(e, sm.m.sm.nd.nbh);
+			sm.m.sm.nd.nbh=NULL;
 
 			if(get_ioa_socket_type(s) != UDP_SOCKET) {
 				IOA_CLOSE_SOCKET(sm.m.sm.s);
@@ -538,8 +535,8 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 	case RMT_SOCKET: {
 
 		if (sm->m.sm.s->defer_nbh) {
-			if (!sm->m.sm.nbh) {
-				sm->m.sm.nbh = sm->m.sm.s->defer_nbh;
+			if (!sm->m.sm.nd.nbh) {
+				sm->m.sm.nd.nbh = sm->m.sm.s->defer_nbh;
 				sm->m.sm.s->defer_nbh = NULL;
 			} else {
 				ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.s->defer_nbh);
@@ -559,7 +556,7 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 				amap = (ur_addr_map*) mvt;
 			}
 			if (!amap) {
-				amap = ur_addr_map_create(12345); /* large map */
+				amap = ur_addr_map_create(65535); /* large map */
 				mvt = (ur_addr_map_value_type) amap;
 				ur_addr_map_put(rs->children_ss,
 						get_local_addr_from_ioa_socket(s), mvt);
@@ -580,7 +577,7 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 			mvt = 0;
 
 			ioa_socket_handle chs = 0;
-			if ((ur_addr_map_get(amap, &(sm->m.sm.remote_addr), &mvt) > 0)
+			if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0)
 					&& mvt) {
 				chs = (ioa_socket_handle) mvt;
 			}
@@ -592,15 +589,9 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 				sm->m.sm.s = s;
 				if (s->read_cb) {
 					s->e = rs->ioa_eng;
-					ioa_net_data nd;
-					ns_bzero(&nd, sizeof(ioa_net_data));
-					nd.nbh = sm->m.sm.nbh;
-					sm->m.sm.nbh = NULL;
-					nd.recv_tos = TOS_IGNORE;
-					nd.recv_ttl = TTL_IGNORE;
-					addr_cpy(&(nd.src_addr), &(sm->m.sm.remote_addr));
-					s->read_cb(s, IOA_EV_READ, &nd, s->read_ctx);
-					ioa_network_buffer_delete(rs->ioa_eng, nd.nbh);
+					s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx);
+					ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
+					sm->m.sm.nd.nbh = NULL;
 
 					if (ioa_socket_tobeclosed(s)) {
 						ts_ur_super_session *ss =
@@ -667,7 +658,7 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 					}
 				}
 				chs = create_ioa_socket_from_fd(rs->ioa_eng, s->fd, s,
-						UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.remote_addr),
+						UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
 						get_local_addr_from_ioa_socket(s));
 
 				s = chs;
@@ -693,8 +684,8 @@ static void handle_relay_message(struct relay_server *rs, struct message_to_rela
 			}
 		}
 
-		ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nbh);
-		sm->m.sm.nbh = NULL;
+		ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
+		sm->m.sm.nd.nbh = NULL;
 	}
 		break;
 	case RMT_CB_SOCKET:
@@ -835,6 +826,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 		}
 
 		ioa_network_buffer_delete(listener.ioa_eng, mm.m.tc.nbh);
+		 mm.m.tc.nbh = NULL;
 	}
 }
 
@@ -899,36 +891,36 @@ static void setup_listener_servers(void)
 	for(i=0; i<listener.addrs_number; i++) {
 		int index = rfc5780 ? i*2 : i;
 		if(!no_udp) {
-			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
 			if(rfc5780)
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
 		} else {
 			listener.udp_services[index] = NULL;
 			if(rfc5780)
 				listener.udp_services[index+1] = NULL;
 		}
 		if(!no_tcp) {
-			listener.tcp_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.tcp_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
 			if(rfc5780)
-				listener.tcp_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.tcp_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
 		} else {
 			listener.tcp_services[index] = NULL;
 			if(rfc5780)
 				listener.tcp_services[index+1] = NULL;
 		}
 		if(!no_tls && (no_tcp || (listener_port != tls_listener_port))) {
-			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.tls_services[index] = create_tls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
 			if(rfc5780)
-				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.tls_services[index+1] = create_tls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
 		} else {
 			listener.tls_services[index] = NULL;
 			if(rfc5780)
 				listener.tls_services[index+1] = NULL;
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
 			if(rfc5780)
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, &stats, send_socket_to_relay);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
 		} else {
 			listener.dtls_services[index] = NULL;
 			if(rfc5780)
@@ -1007,8 +999,7 @@ static void run_listener_server(struct event_base *eb)
 
 		if (eve(verbose)) {
 			if ((cycle++ & 15) == 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cycle=%u, stats=%lu\n", __FUNCTION__, cycle,
-								(unsigned long) stats);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cycle=%u\n", __FUNCTION__, cycle);
 			}
 		}
 
@@ -1060,7 +1051,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	bufferevent_enable(rs->auth_in_buf, EV_READ);
 	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
-					rs->ioa_eng, &stats, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
+					rs->ioa_eng, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
 					users->realm,
 					start_user_check,
@@ -1638,7 +1629,14 @@ static void set_option(int c, char *value)
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported for relay,\n I am using single thread.\n");
 #elif defined(OPENSSL_THREADS) 
-		relay_servers_number = atoi(value);
+		if(atoi(value)>128) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
+			relay_servers_number = 128;
+		} else if(atoi(value)<0) {
+			relay_servers_number = 0;
+		} else {
+			relay_servers_number = atoi(value);
+		}
 #else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
 #endif

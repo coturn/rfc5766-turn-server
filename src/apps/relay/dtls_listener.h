@@ -60,7 +60,6 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port,
 							     int verbose,
 							     ioa_engine_handle e,
-							     uint32_t *stats,
 							     ioa_engine_new_connection_event_handler send_socket);
 void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int delete_engine);
 

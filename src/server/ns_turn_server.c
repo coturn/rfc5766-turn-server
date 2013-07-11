@@ -64,7 +64,6 @@ struct _turn_turnserver {
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
 	dont_fragment_option_t dont_fragment;
-	u32bits *stats;
 	int (*disconnect)(ts_ur_super_session*);
 	turn_credential_type ct;
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
@@ -2143,16 +2142,26 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
-static void set_alternate_server(alternate_servers_list_t *asl, int af, size_t *counter, u16bits method, stun_tid *tid, int *resp_constructed, int *err_code, const u08bits **reason, ioa_network_buffer_handle nbh)
+static void set_alternate_server(alternate_servers_list_t *asl, const ioa_addr *local_addr, size_t *counter, u16bits method, stun_tid *tid, int *resp_constructed, int *err_code, const u08bits **reason, ioa_network_buffer_handle nbh)
 {
 	if(asl && asl->size) {
-		size_t i ;
+
+		size_t i;
+
+		/* to prevent indefinite cycle: */
+
+		for(i=0;i<asl->size;++i) {
+			ioa_addr *addr = &(asl->addrs[i]);
+			if(addr_eq(addr,local_addr))
+				return;
+		}
+
 		for(i=0;i<asl->size;++i) {
 			if(*counter>=asl->size)
 				*counter = 0;
 			ioa_addr *addr = &(asl->addrs[*counter]);
 			*counter +=1;
-			if(addr->ss.ss_family == af) {
+			if(addr->ss.ss_family == local_addr->ss.ss_family) {
 
 				*err_code = 300;
 				*reason = (const u08bits *)"Redirect";
@@ -2218,14 +2227,13 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					 (server->ct == TURN_CREDENTIALS_SHORT_TERM)) {
 
 					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-					int af = get_ioa_socket_address_family(ss->client_session.s);
 					alternate_servers_list_t *asl = server->alternate_servers_list;
 
 					if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
 						asl = server->tls_alternate_servers_list;
 					}
 
-					set_alternate_server(asl,af,&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
 				}
 
 				if(!err_code && !(*resp_constructed) && !no_response) {
@@ -3036,8 +3044,6 @@ int open_client_connection_session(turn_turnserver* server,
 	set_ioa_socket_session(ss->client_session.s, ss);
 
 	newelem->state = UR_STATE_READY;
-	if (server->stats)
-		++(*(server->stats));
 
 	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 	ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e,
@@ -3045,19 +3051,10 @@ int open_client_connection_session(turn_turnserver* server,
 			client_to_be_allocated_timeout_handler, ss, 0,
 			"client_to_be_allocated_timeout_handler");
 
-	if(sm->nbh) {
-		ioa_net_data nd;
-
-		ns_bzero(&nd,sizeof(nd));
-		addr_cpy(&(nd.src_addr),&(sm->remote_addr));
-		nd.nbh = sm->nbh;
-		nd.recv_ttl = TTL_IGNORE;
-		nd.recv_tos = TOS_IGNORE;
-
-		sm->nbh=NULL;
-
-		client_input_handler(newelem->s,IOA_EV_READ,&nd,ss);
-		ioa_network_buffer_delete(server->e, nd.nbh);
+	if(sm->nd.nbh) {
+		client_input_handler(newelem->s,IOA_EV_READ,&(sm->nd),ss);
+		ioa_network_buffer_delete(server->e, sm->nd.nbh);
+		sm->nd.nbh = NULL;
 	}
 
 	FUNCEND;
@@ -3235,7 +3232,6 @@ static int clean_server(turn_turnserver* server) {
 ///////////////////////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_handle e,
-		u32bits *stats,
 		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
 		turn_credential_type ct,
 		u08bits *realm,
@@ -3284,7 +3280,6 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
-	server->stats = stats;
 	server->external_ip = external_ip;
 	if (stun_port < 1)
 		stun_port = DEFAULT_STUN_PORT;

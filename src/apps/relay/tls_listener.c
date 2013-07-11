@@ -49,7 +49,7 @@ struct tls_listener_relay_server_info
 	ioa_engine_handle e;
 	int verbose;
 	struct evconnlistener *l;
-	uint32_t *stats;
+	ioa_net_data nd;
 	ioa_engine_new_connection_event_handler connect_cb;
 };
 
@@ -72,9 +72,6 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	if (!server)
 		return;
-
-	if (server->stats)
-		++(*(server->stats));
 
 	ioa_addr client_addr;
 	ns_bcopy(sa,&client_addr,socklen);
@@ -99,16 +96,15 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 							&(server->addr));
 
 	if (ioas) {
-		ioa_net_data nd;
 
 		ioas->listener_server = server;
 
-		ns_bzero(&nd,sizeof(ioa_net_data));
-		addr_cpy(&(nd.src_addr),&client_addr);
-		nd.recv_ttl = TTL_IGNORE;
-		nd.recv_tos = TOS_IGNORE;
+		addr_cpy(&(server->nd.src_addr),&client_addr);
+		server->nd.recv_ttl = TTL_IGNORE;
+		server->nd.recv_tos = TOS_IGNORE;
+		server->nd.nbh = NULL;
 
-		int rc = server->connect_cb(server->e, ioas, &nd);
+		int rc = server->connect_cb(server->e, ioas, &(server->nd));
 
 		if (rc < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
@@ -183,12 +179,10 @@ static int init_server(tls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       uint32_t *stats,
 		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
-  server->stats=stats;
   server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
@@ -219,7 +213,7 @@ static int clean_server(tls_listener_relay_server_type* server) {
 
 tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 				const char *local_address, int port, int verbose,
-				ioa_engine_handle e, uint32_t *stats,
+				ioa_engine_handle e,
 				ioa_engine_new_connection_event_handler send_socket)
 {
 
@@ -228,7 +222,7 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 
 	ns_bzero(server, sizeof(tls_listener_relay_server_type));
 
-	if (init_server(server, ifname, local_address, port, verbose, e, stats, send_socket) < 0) {
+	if (init_server(server, ifname, local_address, port, verbose, e, send_socket) < 0) {
 		free(server);
 		return NULL;
 	} else {

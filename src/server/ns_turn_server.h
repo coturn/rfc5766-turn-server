@@ -45,9 +45,8 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT;
 typedef u08bits turnserver_id;
 
 struct socket_message {
-	ioa_addr remote_addr;
 	ioa_socket_handle s;
-	ioa_network_buffer_handle nbh;
+	ioa_net_data nd;
 };
 
 struct cb_socket_message {
@@ -97,7 +96,6 @@ typedef struct _ip_range_list ip_range_list_t;
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    ioa_engine_handle e,
-				    u32bits *stats,
 				    int stun_port,
 				    int fingerprint,
 				    dont_fragment_option_t dont_fragment,
