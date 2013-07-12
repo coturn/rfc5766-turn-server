@@ -665,7 +665,7 @@ fi
 
 ${ECHO_CMD} "Compiler: ${CC}"
 
-${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB}
+${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     ${ECHO_CMD} "ERROR: cannot use compiler ${CC} properly"
@@ -687,17 +687,26 @@ if ! [ ${ER} -eq 0 ] ; then
     ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
+		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
-	${ECHO_CMD} "g++ or something..."
-	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-	ER=$?
-	if ! [ ${ER} -eq 0 ] ; then
-	    ${ECHO_CMD} "Not an ordinary g++ compiler"
-	else
-	    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
-	fi
+		${ECHO_CMD} "g++ or something..."
+		GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+		${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+		ER=$?
+		if ! [ ${ER} -eq 0 ] ; then
+	    	${ECHO_CMD} "Not an ordinary g++ compiler"
+			GNUOSCFLAGS="-x c++ -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+			${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+			ER=$?
+			if ! [ ${ER} -eq 0 ] ; then
+	    		${ECHO_CMD} "Not an ordinary c++ compiler"
+			else
+			${ECHO_CMD} "Clang++ compiler ?"
+	    		OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+	    	fi
+		else
+	    	OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+		fi
     fi
 else
     OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"

@@ -39,7 +39,7 @@
 
 #include <openssl/err.h>
 
-static const int verbose_packets=0;
+static int verbose_packets=0;
 
 static size_t current_clients_number = 0;
 
