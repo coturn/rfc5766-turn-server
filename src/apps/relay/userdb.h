@@ -149,6 +149,7 @@ void release_allocation_quota(u08bits *username);
 /////////// Handle user DB /////////////////
 
 void read_userdb_file(int to_print);
+void auth_ping(void);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURNADMIN_COMMAND_TYPE ct, int is_st);
 

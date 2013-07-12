@@ -996,6 +996,10 @@ static void run_listener_server(struct event_base *eb)
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		/* If there are no threads, then we run it here */
 		read_userdb_file(0);
+		/* Auth ping must not be used in single-threaded environment
+		 * because it would affect the routing significantly
+		auth_ping();
+		*/
 #endif
 	}
 }
@@ -1128,6 +1132,10 @@ static void* run_auth_server_thread(void *arg)
 	while(run_auth_server_flag) {
 		run_events(eb);
 		read_userdb_file(0);
+		auth_ping();
+#if !defined(TURN_NO_HIREDIS)
+		send_message_to_redis(NULL, "publish", "__XXX__", "__YYY__");
+#endif
 	}
 
 	return arg;

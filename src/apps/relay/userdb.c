@@ -675,8 +675,10 @@ static int get_auth_secrets(secrets_list_t *sl)
 					}
 				}
 				ret = 0;
-				mysql_free_result(mres);
 			}
+
+			if(mres)
+				mysql_free_result(mres);
 		}
 	}
 #endif
@@ -956,6 +958,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						}
 					}
 				}
+
 				if(mres)
 					mysql_free_result(mres);
 			}
@@ -1068,6 +1071,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 					}
 				}
 			}
+
 			if(mres)
 				mysql_free_result(mres);
 		}
@@ -1354,6 +1358,7 @@ static int list_users(int is_st)
 						}
 					}
 				}
+
 				if(mres)
 					mysql_free_result(mres);
 			}
@@ -1485,6 +1490,7 @@ static int show_secret(void)
 						}
 					}
 				}
+
 				if(mres)
 					mysql_free_result(mres);
 			}
@@ -1956,6 +1962,57 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 	}
 
 	return 0;
+}
+
+/////////// PING //////////////
+
+void auth_ping(void)
+{
+	donot_print_connection_success = 1;
+
+#if !defined(TURN_NO_PQ)
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		char statement[1025];
+		STRCPY(statement,"select value from turn_secret");
+		PGresult *res = PQexec(pqc, statement);
+
+		if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
+		}
+
+		if(res) {
+			PQclear(res);
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_MYSQL)
+	MYSQL * myc = get_mydb_connection();
+	if(myc) {
+		char statement[1025];
+		STRCPY(statement,"select value from turn_secret");
+		int res = mysql_query(myc, statement);
+		if(res) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+		} else {
+			MYSQL_RES *mres = mysql_store_result(myc);
+			if(!mres) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
+			} else {
+				mysql_free_result(mres);
+			}
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_HIREDIS)
+	redisContext *rc = get_redis_connection();
+	if(rc) {
+		redisCommand(rc, "keys turn/secret/*");
+	}
+#endif
+
 }
 
 ///////////////////////////////
