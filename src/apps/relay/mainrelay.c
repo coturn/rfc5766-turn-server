@@ -79,6 +79,10 @@
 #include "hiredis_libevent2.h"
 #endif
 
+//////////////// defines ///////////////////////////
+
+#define MAX_UDP_SOCKET_QUEUE_SIZE (256*sizeof(struct message_to_relay))
+
 //////////////// OpenSSL Init //////////////////////
 
 static void openssl_setup(void);
@@ -233,8 +237,12 @@ struct relay_server {
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
+	struct evbuffer *in_buf_ev;
+	struct evbuffer *out_buf_ev;
 	struct bufferevent *udp_in_buf;
 	struct bufferevent *udp_out_buf;
+	struct evbuffer *udp_in_buf_ev;
+	struct evbuffer *udp_out_buf_ev;
 	struct bufferevent *auth_in_buf;
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
@@ -442,14 +450,16 @@ static int send_socket_to_relay(ioa_engine_handle e, struct message_to_relay *sm
 
 		struct evbuffer *output = NULL;
 		int success = 0;
+		size_t qsz = 0;
 
 		if(get_ioa_socket_type(smptr->m.sm.s) == UDP_SOCKET) {
-			output = bufferevent_get_output(relay_servers[dest]->udp_out_buf);
+			output = relay_servers[dest]->udp_out_buf_ev;
+			qsz = evbuffer_get_length(relay_servers[dest]->udp_in_buf_ev);
 		} else {
-			output = bufferevent_get_output(relay_servers[dest]->out_buf);
+			output = relay_servers[dest]->out_buf_ev;
 		}
 
-		if(output) {
+		if(output && (qsz<MAX_UDP_SOCKET_QUEUE_SIZE)) {
 
 			if(evbuffer_add(output,smptr,sizeof(struct message_to_relay))<0) {
 				TURN_LOG_FUNC(
@@ -457,15 +467,11 @@ static int send_socket_to_relay(ioa_engine_handle e, struct message_to_relay *sm
 					"%s: Cannot add message to relay output buffer\n",
 					__FUNCTION__);
 			} else {
+
 				success = 1;
 				smptr->m.sm.nd.nbh=NULL;
 			}
 
-		} else {
-			TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Empty output buffer\n",
-				__FUNCTION__);
 		}
 
 		if(!success) {
@@ -1029,16 +1035,23 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
+	rs->in_buf_ev = bufferevent_get_input(rs->in_buf);
+	rs->out_buf_ev = bufferevent_get_output(rs->out_buf);
+
 	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->udp_in_buf = pair[0];
 	rs->udp_out_buf = pair[1];
 	bufferevent_setcb(rs->udp_in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->udp_in_buf, EV_READ);
+	rs->udp_in_buf_ev = bufferevent_get_input(rs->udp_in_buf);
+	rs->udp_out_buf_ev = bufferevent_get_output(rs->udp_out_buf);
+
 	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->auth_in_buf = pair[0];
 	rs->auth_out_buf = pair[1];
 	bufferevent_setcb(rs->auth_in_buf, relay_receive_auth_message, NULL, NULL, rs);
 	bufferevent_enable(rs->auth_in_buf, EV_READ);
+
 	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,

@@ -540,7 +540,9 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		int rc = server->connect_cb(server->e, &(server->sm));
 
 		if(rc < 0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
+			if(eve(server->e->verbose)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
+			}
 		}
 	}
 
