@@ -759,6 +759,15 @@ fi
 
 pthread_testbarriers
 
+if [ -z ${TURN_NO_RELAY_THREADS} ] ; then 
+
+    #fine
+    ${ECHO_CMD} "relay threads can be used... may be..."
+    
+else
+    TURN_NO_RELAY_THREADS="-DTURN_NO_RELAY_THREADS"
+fi
+
 ###########################
 # Can we use daemon ?
 ###########################
@@ -954,7 +963,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_RELAY_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
 ${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 

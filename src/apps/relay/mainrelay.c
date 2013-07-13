@@ -81,7 +81,7 @@
 
 //////////////// defines ///////////////////////////
 
-#define MAX_UDP_SOCKET_QUEUE_SIZE (256*sizeof(struct message_to_relay))
+static const size_t MAX_UDP_SOCKET_QUEUE_SIZE  = (256*sizeof(struct message_to_relay));
 
 //////////////// OpenSSL Init //////////////////////
 
@@ -243,6 +243,8 @@ struct relay_server {
 	struct bufferevent *udp_out_buf;
 	struct evbuffer *udp_in_buf_ev;
 	struct evbuffer *udp_out_buf_ev;
+	size_t udp_in_buf_ev_sz;
+	u32bits udp_in_buf_ev_sz_counter;
 	struct bufferevent *auth_in_buf;
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
@@ -454,7 +456,11 @@ static int send_socket_to_relay(ioa_engine_handle e, struct message_to_relay *sm
 
 		if(get_ioa_socket_type(smptr->m.sm.s) == UDP_SOCKET) {
 			output = relay_servers[dest]->udp_out_buf_ev;
-			qsz = evbuffer_get_length(relay_servers[dest]->udp_in_buf_ev);
+			if(!((++(relay_servers[dest]->udp_in_buf_ev_sz_counter)) & 0x0000007F) ||
+					(relay_servers[dest]->udp_in_buf_ev_sz >= MAX_UDP_SOCKET_QUEUE_SIZE)) {
+				relay_servers[dest]->udp_in_buf_ev_sz = evbuffer_get_length(relay_servers[dest]->udp_in_buf_ev);
+			}
+			qsz = relay_servers[dest]->udp_in_buf_ev_sz;
 		} else {
 			output = relay_servers[dest]->out_buf_ev;
 		}
@@ -706,10 +712,8 @@ static void relay_receive_message(struct bufferevent *bev, void *ptr)
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 	struct relay_server *rs = (struct relay_server *)ptr;
-	int counter = 0;
 
-	while (((counter++)<128) &&
-		(n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
+	while ((n = evbuffer_remove(input, &sm, sizeof(struct message_to_relay))) > 0) {
 
 		if (n != sizeof(struct message_to_relay)) {
 			perror("Weird buffer error\n");
@@ -820,6 +824,24 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 		ioa_network_buffer_delete(listener.ioa_eng, mm.m.tc.nbh);
 		 mm.m.tc.nbh = NULL;
 	}
+}
+
+void check_relay_input_queues(struct relay_server *rs);
+void check_relay_input_queues(struct relay_server *rs)
+{
+	relay_receive_auth_message(rs->auth_in_buf, rs);
+	relay_receive_message(rs->in_buf, rs);
+	relay_receive_message(rs->udp_in_buf, rs);
+}
+
+static void check_listener_input_queues(struct listener_server *ls)
+{
+	listener_receive_message(ls->in_buf, ls);
+}
+
+static void check_auth_server_input_queues(struct auth_server *as)
+{
+	auth_server_receive_message(as->in_buf,as);
 }
 
 // <<== communications between listener and relays
@@ -999,9 +1021,12 @@ static void run_listener_server(struct event_base *eb)
 
 		rollover_logfile();
 
-#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
+		check_listener_input_queues(&listener);
+
+#if defined(TURN_NO_THREADS)
 		/* If there are no threads, then we run it here */
 		read_userdb_file(0);
+		check_auth_server_input_queues(&authserver);
 		/* Auth ping must not be used in single-threaded environment
 		 * because it would affect the routing significantly
 		auth_ping();
@@ -1088,8 +1113,10 @@ static void *run_relay_thread(void *arg)
 	  perror("barrier wait");
 #endif
 
-  while(always_true)
+  while(always_true) {
     run_events(rs->event_base);
+    check_relay_input_queues(rs);
+  }
   
   return arg;
 }
@@ -1146,6 +1173,7 @@ static void* run_auth_server_thread(void *arg)
 		run_events(eb);
 		read_userdb_file(0);
 		auth_ping();
+		check_auth_server_input_queues(&authserver);
 #if !defined(TURN_NO_HIREDIS)
 		send_message_to_redis(NULL, "publish", "__XXX__", "__YYY__");
 #endif
