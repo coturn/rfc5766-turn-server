@@ -456,7 +456,7 @@ static int send_socket_to_relay(ioa_engine_handle e, struct message_to_relay *sm
 
 		if(get_ioa_socket_type(smptr->m.sm.s) == UDP_SOCKET) {
 			output = relay_servers[dest]->udp_out_buf_ev;
-			if(!((++(relay_servers[dest]->udp_in_buf_ev_sz_counter)) & 0x0000007F) ||
+			if(!((++(relay_servers[dest]->udp_in_buf_ev_sz_counter)) & 0x0000003F) ||
 					(relay_servers[dest]->udp_in_buf_ev_sz >= MAX_UDP_SOCKET_QUEUE_SIZE)) {
 				relay_servers[dest]->udp_in_buf_ev_sz = evbuffer_get_length(relay_servers[dest]->udp_in_buf_ev);
 			}
