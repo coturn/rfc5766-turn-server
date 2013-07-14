@@ -65,23 +65,41 @@ void read_spare_buffer(evutil_socket_t fd)
 	}
 }
 
-int set_sock_buf_size(evutil_socket_t fd, int sz)
+int set_sock_buf_size(evutil_socket_t fd, int sz0)
 {
-  while(sz>0) {
-	  if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,(const void*)(&sz),(socklen_t)sizeof(sz))<0) {
-		  sz = sz / 2;
-	  } else {
-		  break;
-	  }
-  }
+	int sz;
 
-  if(sz<1) {
-	  perror("Cannot set socket size");
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot set sock size %d on fd %d\n",sz,fd);
-	  return -1;
-  }
+	sz = sz0;
+	while (sz > 0) {
+		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const void*) (&sz), (socklen_t) sizeof(sz)) < 0) {
+			sz = sz / 2;
+		} else {
+			break;
+		}
+	}
 
-  return 0;
+	if (sz < 1) {
+		perror("Cannot set socket rcv size");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set rcv sock size %d on fd %d\n", sz, fd);
+		return -1;
+	}
+
+	sz = sz0;
+	while (sz > 0) {
+		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const void*) (&sz), (socklen_t) sizeof(sz)) < 0) {
+			sz = sz / 2;
+		} else {
+			break;
+		}
+	}
+
+	if (sz < 1) {
+		perror("Cannot set socket snd size");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Cannot set snd sock size %d on fd %d\n", sz, fd);
+		return -1;
+	}
+
+	return 0;
 }
 
 int socket_tcp_set_keepalive(evutil_socket_t fd)

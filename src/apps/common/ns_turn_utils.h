@@ -64,6 +64,10 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...);
 void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s);
 
 /* Log */
+
+extern volatile int _log_time_value_set;
+extern volatile turn_time_t _log_time_value;
+
 void rtpprintf(const char *format, ...);
 int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args);
 void reset_rtpprintf(void);

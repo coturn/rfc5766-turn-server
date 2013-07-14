@@ -247,6 +247,9 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
   UNUSED_ARG(arg);
 
   e->jiffie = turn_time();
+
+  _log_time_value = e->jiffie;
+  _log_time_value_set = 1;
 }
 
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,

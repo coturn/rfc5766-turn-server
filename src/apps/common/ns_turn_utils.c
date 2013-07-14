@@ -43,6 +43,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+////////// LOG TIME OPTIMIZATION ///////////
+
+volatile int _log_time_value_set = 0;
+volatile turn_time_t _log_time_value = 0;
+
+static inline turn_time_t log_time(void)
+{
+	if(_log_time_value_set)
+		return _log_time_value;
+	return turn_time();
+}
+
 ////////// MUTEXES /////////////
 
 #define MAGIC_CODE (0xEFCD1983)
@@ -177,10 +189,10 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 		TURN_LOG_FUNC_IMPL(level,format,args);
 #else
 		if (level == TURN_LOG_LEVEL_ERROR) {
-			printf("%lu: ERROR: ",(unsigned long)turn_time());
+			printf("%lu: ERROR: ",(unsigned long)log_time());
 			vprintf(format, args);
 		} else if(!no_stdout_log) {
-			printf("%lu: ",(unsigned long)turn_time());
+			printf("%lu: ",(unsigned long)log_time());
 			vprintf(format, args);
 		}
 #endif
@@ -442,7 +454,7 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 
 	size_t sz;
 
-	snprintf(s, sizeof(s), "%lu: ",(unsigned long)turn_time());
+	snprintf(s, sizeof(s), "%lu: ",(unsigned long)log_time());
 	sz=strlen(s);
 	vsnprintf(s+sz, sizeof(s)-1-sz, format, args);
 	s[sizeof(s)-1]=0;
