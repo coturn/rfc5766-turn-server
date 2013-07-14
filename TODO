@@ -63,3 +63,5 @@ http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
 13) For extra difficult NAT/FWs, consider implementing Websockets.
 
 14) separate thread for each listener. 
+
+15) RADIUS integration ?

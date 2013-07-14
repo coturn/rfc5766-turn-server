@@ -1,4 +1,4 @@
-07/XX/2013 Oleg Moskalenko <mom040267@gmail.com> 
+07/14/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 2.0.0.0 'Shivers':
 	- new networking engine:
 		- scalable UDP socket model. 
