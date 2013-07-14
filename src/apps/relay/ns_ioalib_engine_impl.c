@@ -283,7 +283,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	  ioa_engine_handle e = (ioa_engine_handle)malloc(sizeof(ioa_engine));
 		ns_bzero(e,sizeof(ioa_engine));
 
-		TURN_MUTEX_INIT_RECURSIVE(&(e->mutex));
+		TURN_MUTEX_INIT(&(e->mutex));
 
 		e->max_bpj = max_bps * SECS_PER_JIFFIE;
 		e->verbose = verbose;
