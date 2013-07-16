@@ -651,7 +651,7 @@ CREATE TABLE turn_secret (
 );
 
 The field hmackey contains HEX string representation of the 128 bits key.
-We do not store the user password, for security reasons.
+We do not store the user open passwords for long-term credentials, for security reasons.
 Storing only the HMAC key has its own implications - if you change the realm,
 you will have to update the HMAC keys of all users, because the realm is 
 used for the HMAC key generation.
@@ -742,7 +742,12 @@ redis-userdb="ip=127.0.0.1 dbname=0 password=turn connect_timeout=30"
 Redis can be also used for the TURN allocation status check and for status and 
 traffic notifications.
 
-See the explanation in the turndb/schema.stats.redis file.
+See the explanation in the turndb/schema.stats.redis file, and an example in 
+turndb/testredisdbsetup.sh file. One special thing about TURN Redis security setup
+is that you can store open passwords for long-term credentials in Redis.
+You cannot set open passwords for long-term credentials in MySQL and PostgreSQL -
+with those DBs, you have to use the keys only. With Redis, you have a choice - 
+keys or open passwords.
 
 You also have to take care about Redis connection parameters, the timeout and the 
 keepalive. The following settings must be in your Redis config file
