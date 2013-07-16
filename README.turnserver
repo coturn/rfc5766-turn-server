@@ -407,11 +407,16 @@ the user accounts, for that you have a number of options:
 	
 	b) userdb config file.
 	
-	c) a database table (PostgreSQL or MySQL or Redis).
+	c) a database table (PostgreSQL or MySQL). You will have to set keys with 
+	turnadmin utility (see docs and wiki for turnadmin). You cannot use open passwords 
+	in the database.
+
+	d) Redis key/value pair(s), if Redis is used. You key use either keys or 
+	open passwords with Redis; see turndb/testredisdbsetup.sh file.  
 	
-	d) You also can use the TURN REST API. You will need shared secret(s) set
+	e) You also can use the TURN REST API. You will need shared secret(s) set
 	either	through the command line option, or through the config file, or through
-	the database table.  
+	the database table or Redis key/value pairs.  
 
 2) Usually WebRTC uses fingerprinting (-f).
 
@@ -559,11 +564,23 @@ support. Each time turnserver checks user credentials, it reads the database (as
 of course, so that the current flow of packets is not delayed in any way), so any change in the 
 database content is immediately visible by the turnserver. This is the way if you need the 
 best scalability. The schema for the database can be found in schema.sql file.
+For long-term credentials, you have to set the "keys" for the users; the "keys" are generated 
+by the turnadmin utility. For the key generation, you need username, password and the realm. 
+All users in the database must use the same realm value; if down the road you will decide 
+to change the realm name, then you will have to re-generate all user keys (that can be done 
+in a batch script). If you are using short-term credentials, then you use open passwords 
+in the database; you will have to make sure that nobody can access the database outside of 
+the TURN server box. 
 
-4) The same is true for MySQL database. The same schema file is applicable.
+4) The same is true for MySQL database. The same schema file is applicable. 
+The same considerations are applicable. 
 
 5) The same is true for the Redis database, but the Redis database has aa different schema -
-it can be found (in the form of explanation) in schema.userdb.redis.
+it can be found (in the form of explanation) in schema.userdb.redis. 
+Also, in Redis you can store both "keys" and open passwords (for long term credentials) - 
+the "open password" option is less secure but more convenient for low-security environments. 
+For short-term credentials, you will use open passwords only. See the file 
+turndb/testredisdbsetup.sh as an example. 
 
 6) Of course, the turnserver can be used in non-secure mode, when users are allowed to establish
 sessions anonymously. But in most cases (like WebRTC) that will not work.
