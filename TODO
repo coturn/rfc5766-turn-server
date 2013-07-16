@@ -1,67 +1,138 @@
+==================================================================
 
-0) Fedora package.
+###   I. PLATFORMS SUPPORT   ###
 
-1) DTLS support for Cygwin.
+==================================================================
 
-2) Locale support (?).
+1) Fedora package.
 
-	Currently we assume that all text data is 8-bits encoded, like C locale.
-	It would be nice to support localized strings (8-bits and 2-bytes as well).
-	But I am not sure whether this is really important, given the essentially
-	backend nature of the TURN Server. The TURN server is so deeply "hidden" 
-	in the network infrastructure that the significant code complication 
-	involved into 2-bytes string support is probably unjustified.
+2) DTLS support for Cygwin.
 
-3) User's manual.
+3) MS Windows support.
 
-4) Developer's manual.
+	Cygwin is supported. A "real" MS-Windows port would 
+	involve a usable GUI.
 
-5) MS Windows support.
+==================================================================
 
-	Cygwin is supported. A "real" MS-Windows port would involve a usable GUI.
+###   II. DOCS   ###
 
-6) HTTP or GUI status monitor and management.
+==================================================================
 
-	For enterprise users, a management (configuration, status and statistics) 
-	GUI has to be implemented. Currently, all these features are available 
-	through the shell command line and through Redis command line.
+1) User's manual.
+
+2) Developer's manual.
+
+==================================================================
+
+###   III. NETWORK ENGINE 3.0   ###
+
+==================================================================
+
+1) Each listener has its own single network endpoint and its own 
+thread. Each IP:port:protocol triplet has its own listener.
+
+2) Multiple authentication servers, each in a separate thread
+
+3) For listening endpoints, flexible format like IP:port.
+
+4) Each listener enpoint has its own set of relay threads.
+
+5) UDP is handled in the same thread as the listener, the TCP 
+is handled in multiple threads (same pattern for TCP as in engines 
+1 and 2).
+
+6) No locking for the network buffer allocation.
+
+==================================================================
+
+###   IV. PERFORMANCE OPTIMIZATION   ###
+
+==================================================================
+
+1) A smarter load balancer has to be implemented.
+ 
+	The load balancer has to have a heartbeat channels with 
+	the slave servers, currently it is only just a dumb 
+	round-robin load distributor.
+
+2) For a large enterprise, a user-space stack to be integrated.
+
+	An another socket abstraction to be implemented, 
+	the one that uses the user-space TCP/IP stack with 
+	zero memory copy. This is an ambitious goal that would 
+	increase the system scaleability, significantly. 
+	The stock TCP/IP stack in UNIX and in MS Windows do not 
+	scale gracefully. We are trying to suppress those issues 
+	in the TURN Server, by using an advanced synchronous 
+	I/O technique, but still the underlying stock TCP/IP stack 
+	is a limitation.  
+
+==================================================================
+
+###   V. SECURITY   ###
+
+==================================================================
+
+1) RADIUS integration ?
+
+2) Add SHA256 security.
+
+	SHA1 is mandatory according to RFC5766. But it would be 
+	nice to have SHA256, as an option. I guess that for some 
+	applications the additional CPU load can be justified.
+
+==================================================================
+
+###   VI. STANDARDS SUPPORT   ###
+
+==================================================================
+
+1) Follow the draft ICE endpoint mobility standard and implement 
+it if it is accepted:
+
+   http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
+
+2) For extra difficult NAT/FWs, consider implementing Websockets.
+
+==================================================================
+
+###   VII. MISC FEATURES   ###
+
+==================================================================
+
+
+1) Locale support (?).
+
+	Currently we assume that all text data is 8-bits encoded, 
+	like C locale. It would be nice to support localized 
+	strings (8-bits and 2-bytes as well). But I am not sure 
+	whether this is really important, given the essentially
+	backend nature of the TURN Server. The TURN server is so 
+	deeply "hidden" in the network infrastructure that the 
+	significant code complication 
+
+2) HTTP or GUI status monitor and management.
+
+	For enterprise users, a management (configuration, status 
+	and statistics) GUI has to be implemented. Currently, all 
+	these features are available through the shell command 
+	line and through Redis command line.
 
 	Also, Redis status data to be extended.
 
-7) Add SHA256 security.
-
-	SHA1 is mandatory according to RFC5766. But it would be nice to have 
-	SHA256, as an option. I guess that for some applications the additional 
-	CPU load can be justified.
-
-8) A smarter load balancer has to be implemented.
- 
-	The load balancer has to have a heartbeat channels with the slave servers, 
-	currently it is only just a dumb round-robin load distributor.
-
-9) For a large enterprise, a user-space stack to be integrated.
-
-	An another socket abstraction to be implemented, 
-	the one that uses the user-space TCP/IP stack with zero memory copy. 
-	This is an ambitious goal that would increase the system scaleability,
-	significantly. The stock TCP/IP stack in UNIX and in MS WIndows do not 
-	scale gracefully. We are trying to suppress those issues in the TURN Server,
-	by using an advanced synchronous I/O technique, but still the underlying
-	stock TCP/IP stack is a limitation.  
-
-10) Traffic recording (for selected allocations).
+3) Traffic recording (for selected allocations).
 
 	That would be a helpful feature for a large enterprise 
 	(for testing and security purposes). 
 
-11) Remove C++ compilation warnings in Solaris.
+==================================================================
 
-12) Follow the draft ICE endpoint mobility standard and implement it if it is accepted:
+###   VIII. MINOR STUFF   ###
 
-http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
+==================================================================
 
-13) For extra difficult NAT/FWs, consider implementing Websockets.
+1) Remove C++ compilation warnings in Solaris.
 
-14) separate thread for each listener. 
+==================================================================
 
-15) RADIUS integration ?
