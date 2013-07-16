@@ -134,5 +134,7 @@ it if it is accepted:
 
 1) Remove C++ compilation warnings in Solaris.
 
+2) Cleaner client dependencies (see Person's email).
+
 ==================================================================
 

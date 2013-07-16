@@ -59,7 +59,7 @@ for Linux. Other platforms support the alternative behavior of RFC 5766.
 multithreaded from the beginning).
 
 24) Networking engine 2.0 implemented, with more scalable approach 
-to the UDp sockets handling.
+to the UDP sockets handling.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.
