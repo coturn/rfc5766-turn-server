@@ -56,6 +56,8 @@ typedef struct {
 
 #define COOKIE_SECRET_LENGTH (32)
 
+#define TRIAL_EFFORTS_TO_SEND (10)
+
 struct dtls_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
@@ -66,6 +68,7 @@ struct dtls_listener_relay_server_info {
   ioa_socket_handle udp_listen_s;
   struct message_to_relay sm;
   int slen0;
+  int single_threaded;
   ioa_engine_new_connection_event_handler connect_cb;
 };
 
@@ -131,6 +134,16 @@ int is_dtls_message(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
+static int is_connreset(void) {
+	switch (errno) {
+	case ECONNRESET:
+	case ECONNREFUSED:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
 #if !defined(TURN_NO_DTLS)
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
@@ -523,14 +536,14 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
-	if((bsize<0) && (errno == ECONNRESET)) {
+	if((bsize<0) && is_connreset()) {
 		//hm... try again...
 		do {
 			bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (bsize < 0 && (errno == EINTR));
 	}
 
-	if((bsize<0) && (errno == ECONNRESET))
+	if((bsize<0) && is_connreset)
 	  reopen_server_socket(server,1);
 
 	if(bsize<0) {
@@ -592,14 +605,14 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
 
-	if((rc<0) && (errno == ECONNRESET)) {
+	if((rc<0) && is_connreset()) {
 	  //hm... try again...
 		do {
 			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
 	}
 
-	if((rc<0) && (errno == ECONNRESET))
+	if((rc<0) && is_connreset())
 	  reopen_server_socket(server,1);
 
 	if(rc<0) {
@@ -704,14 +717,14 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
 
-		if((rc<0) && (errno == ECONNRESET)) {
+		if((rc<0) && is_connreset()) {
 			//hm... try again...
 			do {
 				rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 			} while (rc < 0 && (errno == EINTR));
 		}
 
-		if((rc<0) && (errno == ECONNRESET))
+		if((rc<0) && is_connreset())
 		  reopen_server_socket(server,1);
 	}
 
@@ -917,10 +930,12 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       ioa_engine_new_connection_event_handler send_socket) {
+		       ioa_engine_new_connection_event_handler send_socket,
+		       int single_threaded) {
 
   if(!server) return -1;
 
+  server->single_threaded = single_threaded;
   server->dtls_ctx = e->dtls_ctx;
   server->connect_cb = send_socket;
 
@@ -973,7 +988,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     ioa_engine_new_connection_event_handler send_socket) {
+							     ioa_engine_new_connection_event_handler send_socket,
+							     int single_threaded) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     malloc(sizeof(dtls_listener_relay_server_type));
@@ -984,7 +1000,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 send_socket)<0) {
+		 send_socket,
+		 single_threaded)<0) {
     free(server);
     return NULL;
   } else {
@@ -1021,6 +1038,8 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 
 	if(fd>=0) {
 
+		int cycle = 0;
+
 		if (dest_addr) {
 
 			int slen = get_ioa_addr_len(dest_addr);
@@ -1029,22 +1048,27 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
 			} while ((rc < 0) && (errno == EINTR));
 
-			if((rc<0) && (errno == ECONNRESET)) {
-				//hm... try again...
-				do {
-					rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-				} while ((rc < 0) && (errno == EINTR));
+			while(++cycle<TRIAL_EFFORTS_TO_SEND) {
+				if((rc<0) && is_connreset()) {
+					//hm... try again...
+					do {
+						rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
+					} while ((rc < 0) && (errno == EINTR));
+				}
 			}
+
 		} else {
 			do {
 				rc = send(fd, buffer, len, 0);
 			} while (rc < 0 && (errno == EINTR));
 
-			if((rc<0) && (errno == ECONNRESET)) {
-				//hm... try again...
-				do {
-					rc = send(fd, buffer, len, 0);
-				} while (rc < 0 && (errno == EINTR));
+			while(++cycle<TRIAL_EFFORTS_TO_SEND) {
+				if((rc<0) && is_connreset()) {
+					//hm... try again...
+					do {
+						rc = send(fd, buffer, len, 0);
+					} while (rc < 0 && (errno == EINTR));
+				}
 			}
 		}
 
@@ -1052,18 +1076,14 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 			if((errno == ENOBUFS) || (errno == EAGAIN)) {
 				//Lost packet... fine.
 				rc = len;
-			} else if(errno == ECONNREFUSED) {
-				//???!!!
-				//Lost packet... fine.
-				rc = len;
-			} else if(errno == ECONNRESET) {
+			} else if(is_connreset()) {
 				dtls_listener_relay_server_type* server;
 				if(s->parent_s)
 					server = (dtls_listener_relay_server_type*)(s->parent_s->listener_server);
 				else
 					server = (dtls_listener_relay_server_type*)(s->listener_server);
 				if(server)
-					reopen_server_socket(server,0);
+					reopen_server_socket(server,server->single_threaded);
 				//Lost packet... fine.
 				rc = len;
 			}

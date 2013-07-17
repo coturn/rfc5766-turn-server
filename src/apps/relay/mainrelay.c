@@ -905,9 +905,9 @@ static void setup_listener_servers(void)
 	for(i=0; i<listener.addrs_number; i++) {
 		int index = rfc5780 ? i*2 : i;
 		if(!no_udp) {
-			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, listener.ioa_eng, send_socket_to_relay, (relay_servers_number<1));
 			if(rfc5780)
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay, (relay_servers_number<1));
 		} else {
 			listener.udp_services[index] = NULL;
 			if(rfc5780)
@@ -932,9 +932,9 @@ static void setup_listener_servers(void)
 				listener.tls_services[index+1] = NULL;
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, send_socket_to_relay);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, listener.ioa_eng, send_socket_to_relay, (relay_servers_number<1));
 			if(rfc5780)
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, listener.ioa_eng, send_socket_to_relay, (relay_servers_number<1));
 		} else {
 			listener.dtls_services[index] = NULL;
 			if(rfc5780)
@@ -1126,10 +1126,6 @@ static void setup_relay_servers(void)
 {
 	size_t i = 0;
 
-#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-	relay_servers_number = 0;
-#endif
-
 	relay_servers = (struct relay_server**)malloc(sizeof(struct relay_server *)*get_real_relay_servers_number());
 	ns_bzero(relay_servers,sizeof(struct relay_server *)*get_real_relay_servers_number());
 
@@ -1230,6 +1226,10 @@ static void setup_server(void)
 
 	if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
 		perror("barrier init");
+#endif
+
+#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
+	relay_servers_number = 0;
 #endif
 
 	setup_listener_servers();
