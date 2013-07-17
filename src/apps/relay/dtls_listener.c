@@ -543,7 +543,7 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		} while (bsize < 0 && (errno == EINTR));
 	}
 
-	if((bsize<0) && is_connreset)
+	if((bsize<0) && is_connreset())
 	  reopen_server_socket(server,1);
 
 	if(bsize<0) {
