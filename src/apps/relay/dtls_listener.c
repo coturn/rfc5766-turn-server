@@ -869,6 +869,11 @@ int reopen_server_socket(dtls_listener_relay_server_type* server)
 
 		EVENT_DEL(server->udp_listen_ev);
 
+		if(server->single_threaded && (server->udp_listen_s->fd>=0)) {
+			socket_closesocket(server->udp_listen_s->fd);
+			server->udp_listen_s->fd = -1;
+		}
+
 		if (!(server->udp_listen_s)) {
 			server->to_be_reopen = 0;
 			return create_server_socket(server);
