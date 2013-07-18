@@ -315,7 +315,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	{
 		if(new_udp_fd >= 0) {
-			close(udp_fd);
+			socket_closesocket(udp_fd);
 			udp_fd = new_udp_fd;
 			new_udp_fd = -1;
 		}
@@ -455,7 +455,7 @@ int main(int argc, char **argv)
 	  run_stunclient(argv[optind], port, &local_port, &rfc5780,-1,1,1,1);
   }
 
-  close(udp_fd);
+  socket_closesocket(udp_fd);
 
   return 0;
 }

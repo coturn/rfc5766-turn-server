@@ -88,7 +88,7 @@ static int udp_create_server_socket(server_type* server,
   
   if(addr_bind(udp_fd,server_addr)<0) return -1;
   
-  evutil_make_socket_nonblocking(udp_fd);
+  socket_set_nonblocking(udp_fd);
 
   struct event *udp_ev = event_new(server->event_base,udp_fd,EV_READ|EV_PERSIST,
 			     udp_server_input_handler,server_addr);

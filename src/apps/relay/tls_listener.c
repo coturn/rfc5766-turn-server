@@ -64,7 +64,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	tls_listener_relay_server_type * server = (tls_listener_relay_server_type*) arg;
 
 	if(!(server->connect_cb)) {
-		close(fd);
+		socket_closesocket(fd);
 		return;
 	}
 
@@ -112,7 +112,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Cannot create ioa_socket from FD\n");
-		close(fd);
+		socket_closesocket(fd);
 	}
 
 	FUNCEND	;
@@ -142,7 +142,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   socket_tcp_set_keepalive(tls_listen_fd);
 
-  evutil_make_socket_nonblocking(tls_listen_fd);
+  socket_set_nonblocking(tls_listen_fd);
 
   server->l = evconnlistener_new(server->e->event_base,
 		  server_input_handler, server,
@@ -151,7 +151,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   if(!(server->l)) {
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create TLS listener\n");
-	  evutil_closesocket(tls_listen_fd);
+	  socket_closesocket(tls_listen_fd);
 	  return -1;
   }
 

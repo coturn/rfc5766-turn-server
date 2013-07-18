@@ -1006,6 +1006,25 @@ static void run_events(struct event_base *eb)
 	event_base_dispatch(eb);
 }
 
+static void reopen_udp_server_sockets(void)
+{
+	size_t i;
+
+	if(listener.udp_services) {
+		for(i=0;i<listener.services_number;++i)
+		{
+			reopen_server_socket(listener.udp_services[i]);
+		}
+	}
+
+	if(listener.dtls_services) {
+		for(i=0;i<listener.services_number;++i)
+		{
+			reopen_server_socket(listener.dtls_services[i]);
+		}
+	}
+}
+
 static void run_listener_server(struct event_base *eb)
 {
 	unsigned int cycle = 0;
@@ -1018,6 +1037,8 @@ static void run_listener_server(struct event_base *eb)
 		}
 
 		run_events(eb);
+
+		reopen_udp_server_sockets();
 
 		rollover_logfile();
 

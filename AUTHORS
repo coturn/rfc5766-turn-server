@@ -31,4 +31,8 @@ Vladimir Tsanev <tsachev@gmail.com> :
 	Arch Linux port
 	(since v1.8.6.1);
 	 
+Po-sheng Lin <personlin118@gmail.com> :
+	Libevent dependencies cleaning
+	(since v2.0.1.1);
 
+ 

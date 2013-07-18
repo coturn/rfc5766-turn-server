@@ -61,11 +61,22 @@ extern "C" {
 
 ///////////////////////// Sockets ///////////////////////////////
 
+#ifdef WIN32
+/** Do the platform-specific call needed to close a socket returned from
+    socket() or accept(). */
+#define socket_closesocket(s) closesocket(s)
+#else
+/** Do the platform-specific call needed to close a socket returned from
+    socket() or accept(). */
+#define socket_closesocket(s) close(s)
+#endif
+
 void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
 int socket_set_reusable(evutil_socket_t fd);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
+int socket_set_nonblocking(evutil_socket_t fd);
 int socket_tcp_set_keepalive(evutil_socket_t fd);
 
 int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno);

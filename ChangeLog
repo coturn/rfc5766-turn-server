@@ -1,3 +1,10 @@
+07/17/2013 Oleg Moskalenko <mom040267@gmail.com>,
+			Po-sheng Lin <personlin118@gmail.com> 
+Version 2.0.1.1 'Shivers':
+	- udp fixes.
+	- Makefile cleaning.
+	- Dependencies cleaning.
+
 07/14/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 2.0.0.0 'Shivers':
 	- new networking engine:

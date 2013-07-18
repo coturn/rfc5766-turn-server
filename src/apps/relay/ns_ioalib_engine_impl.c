@@ -742,7 +742,7 @@ int set_socket_options(ioa_socket_handle s)
 		}
 	}
 
-	evutil_make_socket_nonblocking(s->fd);
+	socket_set_nonblocking(s->fd);
 	socket_set_reusable(s->fd);
 
 	if ((s->st == UDP_SOCKET) || (s->st == DTLS_SOCKET)) {
@@ -1014,7 +1014,7 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 	} else {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Cannot create ioa_socket from FD\n");
-		close(fd);
+		socket_closesocket(fd);
 	}
 }
 
@@ -1260,7 +1260,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 		}
 
 		if (s->fd >= 0) {
-			evutil_closesocket(s->fd);
+			socket_closesocket(s->fd);
 			s->fd = -1;
 		}
 	}

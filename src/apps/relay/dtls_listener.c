@@ -56,7 +56,7 @@ typedef struct {
 
 #define COOKIE_SECRET_LENGTH (32)
 
-#define TRIAL_EFFORTS_TO_SEND (10)
+#define TRIAL_EFFORTS_TO_SEND (2)
 
 struct dtls_listener_relay_server_info {
   char ifname[1025];
@@ -69,6 +69,8 @@ struct dtls_listener_relay_server_info {
   struct message_to_relay sm;
   int slen0;
   int single_threaded;
+  int to_be_reopen;
+  evutil_socket_t old_fd;
   ioa_engine_new_connection_event_handler connect_cb;
 };
 
@@ -89,7 +91,7 @@ typedef struct _new_dtls_conn {
 ///////////// forward declarations ////////
 
 static int create_server_socket(dtls_listener_relay_server_type* server);
-static int reopen_server_socket(dtls_listener_relay_server_type* server, int force_reopen);
+static void schedule_reopen_server_socket(dtls_listener_relay_server_type* server);
 static int clean_server(dtls_listener_relay_server_type* server);
 
 ///////////// dtls message types //////////
@@ -134,7 +136,7 @@ int is_dtls_message(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-static int is_connreset(void) {
+static inline int is_connreset(void) {
 	switch (errno) {
 	case ECONNRESET:
 	case ECONNREFUSED:
@@ -253,7 +255,7 @@ static void free_ndc(new_dtls_conn *ndc)
 		}
 
 		if(ndc->info.fd>=0) {
-			evutil_closesocket(ndc->info.fd);
+			socket_closesocket(ndc->info.fd);
 			ndc->info.fd = -1;
 		}
 		free(ndc);
@@ -544,7 +546,7 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	}
 
 	if((bsize<0) && is_connreset())
-	  reopen_server_socket(server,1);
+	  schedule_reopen_server_socket(server);
 
 	if(bsize<0) {
 		int ern=errno;
@@ -613,7 +615,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	}
 
 	if((rc<0) && is_connreset())
-	  reopen_server_socket(server,1);
+	  schedule_reopen_server_socket(server);
 
 	if(rc<0) {
 		if(errno != EAGAIN) {
@@ -725,7 +727,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		}
 
 		if((rc<0) && is_connreset())
-		  reopen_server_socket(server,1);
+		  schedule_reopen_server_socket(server);
 	}
 
 	goto start_server_input;
@@ -772,20 +774,20 @@ static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_se
   }
 
   if(addr_bind(pinfo->fd,&server->addr)<0) {
-    evutil_closesocket(pinfo->fd);
+	  socket_closesocket(pinfo->fd);
     pinfo->fd=-1;
     return -1;
   }
 
   if(addr_connect(pinfo->fd,&pinfo->remote_addr,NULL)<0) {
-    evutil_closesocket(pinfo->fd);
+	  socket_closesocket(pinfo->fd);
     pinfo->fd=-1;
     return -1;
   }
 
   addr_debug_print(server->verbose, &pinfo->remote_addr,"UDP connected to");
 
-  evutil_make_socket_nonblocking(pinfo->fd);
+  socket_set_nonblocking(pinfo->fd);
 
   set_socket_df(pinfo->fd, pinfo->remote_addr.ss.ss_family, 1);
 
@@ -846,34 +848,43 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
   return 0;
 }
 
-static int reopen_server_socket(dtls_listener_relay_server_type* server, int force_reopen)
+static void schedule_reopen_server_socket(dtls_listener_relay_server_type* server)
 {
+	server->to_be_reopen = 1;
+}
+
+int reopen_server_socket(dtls_listener_relay_server_type* server)
+{
+	if(!server)
+		return 0;
+
 	FUNCSTART;
 
-	int can_reopen = force_reopen;
+	if(server->old_fd>=0) {
+		socket_closesocket(server->old_fd);
+		server->old_fd = -1;
+	}
 
-#if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-	can_reopen = 1;
-#endif
-
-	if (can_reopen && server) {
-
-		if (!(server->udp_listen_s))
-			return create_server_socket(server);
+	if (server->to_be_reopen) {
 
 		EVENT_DEL(server->udp_listen_ev);
 
-		ioa_socket_raw udp_listen_fd = -1;
-		ioa_socket_raw udp_listen_fd_old = server->udp_listen_s->fd;
+		if (!(server->udp_listen_s)) {
+			server->to_be_reopen = 0;
+			return create_server_socket(server);
+		}
 
-		udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
+		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
 		if (udp_listen_fd < 0) {
 			perror("socket");
 			FUNCEND;
 			return -1;
 		}
 
+		server->old_fd = server->udp_listen_s->fd;
 		server->udp_listen_s->fd = udp_listen_fd;
+
+		/* some UDP sessions may fail due to the race condition here */
 
 		set_socket_options(server->udp_listen_s);
 
@@ -886,7 +897,6 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, int for
 					server->ifname);
 		}
 
-		close(udp_listen_fd_old);
 		addr_bind(udp_listen_fd, &server->addr);
 
 		server->udp_listen_ev = event_new(server->e->event_base, udp_listen_fd,
@@ -904,6 +914,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, int for
 			addr_debug_print(server->verbose, &server->addr,
 					"UDP listener opened on ");
 
+		server->to_be_reopen = 0;
 	}
 
 	FUNCEND;
@@ -936,6 +947,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   if(!server) return -1;
 
   server->single_threaded = single_threaded;
+  server->old_fd = -1;
   server->dtls_ctx = e->dtls_ctx;
   server->connect_cb = send_socket;
 
@@ -1046,45 +1058,26 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 
 			do {
 				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-			} while ((rc < 0) && (errno == EINTR));
-
-			while(++cycle<TRIAL_EFFORTS_TO_SEND) {
-				if((rc<0) && is_connreset()) {
-					//hm... try again...
-					do {
-						rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-					} while ((rc < 0) && (errno == EINTR));
-				}
-			}
+			} while (
+					((rc < 0) && (errno == EINTR)) ||
+					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
+					);
 
 		} else {
 			do {
 				rc = send(fd, buffer, len, 0);
-			} while (rc < 0 && (errno == EINTR));
-
-			while(++cycle<TRIAL_EFFORTS_TO_SEND) {
-				if((rc<0) && is_connreset()) {
-					//hm... try again...
-					do {
-						rc = send(fd, buffer, len, 0);
-					} while (rc < 0 && (errno == EINTR));
-				}
-			}
+			} while (
+					((rc < 0) && (errno == EINTR)) ||
+					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
+					);
 		}
 
 		if(rc<0) {
 			if((errno == ENOBUFS) || (errno == EAGAIN)) {
-				//Lost packet... fine.
+				//Lost packet due to overload ... fine.
 				rc = len;
 			} else if(is_connreset()) {
-				dtls_listener_relay_server_type* server;
-				if(s->parent_s)
-					server = (dtls_listener_relay_server_type*)(s->parent_s->listener_server);
-				else
-					server = (dtls_listener_relay_server_type*)(s->listener_server);
-				if(server)
-					reopen_server_socket(server,server->single_threaded);
-				//Lost packet... fine.
+				//Lost packet - sent to nowhere... fine.
 				rc = len;
 			}
 		}

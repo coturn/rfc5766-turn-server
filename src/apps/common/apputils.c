@@ -43,6 +43,7 @@
 #include <getopt.h>
 #include <locale.h>
 #include <libgen.h>
+#include <fcntl.h>
 
 #if !defined(TURN_NO_THREADS)
 #include <pthread.h>
@@ -56,6 +57,20 @@
 #include <sys/resource.h>
 
 /*********************** Sockets *********************************/
+
+int socket_set_nonblocking(evutil_socket_t fd)
+{
+#ifdef WIN32
+	unsigned long nonblocking = 1;
+    ioctlsocket(fd, FIONBIO, (unsigned long*) &nonblocking);
+#else
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
+        perror("O_NONBLOCK");
+        return -1;
+    }
+#endif
+    return 0;
+}
 
 void read_spare_buffer(evutil_socket_t fd)
 {
@@ -127,7 +142,17 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
 int socket_set_reusable(evutil_socket_t fd) {
   if(fd<0) return -1;
   else {
-    evutil_make_listen_socket_reuseable(fd);
+
+#ifndef WIN32
+		{
+			const int on = 1;
+			/* REUSEADDR on Unix means, "don't hang on to this address after the
+			 * listener is closed."  On Windows, though, it means "don't keep other
+			 * processes from binding to this address while we're using it.
+			 */
+			setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
+		}
+#endif
 
 #ifdef SO_REUSEPORT
     {

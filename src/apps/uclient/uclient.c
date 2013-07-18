@@ -139,7 +139,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	      cdi->pinfo.tcp_conn[i]->tcp_data_ssl = NULL;
 	    }
 	    if(cdi->pinfo.tcp_conn[i]->tcp_data_fd>=0) {
-	      evutil_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
+	    	socket_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
 	      cdi->pinfo.tcp_conn[i]->tcp_data_fd=-1;
 	    }
 	    free(cdi->pinfo.tcp_conn[i]);
@@ -162,7 +162,7 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	    cdi->pinfo.ssl = NULL;
     }
     if(cdi->pinfo.fd>=0) {
-      evutil_closesocket(cdi->pinfo.fd);
+    	socket_closesocket(cdi->pinfo.fd);
     }
     cdi->pinfo.fd=-1;
   }
@@ -853,14 +853,14 @@ static int start_client(const char *remote_address, int port,
   	clnet_info_probe.ssl = NULL;
   	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
-  	close(clnet_info_probe.fd);
-  	clnet_info_probe.fd = -1;
+	  socket_closesocket(clnet_info_probe.fd);
+	  clnet_info_probe.fd = -1;
   }
   
-  evutil_make_socket_nonblocking(clnet_info->fd);
+  socket_set_nonblocking(clnet_info->fd);
   
   if(!no_rtcp) 
-    evutil_make_socket_nonblocking(clnet_info_rtcp->fd);
+	  socket_set_nonblocking(clnet_info_rtcp->fd);
   
   struct event* ev = event_new(client_event_base,clnet_info->fd,
 				EV_READ|EV_PERSIST,client_input_handler,
@@ -958,19 +958,19 @@ static int start_c2c(const char *remote_address, int port,
 	clnet_info_probe.ssl = NULL;
 	clnet_info_probe.fd = -1;
   } else if(clnet_info_probe.fd != -1) {
-	close(clnet_info_probe.fd);
-	clnet_info_probe.fd = -1;
+	  socket_closesocket(clnet_info_probe.fd);
+	  clnet_info_probe.fd = -1;
   }
   
-  evutil_make_socket_nonblocking(clnet_info1->fd);
+  socket_set_nonblocking(clnet_info1->fd);
   
   if(!no_rtcp)
-    evutil_make_socket_nonblocking(clnet_info1_rtcp->fd);
+	  socket_set_nonblocking(clnet_info1_rtcp->fd);
   
-  evutil_make_socket_nonblocking(clnet_info2->fd);
+  socket_set_nonblocking(clnet_info2->fd);
   
   if(!no_rtcp)
-    evutil_make_socket_nonblocking(clnet_info2_rtcp->fd);
+	  socket_set_nonblocking(clnet_info2_rtcp->fd);
   
   struct event* ev1 = event_new(client_event_base,clnet_info1->fd,
 				EV_READ|EV_PERSIST,client_input_handler,

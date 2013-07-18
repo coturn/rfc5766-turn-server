@@ -66,6 +66,8 @@ void delete_dtls_listener_server(dtls_listener_relay_server_type* server, int de
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 
+int reopen_server_socket(dtls_listener_relay_server_type* server);
+
 ///////////////////////////////////////////
 
 #ifdef __cplusplus
