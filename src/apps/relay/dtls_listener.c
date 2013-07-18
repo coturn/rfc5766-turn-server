@@ -850,7 +850,12 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
 static void schedule_reopen_server_socket(dtls_listener_relay_server_type* server)
 {
-	server->to_be_reopen = 1;
+  if(server) {
+    server->to_be_reopen = 1;
+    if(server->single_threaded) {
+      reopen_server_socket(server);
+    }
+  }
 }
 
 int reopen_server_socket(dtls_listener_relay_server_type* server)
