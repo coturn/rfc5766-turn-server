@@ -234,13 +234,9 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 int addr_bind_func(evutil_socket_t fd, const ioa_addr* addr, const char *file, const char *func, int line)
 {
 	if (!addr || fd < 0) {
+
 		return -1;
-	} else if(addr_any(addr)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind to an empty addr, fd %d\n", fd);
-		return -1;
-	} else if(addr_any_no_port(addr)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind to an empty addr with port, fd %d, port %d\n", fd, addr_get_port(addr));
-		return -1;
+
 	} else {
 
 		int ret = -1;
