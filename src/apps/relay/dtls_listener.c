@@ -538,11 +538,24 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
+	if(bsize<0) {
+			int err = 0;
+			socklen_t ln = sizeof(err);
+			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+	}
+
 	if((bsize<0) && is_connreset()) {
 		//hm... try again...
 		do {
 			bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (bsize < 0 && (errno == EINTR));
+		if(bsize<0) {
+				int err = 0;
+				socklen_t ln = sizeof(err);
+				getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+				printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+		}
 	}
 
 	if((bsize<0) && is_connreset())
@@ -607,11 +620,25 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
 
+	if(rc<0) {
+		int en=errno;
+		int err = 0;
+		socklen_t ln = sizeof(err);
+		getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+		printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+	}
+
 	if((rc<0) && is_connreset()) {
 	  //hm... try again...
 		do {
 			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
+		if(rc<0) {
+			int err = 0;
+			socklen_t ln = sizeof(err);
+			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+		}
 	}
 
 	if((rc<0) && is_connreset())
@@ -718,12 +745,24 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		do {
 			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
+		if(rc<0) {
+			int err = 0;
+			socklen_t ln = sizeof(err);
+			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+		}
 
 		if((rc<0) && is_connreset()) {
 			//hm... try again...
 			do {
 				rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 			} while (rc < 0 && (errno == EINTR));
+			if(rc<0) {
+				int err = 0;
+				socklen_t ln = sizeof(err);
+				getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
+				printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
+			}
 		}
 
 		if((rc<0) && is_connreset())
