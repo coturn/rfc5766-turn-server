@@ -60,6 +60,9 @@ multithreaded from the beginning).
 
 24) Networking engine 2.0 implemented, with more scalable approach 
 to the UDP sockets handling.
+
+25) DOS attack prevention logic added to the server; DOS attack client
+emulation implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

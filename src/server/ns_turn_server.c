@@ -330,15 +330,12 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 		if (server) {
 
 			if(!time_delta) time_delta = STUN_PERMISSION_LIFETIME;
-			turn_time_t newtime = turn_time() + time_delta;
-			if (tinfo->expiration_time < newtime) {
+			tinfo->expiration_time = turn_time() + time_delta;
 
-				IOA_EVENT_DEL(tinfo->lifetime_ev);
-				tinfo->expiration_time = newtime;
-				tinfo->lifetime_ev = set_ioa_timer(server->e, time_delta, 0,
-								client_ss_perm_timeout_handler, tinfo, 0,
-								"client_ss_channel_timeout_handler");
-			}
+			IOA_EVENT_DEL(tinfo->lifetime_ev);
+			tinfo->lifetime_ev = set_ioa_timer(server->e, time_delta, 0,
+							client_ss_perm_timeout_handler, tinfo, 0,
+							"client_ss_channel_timeout_handler");
 
 			return 0;
 		}
@@ -362,16 +359,13 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 				if (update_turn_permission_lifetime(ss, tinfo, STUN_CHANNEL_LIFETIME) < 0)
 					return -1;
 
-				turn_time_t newtime = turn_time() + STUN_CHANNEL_LIFETIME;
-				if (chn->expiration_time < newtime) {
+				chn->expiration_time = turn_time() + STUN_CHANNEL_LIFETIME;
 
-					IOA_EVENT_DEL(chn->lifetime_ev);
-					chn->expiration_time = newtime;
-					chn->lifetime_ev = set_ioa_timer(server->e, STUN_CHANNEL_LIFETIME, 0,
-									client_ss_channel_timeout_handler,
-									chn, 0,
-									"client_ss_channel_timeout_handler");
-				}
+				IOA_EVENT_DEL(chn->lifetime_ev);
+				chn->lifetime_ev = set_ioa_timer(server->e, STUN_CHANNEL_LIFETIME, 0,
+								client_ss_channel_timeout_handler,
+								chn, 0,
+								"client_ss_channel_timeout_handler");
 
 				return 0;
 			}
@@ -980,6 +974,7 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	}
 
 	tc->state = TC_STATE_CLIENT_TO_PEER_CONNECTING;
+	IOA_CLOSE_SOCKET(tc->peer_s);
 	tc->peer_s = tcs;
 	set_ioa_socket_sub_session(tc->peer_s,tc);
 
@@ -2669,12 +2664,20 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 
 	if (elem->state == UR_STATE_DONE) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"!!! closing session 0x%lx, socket 0x%lx in DONE state %ld\n",
-				(long)ss, (long) elem->s, (long) (elem->state));
+				"!!! closing session 0x%lx, client session 0x%lx in DONE state\n",
+				(long)ss, (long) elem);
 		return -1;
 	}
 
 	elem->state = UR_STATE_DONE;
+
+	if (ss->alloc.relay_session.state == UR_STATE_DONE) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"!!! closing session 0x%lx, relay session 0x%lx in DONE state\n",
+				(long)ss, (long)&(ss->alloc.relay_session));
+		return -1;
+	}
+	ss->alloc.relay_session.state = UR_STATE_DONE;
 
 	if (server->disconnect)
 		server->disconnect(ss);
@@ -2715,9 +2718,30 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 
 	FUNCSTART;
 
-	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
+	int to_close = 0;
 
-	shutdown_client_connection(server, ss);
+	ioa_socket_handle s = ss->client_session.s;
+	if(!s || ioa_socket_tobeclosed(s)) {
+		to_close = 1;
+	} else {
+		ioa_socket_handle rs = ss->alloc.relay_session.s;
+		if(!rs || ioa_socket_tobeclosed(rs)) {
+			to_close = 1;
+		} else if(ss->alloc.relay_session.state == UR_STATE_DONE) {
+			to_close = 1;
+		} else if(ss->client_session.state == UR_STATE_DONE) {
+			to_close = 1;
+		} else if(!(ss->alloc.lifetime_ev)) {
+			to_close = 1;
+		} else if(!(ss->to_be_allocated_timeout_ev)) {
+			to_close = 1;
+		}
+	}
+
+	if(to_close) {
+		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
+		shutdown_client_connection(server, ss);
+	}
 
 	FUNCEND;
 }
@@ -2791,6 +2815,8 @@ static int create_relay_connection(turn_turnserver* server,
 		allocation* a = get_allocation_ss(ss);
 		ts_ur_session* newelem = get_relay_session_ss(ss);
 
+		IOA_CLOSE_SOCKET(newelem->s);
+
 		ns_bzero(newelem, sizeof(ts_ur_session));
 		newelem->s = NULL;
 
@@ -2800,6 +2826,7 @@ static int create_relay_connection(turn_turnserver* server,
 
 			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
 					&newelem->s) < 0) {
+				IOA_CLOSE_SOCKET(newelem->s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
 				return -1;
@@ -2816,11 +2843,14 @@ static int create_relay_connection(turn_turnserver* server,
 					*err_code = 508;
 				if(!(*reason))
 					*reason = (const u08bits *)"Cannot create socket";
+				IOA_CLOSE_SOCKET(newelem->s);
+				IOA_CLOSE_SOCKET(rtcp_s);
 				return -1;
 			}
 		}
 
 		if (newelem->s == NULL) {
+			IOA_CLOSE_SOCKET(rtcp_s);
 			*err_code = 508;
 			*reason = (const u08bits *)"Cannot create relay socket";
 			return -1;
@@ -2830,6 +2860,7 @@ static int create_relay_connection(turn_turnserver* server,
 			if (out_reservation_token && *out_reservation_token) {
 				/* OK */
 			} else {
+				IOA_CLOSE_SOCKET(newelem->s);
 				IOA_CLOSE_SOCKET(rtcp_s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Wrong reservation tokens (internal error)";
@@ -2849,15 +2880,15 @@ static int create_relay_connection(turn_turnserver* server,
 				peer_input_handler, ss, 0);
 		}
 
-		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
+		if (lifetime<1)
+			lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
+		else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME)
+			lifetime = STUN_MAX_ALLOCATE_LIFETIME;
 
-		if (lifetime > 0 && a) {
-
-			ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
-					client_ss_allocation_timeout_handler, ss, 0,
-					"client_ss_allocation_timeout_handler");
-			set_allocation_lifetime_ev(a, lifetime, ev);
-		}
+		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
+				client_ss_allocation_timeout_handler, ss, 0,
+				"client_ss_allocation_timeout_handler");
+		set_allocation_lifetime_ev(a, lifetime, ev);
 
 		set_ioa_socket_session(newelem->s, ss);
 	}
@@ -3048,7 +3079,7 @@ int open_client_connection_session(turn_turnserver* server,
 	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 	ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e,
 			TURN_MAX_ALLOCATE_TIMEOUT, 0,
-			client_to_be_allocated_timeout_handler, ss, 0,
+			client_to_be_allocated_timeout_handler, ss, 1,
 			"client_to_be_allocated_timeout_handler");
 
 	if(sm->nd.nbh) {

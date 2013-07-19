@@ -71,6 +71,7 @@ extern struct event_base* client_event_base;
 extern int passive_tcp;
 extern int mandatory_channel_padding;
 extern int negative_test;
+extern int dos;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 

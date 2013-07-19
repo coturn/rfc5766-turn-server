@@ -95,6 +95,8 @@ Flags:
 
 -N		do negative tests (some limited cases only).
 
+-O		DOS attack mode.
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).

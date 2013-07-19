@@ -798,7 +798,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 		case UDP_SOCKET:
 			fd = socket(family, SOCK_DGRAM, 0);
 			if (fd < 0) {
-				perror("socket");
+				perror("UDP socket");
 				return NULL;
 			}
 			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
@@ -806,7 +806,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 		case TCP_SOCKET:
 			fd = socket(family, SOCK_STREAM, 0);
 			if (fd < 0) {
-				perror("socket");
+				perror("TCP socket");
 				return NULL;
 			}
 			set_sock_buf_size(fd, UR_CLIENT_SOCK_BUF_SIZE);
@@ -837,14 +837,14 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	return ret;
 }
 
-static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
+static int bind_ioa_socket_func(ioa_socket_handle s, const ioa_addr* local_addr, const char* file, const char *func, int line)
 {
 	if(!s || (s->parent_s))
 		return 0;
 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
-		int res = addr_bind(s->fd, local_addr);
+		int res = addr_bind_func(s->fd, local_addr, file, func, line);
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
@@ -854,6 +854,8 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 	}
 	return -1;
 }
+
+#define bind_ioa_socket(s,addr) bind_ioa_socket_func((s),(addr),__FILE__,__FUNCTION__,__LINE__)
 
 int create_relay_ioa_sockets(ioa_engine_handle e,
 				int address_family, u08bits transport,
@@ -886,82 +888,116 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 		int rtcp_port = -1;
 
-		*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family,
-						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
-						RELAY_SOCKET);
-		if (*rtp_s == NULL) {
-			perror("socket");
-			return -1;
-		}
-
-		sock_bind_to_device((*rtp_s)->fd, (unsigned char*)e->relay_ifname);
+		IOA_CLOSE_SOCKET(*rtp_s);
+		if(rtcp_s)
+			IOA_CLOSE_SOCKET(*rtcp_s);
 
 		ioa_addr rtcp_local_addr;
 		addr_cpy(&rtcp_local_addr, &relay_addr);
 
-		if (even_port > 0) {
-			*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
-			if (*rtcp_s == NULL) {
-				perror("socket");
-				IOA_CLOSE_SOCKET(*rtp_s);
-				return -1;
-			}
-
-			sock_bind_to_device((*rtcp_s)->fd, (unsigned char*)e->relay_ifname);
-		}
-
 		addr_debug_print(e->verbose, &relay_addr, "Server relay addr");
 
 		int i = 0;
+		int port = 0;
 		ioa_addr local_addr;
 		addr_cpy(&local_addr, &relay_addr);
 		for (i = 0; i < 0xFFFF; i++) {
-			int port = 0;
+			port = 0;
 			rtcp_port = -1;
 			if (even_port < 0) {
 				port = turnipports_allocate(tp, transport, &relay_addr);
 			} else {
+
 				port = turnipports_allocate_even(tp, &relay_addr, even_port, out_reservation_token);
 				if (port >= 0 && even_port > 0) {
+
+					IOA_CLOSE_SOCKET(*rtcp_s);
+					*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
+					if (*rtcp_s == NULL) {
+						perror("socket");
+						IOA_CLOSE_SOCKET(*rtp_s);
+						addr_set_port(&local_addr, port);
+						turnipports_release(tp, transport, &local_addr);
+						rtcp_port = port + 1;
+						addr_set_port(&rtcp_local_addr, rtcp_port);
+						turnipports_release(tp, transport, &rtcp_local_addr);
+						return -1;
+					}
+					sock_bind_to_device((*rtcp_s)->fd, (unsigned char*)e->relay_ifname);
+
 					rtcp_port = port + 1;
 					addr_set_port(&rtcp_local_addr, rtcp_port);
 					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr) < 0) {
+						printf("%s:%d: 111.111: %d\n",__FUNCTION__,__LINE__,i);
 						addr_set_port(&local_addr, port);
 						turnipports_release(tp, transport, &local_addr);
 						turnipports_release(tp, transport, &rtcp_local_addr);
 						rtcp_port = -1;
+						IOA_CLOSE_SOCKET(*rtcp_s);
 						continue;
 					}
 				}
 			}
 			if (port < 0) {
 				IOA_CLOSE_SOCKET(*rtp_s);
-				if (rtcp_s && *rtcp_s)
+				if (rtcp_s)
 					IOA_CLOSE_SOCKET(*rtcp_s);
 				rtcp_port = -1;
 				break;
-			}
-			addr_set_port(&local_addr, port);
-			if (bind_ioa_socket(*rtp_s, &local_addr) >= 0) {
-				break;
 			} else {
-				turnipports_release(tp, transport, &local_addr);
-				if (rtcp_port >= 0)
-					turnipports_release(tp, transport, &rtcp_local_addr);
-				rtcp_port = -1;
+
+				IOA_CLOSE_SOCKET(*rtp_s);
+
+				*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family,
+										(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
+										RELAY_SOCKET);
+				if (*rtp_s == NULL) {
+					if (rtcp_s)
+						IOA_CLOSE_SOCKET(*rtcp_s);
+					addr_set_port(&local_addr, port);
+					turnipports_release(tp, transport, &local_addr);
+					if (rtcp_port >= 0)
+						turnipports_release(tp, transport, &rtcp_local_addr);
+					perror("socket");
+					return -1;
+				}
+
+				sock_bind_to_device((*rtp_s)->fd, (unsigned char*)e->relay_ifname);
+
+				addr_set_port(&local_addr, port);
+				if (bind_ioa_socket(*rtp_s, &local_addr) >= 0) {
+					break;
+				} else {
+					IOA_CLOSE_SOCKET(*rtp_s);
+					if (rtcp_s)
+						IOA_CLOSE_SOCKET(*rtcp_s);
+					addr_set_port(&local_addr, port);
+					turnipports_release(tp, transport, &local_addr);
+					if (rtcp_port >= 0)
+						turnipports_release(tp, transport, &rtcp_local_addr);
+					rtcp_port = -1;
+				}
 			}
 		}
 
-		if (*rtp_s)
-			break;
+		if(i>=0xFFFF) {
+			IOA_CLOSE_SOCKET(*rtp_s);
+			if (rtcp_s)
+				IOA_CLOSE_SOCKET(*rtcp_s);
+		}
 
-		addr_debug_print(e->verbose, &local_addr, "Local relay addr");
+		if (*rtp_s) {
+			addr_set_port(&local_addr, port);
+			addr_debug_print(e->verbose, &local_addr, "Local relay addr");
+			break;
+		}
 	}
 
 	if (!(*rtp_s)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: no available ports 3\n", __FUNCTION__);
 		IOA_CLOSE_SOCKET(*rtp_s);
-		IOA_CLOSE_SOCKET(*rtcp_s);
+		if (rtcp_s)
+			IOA_CLOSE_SOCKET(*rtcp_s);
 		return -1;
 	}
 
@@ -971,7 +1007,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 		if (rtcp_map_put(e->map_rtcp, *out_reservation_token, *rtcp_s) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot update RTCP map\n", __FUNCTION__);
 			IOA_CLOSE_SOCKET(*rtp_s);
-			IOA_CLOSE_SOCKET(*rtcp_s);
+			if (rtcp_s)
+				IOA_CLOSE_SOCKET(*rtcp_s);
 			return -1;
 		}
 	}

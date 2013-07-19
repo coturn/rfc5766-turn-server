@@ -68,6 +68,7 @@ unsigned char client_ifname[1025] = "\0";
 int passive_tcp = 0;
 int mandatory_channel_padding = 0;
 int negative_test = 0;
+int dos = 0;
 
 //////////////// local definitions /////////////////
 
@@ -88,6 +89,7 @@ static char Usage[] =
   "	-g	Include DONT_FRAGMENT option.\n"
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
+  "	-O	DOS attack mode (quick connect and exit).\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
@@ -135,8 +137,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDN")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDNO")) != -1) {
 		switch (c){
+		case 'O':
+			dos = 1;
+			break;
 		case 'C':
 			rest_api_separator=*optarg;
 			break;

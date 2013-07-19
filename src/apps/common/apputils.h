@@ -80,7 +80,10 @@ int socket_set_nonblocking(evutil_socket_t fd);
 int socket_tcp_set_keepalive(evutil_socket_t fd);
 
 int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno);
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr);
+
+int addr_bind_func(evutil_socket_t fd, const ioa_addr* addr, const char *file, const char *func, int line);
+#define addr_bind(fd,addr) addr_bind_func((fd),(addr),__FILE__,__FUNCTION__,__LINE__)
+
 int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr);
 
 int handle_socket_error(void);

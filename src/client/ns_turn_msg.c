@@ -589,6 +589,8 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
     {
       if(lifetime<1) lifetime=STUN_DEFAULT_ALLOCATE_LIFETIME;
+      else if(lifetime>STUN_MAX_ALLOCATE_LIFETIME) lifetime = STUN_MAX_ALLOCATE_LIFETIME;
+
       u32bits field=nswap32(lifetime);
       if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
     }

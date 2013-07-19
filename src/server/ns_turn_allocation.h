@@ -61,7 +61,6 @@ typedef struct
 {
 	UR_STATE state;
 	ioa_socket_handle s;
-	unsigned int ctime;
 	int known_mtu;
 } ts_ur_session;
 

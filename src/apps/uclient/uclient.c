@@ -1196,7 +1196,7 @@ void start_mclient(const char *remote_address, int port,
 	if(c2c) {
 	  if(!no_rtcp)
 	    for (i = 0; i < (mclient >> 2); i++) {
-	      usleep(SLEEP_INTERVAL);
+	      if(!dos) usleep(SLEEP_INTERVAL);
 	      if (start_c2c(remote_address, port, ifname, local_address,
 			    messagenumber, i << 2) < 0) {
 	    	  exit(-1);
@@ -1205,7 +1205,7 @@ void start_mclient(const char *remote_address, int port,
 	    }
 	  else
 	    for (i = 0; i < (mclient >> 1); i++) {
-	      usleep(SLEEP_INTERVAL);
+	      if(!dos) usleep(SLEEP_INTERVAL);
 	      if (start_c2c(remote_address, port, ifname, local_address,
 			    messagenumber, i << 1) < 0) {
 	    	  exit(-1);
@@ -1215,7 +1215,7 @@ void start_mclient(const char *remote_address, int port,
 	} else {
 	  if(!no_rtcp)
 	    for (i = 0; i < (mclient >> 1); i++) {
-	      usleep(SLEEP_INTERVAL);
+	      if(!dos) usleep(SLEEP_INTERVAL);
 	      if (start_client(remote_address, port, ifname, local_address,
 			       messagenumber, i << 1) < 0) {
 	    	  exit(-1);
@@ -1224,7 +1224,7 @@ void start_mclient(const char *remote_address, int port,
 	    }
 	  else 
 	    for (i = 0; i < mclient; i++) {
-	      usleep(SLEEP_INTERVAL);
+	      if(!dos) usleep(SLEEP_INTERVAL);
 	      if (start_client(remote_address, port, ifname, local_address,
 			       messagenumber, i) < 0) {
 	    	  exit(-1);
@@ -1232,6 +1232,9 @@ void start_mclient(const char *remote_address, int port,
 	      tot_clients++;
 	    }
 	}
+
+	if(dos)
+		_exit(0);
 
 	total_clients = tot_clients;
 
