@@ -763,6 +763,7 @@ int set_socket_options(ioa_socket_handle s)
 		set_raw_socket_tos_options(s->fd, s->family);
 
 #ifdef SO_BSDCOMPAT
+		//Linux
 		{
 			int on = 1;
 			if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
@@ -771,6 +772,8 @@ int set_socket_options(ioa_socket_handle s)
 #endif
 
 #ifdef IP_RECVERR
+		//Linux for pure UDP sockets
+		//DTLS sockets are handled by DTLS receive procedure
 		if ((s->st != DTLS_SOCKET) && (s->family != AF_INET6)) {
 			int on = 1;
 			if(setsockopt(s->fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
@@ -779,6 +782,8 @@ int set_socket_options(ioa_socket_handle s)
 #endif
 
 #ifdef IPV6_RECVERR
+		//Linux for pure UDP sockets
+		//DTLS sockets are handled by DTLS receive procedure
 		if ((s->st != DTLS_SOCKET) && (s->family == AF_INET6)) {
 			int on = 1;
 			if(setsockopt(s->fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
@@ -1689,7 +1694,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
-#if defined(MSG_ERRQUEUE) && defined(IP_RECVERR)
+#if defined(IP_RECVERR)
 				case IP_RECVERR:
 				{
 					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);
@@ -1717,7 +1722,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
-#if defined(MSG_ERRQUEUE) && defined(IPV6_RECVERR)
+#if defined(IPV6_RECVERR)
 				case IPV6_RECVERR:
 				{
 					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);

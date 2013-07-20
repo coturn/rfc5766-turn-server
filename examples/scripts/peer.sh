@@ -13,4 +13,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:bin/:../bin:${PATH} turnutils_peer $@
+PATH=examples/bin/:bin/:../bin:${PATH} turnutils_peer -L 127.0.0.1 -L ::1 -L 0.0.0.0 $@
