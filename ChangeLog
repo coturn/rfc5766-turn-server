@@ -1,3 +1,7 @@
+07/19/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 2.1.2.0 'Shivers':
+	- deeper optimization for DOS attack (mostly for Linux)
+
 07/18/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Po-sheng Lin <personlin118@gmail.com> 
 Version 2.1.1.1 'Shivers':

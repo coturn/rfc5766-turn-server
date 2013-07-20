@@ -65,6 +65,19 @@
 #endif
 */
 
+struct turn_sock_extended_err {
+	uint32_t ee_errno; /* error number */
+	uint8_t ee_origin; /* where the error originated */
+	uint8_t ee_type; /* type */
+	uint8_t ee_code; /* code */
+	uint8_t ee_pad; /* padding */
+	uint32_t ee_info; /* additional information */
+	uint32_t ee_data; /* other data */
+/* More data may follow */
+};
+
+#define TRIAL_EFFORTS_TO_SEND (2)
+
 /************** Forward function declarations ******/
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
@@ -758,10 +771,18 @@ int set_socket_options(ioa_socket_handle s)
 #endif
 
 #ifdef IP_RECVERR
-		{
+		if (s->family != AF_INET6) {
 			int on = 1;
 			if(setsockopt(s->fd, SOL_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
 			perror("IP_RECVERR");
+		}
+#endif
+
+#ifdef IPV6_RECVERR
+		if (s->family == AF_INET6) {
+			int on = 1;
+			if(setsockopt(s->fd, SOL_IP, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
+			perror("IPV6_RECVERR");
 		}
 #endif
 
@@ -1589,23 +1610,26 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
-static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, int *read_len, s08bits *ecmsg)
+int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, s08bits *ecmsg, int flags, u32bits *errcode)
 {
-	*read_len = -1;
+	int len = 0;
 
 	if (fd < 0 || !orig_addr || !like_addr || !buffer)
 		return -1;
 
-	int len = 0;
+	if(errcode)
+		*errcode = 0;
+
 	int slen = get_ioa_addr_len(like_addr);
 	recv_ttl_t recv_ttl = TTL_DEFAULT;
 	recv_tos_t recv_tos = TOS_DEFAULT;
 
 #if !defined(CMSG_SPACE)
 	do {
-	  len = recvfrom(fd, buffer, buf_size, 0, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
+	  len = recvfrom(fd, buffer, buf_size, flags, (struct sockaddr*) orig_addr, (socklen_t*) &slen);
 	} while (len < 0 && (errno == EINTR));
-
+	if(len<0 && errcode)
+		*errcode = (u32bits)errno;
 #else
 	struct msghdr msg;
 	struct iovec iov;
@@ -1625,12 +1649,22 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 	msg.msg_flags = 0;
 
 	do {
-		len = recvmsg(fd,&msg,0);
+		len = recvmsg(fd,&msg,flags);
 	} while (len < 0 && (errno == EINTR));
 
-	if (len >= 0) {
+#if defined(MSG_ERRQUEUE)
+	if((len<0) && (!(flags & MSG_ERRQUEUE)) && (is_connreset() || would_block())) {
+		//Linux UDP workaround
+		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+		u32bits errcode1 = 0;
+		udp_recvfrom(fd, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
+		do {
+			len = recvmsg(fd,&msg,flags);
+		} while (len < 0 && (errno == EINTR));
+	}
+#endif
 
-		*read_len = len;
+	if (len >= 0) {
 
 		struct cmsghdr *cmsgh;
 
@@ -1655,9 +1689,20 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
+#if defined(MSG_ERRQUEUE) && defined(IP_RECVERR)
+				case IP_RECVERR:
+				{
+					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);
+					if(errcode)
+						*errcode = e->ee_errno;
+				}
+					break;
+#endif
 				default:
 					;
+					/* no break */
 				};
+				break;
 			case IPPROTO_IPV6:
 				switch(t) {
 #if defined(IPV6_RECVHOPLIMIT)
@@ -1672,11 +1717,23 @@ static int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr 
 					recv_tos = *((recv_tos_t *) CMSG_DATA(cmsgh));
 					break;
 #endif
+#if defined(MSG_ERRQUEUE) && defined(IPV6_RECVERR)
+				case IPV6_RECVERR:
+				{
+					struct turn_sock_extended_err *e=(struct turn_sock_extended_err*) CMSG_DATA(cmsgh);
+					if(errcode)
+						*errcode = e->ee_errno;
+				}
+					break;
+#endif
 				default:
 					;
+					/* no break */
 				};
+				break;
 			default:
 				;
+				/* no break */
 			};
 		}
 	}
@@ -1867,9 +1924,11 @@ static int socket_input_worker(ioa_socket_handle s)
 		if((ret!=-1)&&(len>0))
 			try_again = 1;
 	} else if(s->fd>=0){ /* UDP */
-		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, &len,s->e->cmsg);
-		if((ret!=-1)&&(len>0))
+		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, s->e->cmsg, 0, NULL);
+		len = ret;
+		if(ret>=0) {
 			try_again = 1;
+		}
 	} else {
 		s->tobeclosed = 1;
 		s->broken = 1;
@@ -2199,6 +2258,73 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	}
 
 	return ret;
+}
+
+int is_connreset(void) {
+	switch (errno) {
+	case ECONNRESET:
+	case ECONNREFUSED:
+		return 1;
+	default:
+		;
+	}
+	return 0;
+}
+
+int would_block(void) {
+#if defined(EWOULDBLOCK)
+	if(errno == EWOULDBLOCK)
+		return 1;
+#endif
+	return (errno == EAGAIN);
+}
+
+int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len)
+{
+	int rc = 0;
+	evutil_socket_t fd = -1;
+
+	if(s->parent_s)
+		fd = s->parent_s->fd;
+	else
+		fd = s->fd;
+
+	if(fd>=0) {
+
+		int cycle = 0;
+
+		if (dest_addr) {
+
+			int slen = get_ioa_addr_len(dest_addr);
+
+			do {
+				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
+			} while (
+					((rc < 0) && (errno == EINTR)) ||
+					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
+					);
+
+		} else {
+			do {
+				rc = send(fd, buffer, len, 0);
+			} while (
+					((rc < 0) && (errno == EINTR)) ||
+					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
+					);
+		}
+
+		if(rc<0) {
+			if((errno == ENOBUFS) || (errno == EAGAIN)) {
+				//Lost packet due to overload ... fine.
+				rc = len;
+			} else if(is_connreset()) {
+				//Lost packet - sent to nowhere... fine.
+				rc = len;
+			}
+		}
+	}
+
+	return rc;
 }
 
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,

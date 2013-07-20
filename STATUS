@@ -62,7 +62,9 @@ multithreaded from the beginning).
 to the UDP sockets handling.
 
 25) DOS attack prevention logic added to the server; DOS attack client
-emulation implemented.
+emulation implemented. 
+
+26) Linux UDP sockets workaround added to counter RFC 1122 behavior.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

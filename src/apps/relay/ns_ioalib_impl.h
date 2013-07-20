@@ -209,7 +209,10 @@ void delete_socket_from_parent(ioa_socket_handle s);
 void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap);
 void delete_socket_from_map(ioa_socket_handle s);
 
+int is_connreset(void);
+int would_block(void);
 int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len);
+int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, s08bits *ecmsg, int flags, u32bits *errcode);
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);

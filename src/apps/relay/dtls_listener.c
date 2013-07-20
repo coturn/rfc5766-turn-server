@@ -56,8 +56,6 @@ typedef struct {
 
 #define COOKIE_SECRET_LENGTH (32)
 
-#define TRIAL_EFFORTS_TO_SEND (2)
-
 struct dtls_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
@@ -136,16 +134,6 @@ int is_dtls_message(const unsigned char* buf, int len) {
 
 ///////////// utils /////////////////////
 
-static inline int is_connreset(void) {
-	switch (errno) {
-	case ECONNRESET:
-	case ECONNREFUSED:
-		return 1;
-	default:
-		;
-	}
-	return 0;
-}
 #if !defined(TURN_NO_DTLS)
 
 static void calculate_cookie(SSL* ssl, unsigned char *cookie_secret, unsigned int cookie_length) {
@@ -538,24 +526,11 @@ static inline void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
-	if(bsize<0) {
-			int err = 0;
-			socklen_t ln = sizeof(err);
-			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-	}
-
 	if((bsize<0) && is_connreset()) {
 		//hm... try again...
 		do {
 			bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (bsize < 0 && (errno == EINTR));
-		if(bsize<0) {
-				int err = 0;
-				socklen_t ln = sizeof(err);
-				getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-				printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-		}
 	}
 
 	if((bsize<0) && is_connreset())
@@ -609,6 +584,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	int read_all;
 	int rc;
 	int slen;
+	int conn_reset = 0;
 
 	start_server_input:
 
@@ -620,32 +596,32 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (rc < 0 && (errno == EINTR));
 
-	if(rc<0) {
-		int en=errno;
-		int err = 0;
-		socklen_t ln = sizeof(err);
-		getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-		printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-	}
+	conn_reset = is_connreset();
 
-	if((rc<0) && is_connreset()) {
-	  //hm... try again...
+	if(rc<0 && (conn_reset || would_block()))
+#if defined(MSG_ERRQUEUE)
+	//Linux UDP workaround
+	{
+		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+		static s08bits buffer[65535];
+		u32bits errcode = 0;
+		ioa_addr orig_addr;
+		int ttl = 0;
+		int tos = 0;
+		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags, &errcode);
+		//try again...
 		do {
 			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
-		if(rc<0) {
-			int err = 0;
-			socklen_t ln = sizeof(err);
-			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-		}
 	}
-
-	if((rc<0) && is_connreset())
-	  schedule_reopen_server_socket(server);
+#else
+	{
+		schedule_reopen_server_socket(server);
+	}
+#endif
 
 	if(rc<0) {
-		if(errno != EAGAIN) {
+		if(!would_block()) {
 			int ern=errno;
 			perror(__FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
@@ -745,24 +721,12 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		do {
 			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
-		if(rc<0) {
-			int err = 0;
-			socklen_t ln = sizeof(err);
-			getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-			printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-		}
 
 		if((rc<0) && is_connreset()) {
 			//hm... try again...
 			do {
 				rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 			} while (rc < 0 && (errno == EINTR));
-			if(rc<0) {
-				int err = 0;
-				socklen_t ln = sizeof(err);
-				getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &ln);
-				printf("%s:%d: err=%d\n",__FUNCTION__,__LINE__,err);
-			}
 		}
 
 		if((rc<0) && is_connreset())
@@ -1085,54 +1049,6 @@ void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffe
 {
 	if(server && dest && nbh && (server->udp_listen_s))
 		udp_send(server->udp_listen_s, dest, (s08bits*)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
-}
-
-int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len)
-{
-	int rc = 0;
-	evutil_socket_t fd = -1;
-
-	if(s->parent_s)
-		fd = s->parent_s->fd;
-	else
-		fd = s->fd;
-
-	if(fd>=0) {
-
-		int cycle = 0;
-
-		if (dest_addr) {
-
-			int slen = get_ioa_addr_len(dest_addr);
-
-			do {
-				rc = sendto(fd, buffer, len, 0, (const struct sockaddr*) dest_addr, (socklen_t) slen);
-			} while (
-					((rc < 0) && (errno == EINTR)) ||
-					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
-					);
-
-		} else {
-			do {
-				rc = send(fd, buffer, len, 0);
-			} while (
-					((rc < 0) && (errno == EINTR)) ||
-					((rc<0) && is_connreset() && (++cycle<TRIAL_EFFORTS_TO_SEND))
-					);
-		}
-
-		if(rc<0) {
-			if((errno == ENOBUFS) || (errno == EAGAIN)) {
-				//Lost packet due to overload ... fine.
-				rc = len;
-			} else if(is_connreset()) {
-				//Lost packet - sent to nowhere... fine.
-				rc = len;
-			}
-		}
-	}
-
-	return rc;
 }
 
 //////////////////////////////////////////////////////////////////
