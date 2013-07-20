@@ -89,7 +89,8 @@ typedef struct _new_dtls_conn {
 ///////////// forward declarations ////////
 
 static int create_server_socket(dtls_listener_relay_server_type* server);
-static void schedule_reopen_server_socket(dtls_listener_relay_server_type* server);
+static void schedule_reopen_server_socket_func(dtls_listener_relay_server_type* server, const char *func, int line);
+#define schedule_reopen_server_socket(server) schedule_reopen_server_socket_func((server),__FUNCTION__,__LINE__)
 static int clean_server(dtls_listener_relay_server_type* server);
 
 ///////////// dtls message types //////////
@@ -598,27 +599,29 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	conn_reset = is_connreset();
 
-	if(rc<0 && (conn_reset || would_block()))
+	if(rc<0) {
 #if defined(MSG_ERRQUEUE)
-	//Linux UDP workaround
-	{
-		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
-		static s08bits buffer[65535];
-		u32bits errcode = 0;
-		ioa_addr orig_addr;
-		int ttl = 0;
-		int tos = 0;
-		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags, &errcode);
-		//try again...
-		do {
-			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-		} while (rc < 0 && (errno == EINTR));
-	}
+	  if(conn_reset || would_block())
+	    //Linux UDP workaround
+	  {
+	    int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+	    static s08bits buffer[65535];
+	    u32bits errcode = 0;
+	    ioa_addr orig_addr;
+	    int ttl = 0;
+	    int tos = 0;
+	    udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags, &errcode);
+	    //try again...
+	    do {
+	      rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
+	    } while (rc < 0 && (errno == EINTR));
+	  }
 #else
-	{
+	  if(conn_reset) {
 		schedule_reopen_server_socket(server);
-	}
+	  }
 #endif
+	}
 
 	if(rc<0) {
 		if(!would_block()) {
@@ -851,9 +854,12 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
   return 0;
 }
 
-static void schedule_reopen_server_socket(dtls_listener_relay_server_type* server)
+static void schedule_reopen_server_socket_func(dtls_listener_relay_server_type* server, const char *func, int line)
 {
   if(server) {
+    int wb = would_block();
+    int cr = is_connreset();
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s:%d: Reopen listener socket, wb=%d, cr=%d\n",func,line,wb,cr);
     server->to_be_reopen = 1;
     if(server->single_threaded) {
       reopen_server_socket(server);
