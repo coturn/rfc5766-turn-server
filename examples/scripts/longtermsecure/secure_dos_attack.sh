@@ -58,6 +58,8 @@ else
   ER=$?
   if [ ${ER} -eq 0 ] ; then
     pkill turnutils_u >>/dev/null 2>>/dev/null
+  else
+    sleep 10
   fi
 fi
 
