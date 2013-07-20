@@ -2451,7 +2451,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else if(s->read_event) {
 						if(!clean_preexisting) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"%s: software error: buffer preset 1\n", __FUNCTION__);
+								"%s: software error: buffer preset 3\n", __FUNCTION__);
 							return -1;
 						}
 					} else {
@@ -2463,7 +2463,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					if(s->bev) {
 						if(!clean_preexisting) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"%s: software error: buffer preset 2\n", __FUNCTION__);
+								"%s: software error: buffer preset 4\n", __FUNCTION__);
 							return -1;
 						}
 					} else {
@@ -2480,7 +2480,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					if(s->bev) {
 						if(!clean_preexisting) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"%s: software error: buffer preset 2\n", __FUNCTION__);
+								"%s: software error: buffer preset 5\n", __FUNCTION__);
 							return -1;
 						}
 					} else {

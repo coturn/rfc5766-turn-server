@@ -257,10 +257,11 @@ int addr_bind_func(evutil_socket_t fd, const ioa_addr* addr, const char *file, c
 			return -1;
 		}
 		if(ret<0) {
+			int err = errno;
 			perror("bind");
 			char str[129];
 			addr_to_string(addr,(u08bits*)str);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "(%s:%s:%d) Trying to bind fd %d to <%s>\n", file,func,line,fd, str);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "(%s:%s:%d) Trying to bind fd %d to <%s>: errno=%d\n", file,func,line,fd, str, err);
 		}
 		return ret;
 	}

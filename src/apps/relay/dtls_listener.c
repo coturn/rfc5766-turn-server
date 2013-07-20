@@ -586,6 +586,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	int rc;
 	int slen;
 	int conn_reset = 0;
+	int to_block = 0;
 
 	start_server_input:
 
@@ -598,10 +599,11 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	} while (rc < 0 && (errno == EINTR));
 
 	conn_reset = is_connreset();
+	to_block = would_block();
 
 	if(rc<0) {
 #if defined(MSG_ERRQUEUE)
-	  if(conn_reset || would_block())
+	  if(conn_reset || to_block)
 	    //Linux UDP workaround
 	  {
 	    int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
@@ -615,6 +617,8 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	    do {
 	      rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	    } while (rc < 0 && (errno == EINTR));
+	    conn_reset = is_connreset();
+	    to_block = would_block();
 	  }
 #else
 	  if(conn_reset) {
@@ -624,7 +628,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	}
 
 	if(rc<0) {
-		if(!would_block()) {
+		if(!to_block && !conn_reset) {
 			int ern=errno;
 			perror(__FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
