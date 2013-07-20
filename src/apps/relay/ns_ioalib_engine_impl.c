@@ -1652,11 +1652,12 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	} while (len < 0 && (errno == EINTR));
 
 #if defined(MSG_ERRQUEUE)
-	if((len<0) && (!(flags & MSG_ERRQUEUE)) && (is_connreset() || would_block())) {
-		//Linux UDP workaround
+	if((len<0) && (!(flags & MSG_ERRQUEUE))) {
+		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
 		u32bits errcode1 = 0;
 		udp_recvfrom(fd, orig_addr, like_addr, buffer, buf_size, ttl, tos, ecmsg, eflags, &errcode1);
+		//try again...
 		do {
 			len = recvmsg(fd,&msg,flags);
 		} while (len < 0 && (errno == EINTR));

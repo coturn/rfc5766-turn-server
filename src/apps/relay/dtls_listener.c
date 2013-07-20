@@ -603,7 +603,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	if (rc < 0) {
 #if defined(MSG_ERRQUEUE)
-		//Linux UDP workaround
+		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
 		static s08bits buffer[65535];
 		u32bits errcode = 0;
