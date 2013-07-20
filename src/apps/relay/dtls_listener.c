@@ -601,29 +601,30 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 	conn_reset = is_connreset();
 	to_block = would_block();
 
-	if(rc<0) {
+	if (rc < 0) {
 #if defined(MSG_ERRQUEUE)
-	  if(conn_reset || to_block)
-	    //Linux UDP workaround
-	  {
-	    int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
-	    static s08bits buffer[65535];
-	    u32bits errcode = 0;
-	    ioa_addr orig_addr;
-	    int ttl = 0;
-	    int tos = 0;
-	    udp_recvfrom(fd, &orig_addr, &(server->addr), buffer, (int)sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags, &errcode);
-	    //try again...
-	    do {
-	      rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-	    } while (rc < 0 && (errno == EINTR));
-	    conn_reset = is_connreset();
-	    to_block = would_block();
-	  }
+		//Linux UDP workaround
+		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+		static s08bits buffer[65535];
+		u32bits errcode = 0;
+		ioa_addr orig_addr;
+		int ttl = 0;
+		int tos = 0;
+		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
+				(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
+				&errcode);
+		//try again...
+		do {
+			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags,
+					(struct sockaddr*) &(server->sm.m.sm.nd.src_addr),
+					(socklen_t*) &slen);
+		} while (rc < 0 && (errno == EINTR));
+		conn_reset = is_connreset();
+		to_block = would_block();
 #else
-	  if(conn_reset) {
-		schedule_reopen_server_socket(server);
-	  }
+		if(conn_reset) {
+			schedule_reopen_server_socket(server);
+		}
 #endif
 	}
 
