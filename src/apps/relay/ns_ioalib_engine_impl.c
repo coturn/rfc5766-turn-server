@@ -773,16 +773,16 @@ int set_socket_options(ioa_socket_handle s)
 #ifdef IP_RECVERR
 		if (s->family != AF_INET6) {
 			int on = 1;
-			if(setsockopt(s->fd, SOL_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
-			perror("IP_RECVERR");
+			if(setsockopt(s->fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
+				perror("IP_RECVERR");
 		}
 #endif
 
 #ifdef IPV6_RECVERR
 		if (s->family == AF_INET6) {
 			int on = 1;
-			if(setsockopt(s->fd, SOL_IP, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
-			perror("IPV6_RECVERR");
+			if(setsockopt(s->fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
+				perror("IPV6_RECVERR");
 		}
 #endif
 
