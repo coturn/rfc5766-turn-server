@@ -949,7 +949,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					rtcp_port = port + 1;
 					addr_set_port(&rtcp_local_addr, rtcp_port);
 					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr) < 0) {
-						printf("%s:%d: 111.111: %d\n",__FUNCTION__,__LINE__,i);
 						addr_set_port(&local_addr, port);
 						turnipports_release(tp, transport, &local_addr);
 						turnipports_release(tp, transport, &rtcp_local_addr);
