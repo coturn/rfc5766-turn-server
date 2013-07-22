@@ -68,7 +68,6 @@ typedef struct _stun_buffer_list_elem {
 	struct _stun_buffer_list_elem *next;
 	struct _stun_buffer_list_elem *prev;
 	stun_buffer buf;
-	void *origin;
 } stun_buffer_list_elem;
 
 typedef struct _stun_buffer_list {
@@ -99,7 +98,11 @@ struct message_to_relay {
 	} m;
 };
 
+struct relay_server;
+typedef struct relay_server *relay_server_handle;
+
 typedef int (*ioa_engine_new_connection_event_handler)(ioa_engine_handle e, struct message_to_relay *sm);
+typedef int (*ioa_engine_udp_event_handler)(relay_server_handle rs, struct message_to_relay *sm);
 
 #define TURN_CMSG_SZ (65536)
 
@@ -121,7 +124,6 @@ struct _ioa_engine
   band_limit_t max_bpj;
   ioa_timer_handle timer_ev;
   s08bits cmsg[TURN_CMSG_SZ+1];
-  TURN_MUTEX_DECLARE(mutex)
 };
 
 #define SOCKET_MAGIC (0xABACADEF)

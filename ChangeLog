@@ -1,3 +1,7 @@
+07/XX/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 2.5.0.0 'Shivers':
+	- Improved network engine.
+	
 07/20/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 2.1.3.1 'Shivers':
 	- DTLS improvements for DOS attacks

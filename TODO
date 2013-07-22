@@ -31,20 +31,11 @@
 
 ==================================================================
 
-1) Each listener has its own single network endpoint and its own 
-thread. Each IP:port:protocol triplet has its own listener.
+1) Multiple authentication servers, each in a separate thread
 
-2) Multiple authentication servers, each in a separate thread
+2) For listening endpoints, flexible format like IP:port.
 
-3) For listening endpoints, flexible format like IP:port.
-
-4) Each listener enpoint has its own set of relay threads.
-
-5) UDP is handled in the same thread as the listener, the TCP 
-is handled in multiple threads (same pattern for TCP as in engines 
-1 and 2).
-
-6) No locking for the network buffer allocation.
+3) No locking for the network buffer allocation.
 
 ==================================================================
 

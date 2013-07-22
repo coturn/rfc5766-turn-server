@@ -451,11 +451,6 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
 #endif
 		;
 	}
-	if(ret<0) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: get IP_MTU sockopt failed\n",__FUNCTION__);
-	} else {
-		if(verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: IP_MTU=%d\n",__FUNCTION__,val);
-	}
 
 	ret = val;
 #endif

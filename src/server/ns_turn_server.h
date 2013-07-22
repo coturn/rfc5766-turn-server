@@ -42,7 +42,7 @@ extern "C" {
 
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
 
-typedef u08bits turnserver_id;
+typedef u32bits turnserver_id;
 
 struct socket_message {
 	ioa_socket_handle s;
