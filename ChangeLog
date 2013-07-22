@@ -1,5 +1,5 @@
 07/21/2013 Oleg Moskalenko <mom040267@gmail.com> 
-Version 2.5.1.0 'Shivers':
+Version 2.5.1.1 'Shivers':
 	- Improved "split" network engine:
 	two different threading models for TCP and UDP.
 	- DTLS crash fixed.

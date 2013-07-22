@@ -232,11 +232,11 @@ static int fingerprint = 0;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 static turnserver_id nonudp_relay_servers_number = 0;
-static turnserver_id udp_relay_servers_number = 0;
 #else
 static turnserver_id nonudp_relay_servers_number = 1;
-static turnserver_id udp_relay_servers_number = 1;
 #endif
+
+static turnserver_id udp_relay_servers_number = 0;
 
 #define get_real_nonudp_relay_servers_number() (nonudp_relay_servers_number > 1 ? nonudp_relay_servers_number : 1)
 #define get_real_udp_relay_servers_number() (udp_relay_servers_number > 1 ? udp_relay_servers_number : 1)
