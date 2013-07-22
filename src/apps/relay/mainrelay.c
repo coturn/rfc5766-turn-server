@@ -849,6 +849,8 @@ static void *run_listener_thread(void *arg)
 #if !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
 	  perror("barrier wait");
+#else
+  sleep(5);
 #endif
 
   dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *)arg;
@@ -927,21 +929,41 @@ static void setup_listener_servers(void)
 	if(!no_udp) {
 
 		barrier_count += listener.addrs_number;
-		udp_relay_servers_number += listener.addrs_number;
 
 		if(rfc5780) {
 			barrier_count += listener.addrs_number;
-			udp_relay_servers_number += listener.addrs_number;
 		}
 	}
 
 	if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
 		barrier_count += listener.addrs_number;
-		udp_relay_servers_number += listener.addrs_number;
 
 		if(rfc5780) {
 			barrier_count += listener.addrs_number;
+		}
+	}
+
+#endif
+
+	/* Adjust udp relay number */
+
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
+
+	if(!no_udp) {
+
+		udp_relay_servers_number += listener.addrs_number;
+
+		if(rfc5780) {
+			udp_relay_servers_number += listener.addrs_number;
+		}
+	}
+
+	if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
+
+		udp_relay_servers_number += listener.addrs_number;
+
+		if(rfc5780) {
 			udp_relay_servers_number += listener.addrs_number;
 		}
 	}
