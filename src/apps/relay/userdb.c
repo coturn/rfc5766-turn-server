@@ -265,7 +265,7 @@ static void MyconninfoFree(Myconninfo *co) {
 
 static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 {
-	Myconninfo *co = (Myconninfo*)malloc(sizeof(Myconninfo));
+	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
 	ns_bzero(co,sizeof(Myconninfo));
 	if(userdb) {
 		char *s0=strdup(userdb);
@@ -427,7 +427,7 @@ static void RyconninfoFree(Ryconninfo *co) {
 
 static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 {
-	Ryconninfo *co = (Ryconninfo*) malloc(sizeof(Ryconninfo));
+	Ryconninfo *co = (Ryconninfo*) turn_malloc(sizeof(Ryconninfo));
 	ns_bzero(co,sizeof(Ryconninfo));
 	if (userdb) {
 		char *s0 = strdup(userdb);
@@ -1255,7 +1255,7 @@ int add_user_account(char *user, int dynamic)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
 			size_t ulen = s-user;
-			char *uname = (char*)malloc(sizeof(char)*(ulen+1));
+			char *uname = (char*)turn_malloc(sizeof(char)*(ulen+1));
 			strncpy(uname,user,ulen);
 			uname[ulen]=0;
 			if(SASLprep((u08bits*)uname)<0) {
@@ -1264,7 +1264,7 @@ int add_user_account(char *user, int dynamic)
 				return -1;
 			}
 			s = skip_blanks(s+1);
-			hmackey_t *key = (hmackey_t*)malloc(sizeof(hmackey_t));
+			hmackey_t *key = (hmackey_t*)turn_malloc(sizeof(hmackey_t));
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
 				if(convert_string_key_to_binary(keysource, *key)<0) {
@@ -1936,7 +1936,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 			full_path_to_userdb_file=strdup(userdb);
 
 		size_t dirsz = strlen(full_path_to_userdb_file)+21;
-		char *dir = (char*)malloc(dirsz+1);
+		char *dir = (char*)turn_malloc(dirsz+1);
 		strncpy(dir,full_path_to_userdb_file,dirsz);
 		dir[dirsz]=0;
 		size_t dlen = strlen(dir);

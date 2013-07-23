@@ -165,7 +165,7 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 	if(bufs && bufs->head && bufs->tsz) {
 
 		if(bufs->head == bufs->tail) {
-			free(bufs->head);
+			turn_free(bufs->head,sizeof(stun_buffer_list_elem));
 			bufs->head = NULL;
 			bufs->tail = NULL;
 			bufs->tsz = 0;
@@ -175,7 +175,7 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 			if(bufs->head)
 				bufs->head->prev = NULL;
 			--bufs->tsz;
-			free(ret);
+			turn_free(ret,sizeof(stun_buffer_list_elem));
 		}
 	}
 }
@@ -187,7 +187,7 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 	stun_buffer_list_elem *ret = get_elem_from_buffer_list(&(e->bufs));
 
 	if(!ret) {
-	  ret = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+	  ret = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  ret->buf.len = 0;
 	  ret->next = NULL;
 	  ret->prev = NULL;
@@ -218,7 +218,7 @@ static void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_ele
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size_t len)
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
-	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)malloc(sizeof(stun_buffer_list_elem));
+	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  elem->next = NULL;
 	  elem->prev = NULL;
 	  ns_bcopy(buf,elem->buf.buf,len);
@@ -239,7 +239,7 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 		}
 
 		if(elem) {
-			free(elem);
+			turn_free(elem,sizeof(stun_buffer_list_elem));
 		}
 	}
 }
@@ -284,7 +284,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
-	  ioa_engine_handle e = (ioa_engine_handle)malloc(sizeof(ioa_engine));
+	  ioa_engine_handle e = (ioa_engine_handle)turn_malloc(sizeof(ioa_engine));
 		ns_bzero(e,sizeof(ioa_engine));
 
 		e->max_bpj = max_bps * SECS_PER_JIFFIE;
@@ -302,7 +302,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			STRCPY(e->relay_ifname, relay_ifname);
 		if (relay_addrs) {
 			size_t i = 0;
-			e->relay_addrs = (ioa_addr*)malloc(relays_number * sizeof(ioa_addr));
+			e->relay_addrs = (ioa_addr*)turn_malloc(relays_number * sizeof(ioa_addr));
 			for (i = 0; i < relays_number; i++)
 				make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]));
 			e->relays_number = relays_number;
@@ -318,27 +318,6 @@ void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx)
 {
 	e->tls_ctx = tls_ctx;
 	e->dtls_ctx = dtls_ctx;
-}
-
-void close_ioa_engine(ioa_engine_handle e)
-{
-	if (e) {
-		IOA_EVENT_DEL(e->timer_ev);
-		if (e->deallocate_eb && e->event_base)
-			event_base_free(e->event_base);
-
-		stun_buffer_list_elem *elem = e->bufs.head;
-		while (elem) {
-			stun_buffer_list_elem *next = elem->next;
-			free(elem);
-			elem = next;
-		}
-
-		if (e->relay_addrs)
-			free(e->relay_addrs);
-
-		free(e);
-	}
 }
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
@@ -409,7 +388,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 
 	if (e && cb && secs > 0) {
 
-		timer_event * te = (timer_event*) malloc(sizeof(timer_event));
+		timer_event * te = (timer_event*) turn_malloc(sizeof(timer_event));
 		int flags = EV_TIMEOUT;
 		if (persist)
 			flags |= EV_PERSIST;
@@ -447,10 +426,10 @@ void delete_ioa_timer(ioa_timer_handle th)
 		stop_ioa_timer(th);
 		timer_event *te = (timer_event *)th;
 		if(te->txt) {
-			free(te->txt);
+			turn_free(te->txt,strlen(te->txt)+1);
 			te->txt = NULL;
 		}
-		free(th);
+		turn_free(th,sizeof(timer_event));
 	}
 }
 
@@ -830,7 +809,7 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 		}
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+	ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
@@ -1222,7 +1201,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 		return NULL;
 	}
 
-	ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+	ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
 	ns_bzero(ret,sizeof(ioa_socket));
 
 	ret->magic = SOCKET_MAGIC;
@@ -1369,7 +1348,7 @@ void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *fi
 
 		close_socket_net_data(s);
 
-		free(s);
+		turn_free(s,sizeof(ioa_socket));
 	}
 }
 
@@ -1395,7 +1374,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
-		ret = (ioa_socket*)malloc(sizeof(ioa_socket));
+		ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
 		ns_bzero(ret,sizeof(ioa_socket));
 
 		ret->magic = SOCKET_MAGIC;

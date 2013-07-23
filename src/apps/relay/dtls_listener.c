@@ -246,7 +246,7 @@ static void free_ndc(new_dtls_conn *ndc)
 			socket_closesocket(ndc->info.fd);
 			ndc->info.fd = -1;
 		}
-		free(ndc);
+		turn_free(ndc,sizeof(new_dtls_conn));
 	}
 }
 
@@ -682,7 +682,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		if ((dtls_open_client_connection_socket(server, &info) >= 0) && info.ssl) {
 
-			new_dtls_conn *ndc = (new_dtls_conn *)malloc(sizeof(new_dtls_conn));
+			new_dtls_conn *ndc = (new_dtls_conn *)turn_malloc(sizeof(new_dtls_conn));
 			ns_bzero(ndc, sizeof(new_dtls_conn));
 
 			ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
@@ -1016,7 +1016,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     ioa_engine_udp_event_handler udp_eh) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
-    malloc(sizeof(dtls_listener_relay_server_type));
+    turn_malloc(sizeof(dtls_listener_relay_server_type));
 
   ns_bzero(server,sizeof(dtls_listener_relay_server_type));
 
@@ -1027,7 +1027,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 rs,
 		 send_socket,
 		 udp_eh)<0) {
-    free(server);
+    turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {
     return server;

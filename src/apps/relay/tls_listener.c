@@ -197,16 +197,6 @@ static int init_server(tls_listener_relay_server_type* server,
   return create_server_listener(server);
 }
 
-static int clean_server(tls_listener_relay_server_type* server) {
-  if(server) {
-	  if(server->l) {
-		  evconnlistener_free(server->l);
-		  server->l = NULL;
-	  }
-  }
-  return 0;
-}
-
 ///////////////////////////////////////////////////////////
 
 
@@ -217,25 +207,16 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 {
 
   tls_listener_relay_server_type* server = (tls_listener_relay_server_type*)
-    malloc(sizeof(tls_listener_relay_server_type));
+    turn_malloc(sizeof(tls_listener_relay_server_type));
 
 	ns_bzero(server, sizeof(tls_listener_relay_server_type));
 
 	if (init_server(server, ifname, local_address, port, verbose, e, send_socket) < 0) {
-		free(server);
+		turn_free(server,sizeof(tls_listener_relay_server_type));
 		return NULL;
 	} else {
 		return server;
 	}
-}
-
-void delete_tls_listener_server(tls_listener_relay_server_type* server, int delete_engine) {
-  if(server) {
-    clean_server(server);
-    if(delete_engine && (server->e))
-    	close_ioa_engine(server->e);
-    free(server);
-  }
 }
 
 //////////////////////////////////////////////////////////////////

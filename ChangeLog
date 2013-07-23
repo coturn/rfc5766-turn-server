@@ -1,4 +1,14 @@
+07/22/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 2.5.1.2 'Shivers':
+	- cosmetic changes
+
 07/21/2013 Oleg Moskalenko <mom040267@gmail.com> 
+Version 2.5.1.1 'Shivers':
+	- Improved "split" network engine:
+	two different threading models for TCP and UDP.
+	- DTLS crash fixed.
+	- Multuthreading with Cygwin.
+	
 Version 2.5.1.1 'Shivers':
 	- Improved "split" network engine:
 	two different threading models for TCP and UDP.

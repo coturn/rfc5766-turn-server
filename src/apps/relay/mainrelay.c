@@ -319,7 +319,7 @@ static void add_listener_addr(const char* addr) {
 	listener.addrs = (char**)realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
 	listener.addrs[listener.addrs_number-1]=strdup(addr);
 	listener.encaddrs = (ioa_addr**)realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
-	listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)malloc(sizeof(ioa_addr));
+	listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
 	make_ioa_addr((const u08bits*)addr,0,listener.encaddrs[listener.addrs_number-1]);
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
 }
@@ -367,7 +367,7 @@ static int add_ip_list_range(char* range, ip_range_list_t * list)
 	list->ranges[list->ranges_number - 1] = strdup(range);
 	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
 
-	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) malloc(sizeof(ioa_addr_range));
+	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
 
 	ioa_addr_range_set(list->encaddrsranges[list->ranges_number - 1], &min, &max);
 
@@ -978,7 +978,7 @@ static void setup_listener_servers(void)
 #endif
 
 	if(!no_udp || !no_dtls) {
-		udp_relay_servers = (struct relay_server**)malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
+		udp_relay_servers = (struct relay_server**)turn_malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 		ns_bzero(udp_relay_servers,sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 
 		for(i=0;i<get_real_udp_relay_servers_number();i++) {
@@ -986,7 +986,7 @@ static void setup_listener_servers(void)
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			e = create_new_listener_engine();
 #endif
-			struct relay_server* udp_rs = (struct relay_server*)malloc(sizeof(struct relay_server));
+			struct relay_server* udp_rs = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 			ns_bzero(udp_rs, sizeof(struct relay_server));
 			udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
 			setup_relay_server(udp_rs, e);
@@ -1270,12 +1270,12 @@ static void setup_nonudp_relay_servers(void)
 {
 	size_t i = 0;
 
-	nonudp_relay_servers = (struct relay_server**)malloc(sizeof(struct relay_server *)*get_real_nonudp_relay_servers_number());
+	nonudp_relay_servers = (struct relay_server**)turn_malloc(sizeof(struct relay_server *)*get_real_nonudp_relay_servers_number());
 	ns_bzero(nonudp_relay_servers,sizeof(struct relay_server *)*get_real_nonudp_relay_servers_number());
 
 	for(i=0;i<get_real_nonudp_relay_servers_number();i++) {
 
-		nonudp_relay_servers[i] = (struct relay_server*)malloc(sizeof(struct relay_server));
+		nonudp_relay_servers[i] = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 		ns_bzero(nonudp_relay_servers[i], sizeof(struct relay_server));
 		nonudp_relay_servers[i]->id = (turnserver_id)i;
 
@@ -1874,7 +1874,7 @@ static void set_option(int c, char *value)
 				make_ioa_addr((const u08bits*)nval,0,&apub);
 				make_ioa_addr((const u08bits*)div,0,&apriv);
 				ioa_addr_add_mapping(&apub,&apriv);
-				free(nval);
+				turn_free(nval,strlen(nval)+1);
 			} else {
 				if(external_ip) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
@@ -2421,7 +2421,7 @@ int main(int argc, char **argv)
 
 #endif
 
-	users = (turn_user_db*)malloc(sizeof(turn_user_db));
+	users = (turn_user_db*)turn_malloc(sizeof(turn_user_db));
 	ns_bzero(users,sizeof(turn_user_db));
 	users->ct = TURN_CREDENTIALS_NONE;
 	users->static_accounts = ur_string_map_create(free);
@@ -2617,7 +2617,7 @@ static int THREAD_setup(void) {
 
 	int i;
 
-	mutex_buf = (pthread_mutex_t*) malloc(CRYPTO_num_locks()
+	mutex_buf = (pthread_mutex_t*) turn_malloc(CRYPTO_num_locks()
 			* sizeof(pthread_mutex_t));
 	if (!mutex_buf)
 		return 0;
@@ -2655,7 +2655,7 @@ int THREAD_cleanup(void) {
   CRYPTO_set_locking_callback(NULL);
   for (i = 0; i < CRYPTO_num_locks(); i++)
     pthread_mutex_destroy(&mutex_buf[i]);
-  free(mutex_buf);
+  turn_free(mutex_buf,sizeof(pthread_mutex_t));
   mutex_buf = NULL;
 
 #endif
@@ -2711,7 +2711,7 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	  fn[sizeof(cert_file)-1]=0;
 	  
 	  if(full_path_to_file)
-	    free(full_path_to_file);
+	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
 	  return;
 	}
 
@@ -2720,7 +2720,7 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 	  no_tls = 1;
 	  no_dtls = 1;
 	  if(full_path_to_file)
-	    free(full_path_to_file);
+	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
 	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
 	  return;
 	}
