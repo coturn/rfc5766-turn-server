@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 	int port = 0;
 	int messagenumber = 5;
 	char local_addr[256];
-	char c;
+	int c;
 	int mclient = 1;
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;

@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	char **local_addr_list=NULL;
 	size_t las = 0;
 	int verbose = TURN_VERBOSE_NONE;
-	char c;
+	int c;
 	char ifname[1025] = "\0";
 
 	set_logfile("stdout");
