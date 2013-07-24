@@ -27,15 +27,13 @@
 
 ==================================================================
 
-###   III. NETWORK ENGINE 3.0   ###
+###   III. NETWORK ENGINE   ###
 
 ==================================================================
 
 1) Multiple authentication servers, each in a separate thread
 
 2) For listening endpoints, flexible format like IP:port.
-
-3) No locking for the network buffer allocation.
 
 ==================================================================
 
@@ -121,7 +119,7 @@ it if it is accepted:
 
 ==================================================================
 
-###   VIII. MINOR STUFF   ###
+###   VIII. CODING STUFF   ###
 
 ==================================================================
 

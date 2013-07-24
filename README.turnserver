@@ -328,8 +328,7 @@ Options with required values:
 				ALTERNATE-SERVER, with error 300, on ALLOCATE request, to the client.
 				Client will receive only values with the same address family
 				as the client network endpoint address family. 
-				This functionality can be used only with authentication mode. See RFC 5389 and
-				RFC 5766 for ALTERNATE-SERVER functionality description. 
+				See RFC 5389 and RFC 5766 for ALTERNATE-SERVER functionality description. 
 				The client must use the obtained value for subsequent TURN communications.
 				If more than one --alternate-server options are provided, then the functionality
 				can be more accurately described as "load-balancing" than a mere "redirection". 

@@ -2218,18 +2218,15 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			case STUN_METHOD_ALLOCATE:
 
-				if((server->ct == TURN_CREDENTIALS_LONG_TERM)||
-					 (server->ct == TURN_CREDENTIALS_SHORT_TERM)) {
+			{
+				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+				alternate_servers_list_t *asl = server->alternate_servers_list;
 
-					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-					alternate_servers_list_t *asl = server->alternate_servers_list;
-
-					if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
-						asl = server->tls_alternate_servers_list;
-					}
-
-					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+				if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
+					asl = server->tls_alternate_servers_list;
 				}
+
+				set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
 
 				if(!err_code && !(*resp_constructed) && !no_response) {
 					handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
@@ -2243,6 +2240,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				}
 
 				break;
+			}
 
 			case STUN_METHOD_CONNECT:
 

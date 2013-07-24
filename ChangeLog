@@ -1,6 +1,9 @@
-07/22/2013 Oleg Moskalenko <mom040267@gmail.com> 
+07/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
+			Po-sheng Lin <personlin118@gmail.com>
 Version 2.5.1.2 'Shivers':
-	- cosmetic changes
+	- getopt fix in client test programs.
+	- cosmetic changes.
+	- allow anonymous alternate-server functionality.
 
 07/21/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 2.5.1.1 'Shivers':
