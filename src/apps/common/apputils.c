@@ -743,7 +743,7 @@ void build_base64_decoding_table() {
     decoding_table = (char*)turn_malloc(256);
 
     int i;
-    for (i = 0; i < 256; i++)
+    for (i = 0; i < 64; i++)
         decoding_table[(unsigned char) encoding_table[i]] = (char)i;
 }
 
