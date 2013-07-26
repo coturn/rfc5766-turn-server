@@ -37,9 +37,11 @@
 
 1) Multiple authentication servers, each in a separate thread.
 
-2) Aux listening endpoints, flexible format like IP:port.
+2) Aux listening endpoints, with format IP:port.
 
 3) "auto-balance" mode with aux listening endpoints.
+
+4) Make DTLS network model the same as UDP.
 
 ==================================================================
 
@@ -91,6 +93,8 @@ it if it is accepted:
    http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-04.html#rfc.section.5.1
 
 2) For extra difficult NAT/FWs, consider implementing Websockets.
+
+3) MS TURN, MS STUN extensions.
 
 ==================================================================
 
