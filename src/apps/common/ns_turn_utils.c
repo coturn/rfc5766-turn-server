@@ -366,25 +366,31 @@ static void set_rtpfile(void)
 		char logf[FILE_STR_LEN];
 
 		snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
-		snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
+		snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail);
 
-		set_log_file_name(logbase,logf);
+		set_log_file_name(logbase, logf);
 		_rtpfile = fopen(logf, "w");
-		if(!_rtpfile) {
-			snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
-			set_log_file_name(logbase,logf);
+		if (!_rtpfile) {
+			snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
+
+			set_log_file_name(logbase, logf);
 			_rtpfile = fopen(logf, "w");
-			if(!_rtpfile) {
-				snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
-				set_log_file_name(logbase,logf);
+			if (!_rtpfile) {
+				snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
+				set_log_file_name(logbase, logf);
 				_rtpfile = fopen(logf, "w");
-				if(!_rtpfile) {
-					snprintf(logbase, FILE_STR_LEN, "%s", logtail);
-					set_log_file_name(logbase,logf);
+				if (!_rtpfile) {
+					snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
+					set_log_file_name(logbase, logf);
 					_rtpfile = fopen(logf, "w");
-					if(!_rtpfile) {
-						_rtpfile = stdout;
-						return;
+					if (!_rtpfile) {
+						snprintf(logbase, FILE_STR_LEN, "%s", logtail);
+						set_log_file_name(logbase, logf);
+						_rtpfile = fopen(logf, "w");
+						if (!_rtpfile) {
+							_rtpfile = stdout;
+							return;
+						}
 					}
 				}
 			}

@@ -35,9 +35,11 @@
 
 ==================================================================
 
-1) Multiple authentication servers, each in a separate thread
+1) Multiple authentication servers, each in a separate thread.
 
-2) For listening endpoints, flexible format like IP:port.
+2) Aux listening endpoints, flexible format like IP:port.
+
+3) "auto-balance" mode with aux listening endpoints.
 
 ==================================================================
 

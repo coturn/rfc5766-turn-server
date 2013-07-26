@@ -315,9 +315,10 @@ Options with required values:
 				
 -l, --log-file			Option to set the full path name of the log file.
 				By default, the turnserver tries to open a log file in 
-				/var/log, /var/tmp, /tmp and current directories directories
-				(which open operation succeeds first that file will be used).
-				With this option you can set the definite log file name.
+				/var/log/turnserver, /var/log, /var/tmp, /tmp and . (current) 
+				directories (which file open operation succeeds 
+				first that file will be used). With this option you can set the 
+				definite log file name.
 				The special names are "stdout" and "-" - they will force everything 
 				to the stdout. Also, "syslog" name will redirect everything into
 				the system log (syslog), as if the option "--syslog" was set.
