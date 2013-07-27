@@ -39,16 +39,17 @@
 #include <locale.h>
 #include <libgen.h>
 
-#if !defined(TURN_NO_THREADS)
-#include <pthread.h>
-#endif
-
 #if !defined(TURN_NO_PQ)
 #include <libpq-fe.h>
 #endif
 
 #if !defined(TURN_NO_MYSQL)
 #include <mysql.h>
+#endif
+
+#if !defined(TURN_NO_HIREDIS)
+#include "hiredis_libevent2.h"
+#include <hiredis/hiredis.h>
 #endif
 
 #include <signal.h>
@@ -70,15 +71,12 @@
 
 #include "apputils.h"
 
-#if !defined(TURN_NO_HIREDIS)
-#include "hiredis_libevent2.h"
-#include <hiredis/hiredis.h>
-#endif
-
 //////////// USER DB //////////////////////////////
 
+#define LONG_STRING_SIZE (1025)
+
 TURN_USERDB_TYPE userdb_type=TURN_USERDB_TYPE_FILE;
-char userdb[1025]="\0";
+char userdb[LONG_STRING_SIZE]="\0";
 
 size_t users_number = 0;
 
@@ -621,7 +619,7 @@ static int get_auth_secrets(secrets_list_t *sl)
 #if !defined(TURN_NO_PQ)
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		STRCPY(statement,"select value from turn_secret");
 		PGresult *res = PQexec(pqc, statement);
 
@@ -647,7 +645,7 @@ static int get_auth_secrets(secrets_list_t *sl)
 #if !defined(TURN_NO_MYSQL)
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		STRCPY(statement,"select value from turn_secret");
 		int res = mysql_query(myc, statement);
 		if(res) {
@@ -666,7 +664,7 @@ static int get_auth_secrets(secrets_list_t *sl)
 							unsigned long *lengths = mysql_fetch_lengths(mres);
 							if(lengths) {
 								size_t sz = lengths[0];
-								char auth_secret[1025];
+								char auth_secret[LONG_STRING_SIZE];
 								ns_bcopy(row[0],auth_secret,sz);
 								auth_secret[sz]=0;
 								add_to_secrets_list(sl,auth_secret);
@@ -832,7 +830,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 
 		if(!turn_time_before((ts + auth_secret_timestamp_expiration_time), ctime)) {
 
-			u08bits hmac[1025]="\0";
+			u08bits hmac[LONG_STRING_SIZE]="\0";
 			unsigned int hmac_len = SHA_DIGEST_LENGTH;
 			st_password_t pwdtmp;
 
@@ -897,7 +895,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 	{
 		PGconn * pqc = get_pqdb_connection();
 		if(pqc) {
-			char statement[1025];
+			char statement[LONG_STRING_SIZE];
 			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",uname);
 			PGresult *res = PQexec(pqc, statement);
 
@@ -926,7 +924,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 	{
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
-			char statement[1025];
+			char statement[LONG_STRING_SIZE];
 			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",uname);
 			int res = mysql_query(myc, statement);
 			if(res) {
@@ -969,7 +967,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 	{
 		redisContext * rc = get_redis_connection();
 		if(rc) {
-			char s[1025];
+			char s[LONG_STRING_SIZE];
 			snprintf(s,sizeof(s),"get turn/user/%s/key", uname);
 			redisReply *rget = (redisReply *)redisCommand(rc, s);
 			if(rget) {
@@ -1018,7 +1016,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 
 	UNUSED_ARG(pwd);
 
-	char statement[1025];
+	char statement[LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",uname);
 
 	{
@@ -1081,7 +1079,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 	{
 		redisContext * rc = get_redis_connection();
 		if(rc) {
-			char s[1025];
+			char s[LONG_STRING_SIZE];
 			snprintf(s,sizeof(s),"get turn/user/%s/password", uname);
 			redisReply *rget = (redisReply *)redisCommand(rc, s);
 			if(rget) {
@@ -1206,7 +1204,7 @@ void read_userdb_file(int to_print)
 
 	if (f) {
 
-		char sbuf[1025];
+		char sbuf[LONG_STRING_SIZE];
 
 		ur_string_map_lock(users->dynamic_accounts);
 
@@ -1302,7 +1300,7 @@ static int list_users(int is_st)
 
 	if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		PGconn *pqc = get_pqdb_connection();
 		if(pqc) {
 			if(is_st) {
@@ -1329,7 +1327,7 @@ static int list_users(int is_st)
 #endif
 	} else if(is_mysql_userdb()){
 #if !defined(TURN_NO_MYSQL)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			if(is_st) {
@@ -1439,7 +1437,7 @@ static int list_users(int is_st)
 
 static int show_secret(void)
 {
-	char statement[1025];
+	char statement[LONG_STRING_SIZE];
 	snprintf(statement,sizeof(statement),"select value from turn_secret");
 
 	donot_print_connection_success=1;
@@ -1552,7 +1550,7 @@ static int del_secret(u08bits *secret) {
 
 	if (is_pqsql_userdb()) {
 #if !defined(TURN_NO_PQ)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		PGconn *pqc = get_pqdb_connection();
 		if (pqc) {
 			if(!secret || (secret[0]==0))
@@ -1568,7 +1566,7 @@ static int del_secret(u08bits *secret) {
 #endif
 	} else if (is_mysql_userdb()) {
 #if !defined(TURN_NO_MYSQL)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		MYSQL * myc = get_mydb_connection();
 		if (myc) {
 			if(!secret || (secret[0]==0))
@@ -1586,7 +1584,7 @@ static int del_secret(u08bits *secret) {
 			if(reply) {
 				secrets_list_t keys;
 				size_t isz = 0;
-				char s[1025];
+				char s[LONG_STRING_SIZE];
 
 				init_secrets_list(&keys);
 
@@ -1647,7 +1645,7 @@ static int set_secret(u08bits *secret) {
 
 	if (is_pqsql_userdb()) {
 #if !defined(TURN_NO_PQ)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		PGconn *pqc = get_pqdb_connection();
 		if (pqc) {
 		  snprintf(statement,sizeof(statement),"insert into turn_secret values('%s')",secret);
@@ -1665,7 +1663,7 @@ static int set_secret(u08bits *secret) {
 #endif
 	} else if (is_mysql_userdb()) {
 #if !defined(TURN_NO_MYSQL)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		MYSQL * myc = get_mydb_connection();
 		if (myc) {
 		  snprintf(statement,sizeof(statement),"insert into turn_secret values('%s')",secret);
@@ -1682,7 +1680,7 @@ static int set_secret(u08bits *secret) {
 #if !defined(TURN_NO_HIREDIS)
 		redisContext *rc = get_redis_connection();
 		if(rc) {
-			char s[1025];
+			char s[LONG_STRING_SIZE];
 
 			del_secret(secret);
 
@@ -1747,7 +1745,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 
 	} else if(is_pqsql_userdb()){
 #if !defined(TURN_NO_PQ)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		PGconn *pqc = get_pqdb_connection();
 		if(pqc) {
 			if(ct == TA_DELETE_USER) {
@@ -1791,7 +1789,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 #endif
 	} else if(is_mysql_userdb()){
 #if !defined(TURN_NO_MYSQL)
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			if(ct == TA_DELETE_USER) {
@@ -1831,7 +1829,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 #if !defined(TURN_NO_HIREDIS)
 		redisContext *rc = get_redis_connection();
 		if(rc) {
-			char statement[1025];
+			char statement[LONG_STRING_SIZE];
 
 			if(ct == TA_DELETE_USER) {
 				if(!is_st) {
@@ -1859,7 +1857,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		char *full_path_to_userdb_file = find_config_file(userdb, 1);
 		FILE *f = full_path_to_userdb_file ? fopen(full_path_to_userdb_file,"r") : NULL;
 		int found = 0;
-		char us[1025];
+		char us[LONG_STRING_SIZE];
 		size_t i = 0;
 		char **content = NULL;
 		size_t csz = 0;
@@ -1872,8 +1870,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "File %s not found, will be created.\n",userdb);
 		} else {
 
-			char sarg[1025];
-			char sbuf[1025];
+			char sarg[LONG_STRING_SIZE];
+			char sbuf[LONG_STRING_SIZE];
 
 			for (;;) {
 				char *s0 = fgets(sbuf, sizeof(sbuf) - 1, f);
@@ -1973,7 +1971,7 @@ void auth_ping(void)
 #if !defined(TURN_NO_PQ)
 	PGconn * pqc = get_pqdb_connection();
 	if(pqc) {
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		STRCPY(statement,"select value from turn_secret");
 		PGresult *res = PQexec(pqc, statement);
 
@@ -1990,7 +1988,7 @@ void auth_ping(void)
 #if !defined(TURN_NO_MYSQL)
 	MYSQL * myc = get_mydb_connection();
 	if(myc) {
-		char statement[1025];
+		char statement[LONG_STRING_SIZE];
 		STRCPY(statement,"select value from turn_secret");
 		int res = mysql_query(myc, statement);
 		if(res) {

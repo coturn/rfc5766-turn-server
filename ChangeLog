@@ -1,6 +1,8 @@
-XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
+07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
+	Vladimir Tsanev <tsachev@gmail.com>
 Version 2.5.2.1 'Shivers':
 	- log file placement changes.
+	- Base64 encode/decode emory initialization fix.
 	
 07/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Po-sheng Lin <personlin118@gmail.com>

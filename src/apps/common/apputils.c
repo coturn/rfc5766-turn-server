@@ -741,6 +741,7 @@ char *base64_encode(const unsigned char *data,
 void build_base64_decoding_table() {
 
     decoding_table = (char*)turn_malloc(256);
+    ns_bzero(decoding_table,256);
 
     int i;
     for (i = 0; i < 64; i++)
