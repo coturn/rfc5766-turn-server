@@ -699,6 +699,52 @@ same as for PostgreSQL and you can find it in turndb/schema.sql file, or
 in the system's PREFIX/share/turnserver/schema.sql file after the turnserver 
 installation.
 
+The general setup idea is the same as for PostgreSQL case:
+
+1) Check that the mysql server access is OK. Immediately after the MySQL server 
+installation, it must be accessible, at the very minimum, at the localhost with
+the root account.
+
+2) Login into mysql console from root account:
+
+  $ sudo bash
+  # mysql -p mysql
+  
+3) Add 'turn' user with 'turn' password (for example):
+
+  > create user 'turn'@'localhost' identified by 'turn';
+  
+4) Create database 'turn' (for example) and grant privileges to user 'turn':
+
+  > create database turn;
+  > grant all on turn.* to 'turn'@'localhost';
+  > flush privileges;
+  Ctrl-D
+  
+5) Create database schema:
+
+  $ mysql -p -u turn turn < turndb/schema.sql
+  Enter password: turn
+  $
+  
+6) Fill in users:
+
+  Shared secret for the TURN REST API:
+  
+  $ bin/turnadmin -s logen -M "host=localhost dbname=turn user=turn password=turn"
+  
+  Long-term credentials mechanism:
+  
+  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  
+  Short-term credentials mechanism:
+   
+  $ bin/turnadmin -A -M "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -M "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+
+7) Now we can use mysql in the turnserver.
+
 If the TURN server was compiled with MySQL support, then we can use the 
 TURN server database parameter --mysql-userdb. The value of this parameter 
 is a connection string for the MySQL database. As "native" MySQL does not 
