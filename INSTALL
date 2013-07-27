@@ -587,7 +587,7 @@ Below are the steps to setup the PostgreSQL database server from scratch:
 
 2) Find and edit Postgres' pg_hba.conf file to set the access options 
 (see docs). On different systems, it may be located in different places.
-Set the local access as "trust" for now (you can change it later), 
+Set the lines for local access as "trust" for now (you can change it later), 
 for TCP/IP access set the value as "md5".
 To set TCP/IP access from any host, use "0.0.0.0/0" for IPv4, and "::/0" 
 for IPv6.
@@ -596,7 +596,10 @@ for IPv6.
 the "listen_addresses" option (see docs). On different systems, this file 
 may be located in different places.
 
-4) Restart your system.
+4) Restart your system or restart the postgresql server, for example:
+
+  $ sudo /etc/init.d/postgresql stop
+  $ sudo /etc/init.d/postgresql start
 
 5) Check /etc/passwd file to find out which user account is used for the 
 PostgreSQL admin access on your system (it may be "pgsql", or "postgres", 
@@ -612,21 +615,21 @@ or "postgresql"). Let's assume that this is "postgres" account.
      turn=# 
      Ctrl-D
 
-8) Create the TURN users database table:
-
-   $ psql -U turn turn
-     Password for user turn: <type "turn">
-     turn=> CREATE TABLE turnusers_lt (name varchar(512) PRIMARY KEY,hmackey char(32));
-     turn=>
-     Ctrl-D
-
-9) You are ready to use the TURN database. The database name is "turn",
-the user name is "turn", the user password is "turn". Of course, you can 
-choose your own names.
+8) Create the TURN users database schema.
 
 The database schema for the TURN server is very minimalistic and is located 
 in project's turndb/schema.sql file, or in the system's 
 PREFIX/share/turnserver/schema.sql file after the turnserver installation:
+
+$ cat turndb/schema.sql | psql -U turn turn
+	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_lt_pkey" for table "turnusers_lt"
+	CREATE TABLE
+	NOTICE:  CREATE TABLE / PRIMARY KEY will create implicit index "turnusers_st_pkey" for table "turnusers_st"
+	CREATE TABLE
+	CREATE TABLE
+$ 
+
+The schema description:
 
 # Table for long-term credentials mechanism authorization:
 #
@@ -660,7 +663,7 @@ You can use turnadmin program to manage the database - you can either use
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
 the hmac keys and modify the database with your favorite tools.
 
-Examples of database schema creation:
+More examples of database schema creation:
 
 psql -h <host> -U <db-user> -d <database-name>  < turndb/schema.sql
 (old style for 8.4)
@@ -683,6 +686,10 @@ turnserver ... --psql-userdb="host=localhost dbname=turn user=turn password=turn
 Or, for 9.x PostgreSQL versions: 
 turnserver ... --psql-userdb=postgresql://username:password@/databasename ...
 
+9) You are ready to use the TURN database. The database name is "turn",
+the user name is "turn", the user password is "turn". Of course, you can 
+choose your own names. Now, you will have to use the program turnadmin to fill the 
+database, or you can do that manually with psql.
 
 XV. MySQL setup
 
