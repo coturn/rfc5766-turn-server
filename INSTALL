@@ -691,6 +691,22 @@ the user name is "turn", the user password is "turn". Of course, you can
 choose your own names. Now, you will have to use the program turnadmin to fill the 
 database, or you can do that manually with psql.
 
+Fill in users, for example:
+
+  Shared secret for the TURN REST API:
+  
+  $ bin/turnadmin -s logen -e "host=localhost dbname=turn user=turn password=turn"
+  
+  Long-term credentials mechanism:
+  
+  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  
+  Short-term credentials mechanism:
+   
+  $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
+
 XV. MySQL setup
 
 The MySQL setup is similar to PostgreSQL (same idea), and is well documented 
@@ -727,7 +743,7 @@ the root account.
   Enter password: turn
   $
   
-6) Fill in users:
+6) Fill in users, for example:
 
   Shared secret for the TURN REST API:
   
