@@ -210,11 +210,16 @@ Options with required values:
 
 -p, --listening-port		TURN listener port for UDP and TCP listeners (Default: 3478).
 				Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP
-				port(s), too - if allowed by configuration.
+				port(s), too - if allowed by configuration. 				
 
 --tls-listening-port		TURN listener port for TLS and DTLS listeners (Default: 5349).
 				Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS
-				port(s), too - if allowed by configuration.
+				port(s), too - if allowed by configuration. The TURN server 
+				"automatically" recognizes the type of traffic. Actually, two listening
+				endpoints (the "plain" one and the "tls" one) are equivalent in terms of
+				functionality; but we keep both endpoints to satisfy the RFC 5766 specs.
+				For secure TCP connections, we currently support SSL version 3 and 
+				TLS version 1.0. For secure UDP connections, we support DTLS version 1.
 
 --alt-listening-port		Alternative listening port for UDP and TCP listeners;
 				default (or zero) value means "listening port plus one". 

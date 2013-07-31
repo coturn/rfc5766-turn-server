@@ -331,7 +331,10 @@ int main(int argc, char **argv)
 		OpenSSL_add_ssl_algorithms();
 
 		if(use_tcp) {
-			root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
+			if((((u32bits)random())%2)==0)
+				root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
+			else
+				root_tls_ctx = SSL_CTX_new(SSLv3_client_method());
 		} else {
 #if defined(TURN_NO_DTLS)
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");

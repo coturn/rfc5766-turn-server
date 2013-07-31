@@ -1732,7 +1732,7 @@ static int check_tentative_tls(ioa_socket_raw fd)
 	} while (len < 0 && (errno == EINTR));
 
 	if(len>0 && ((size_t)len == sizeof(s))) {
-		if((s[0]==22)&&(s[1]==3)&&(s[2]==1)&&(s[5]==1)) {
+		if((s[0]==22)&&(s[1]==3)&&((s[2]==1)||(s[2]==0))&&(s[5]==1)) {
 			return 1;
 		}
 	}

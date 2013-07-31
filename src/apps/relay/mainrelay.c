@@ -1517,7 +1517,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --tls-listening-port		<port>		TURN listener port for TLS & DTLS listeners\n"
 "						(Default: 5349).\n"
 "						Note: actually, \"plain\" TCP & UDP sessions can connect to the TLS & DTLS port(s), too,\n"
-"						if allowed by configuration.\n"
+"						if allowed by configuration. The TURN server\n"
+"						\"automatically\" recognizes the type of traffic. Actually, two listening\n"
+"						endpoints (the \"plain\" one and the \"tls\" one) are equivalent in terms of\n"
+"						functionality; but we keep both endpoints to satisfy the RFC 5766 specs.\n"
+"						For secure TCP connections, we currently support SSL version 3 and\n"
+"						TLS version 1.0. For secure UDP connections, we support DTLS version 1.\n"
 " --alt-listening-port<port>	<port>		Alternative listening port for STUN CHANGE_REQUEST (in RFC 5780 sense, \n"
 "                                               or in old RFC 3489 sense, default is \"listening port plus one\").\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 or RFC 3489 sense, \n"
@@ -2798,7 +2803,8 @@ static void openssl_setup(void)
 	}
 
 	if(!no_tls) {
-		tls_ctx = SSL_CTX_new(TLSv1_server_method());
+		//tls_ctx = SSL_CTX_new(TLSv1_server_method());
+		tls_ctx = SSL_CTX_new(SSLv23_server_method());
 		set_ctx(tls_ctx,"TLS");
 	}
 

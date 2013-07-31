@@ -1,7 +1,8 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
-	- auxiliary endpoints.
-	- self-load-balancing. 
+	- SSL3.0 support.
+	TODO: - auxiliary endpoints.
+	TODO: - self-load-balancing. 
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
