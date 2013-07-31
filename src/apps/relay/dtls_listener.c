@@ -511,10 +511,17 @@ static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_se
 
 static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 {
+	int cycle = 0;
+
 	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
 
-	ioa_network_buffer_handle *elem = (ioa_network_buffer_handle *)
-	  ioa_network_buffer_allocate(server->e);
+	FUNCSTART;
+
+	ioa_network_buffer_handle *elem = NULL;
+
+	start_udp_cycle:
+
+	elem = (ioa_network_buffer_handle *)ioa_network_buffer_allocate(server->e);
 
 	server->sm.m.sm.nd.nbh = elem;
 	server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
@@ -529,22 +536,53 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
-	if((bsize<0) && is_connreset()) {
-		//hm... try again...
+	int conn_reset = is_connreset();
+	int to_block = would_block();
+
+	if (bsize < 0) {
+
+		if(to_block) {
+			FUNCEND;
+			return;
+		}
+
+	#if defined(MSG_ERRQUEUE)
+
+		//Linux
+		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+		static s08bits buffer[65535];
+		u32bits errcode = 0;
+		ioa_addr orig_addr;
+		int ttl = 0;
+		int tos = 0;
+		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
+					(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
+					&errcode);
+		//try again...
 		do {
 			bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (bsize < 0 && (errno == EINTR));
-	}
 
-	if((bsize<0) && is_connreset()) {
-	  reopen_server_socket(server);
-	  return;
+		conn_reset = is_connreset();
+		to_block = would_block();
+
+	#endif
+
+		if(conn_reset) {
+			reopen_server_socket(server);
+			FUNCEND;
+			return;
+		}
 	}
 
 	if(bsize<0) {
-		int ern=errno;
-		perror(__FUNCTION__);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
+		if(!to_block && !conn_reset) {
+			int ern=errno;
+			perror(__FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
+		}
+		FUNCEND;
+		return;
 	}
 
 	if (bsize > 0) {
@@ -557,7 +595,7 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 
 		if(rc < 0) {
 			if(eve(server->e->verbose)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create UDP session\n");
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
 			}
 		}
 	}
@@ -565,7 +603,10 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
 	server->sm.m.sm.nd.nbh = NULL;
 
-	return;
+	if(cycle++<16)
+		goto start_udp_cycle;
+
+	FUNCEND;
 }
 
 static void server_input_handler(evutil_socket_t fd, short what, void* arg)
@@ -585,64 +626,66 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		return;
 	}
 
+	int read_all = 0;
 	unsigned char peekbuf[4];
-	const int flags = MSG_PEEK;
-	int read_all;
-	int rc;
-	int slen;
-	int conn_reset = 0;
-	int to_block = 0;
+	int rc = 0;
+	int slen = server->slen0;
 
-	start_server_input:
+	if(!no_dtls) {
+		const int flags = MSG_PEEK;
+		int conn_reset = 0;
+		int to_block = 0;
 
-	read_all = 0;
-	rc = 0;
-	slen = server->slen0;
-
-	do {
-		rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-	} while (rc < 0 && (errno == EINTR));
-
-	conn_reset = is_connreset();
-	to_block = would_block();
-
-	if (rc < 0) {
-#if defined(MSG_ERRQUEUE)
-		//Linux
-		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
-		static s08bits buffer[65535];
-		u32bits errcode = 0;
-		ioa_addr orig_addr;
-		int ttl = 0;
-		int tos = 0;
-		udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
-				(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
-				&errcode);
-		//try again...
 		do {
-			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags,
-					(struct sockaddr*) &(server->sm.m.sm.nd.src_addr),
-					(socklen_t*) &slen);
+			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 		} while (rc < 0 && (errno == EINTR));
+
 		conn_reset = is_connreset();
 		to_block = would_block();
-#else
-		if(conn_reset) {
-			reopen_server_socket(server);
+
+		if (rc < 0) {
+
+			if(to_block) {
+				FUNCEND;
+				return;
+			}
+
+#if defined(MSG_ERRQUEUE)
+			//Linux
+			int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
+			static s08bits buffer[65535];
+			u32bits errcode = 0;
+			ioa_addr orig_addr;
+			int ttl = 0;
+			int tos = 0;
+			udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
+				(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
+				&errcode);
+			//try again...
+			do {
+				rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags,
+					(struct sockaddr*) &(server->sm.m.sm.nd.src_addr),
+					(socklen_t*) &slen);
+			} while (rc < 0 && (errno == EINTR));
+			conn_reset = is_connreset();
+			to_block = would_block();
+#endif
+			if(conn_reset) {
+				reopen_server_socket(server);
+				FUNCEND;
+				return;
+			}
+		}
+
+		if(rc<0) {
+			if(!to_block && !conn_reset) {
+				int ern=errno;
+				perror(__FUNCTION__);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
+			}
 			FUNCEND;
 			return;
 		}
-#endif
-	}
-
-	if(rc<0) {
-		if(!to_block && !conn_reset) {
-			int ern=errno;
-			perror(__FUNCTION__);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
-		}
-		FUNCEND;
-		return;
 	}
 
 #if !defined(TURN_NO_DTLS)
@@ -753,8 +796,6 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 		  return;
 		}
 	}
-
-	goto start_server_input;
 }
 
 ///////////////////// operations //////////////////////////
