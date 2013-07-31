@@ -74,12 +74,12 @@ typedef int (*send_cb_socket_to_relay_cb)(turnserver_id id, u32bits connection_i
 
 //////////// ALTERNATE-SERVER /////////////
 
-struct _alternate_servers_list {
+struct _turn_server_addrs_list {
 	ioa_addr *addrs;
 	size_t size;
 };
 
-typedef struct _alternate_servers_list alternate_servers_list_t;
+typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
 
 //////// IP White/black listing ///////////
 
@@ -109,8 +109,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    int no_udp_relay,
 				    int stale_nonce,
 				    int stun_only,
-				    alternate_servers_list_t *alternate_servers_list,
-				    alternate_servers_list_t *tls_alternate_servers_list,
+				    turn_server_addrs_list_t *alternate_servers_list,
+				    turn_server_addrs_list_t *tls_alternate_servers_list,
 				    int no_multicast_peers,
 				    int no_loopback_peers,
 				    ip_range_list_t* ip_whitelist,

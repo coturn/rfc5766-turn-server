@@ -225,6 +225,17 @@ Options with required values:
 							 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
 				Default (or zero) value means "TLS listening port plus one".
+				
+--aux-server	Auxiliary STUN/TURN server listening endpoint.
+				Aux servers have almost full TURN and STUN functionality.
+				The (minor) limitations are:
+					1) Auxiliary servers do not have alternative ports and
+					they do not support STUN RFC 5780 functionality (CHANGE REQUEST).
+					2) Auxiliary servers also are never returning ALTERNATIVE-SERVER reply.
+					
+				Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6.
+				There may be multiple aux-server options, each will be used for listening
+				to client requests.
 
 -i, --relay-device		Relay interface device for relay sockets 
 				(optional, Linux only).
@@ -258,7 +269,8 @@ Options with required values:
 				If set to 0 then application runs TCP/TLS/DTLS relay process in a single thread,
 				in the same thread with the listener process (the authentication thread will 
 				still be a separate thread).
-				The number of UDP threads is always one per network listening endpoint.
+				The number of UDP threads is always one per network listening endpoint - including
+				the auxiliary endpoints.
 
 --min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.

@@ -278,12 +278,39 @@ static struct auth_server authserver;
 
 static void read_config_file(int argc, char **argv, int pass);
 
+/////////////// AUX SERVERS ////////////////
+
+static turn_server_addrs_list_t aux_servers_list = {NULL,0};
+
+static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *list)
+{
+	if(saddr && list) {
+		ioa_addr addr;
+		if(make_ioa_addr_from_full_string((const u08bits*)saddr, 0, &addr)!=0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
+		} else {
+			list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
+			addr_cpy(&(list->addrs[(list->size)++]),&addr);
+			{
+				u08bits s[1025];
+				addr_to_string(&addr, s);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Aux server: %s\n",s);
+			}
+		}
+	}
+}
+
+static void add_aux_server(const char *saddr)
+{
+	add_aux_server_list(saddr,&aux_servers_list);
+}
+
 /////////////// ALTERNATE SERVERS ////////////////
 
-static alternate_servers_list_t alternate_servers_list = {NULL,0};
-static alternate_servers_list_t tls_alternate_servers_list = {NULL,0};
+static turn_server_addrs_list_t alternate_servers_list = {NULL,0};
+static turn_server_addrs_list_t tls_alternate_servers_list = {NULL,0};
 
-static void add_alt_server(const char *saddr, int default_port, alternate_servers_list_t *list)
+static void add_alt_server(const char *saddr, int default_port, turn_server_addrs_list_t *list)
 {
 	if(saddr && list) {
 		ioa_addr addr;
@@ -1496,6 +1523,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 or RFC 3489 sense, \n"
 " 						default is \"TLS port plus one\").\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
+" --aux-server			<ip:port>	Auxiliary STUN/TURN server listening endpoint.\n"
+"						Auxiliary servers do not have alternative ports and\n"
+"						they do not support RFC 5780 functionality (CHANGE REQUEST).\n"
+"						Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
 " -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
@@ -1677,6 +1708,7 @@ enum EXTRA_OPTS {
 	AUTH_SECRET_TS_EXP,
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
+	AUX_SERVER_OPT,
 	ALTERNATE_SERVER_OPT,
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
@@ -1739,6 +1771,7 @@ static struct option long_options[] = {
 				{ "log-file", required_argument, NULL, 'l' },
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
+				{ "aux-server", required_argument, NULL, AUX_SERVER_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
 				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
 				{ "rest-api-separator", required_argument, NULL, 'C' },
@@ -2018,6 +2051,9 @@ static void set_option(int c, char *value)
 		break;
 	case ALTERNATE_SERVER_OPT:
 		add_alternate_server(value);
+		break;
+	case AUX_SERVER_OPT:
+		add_aux_server(value);
 		break;
 	case TLS_ALTERNATE_SERVER_OPT:
 		add_tls_alternate_server(value);

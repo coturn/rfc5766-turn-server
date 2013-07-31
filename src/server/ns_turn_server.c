@@ -84,9 +84,9 @@ struct _turn_turnserver {
 	/* <<== RFC 6062 */
 
 	/* Alternate servers ==>> */
-	alternate_servers_list_t *alternate_servers_list;
+	turn_server_addrs_list_t *alternate_servers_list;
 	size_t as_counter;
-	alternate_servers_list_t *tls_alternate_servers_list;
+	turn_server_addrs_list_t *tls_alternate_servers_list;
 	size_t tls_as_counter;
 
 	/* White/black listing of address ranges */
@@ -2137,7 +2137,7 @@ static int check_stun_auth(turn_turnserver *server,
 
 //<<== AUTH
 
-static void set_alternate_server(alternate_servers_list_t *asl, const ioa_addr *local_addr, size_t *counter, u16bits method, stun_tid *tid, int *resp_constructed, int *err_code, const u08bits **reason, ioa_network_buffer_handle nbh)
+static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *local_addr, size_t *counter, u16bits method, stun_tid *tid, int *resp_constructed, int *err_code, const u08bits **reason, ioa_network_buffer_handle nbh)
 {
 	if(asl && asl->size) {
 
@@ -2220,7 +2220,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			{
 				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-				alternate_servers_list_t *asl = server->alternate_servers_list;
+				turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
 				if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
 					asl = server->tls_alternate_servers_list;
@@ -3272,8 +3272,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int no_udp_relay,
 		int stale_nonce,
 		int stun_only,
-		alternate_servers_list_t *alternate_servers_list,
-		alternate_servers_list_t *tls_alternate_servers_list,
+		turn_server_addrs_list_t *alternate_servers_list,
+		turn_server_addrs_list_t *tls_alternate_servers_list,
 		int no_multicast_peers, int no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_cb_socket_to_relay_cb rfc6062cb) {
