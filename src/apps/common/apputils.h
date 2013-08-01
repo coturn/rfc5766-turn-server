@@ -51,6 +51,23 @@ extern "C" {
 #define UR_CLIENT_SOCK_BUF_SIZE (65536)
 #define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE * 32)
 
+/////////// SSL //////////////////////////
+
+enum _TURN_TLS_TYPE {
+	TURN_TLS_NO=0,
+	TURN_TLS_SSL3,
+	TURN_TLS_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+	TURN_TLS_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+	TURN_TLS_v1_2,
+#endif
+#endif
+	TURN_TLS_TOTAL
+};
+
+typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
+
 //////////////////////////////////////////
 
 #define EVENT_DEL(ev) if(ev) { event_del(ev); event_free(ev); ev=NULL; }

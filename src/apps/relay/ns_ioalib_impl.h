@@ -118,7 +118,14 @@ struct _ioa_engine
   turnipports* tp;
   rtcp_map *map_rtcp;
   stun_buffer_list bufs;
-  SSL_CTX *tls_ctx;
+  SSL_CTX *tls_ctx_ssl3;
+  SSL_CTX *tls_ctx_v1_0;
+#if defined(SSL_TXT_TLSV1_1)
+  SSL_CTX *tls_ctx_v1_1;
+#if defined(SSL_TXT_TLSV1_2)
+  SSL_CTX *tls_ctx_v1_2;
+#endif
+#endif
   SSL_CTX *dtls_ctx;
   turn_time_t jiffie;
   band_limit_t max_bpj;
@@ -197,7 +204,16 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp,
 				    size_t relays_number, s08bits **relay_addrs,
 				    int verbose, band_limit_t max_bps);
 
-void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx);
+void set_ssl_ctx(ioa_engine_handle e,
+		SSL_CTX *tls_ctx_ssl3,
+		SSL_CTX *tls_ctx_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+		SSL_CTX *tls_ctx_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+		SSL_CTX *tls_ctx_v1_2,
+#endif
+#endif
+		SSL_CTX *dtls_ctx);
 
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 

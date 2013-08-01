@@ -314,9 +314,25 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 	}
 }
 
-void set_ssl_ctx(ioa_engine_handle e, SSL_CTX *tls_ctx, SSL_CTX *dtls_ctx)
+void set_ssl_ctx(ioa_engine_handle e,
+		SSL_CTX *tls_ctx_ssl3,
+		SSL_CTX *tls_ctx_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+		SSL_CTX *tls_ctx_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+		SSL_CTX *tls_ctx_v1_2,
+#endif
+#endif
+		SSL_CTX *dtls_ctx)
 {
-	e->tls_ctx = tls_ctx;
+	e->tls_ctx_ssl3 = tls_ctx_ssl3;
+	e->tls_ctx_v1_0 = tls_ctx_v1_0;
+#if defined(SSL_TXT_TLSV1_1)
+	e->tls_ctx_v1_1 = tls_ctx_v1_1;
+#if defined(SSL_TXT_TLSV1_2)
+	e->tls_ctx_v1_2 = tls_ctx_v1_2;
+#endif
+#endif
 	e->dtls_ctx = dtls_ctx;
 }
 
@@ -1722,9 +1738,11 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	return len;
 }
 
-static int check_tentative_tls(ioa_socket_raw fd)
+static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 {
-	char s[6];
+	TURN_TLS_TYPE ret = TURN_TLS_NO;
+
+	char s[12];
 	int len = 0;
 
 	do {
@@ -1732,12 +1750,16 @@ static int check_tentative_tls(ioa_socket_raw fd)
 	} while (len < 0 && (errno == EINTR));
 
 	if(len>0 && ((size_t)len == sizeof(s))) {
-		if((s[0]==22)&&(s[1]==3)&&((s[2]==1)||(s[2]==0))&&(s[5]==1)) {
-			return 1;
+		if((s[0]==22)&&(s[1]==3)&&(s[5]==1)&&(s[9]==3)) {
+			char max_supported = (char)(TURN_TLS_TOTAL-2);
+			if(s[10] >= max_supported)
+				ret = (TURN_TLS_TYPE)((((int)TURN_TLS_TOTAL)-1));
+			else
+				ret = (TURN_TLS_TYPE)(s[10]+1);
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static int socket_input_worker(ioa_socket_handle s)
@@ -1789,7 +1811,8 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->st == TENTATIVE_TCP_SOCKET) {
 		EVENT_DEL(s->read_event);
-		if(check_tentative_tls(s->fd)) {
+		TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
+		if(tls_type) {
 			s->st = TLS_SOCKET;
 			if(s->ssl) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: ssl already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
@@ -1797,7 +1820,23 @@ static int socket_input_worker(ioa_socket_handle s)
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
-			s->ssl = SSL_new(s->e->tls_ctx);
+			switch(tls_type) {
+			case TURN_TLS_v1_0:
+				s->ssl = SSL_new(s->e->tls_ctx_v1_0);
+				break;
+#if defined(SSL_TXT_TLSV1_1)
+			case TURN_TLS_v1_1:
+				s->ssl = SSL_new(s->e->tls_ctx_v1_1);
+				break;
+#if defined(SSL_TXT_TLSV1_2)
+			case TURN_TLS_v1_2:
+				s->ssl = SSL_new(s->e->tls_ctx_v1_2);
+				break;
+#endif
+#endif
+			default:
+				s->ssl = SSL_new(s->e->tls_ctx_ssl3);
+			};
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
 								s->ssl,
@@ -2458,7 +2497,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 					} else {
 #if !defined(TURN_NO_TLS)
 						if(!(s->ssl)) {
-							s->ssl = SSL_new(e->tls_ctx);
+							//??? how we can get to this point ???
+							s->ssl = SSL_new(e->tls_ctx_ssl3);
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,

@@ -62,7 +62,8 @@ int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 st_password_t g_upwd;
 int use_fingerprints = 1;
-SSL_CTX *root_tls_ctx = NULL;
+SSL_CTX *root_tls_ctx[4];
+int root_tls_ctx_num = 0;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
 int passive_tcp = 0;
@@ -331,10 +332,18 @@ int main(int argc, char **argv)
 		OpenSSL_add_ssl_algorithms();
 
 		if(use_tcp) {
-			if((((u32bits)random())%2)==0)
-				root_tls_ctx = SSL_CTX_new(TLSv1_client_method());
-			else
-				root_tls_ctx = SSL_CTX_new(SSLv3_client_method());
+			root_tls_ctx[0] = SSL_CTX_new(SSLv3_client_method());
+			root_tls_ctx_num++;
+			root_tls_ctx[1] = SSL_CTX_new(TLSv1_client_method());
+			root_tls_ctx_num++;
+#if defined(SSL_TXT_TLSV1_1)
+			root_tls_ctx[2] = SSL_CTX_new(TLSv1_1_client_method());
+			root_tls_ctx_num++;
+#if defined(SSL_TXT_TLSV1_2)
+			root_tls_ctx[3] = SSL_CTX_new(TLSv1_2_client_method());
+			root_tls_ctx_num++;
+#endif
+#endif
 		} else {
 #if defined(TURN_NO_DTLS)
 		  fprintf(stderr,"ERROR: DTLS is not supported.\n");
@@ -343,30 +352,33 @@ int main(int argc, char **argv)
 		  if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
 		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
 		  }
-		  root_tls_ctx = SSL_CTX_new(DTLSv1_client_method());
+		  root_tls_ctx[0] = SSL_CTX_new(DTLSv1_client_method());
+		  root_tls_ctx_num++;
 #endif
 		}
-		SSL_CTX_set_cipher_list(root_tls_ctx, "DEFAULT");
 
-		if (!SSL_CTX_use_certificate_file(root_tls_ctx, cert_file,
-			SSL_FILETYPE_PEM)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
-			exit(-1);
-		}
+		int sslind = 0;
+		for(sslind = 0; sslind<root_tls_ctx_num; sslind++) {
+			if (!SSL_CTX_use_certificate_file(root_tls_ctx[sslind], cert_file,
+							SSL_FILETYPE_PEM)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
+				exit(-1);
+			}
 
-		if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx, pkey_file,
+			if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx[sslind], pkey_file,
 						SSL_FILETYPE_PEM)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found!\n");
-			exit(-1);
-		}
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no private key found!\n");
+				exit(-1);
+			}
 
-		if (!SSL_CTX_check_private_key(root_tls_ctx)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
-			exit(-1);
-		}
+			if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
+				exit(-1);
+			}
 
-		SSL_CTX_set_verify_depth(root_tls_ctx, 2);
-		SSL_CTX_set_read_ahead(root_tls_ctx, 1);
+			SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 2);
+			SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
+		}
 	}
 
 	start_mclient(argv[optind], port, client_ifname, local_addr, messagenumber, mclient);

@@ -42,8 +42,6 @@
 3) Make DTLS network model the same as UDP. That would also allow DTLS
 in Cygwin / MS WIndows.
 
-4) explore support for different TLS options (1.1, 1.2).
-
 ==================================================================
 
 ###   IV. PERFORMANCE OPTIMIZATION   ###

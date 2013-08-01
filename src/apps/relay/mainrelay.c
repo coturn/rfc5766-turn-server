@@ -140,7 +140,16 @@ int no_dtls = 0;
 static int no_tcp_relay = 0;
 static int no_udp_relay = 0;
 
-static SSL_CTX *tls_ctx = NULL;
+static SSL_CTX *tls_ctx_ssl3 = NULL;
+static SSL_CTX *tls_ctx_v1_0 = NULL;
+
+#if defined(SSL_TXT_TLSV1_1)
+static SSL_CTX *tls_ctx_v1_1 = NULL;
+#if defined(SSL_TXT_TLSV1_2)
+static SSL_CTX *tls_ctx_v1_2 = NULL;
+#endif
+#endif
+
 static SSL_CTX *dtls_ctx = NULL;
 
 static char listener_ifname[1025]="\0";
@@ -864,7 +873,14 @@ static ioa_engine_handle create_new_listener_engine(void)
 	struct event_base *eb = event_base_new();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (udp listener/relay thread): %s\n",event_base_get_method(eb));
 	ioa_engine_handle e = create_ioa_engine(eb, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
-	set_ssl_ctx(e, tls_ctx, dtls_ctx);
+	set_ssl_ctx(e, tls_ctx_ssl3, tls_ctx_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+		tls_ctx_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+		tls_ctx_v1_2,
+#endif
+#endif
+					dtls_ctx);
 	ioa_engine_set_rtcp_map(e, listener.rtcpmap);
 	return e;
 }
@@ -906,7 +922,14 @@ static void setup_listener_servers(void)
 	if(!listener.ioa_eng)
 		exit(-1);
 
-	set_ssl_ctx(listener.ioa_eng, tls_ctx, dtls_ctx);
+	set_ssl_ctx(listener.ioa_eng, tls_ctx_ssl3, tls_ctx_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+		tls_ctx_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+		tls_ctx_v1_2,
+#endif
+#endif
+					dtls_ctx);
 
 	listener.rtcpmap = rtcp_map_create(listener.ioa_eng);
 
@@ -1227,7 +1250,14 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 		rs->event_base = event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (nonudp relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
-		set_ssl_ctx(rs->ioa_eng, tls_ctx, dtls_ctx);
+		set_ssl_ctx(rs->ioa_eng, tls_ctx_ssl3, tls_ctx_v1_0,
+#if defined(SSL_TXT_TLSV1_1)
+		tls_ctx_v1_1,
+#if defined(SSL_TXT_TLSV1_2)
+		tls_ctx_v1_2,
+#endif
+#endif
+					dtls_ctx);
 		ioa_engine_set_rtcp_map(rs->ioa_eng, listener.rtcpmap);
 	}
 
@@ -1522,7 +1552,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						endpoints (the \"plain\" one and the \"tls\" one) are equivalent in terms of\n"
 "						functionality; but we keep both endpoints to satisfy the RFC 5766 specs.\n"
 "						For secure TCP connections, we currently support SSL version 3 and\n"
-"						TLS version 1.0. For secure UDP connections, we support DTLS version 1.\n"
+"						TLS versions 1.0, 1.1 and 1.2. For secure UDP connections, we support\n"
+"						DTLS version 1.\n"
 " --alt-listening-port<port>	<port>		Alternative listening port for STUN CHANGE_REQUEST (in RFC 5780 sense, \n"
 "                                               or in old RFC 3489 sense, default is \"listening port plus one\").\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 or RFC 3489 sense, \n"
@@ -2803,9 +2834,18 @@ static void openssl_setup(void)
 	}
 
 	if(!no_tls) {
-		//tls_ctx = SSL_CTX_new(TLSv1_server_method());
-		tls_ctx = SSL_CTX_new(SSLv23_server_method());
-		set_ctx(tls_ctx,"TLS");
+		tls_ctx_ssl3 = SSL_CTX_new(SSLv23_server_method());
+		set_ctx(tls_ctx_ssl3,"SSL3");
+		tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
+		set_ctx(tls_ctx_v1_0,"TLS1.0");
+#if defined(SSL_TXT_TLSV1_1)
+		tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
+		set_ctx(tls_ctx_v1_1,"TLS1.1");
+#if defined(SSL_TXT_TLSV1_2)
+		tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
+		set_ctx(tls_ctx_v1_2,"TLS1.2");
+#endif
+#endif
 	}
 
 	if(!no_dtls) {
