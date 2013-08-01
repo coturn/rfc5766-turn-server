@@ -1,5 +1,6 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
+	- "pure" UDP setup optimized (when no DTLS configured);
 	- SSL3.0 support.
 	- TLS 1.1 and 1.2 support.
 	TODO: - auxiliary endpoints.
@@ -9,7 +10,7 @@ Version 2.6.1.1 'Harding Grim':
 			Vladimir Tsanev <tsachev@gmail.com>
 Version 2.5.2.1 'Shivers':
 	- log file placement changes.
-	- Base64 encode/decode emory initialization fix.
+	- Base64 encode/decode memory initialization fix.
 	
 07/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Po-sheng Lin <personlin118@gmail.com>
