@@ -2834,8 +2834,8 @@ static void openssl_setup(void)
 	}
 
 	if(!no_tls) {
-		tls_ctx_ssl3 = SSL_CTX_new(SSLv23_server_method());
-		set_ctx(tls_ctx_ssl3,"SSL3");
+		tls_ctx_ssl3 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
+		set_ctx(tls_ctx_ssl3,"SSL23");
 		tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
 		set_ctx(tls_ctx_v1_0,"TLS1.0");
 #if defined(SSL_TXT_TLSV1_1)

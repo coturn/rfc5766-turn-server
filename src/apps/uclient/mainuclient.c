@@ -62,7 +62,7 @@ int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 st_password_t g_upwd;
 int use_fingerprints = 1;
-SSL_CTX *root_tls_ctx[4];
+SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
@@ -332,16 +332,13 @@ int main(int argc, char **argv)
 		OpenSSL_add_ssl_algorithms();
 
 		if(use_tcp) {
-			root_tls_ctx[0] = SSL_CTX_new(SSLv3_client_method());
-			root_tls_ctx_num++;
-			root_tls_ctx[1] = SSL_CTX_new(TLSv1_client_method());
-			root_tls_ctx_num++;
+			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(SSLv23_client_method());
+			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(SSLv3_client_method());
+			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_client_method());
 #if defined(SSL_TXT_TLSV1_1)
-			root_tls_ctx[2] = SSL_CTX_new(TLSv1_1_client_method());
-			root_tls_ctx_num++;
+			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_1_client_method());
 #if defined(SSL_TXT_TLSV1_2)
-			root_tls_ctx[3] = SSL_CTX_new(TLSv1_2_client_method());
-			root_tls_ctx_num++;
+			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_2_client_method());
 #endif
 #endif
 		} else {

@@ -1,10 +1,12 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
 	- "pure" UDP setup optimized (when no DTLS configured);
-	- SSL3.0 support.
+	- SSL3 support.
 	- TLS 1.1 and 1.2 support.
+	- SSL2 "encapsulation" mode support.
 	TODO: - auxiliary endpoints.
-	TODO: - self-load-balancing. 
+	TODO: - self-load-balancing.
+	TODO: expiration timestamp (issue 31)
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>

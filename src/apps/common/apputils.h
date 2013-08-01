@@ -55,7 +55,7 @@ extern "C" {
 
 enum _TURN_TLS_TYPE {
 	TURN_TLS_NO=0,
-	TURN_TLS_SSL3,
+	TURN_TLS_SSL23,
 	TURN_TLS_v1_0,
 #if defined(SSL_TXT_TLSV1_1)
 	TURN_TLS_v1_1,

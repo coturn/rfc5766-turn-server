@@ -1756,6 +1756,8 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 				ret = (TURN_TLS_TYPE)((((int)TURN_TLS_TOTAL)-1));
 			else
 				ret = (TURN_TLS_TYPE)(s[10]+1);
+		} else if((s[2]==1)&&(s[3]==3)) {
+			ret = TURN_TLS_SSL23; /* compatibility mode */
 		}
 	}
 
