@@ -95,7 +95,6 @@ static int donot_print_connection_success=0;
 int use_auth_secret_with_timestamp = 0;
 char rest_api_separator=':';
 secrets_list_t static_auth_secrets;
-turn_time_t auth_secret_timestamp_expiration_time = DEFAULT_AUTH_SECRET_EXPIRATION_TIME;
 
 void init_secrets_list(secrets_list_t *sl)
 {
@@ -828,7 +827,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 
 		ts = get_rest_api_timestamp((char*)uname);
 
-		if(!turn_time_before((ts + auth_secret_timestamp_expiration_time), ctime)) {
+		if(!turn_time_before(ts, ctime)) {
 
 			u08bits hmac[LONG_STRING_SIZE]="\0";
 			unsigned int hmac_len = SHA_DIGEST_LENGTH;

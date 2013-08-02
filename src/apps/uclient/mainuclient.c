@@ -261,10 +261,11 @@ int main(int argc, char **argv)
 		}
 		{
 			char new_uname[1025];
+			const unsigned long exp_time = 600; /* one day */
 			if(g_uname[0]) {
-			  snprintf(new_uname,sizeof(new_uname),"%lu%c%s",(unsigned long)time(NULL),rest_api_separator, (char*)g_uname);
+			  snprintf(new_uname,sizeof(new_uname),"%lu%c%s",(unsigned long)time(NULL) + exp_time,rest_api_separator, (char*)g_uname);
 			} else {
-			  snprintf(new_uname,sizeof(new_uname),"%lu", (unsigned long)time(NULL));
+			  snprintf(new_uname,sizeof(new_uname),"%lu", (unsigned long)time(NULL) + exp_time);
 			}
 			STRCPY(g_uname,new_uname);
 		}

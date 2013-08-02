@@ -4,9 +4,10 @@ Version 2.6.1.1 'Harding Grim':
 	- SSL3 support.
 	- TLS 1.1 and 1.2 support.
 	- SSL2 "encapsulation" mode support.
+	- --secret-ts-exp-time option deprecated; In REST API timestamp,
+	we are now using the expiration time (Issue 31).
 	TODO: - auxiliary endpoints.
 	TODO: - self-load-balancing.
-	TODO: expiration timestamp (issue 31)
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
@@ -26,7 +27,7 @@ Version 2.5.1.1 'Shivers':
 	- Improved "split" network engine:
 	two different threading models for TCP and UDP.
 	- DTLS crash fixed.
-	- Multuthreading with Cygwin.
+	- Multithreading with Cygwin.
 	
 07/20/2013 Oleg Moskalenko <mom040267@gmail.com> 
 Version 2.1.3.1 'Shivers':

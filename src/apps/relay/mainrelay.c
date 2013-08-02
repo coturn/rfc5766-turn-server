@@ -1642,8 +1642,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						in user database (if present). That database value can be changed on-the-fly\n"
 "						by a separate program, so this is why it is 'dynamic'.\n"
 "						Multiple shared secrets can be used (both in the database and in the \"static\" fashion).\n"
-" --secret-ts-exp-time 		<numberofsecs>	Expiration time for timestamp used with authentication secret, in seconds.\n"
-"						The default value is 86400 (24 hours). This is 'TTL' in terms of TURNServerRESTAPI.pdf.\n"
 " -n						Do not use configuration file, take all parameters from the command line only.\n"
 " --cert			<filename>		Certificate file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
@@ -1741,7 +1739,7 @@ enum EXTRA_OPTS {
 	AUTH_SECRET_OPT,
 	DEL_ALL_AUTH_SECRETS_OPT,
 	STATIC_AUTH_SECRET_VAL_OPT,
-	AUTH_SECRET_TS_EXP,
+	AUTH_SECRET_TS_EXP, /* deprecated */
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
 	AUX_SERVER_OPT,
@@ -1785,7 +1783,7 @@ static struct option long_options[] = {
 #endif
 				{ "use-auth-secret", optional_argument, NULL, AUTH_SECRET_OPT },
 				{ "static-auth-secret", required_argument, NULL, STATIC_AUTH_SECRET_VAL_OPT },
-				{ "secret-ts-exp-time", required_argument, NULL, AUTH_SECRET_TS_EXP },
+/* deprecated: */		{ "secret-ts-exp-time", optional_argument, NULL, AUTH_SECRET_TS_EXP },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "user-quota", required_argument, NULL, 'q' },
 				{ "total-quota", required_argument, NULL, 'Q' },
@@ -2037,7 +2035,7 @@ static void set_option(int c, char *value)
 		use_auth_secret_with_timestamp = 1;
 		break;
 	case AUTH_SECRET_TS_EXP:
-		auth_secret_timestamp_expiration_time = (turn_time_t)atol(value);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
 		break;
 	case 'r':
 		STRCPY(global_realm,value);

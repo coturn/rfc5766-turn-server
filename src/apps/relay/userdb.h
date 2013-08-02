@@ -48,8 +48,6 @@ extern "C" {
 
 #define DEFAULT_USERDB_FILE "turnuserdb.conf"
 
-#define DEFAULT_AUTH_SECRET_EXPIRATION_TIME (3600*24)
-
 #define AUTH_SECRET_SIZE (512)
 
 //////////// USER DB //////////////////////////////
@@ -130,7 +128,6 @@ typedef struct _secrets_list secrets_list_t;
 extern int use_auth_secret_with_timestamp;
 extern char rest_api_separator;
 extern secrets_list_t static_auth_secrets;
-extern turn_time_t auth_secret_timestamp_expiration_time;
 
 void init_secrets_list(secrets_list_t *sl);
 void clean_secrets_list(secrets_list_t *sl);
