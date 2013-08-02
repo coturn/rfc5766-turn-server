@@ -4,8 +4,10 @@ Version 2.6.1.1 'Harding Grim':
 	- SSL3 support.
 	- TLS 1.1 and 1.2 support.
 	- SSL2 "encapsulation" mode support.
-	- --secret-ts-exp-time option deprecated; In REST API timestamp,
-	we are now using the expiration time (Issue 31).
+	- --secret-ts-exp-time option deprecated; 
+		In REST API timestamp, we are now using 
+		the expiration time (Issue 31).
+	- Classic STUN transaction ID fixed (Issue 48).
 	TODO: - auxiliary endpoints.
 	TODO: - self-load-balancing.
 	
