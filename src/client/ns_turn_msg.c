@@ -726,9 +726,8 @@ static void stun_tid_from_string(const u08bits* s, stun_tid* id) {
 }
 
 void stun_tid_from_message_str(const u08bits* buf, size_t len, stun_tid* id) {
-  if(stun_is_command_message_str(buf,len)) {
-    stun_tid_from_string(buf+8, id);
-  }
+	UNUSED_ARG(len);
+	stun_tid_from_string(buf+8, id);
 }
 
 void stun_tid_message_cpy(u08bits* buf, const stun_tid* id) {
