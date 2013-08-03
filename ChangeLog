@@ -10,7 +10,7 @@ Version 2.6.1.1 'Harding Grim':
 	- Classic STUN transaction ID fixed (Issue 48).
 	- Classic STUN attribute ERROR fixed (Issue 49).
 	- Auxiliary UDP endpoints.
-	TODO: - auxiliary TCP endpoints.
+	- Auxiliary TCP endpoints.
 	TODO: - self-load-balancing.
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,

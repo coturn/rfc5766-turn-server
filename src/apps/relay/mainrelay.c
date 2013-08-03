@@ -199,10 +199,11 @@ struct listener_server {
 	size_t addrs_number;
 	size_t services_number;
 	dtls_listener_relay_server_type **udp_services;
+	dtls_listener_relay_server_type **dtls_services;
 	dtls_listener_relay_server_type **aux_udp_services;
 	tls_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
-	dtls_listener_relay_server_type **dtls_services;
+	tls_listener_relay_server_type **aux_tcp_services;
 #if !defined(TURN_NO_HIREDIS)
 	redis_context_handle rch;
 #endif
@@ -975,6 +976,8 @@ static void setup_listener_servers(void)
 	listener.tcp_services = (tls_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
 	listener.tls_services = (tls_listener_relay_server_type**)realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
 
+	listener.aux_tcp_services = (tls_listener_relay_server_type**)realloc(listener.aux_tcp_services, sizeof(tls_listener_relay_server_type*)*aux_servers_list.size+1);
+
 	/* Adjust barriers: */
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
@@ -1062,7 +1065,7 @@ static void setup_listener_servers(void)
 
 	/* Create listeners */
 
-	/* aux UDP servers */
+	/* Aux UDP servers */
 	for(i=0; i<aux_servers_list.size; i++) {
 
 		int index = i;
@@ -1088,6 +1091,21 @@ static void setup_listener_servers(void)
 					pthread_detach(thr);
 				}
 	#endif
+		}
+	}
+
+	/* Aux TCP servers */
+	if(!no_tls || !no_tcp) {
+
+		for(i=0; i<aux_servers_list.size; i++) {
+
+			ioa_addr addr;
+			char saddr[129];
+			addr_cpy(&addr,&aux_servers_list.addrs[i]);
+			int port = (int)addr_get_port(&addr);
+			addr_to_string_no_port(&addr,(u08bits*)saddr);
+
+			listener.aux_tcp_services[i] = create_tls_listener_server(listener_ifname, saddr, port, verbose, listener.ioa_eng, send_socket_to_relay);
 		}
 	}
 
