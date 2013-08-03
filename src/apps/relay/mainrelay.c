@@ -1398,7 +1398,6 @@ static void setup_nonudp_relay_servers(void)
 		nonudp_relay_servers[i] = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 		ns_bzero(nonudp_relay_servers[i], sizeof(struct relay_server));
 		nonudp_relay_servers[i]->id = (turnserver_id)i;
-		nonudp_relay_servers[i]->rfc5780 = rfc5780;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng);
@@ -1620,8 +1619,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						DTLS version 1.\n"
 " --alt-listening-port<port>	<port>		Alternative listening port for STUN CHANGE_REQUEST (in RFC 5780 sense, \n"
 "                                               or in old RFC 3489 sense, default is \"listening port plus one\").\n"
-" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS (in RFC 5780 or RFC 3489 sense, \n"
-" 						default is \"TLS port plus one\").\n"
+" --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS,\n"
+" 						the default is \"TLS/DTLS port plus one\".\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
 " --aux-server			<ip:port>	Auxiliary STUN/TURN server listening endpoint.\n"
 "						Auxiliary servers do not have alternative ports and\n"

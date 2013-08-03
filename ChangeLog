@@ -11,6 +11,7 @@ Version 2.6.1.1 'Harding Grim':
 	- Classic STUN attribute ERROR fixed (Issue 49).
 	- Auxiliary UDP endpoints.
 	- Auxiliary TCP endpoints.
+	- Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
 	TODO: - self-load-balancing.
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,

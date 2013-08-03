@@ -227,7 +227,9 @@ Options with required values:
 				This is needed for STUN CHANGE_REQUEST  - in RFC 5780 sense
                 or in old RFC 3489 sense - for NAT behavior discovery). The TURN Server 
 				supports CHANGE_REQUEST only if it is started with more than one 
-				listening IP address of the same family (IPv4 or IPv6).
+				listening IP address of the same family (IPv4 or IPv6). The CHANGE_REQUEST
+				is only supported by UDP protocol, other protocols are listening
+				on that endpoint only for "symmetry".
 							 
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
 				Default (or zero) value means "TLS listening port plus one".
