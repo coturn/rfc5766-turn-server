@@ -8,7 +8,9 @@ Version 2.6.1.1 'Harding Grim':
 		In REST API timestamp, we are now using 
 		the expiration time (Issue 31).
 	- Classic STUN transaction ID fixed (Issue 48).
-	TODO: - auxiliary endpoints.
+	- Classic STUN attribute ERROR fixed (Issue 49).
+	- Auxiliary UDP endpoints.
+	TODO: - auxiliary TCP endpoints.
 	TODO: - self-load-balancing.
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,

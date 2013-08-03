@@ -403,7 +403,8 @@ static char Usage[] =
   "Usage: stunclient [options] address\n"
   "Options:\n"
   "        -p      STUN server port (Default: 3478)\n"
-  "        -L      Local address to use (optional)\n";
+  "        -L      Local address to use (optional)\n"
+  "        -f      Force RFC 5780 processing\n";
 
 //////////////////////////////////////////////////
 
@@ -412,14 +413,18 @@ int main(int argc, char **argv)
   int port = DEFAULT_STUN_PORT;
   char local_addr[256]="\0";
   int c=0;
+  int forceRfc5780 = 0;
 
   set_logfile("stdout");
   set_system_parameters(0);
   
   ns_bzero(local_addr, sizeof(local_addr));
 
-  while ((c = getopt(argc, argv, "p:L:")) != -1) {
+  while ((c = getopt(argc, argv, "p:L:f")) != -1) {
     switch(c) {
+    case 'f':
+	    forceRfc5780 = 1;
+	    break;
     case 'p':
       port = atoi(optarg);
       break;
@@ -450,7 +455,7 @@ int main(int argc, char **argv)
 
   run_stunclient(argv[optind], port, &local_port, &rfc5780,-1,0,0,0);
 
-  if(rfc5780) {
+  if(rfc5780 || forceRfc5780) {
 	  run_stunclient(argv[optind], port, &local_port, &rfc5780,local_port+1,1,1,0);
 	  run_stunclient(argv[optind], port, &local_port, &rfc5780,-1,1,1,1);
   }

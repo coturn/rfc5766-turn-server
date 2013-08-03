@@ -253,6 +253,7 @@ static turnserver_id udp_relay_servers_number = 0;
 
 struct relay_server {
 	turnserver_id id;
+	bool rfc5780;
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
@@ -1050,6 +1051,8 @@ static void setup_listener_servers(void)
 			struct relay_server* udp_rs = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 			ns_bzero(udp_rs, sizeof(struct relay_server));
 			udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+			if(i>=(size_t)(aux_servers_list.size))
+				udp_rs->rfc5780 = rfc5780;
 			setup_relay_server(udp_rs, e);
 			udp_relay_servers[i] = udp_rs;
 		}
@@ -1338,7 +1341,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_cb_socket_to_relay);
-	if(rfc5780) {
+
+	if(rs->rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
 }
@@ -1376,6 +1380,7 @@ static void setup_nonudp_relay_servers(void)
 		nonudp_relay_servers[i] = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 		ns_bzero(nonudp_relay_servers[i], sizeof(struct relay_server));
 		nonudp_relay_servers[i]->id = (turnserver_id)i;
+		nonudp_relay_servers[i]->rfc5780 = rfc5780;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng);

@@ -370,7 +370,7 @@ static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 		};
 	}
 
-	u08bits avalue[129];
+	u08bits avalue[513];
 	avalue[0] = 0;
 	avalue[1] = 0;
 	avalue[2] = (u08bits) (error_code / 100);
@@ -378,6 +378,14 @@ static void stun_init_error_response_common_str(u08bits* buf, size_t *len,
 	strncpy((s08bits*) (avalue + 4), (const s08bits*) reason, sizeof(avalue)-4);
 	avalue[sizeof(avalue)-1]=0;
 	int alen = 4 + strlen((const s08bits*) (avalue+4));
+
+	//"Manual" padding for compatibility with classic old stun:
+	{
+		int rem = alen % 4;
+		if(rem) {
+			alen +=(4-rem);
+		}
+	}
 
 	stun_attr_add_str(buf, len, STUN_ATTRIBUTE_ERROR_CODE, (u08bits*) avalue, alen);
 	if (id) {

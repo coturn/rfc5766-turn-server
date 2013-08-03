@@ -176,6 +176,8 @@ Options with required values:
  
 -L  Local address to use (optional).
 
+-f  Force RFC 5780 processing.
+
 The turnutils_stunclient program checks the results of the first request, 
 and if it finds that the STUN server supports RFC 5780 
 (the binding response reveals that) then the turnutils_stunclient makes a couple more 
