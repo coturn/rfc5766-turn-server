@@ -140,7 +140,7 @@ int no_dtls = 0;
 static int no_tcp_relay = 0;
 static int no_udp_relay = 0;
 
-static SSL_CTX *tls_ctx_ssl3 = NULL;
+static SSL_CTX *tls_ctx_ssl23 = NULL;
 static SSL_CTX *tls_ctx_v1_0 = NULL;
 
 #if defined(SSL_TXT_TLSV1_1)
@@ -873,7 +873,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 	struct event_base *eb = event_base_new();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (udp listener/relay thread): %s\n",event_base_get_method(eb));
 	ioa_engine_handle e = create_ioa_engine(eb, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
-	set_ssl_ctx(e, tls_ctx_ssl3, tls_ctx_v1_0,
+	set_ssl_ctx(e, tls_ctx_ssl23, tls_ctx_v1_0,
 #if defined(SSL_TXT_TLSV1_1)
 		tls_ctx_v1_1,
 #if defined(SSL_TXT_TLSV1_2)
@@ -922,7 +922,7 @@ static void setup_listener_servers(void)
 	if(!listener.ioa_eng)
 		exit(-1);
 
-	set_ssl_ctx(listener.ioa_eng, tls_ctx_ssl3, tls_ctx_v1_0,
+	set_ssl_ctx(listener.ioa_eng, tls_ctx_ssl23, tls_ctx_v1_0,
 #if defined(SSL_TXT_TLSV1_1)
 		tls_ctx_v1_1,
 #if defined(SSL_TXT_TLSV1_2)
@@ -1250,7 +1250,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 		rs->event_base = event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (nonudp relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
-		set_ssl_ctx(rs->ioa_eng, tls_ctx_ssl3, tls_ctx_v1_0,
+		set_ssl_ctx(rs->ioa_eng, tls_ctx_ssl23, tls_ctx_v1_0,
 #if defined(SSL_TXT_TLSV1_1)
 		tls_ctx_v1_1,
 #if defined(SSL_TXT_TLSV1_2)
@@ -2832,8 +2832,8 @@ static void openssl_setup(void)
 	}
 
 	if(!no_tls) {
-		tls_ctx_ssl3 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
-		set_ctx(tls_ctx_ssl3,"SSL23");
+		tls_ctx_ssl23 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
+		set_ctx(tls_ctx_ssl23,"SSL23");
 		tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
 		set_ctx(tls_ctx_v1_0,"TLS1.0");
 #if defined(SSL_TXT_TLSV1_1)

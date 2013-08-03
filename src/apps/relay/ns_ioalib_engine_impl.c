@@ -315,7 +315,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 }
 
 void set_ssl_ctx(ioa_engine_handle e,
-		SSL_CTX *tls_ctx_ssl3,
+		SSL_CTX *tls_ctx_ssl23,
 		SSL_CTX *tls_ctx_v1_0,
 #if defined(SSL_TXT_TLSV1_1)
 		SSL_CTX *tls_ctx_v1_1,
@@ -325,7 +325,7 @@ void set_ssl_ctx(ioa_engine_handle e,
 #endif
 		SSL_CTX *dtls_ctx)
 {
-	e->tls_ctx_ssl3 = tls_ctx_ssl3;
+	e->tls_ctx_ssl23 = tls_ctx_ssl23;
 	e->tls_ctx_v1_0 = tls_ctx_v1_0;
 #if defined(SSL_TXT_TLSV1_1)
 	e->tls_ctx_v1_1 = tls_ctx_v1_1;
@@ -1837,7 +1837,7 @@ static int socket_input_worker(ioa_socket_handle s)
 #endif
 #endif
 			default:
-				s->ssl = SSL_new(s->e->tls_ctx_ssl3);
+				s->ssl = SSL_new(s->e->tls_ctx_ssl23);
 			};
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -2500,7 +2500,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 #if !defined(TURN_NO_TLS)
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
-							s->ssl = SSL_new(e->tls_ctx_ssl3);
+							s->ssl = SSL_new(e->tls_ctx_ssl23);
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
