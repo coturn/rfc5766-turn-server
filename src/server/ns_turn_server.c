@@ -88,6 +88,8 @@ struct _turn_turnserver {
 	size_t as_counter;
 	turn_server_addrs_list_t *tls_alternate_servers_list;
 	size_t tls_as_counter;
+	turn_server_addrs_list_t *aux_servers_list;
+	int self_udp_balance;
 
 	/* White/black listing of address ranges */
 	ip_range_list_t* ip_whitelist;
@@ -2222,8 +2224,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
 				turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-				if(cst == TLS_SOCKET || cst == DTLS_SOCKET) {
+				if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
 					asl = server->tls_alternate_servers_list;
+				} else if((cst == UDP_SOCKET) && server->self_udp_balance ) {
+					asl = server->aux_servers_list;
 				}
 
 				set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
@@ -3274,6 +3278,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int stun_only,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
+		turn_server_addrs_list_t *aux_servers_list,
+		int self_udp_balance,
 		int no_multicast_peers, int no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_cb_socket_to_relay_cb rfc6062cb) {
@@ -3303,6 +3309,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->alternate_servers_list = alternate_servers_list;
 	server->tls_alternate_servers_list = tls_alternate_servers_list;
+	server->aux_servers_list = aux_servers_list;
+	server->self_udp_balance = self_udp_balance;
 
 	server->stale_nonce = stale_nonce;
 	server->stun_only = stun_only;

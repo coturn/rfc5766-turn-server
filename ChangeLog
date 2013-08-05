@@ -1,5 +1,5 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 2.6.1.1 'Harding Grim':
+Version 2.6.1.1.beta 'Harding Grim':
 	- "pure" UDP setup optimized (when no DTLS configured);
 	- SSL3 support.
 	- TLS 1.1 and 1.2 support.
@@ -12,7 +12,7 @@ Version 2.6.1.1 'Harding Grim':
 	- Auxiliary UDP endpoints.
 	- Auxiliary TCP endpoints.
 	- Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
-	TODO: - self-load-balancing.
+	- self-load-balancing.
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>

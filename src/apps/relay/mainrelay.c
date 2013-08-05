@@ -93,7 +93,7 @@ static pthread_barrier_t barrier;
 //////////////// Events ///////////////////////
 
 static void run_events(struct event_base *eb);
-static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e);
+static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780);
 
 //////////////// Common params ////////////////////
 
@@ -254,7 +254,6 @@ static turnserver_id udp_relay_servers_number = 0;
 
 struct relay_server {
 	turnserver_id id;
-	bool rfc5780;
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
@@ -293,6 +292,7 @@ static void read_config_file(int argc, char **argv, int pass);
 /////////////// AUX SERVERS ////////////////
 
 static turn_server_addrs_list_t aux_servers_list = {NULL,0};
+static int udp_self_balance = 0;
 
 static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *list)
 {
@@ -1054,9 +1054,7 @@ static void setup_listener_servers(void)
 			struct relay_server* udp_rs = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 			ns_bzero(udp_rs, sizeof(struct relay_server));
 			udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-			if(i>=(size_t)(aux_servers_list.size))
-				udp_rs->rfc5780 = rfc5780;
-			setup_relay_server(udp_rs, e);
+			setup_relay_server(udp_rs, e, ((i>=(size_t)(aux_servers_list.size)) && rfc5780));
 			udp_relay_servers[i] = udp_rs;
 		}
 	}
@@ -1300,7 +1298,7 @@ static void run_listener_server(struct event_base *eb)
 	}
 }
 
-static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
+static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780)
 {
 	struct bufferevent *pair[2];
 	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
@@ -1356,11 +1354,13 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e)
 					stun_only,
 					&alternate_servers_list,
 					&tls_alternate_servers_list,
+					&aux_servers_list,
+					udp_self_balance,
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_cb_socket_to_relay);
 
-	if(rs->rfc5780) {
+	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
 }
@@ -1371,7 +1371,7 @@ static void *run_nonudp_relay_thread(void *arg)
   static int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
   
-  setup_relay_server(rs, NULL);
+  setup_relay_server(rs, NULL, 0);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
@@ -1400,10 +1400,10 @@ static void setup_nonudp_relay_servers(void)
 		nonudp_relay_servers[i]->id = (turnserver_id)i;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-		setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng);
+		setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng, 0);
 #else
 		if(nonudp_relay_servers_number == 0) {
-			setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng);
+			setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng, 0);
 			nonudp_relay_servers[i]->thr = pthread_self();
 		} else {
 			if(pthread_create(&(nonudp_relay_servers[i]->thr), NULL, run_nonudp_relay_thread, nonudp_relay_servers[i])<0) {
@@ -1626,6 +1626,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Auxiliary servers do not have alternative ports and\n"
 "						they do not support RFC 5780 functionality (CHANGE REQUEST).\n"
 "						Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6.\n"
+" --udp-self-balance				Automatically balance UDP traffic over auxiliary servers (if configured).\n"
+"						The load balancing is happening by the ALTERNATE-SERVER mechanism.\n"
+"						The TURN client must support 300 ALTERNATE-SERVER response for this functionality."
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
 " -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
@@ -1806,6 +1809,7 @@ enum EXTRA_OPTS {
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
 	AUX_SERVER_OPT,
+	UDP_SELF_BALANCE_OPT,
 	ALTERNATE_SERVER_OPT,
 	TLS_ALTERNATE_SERVER_OPT,
 	NO_MULTICAST_PEERS_OPT,
@@ -1869,6 +1873,7 @@ static struct option long_options[] = {
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
 				{ "aux-server", required_argument, NULL, AUX_SERVER_OPT },
+				{ "udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
 				{ "tls-alternate-server", required_argument, NULL, TLS_ALTERNATE_SERVER_OPT },
 				{ "rest-api-separator", required_argument, NULL, 'C' },
@@ -2151,6 +2156,9 @@ static void set_option(int c, char *value)
 		break;
 	case AUX_SERVER_OPT:
 		add_aux_server(value);
+		break;
+	case UDP_SELF_BALANCE_OPT:
+		udp_self_balance = get_bool_value(value);
 		break;
 	case TLS_ALTERNATE_SERVER_OPT:
 		add_tls_alternate_server(value);
