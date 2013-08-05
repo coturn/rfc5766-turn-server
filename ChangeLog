@@ -13,6 +13,8 @@ Version 2.6.1.1.beta 'Harding Grim':
 	- Auxiliary TCP endpoints.
 	- Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
 	- self-load-balancing.
+	TODO: - optimization for stun-only: short connection expiration time.
+	TODO: - null cipher enabled
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
