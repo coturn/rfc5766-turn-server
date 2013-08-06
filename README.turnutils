@@ -68,7 +68,9 @@ Flags:
     	
 -P      Passive TCP (RFC6062 with active peer). Implies -T.
 
--S      Secure connection: TLS for TCP, DTLS for UDP.
+-S      Secure SSL connection: SSL/TLS for TCP, DTLS for UDP.
+
+-U      Secure unencrypted connection (suite eNULL): SSL/TLS for TCP, DTLS for UDP.
 
 -v      Verbose.
 

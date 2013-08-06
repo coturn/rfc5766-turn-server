@@ -118,7 +118,8 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 			rc = SSL_connect(ssl);
 		} while (rc < 0 && errno == EINTR);
 		if (rc > 0) {
-			break;
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s\n",__FUNCTION__,SSL_get_cipher(ssl));
+		  break;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect\n",
 					__FUNCTION__);

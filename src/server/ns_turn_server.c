@@ -45,6 +45,7 @@
 #define MAX_NUMBER_OF_UNKNOWN_ATTRS (128)
 
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
+int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 ///////////////////////////////////////////
 
@@ -3078,9 +3079,13 @@ int open_client_connection_session(turn_turnserver* server,
 
 	newelem->state = UR_STATE_READY;
 
+	int at = TURN_MAX_ALLOCATE_TIMEOUT;
+	if(server->stun_only)
+	  at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
+
 	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
 	ss->to_be_allocated_timeout_ev = set_ioa_timer(server->e,
-			TURN_MAX_ALLOCATE_TIMEOUT, 0,
+			at, 0,
 			client_to_be_allocated_timeout_handler, ss, 1,
 			"client_to_be_allocated_timeout_handler");
 

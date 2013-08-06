@@ -81,6 +81,7 @@ static char Usage[] =
   "		options -s, -e, -r and -g.\n"
   "	-P	Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
+  "     -U      Secure connection with eNULL cipher.\n"
   "	-v	Verbose.\n"
   "	-s	Use send method.\n"
   "	-y	Use client-to-client connections.\n"
@@ -129,6 +130,7 @@ int main(int argc, char **argv)
 	int use_auth_secret_with_timestamp = 0;
 	char rest_api_separator = ':';
 	char auth_secret[1025]="\0";
+	int use_null_cipher=0;
 
 	set_logfile("stdout");
 
@@ -138,7 +140,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDNO")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDNOU")) != -1) {
 		switch (c){
 		case 'O':
 			dos = 1;
@@ -218,6 +220,10 @@ int main(int argc, char **argv)
 		case 'T':
 			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
 			break;
+		case 'U':
+		  use_null_cipher = 1;
+		  /* implies 'S' */
+		  /* no break */
 		case 'S':
 			use_secure = 1;
 			break;
@@ -332,14 +338,28 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
+		const char *csuite = "ALL";
+		if(use_null_cipher)
+		  csuite = "eNULL";
+
 		if(use_tcp) {
-			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(SSLv23_client_method());
-			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(SSLv3_client_method());
-			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_client_method());
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv3_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
 #if defined(SSL_TXT_TLSV1_1)
-			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_1_client_method());
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_1_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
 #if defined(SSL_TXT_TLSV1_2)
-			root_tls_ctx[root_tls_ctx_num++] = SSL_CTX_new(TLSv1_2_client_method());
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(TLSv1_2_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
 #endif
 #endif
 		} else {
@@ -350,7 +370,8 @@ int main(int argc, char **argv)
 		  if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
 		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is rather old, DTLS may not be working correctly.\n");
 		  }
-		  root_tls_ctx[0] = SSL_CTX_new(DTLSv1_client_method());
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(DTLSv1_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
 #endif
 		}

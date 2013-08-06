@@ -6,7 +6,8 @@
 # Options:
 #
 # 1) -t is absent, it means that UDP networking is used.
-# 2) -S means "secure protocol", that is DTLS in the case of UDP.
+# 2) -U means "SSL protocoli with NULL encryption", that means that 
+# DTLS with NULL encryption will be used.
 # 3) -i sets certificate file for DTLS.
 # 4) -k sets private key file for DTLS.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
@@ -31,5 +32,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -U -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1
 

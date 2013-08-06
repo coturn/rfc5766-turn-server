@@ -1987,6 +1987,7 @@ static void set_option(int c, char *value)
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
+		TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
 		break;
 	case 'S':
 		stun_only = get_bool_value(value);
@@ -2807,24 +2808,24 @@ int THREAD_cleanup(void) {
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
 
-	SSL_CTX_set_cipher_list(ctx, "DEFAULT");
-	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+  SSL_CTX_set_cipher_list(ctx, "ALL:eNULL:aNULL:NULL");
+  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n",protocol);
-	} else {
-	  print_abs_file_name(protocol,": Certificate", cert_file);
-	}
+  if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n",protocol);
+  } else {
+    print_abs_file_name(protocol,": Certificate", cert_file);
+  }
 
-	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n",protocol);
-	} else {
-	  print_abs_file_name(protocol,": Private key", pkey_file);
-	}
+  if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n",protocol);
+  } else {
+    print_abs_file_name(protocol,": Private key", pkey_file);
+  }
 
-	if (!SSL_CTX_check_private_key(ctx)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n",protocol);
-	}
+  if (!SSL_CTX_check_private_key(ctx)) {
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n",protocol);
+  }
 }
 
 static void adjust_key_file_name(char *fn, const char* file_title)
