@@ -288,15 +288,15 @@ static int dtls_accept(int verbose, SSL* ssl)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: SSL_ERROR_SYSCALL: %d (%s)\n", err,
 							ERR_error_string(ERR_get_error(), buf));
 		}
-		return 0;
+		return -1;
 	case SSL_ERROR_SSL:
 		if (verbose)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: SSL_ERROR_SSL\n");
-		return 0;
+		return -1;
 	default:
 		if (verbose)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: UNKNOWN ERROR\n");
-		return 0;
+		return -1;
 	}
 
 	struct timeval timeout;
@@ -392,15 +392,15 @@ static int dtls_listen(int verbose, SSL* ssl, ioa_addr *client_addr)
 	case SSL_ERROR_SYSCALL:
 	  if (verbose)
 	    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SYSCALL\n");
-	  return 0;
+	  return -1;
 	case SSL_ERROR_SSL:
 		if (verbose)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SSL\n");
-		return 0;
+		return -1;
 	default:
 		if (verbose)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: UNKNOWN ERROR\n");
-		return 0;
+		return -1;
 	}
 
 	return 1;

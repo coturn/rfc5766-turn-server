@@ -17,6 +17,7 @@ Version 2.6.1.1 'Harding Grim':
 		- null OpenSSL cipher is allowed to be negotiated between
 			server and client.
 		- -U option (null cipher) added to the test client.
+		- DTLS crash fixed during overload.
 	- STUN enhancements and fixes:
 		- Classic STUN transaction ID fixed (Issue 48).
 		- Classic STUN attribute ERROR fixed (Issue 49).
