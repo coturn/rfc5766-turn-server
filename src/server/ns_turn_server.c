@@ -2208,10 +2208,26 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 										__FUNCTION__, (unsigned int)method);
 				}
 			} else {
-				int postpone_reply = 0;
-				check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
-				if(postpone_reply)
-					no_response = 1;
+
+				if(method == STUN_METHOD_ALLOCATE) {
+					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+					turn_server_addrs_list_t *asl = server->alternate_servers_list;
+
+					if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
+						asl = server->tls_alternate_servers_list;
+					} else if((cst == UDP_SOCKET) && server->self_udp_balance ) {
+						asl = server->aux_servers_list;
+					}
+
+					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+				}
+
+				if(!err_code && !(*resp_constructed) && !no_response) {
+					int postpone_reply = 0;
+					check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
+					if(postpone_reply)
+						no_response = 1;
+				}
 			}
 		}
 
@@ -2222,21 +2238,8 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			case STUN_METHOD_ALLOCATE:
 
 			{
-				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-				turn_server_addrs_list_t *asl = server->alternate_servers_list;
-
-				if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
-					asl = server->tls_alternate_servers_list;
-				} else if((cst == UDP_SOCKET) && server->self_udp_balance ) {
-					asl = server->aux_servers_list;
-				}
-
-				set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
-
-				if(!err_code && !(*resp_constructed) && !no_response) {
-					handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
-								unknown_attrs, &ua_num, in_buffer, nbh);
-				}
+				handle_turn_allocate(server, ss, &tid, resp_constructed, &err_code, &reason,
+							unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

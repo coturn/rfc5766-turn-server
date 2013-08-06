@@ -1048,13 +1048,15 @@ static void setup_listener_servers(void)
 
 		for(i=0;i<get_real_udp_relay_servers_number();i++) {
 			ioa_engine_handle e = listener.ioa_eng;
+			int is_5780 = rfc5780;
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			e = create_new_listener_engine();
+			is_5780 = is_5780 && (i>=(size_t)(aux_servers_list.size));
 #endif
 			struct relay_server* udp_rs = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
 			ns_bzero(udp_rs, sizeof(struct relay_server));
 			udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-			setup_relay_server(udp_rs, e, ((i>=(size_t)(aux_servers_list.size)) && rfc5780));
+			setup_relay_server(udp_rs, e, is_5780);
 			udp_relay_servers[i] = udp_rs;
 		}
 	}
