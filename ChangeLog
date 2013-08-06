@@ -1,28 +1,31 @@
 08/05/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
 	- Network optimization:
-		- "pure" UDP setup optimized (when no DTLS configured);
-		- Auxiliary listening endpoints (configured by --aux-server=<ip:port>).
-		 - --udp-self-balance option to balance the UDP traffic among the aux endpoints
-         (for clients supporting 300 ALTERNATE-SERVER response).
-        - no authentication required on the load balancer server.
-	- REST API improvement:
-		- --secret-ts-exp-time option deprecated; 
-			In REST API timestamp, we are now using 
-			the expiration time (Issue 31).
+		* "pure" UDP setup optimized (when no DTLS configured);
+		* Auxiliary listening endpoints (configured by 
+			--aux-server=<ip:port>).
+		* --udp-self-balance option to balance the UDP traffic 
+			among the aux endpoints
+         		(for clients supporting 300 ALTERNATE-SERVER response).
+	- Security improvements:
+        	* no authentication required on the load balancer server (Issue 50).
+		* REST API improvement:
+			= --secret-ts-exp-time option deprecated; 
+			= In REST API timestamp, we are now using 
+				the expiration time (Issue 31).
 	- TLS enhacements:
-		- SSL3 support.
-		- TLS 1.1 and 1.2 support.
-		- SSL2 "encapsulation" mode support.
-		- null OpenSSL cipher is allowed to be negotiated between
+		* SSL3 support.
+		* TLS 1.1 and 1.2 support.
+		* SSL2 "encapsulation" mode support.
+		* null OpenSSL cipher is allowed to be negotiated between
 			server and client.
-		- -U option (null cipher) added to the test client.
-		- DTLS crash fixed during overload.
+		* -U option (null cipher) added to the test client.
+		* DTLS crash fixed during overload.
 	- STUN enhancements and fixes:
-		- Classic STUN transaction ID fixed (Issue 48).
-		- Classic STUN attribute ERROR fixed (Issue 49).
-		- Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
-		- resources optimization for stun-only: short connection expiration time.
+		* Classic STUN transaction ID fixed (Issue 48).
+		* Classic STUN attribute ERROR fixed (Issue 49).
+		* Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
+		* resources optimization for stun-only: short connection expiration time.
 	
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
