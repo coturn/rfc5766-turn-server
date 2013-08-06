@@ -35,11 +35,7 @@
 
 ==================================================================
 
-1) Aux listening endpoints, with format IP:port.
-
-2) "auto-balance" mode with aux listening endpoints.
-
-3) Make DTLS network model the same as UDP. That would also allow DTLS
+1) Make DTLS network model the same as UDP. That would also allow DTLS
 in Cygwin / MS WIndows.
 
 ==================================================================
@@ -67,6 +63,8 @@ in Cygwin / MS WIndows.
 	is a limitation.  
 	
 3) Multiple authentication servers, each in a separate thread.
+
+4) Memory fragmentation solution.
 
 ==================================================================
 
