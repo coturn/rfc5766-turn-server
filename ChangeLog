@@ -3,7 +3,8 @@ Version 2.6.1.1.RC 'Harding Grim':
 	- Network optimization:
 		- "pure" UDP setup optimized (when no DTLS configured);
 		- Auxiliary listening endpoints (configured by --aux-server=<ip:port>).
-		- self-load-balancing.
+		 - --udp-self-balance option to balance the UDP traffic among the aux endpoints
+         (for clients supporting 300 ALTERNATE-SERVER response).
 	- REST API improvement:
 		- --secret-ts-exp-time option deprecated; 
 			In REST API timestamp, we are now using 
