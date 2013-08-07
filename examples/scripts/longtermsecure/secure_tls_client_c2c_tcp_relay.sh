@@ -10,8 +10,8 @@
 # relay endpoints (RFC 6062.
 # 2) -S means that "secure protocol", that is TLS in the case of TCP, 
 # will be used between the client and the TURN Server.
-# 3) -i sets certificate file for DTLS.
-# 4) -k sets private key file for DTLS.
+# 3) -i sets certificate file for TLS.
+# 4) -k sets private key file for TLS.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
 # are sent with interval of 20 milliseconds, to emulate an RTP stream.
 # 6) -m 10 means that 10 clients are emulated.
