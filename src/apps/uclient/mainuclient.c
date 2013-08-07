@@ -338,7 +338,7 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		const char *csuite = "ALL";
+		const char *csuite = "DEFAULT";
 		if(use_null_cipher)
 		  csuite = "eNULL";
 
