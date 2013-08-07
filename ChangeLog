@@ -8,12 +8,12 @@ Version 2.6.1.1 'Harding Grim':
 			among the aux endpoints
          		(for clients supporting 300 ALTERNATE-SERVER response).
 	- Security improvements:
-        	* no authentication required on the load balancer server (Issue 50).
+        * no authentication required on the load balancer server (Issue 50).
 		* REST API improvement:
 			= --secret-ts-exp-time option deprecated; 
 			= In REST API timestamp, we are now using 
 				the expiration time (Issue 31).
-	- TLS enhacements:
+		* Configurable cipher suite n the TURN server.
 		* SSL3 support.
 		* TLS 1.1 and 1.2 support.
 		* SSL2 "encapsulation" mode support.

@@ -83,6 +83,10 @@
 
 static void openssl_setup(void);
 
+static char cipher_list[1025]="\0";
+
+#define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
+
 //////////// Barrier for the threads //////////////
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
@@ -1752,6 +1756,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						turn server. Multiple allowed-peer-ip can be set.\n"
 "     --denied-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are not allowed to connect to the turn server.\n"
 "						Multiple denied-peer-ip can be set.\n"
+" --cipher-list					Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+"						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1818,7 +1824,8 @@ enum EXTRA_OPTS {
 	NO_LOOPBACK_PEERS_OPT,
 	MAX_ALLOCATE_TIMEOUT_OPT,
 	ALLOWED_PEER_IPS,
-	DENIED_PEER_IPS
+	DENIED_PEER_IPS,
+	CIPHER_LIST_OPT
 };
 
 static struct option long_options[] = {
@@ -1884,6 +1891,7 @@ static struct option long_options[] = {
 				{ "no-loopback-peers", optional_argument, NULL, NO_LOOPBACK_PEERS_OPT },
 				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
+				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -2171,6 +2179,9 @@ static void set_option(int c, char *value)
 		break;
 	case DENIED_PEER_IPS:
 		if (add_ip_list_range(value, &ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
+		break;
+	case CIPHER_LIST_OPT:
+		STRCPY(cipher_list,value);
 		break;
 	case 'C':
 		if(value && *value) {
@@ -2809,25 +2820,27 @@ int THREAD_cleanup(void) {
 
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
+	if(cipher_list[0] == 0)
+		STRCPY(cipher_list,DEFAULT_CIPHER_LIST);
 
-  SSL_CTX_set_cipher_list(ctx, "ALL:eNULL:aNULL:NULL");
-  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+	SSL_CTX_set_cipher_list(ctx, cipher_list);
+	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-  if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n",protocol);
-  } else {
-    print_abs_file_name(protocol,": Certificate", cert_file);
-  }
+	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
+	} else {
+		print_abs_file_name(protocol, ": Certificate", cert_file);
+	}
 
-  if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n",protocol);
-  } else {
-    print_abs_file_name(protocol,": Private key", pkey_file);
-  }
+	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n", protocol);
+	} else {
+		print_abs_file_name(protocol, ": Private key", pkey_file);
+	}
 
-  if (!SSL_CTX_check_private_key(ctx)) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n",protocol);
-  }
+	if (!SSL_CTX_check_private_key(ctx)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
+	}
 }
 
 static void adjust_key_file_name(char *fn, const char* file_title)
