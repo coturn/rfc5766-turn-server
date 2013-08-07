@@ -2637,7 +2637,11 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
+					if(ss->client_session.s->ssl) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu, cipher=%s\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl));
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
+					}
 				}
 			}
 #if !defined(TURN_NO_HIREDIS)
