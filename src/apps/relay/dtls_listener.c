@@ -889,7 +889,13 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  addr_bind(udp_listen_fd,&server->addr);
+  if(addr_bind(udp_listen_fd,&server->addr)<0) {
+	  perror("Cannot bind local socket to addr");
+	  char saddr[129];
+	  addr_to_string(&server->addr,(u08bits*)saddr);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
+	  return -1;
+  }
 
   server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
 				    EV_READ|EV_PERSIST,server_input_handler,server);
@@ -952,7 +958,13 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server)
 			server->ifname);
 	}
 
-	addr_bind(udp_listen_fd, &server->addr);
+	if(addr_bind(udp_listen_fd,&server->addr)<0) {
+		  perror("Cannot bind local socket to addr");
+		  char saddr[129];
+		  addr_to_string(&server->addr,(u08bits*)saddr);
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to addr %s\n",saddr);
+		  return -1;
+	}
 
 	server->udp_listen_ev = event_new(server->e->event_base, udp_listen_fd,
 				EV_READ | EV_PERSIST, server_input_handler, server);
@@ -1077,7 +1089,9 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 
 ioa_engine_handle get_engine(dtls_listener_relay_server_type* server)
 {
-	return server->e;
+	if(server)
+		return server->e;
+	return NULL;
 }
 
 //////////// UDP send ////////////////

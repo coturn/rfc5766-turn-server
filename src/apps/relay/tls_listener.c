@@ -138,7 +138,14 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  addr_bind(tls_listen_fd,&server->addr);
+  if(addr_bind(tls_listen_fd,&server->addr)<0) {
+  	  perror("Cannot bind local socket to addr");
+  	  char saddr[129];
+  	  addr_to_string(&server->addr,(u08bits*)saddr);
+  	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind TCP/TLS listener socket to addr %s\n",saddr);
+  	  socket_closesocket(tls_listen_fd);
+  	  return -1;
+  }
 
   socket_tcp_set_keepalive(tls_listen_fd);
 
@@ -157,6 +164,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   if(addr_get_from_sock(tls_listen_fd, &(server->addr))) {
     perror("Cannot get local socket addr");
+    socket_closesocket(tls_listen_fd);
     return -1;
   }
 

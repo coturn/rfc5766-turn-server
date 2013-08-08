@@ -892,7 +892,7 @@ static ioa_engine_handle create_new_listener_engine(void)
 	return e;
 }
 
-static void *run_listener_thread(void *arg)
+static void *run_udp_listener_thread(void *arg)
 {
   static int always_true = 1;
 
@@ -905,7 +905,7 @@ static void *run_listener_thread(void *arg)
 
   dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *)arg;
 
-  while(always_true) {
+  while(always_true && server) {
     run_events(get_engine(server)->event_base);
   }
 
@@ -1088,7 +1088,7 @@ static void setup_listener_servers(void)
 				{
 					++udp_relay_server_index;
 					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_listener_thread, listener.aux_udp_services[index])<0) {
+					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.aux_udp_services[index])<0) {
 						perror("Cannot create aux listener thread\n");
 						exit(-1);
 					}
@@ -1127,7 +1127,7 @@ static void setup_listener_servers(void)
 			{
 				++udp_relay_server_index;
 				pthread_t thr;
-				if(pthread_create(&thr, NULL, run_listener_thread, listener.udp_services[index])<0) {
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.udp_services[index])<0) {
 					perror("Cannot create listener thread\n");
 					exit(-1);
 				}
@@ -1143,7 +1143,7 @@ static void setup_listener_servers(void)
 				{
 					++udp_relay_server_index;
 					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_listener_thread, listener.udp_services[index+1])<0) {
+					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.udp_services[index+1])<0) {
 						perror("Cannot create listener thread\n");
 						exit(-1);
 					}
@@ -1164,7 +1164,7 @@ static void setup_listener_servers(void)
 			{
 				++udp_relay_server_index;
 				pthread_t thr;
-				if(pthread_create(&thr, NULL, run_listener_thread, listener.dtls_services[index])<0) {
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.dtls_services[index])<0) {
 					perror("Cannot create listener thread\n");
 					exit(-1);
 				}
@@ -1180,7 +1180,7 @@ static void setup_listener_servers(void)
 				{
 					++udp_relay_server_index;
 					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_listener_thread, listener.dtls_services[index+1])<0) {
+					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.dtls_services[index+1])<0) {
 						perror("Cannot create listener thread\n");
 						exit(-1);
 					}
@@ -2931,6 +2931,7 @@ static void openssl_setup(void)
 		set_ctx(tls_ctx_v1_2,"TLS1.2");
 #endif
 #endif
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n",cipher_list);
 	}
 
 	if(!no_dtls) {
@@ -2942,6 +2943,7 @@ static void openssl_setup(void)
 		}
 		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(dtls_ctx,"DTLS");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",cipher_list);
 #endif
 	}
 }
