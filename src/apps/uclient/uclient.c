@@ -1326,7 +1326,7 @@ void start_mclient(const char *remote_address, int port,
 
 		if(show_statistics) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				      "%s: msz=%d, tot_send_messages=%lu, tot_recv_messages=%lu\n",
+				      "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu\n",
 				      __FUNCTION__, msz, (unsigned long) tot_send_messages,
 				      (unsigned long) tot_recv_messages);
 			show_statistics=0;
@@ -1334,7 +1334,7 @@ void start_mclient(const char *remote_address, int port,
 	}
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-		      "%s: tot_send_messages=%lu, tot_recv_messages=%lu\n", 
+		      "%s: tot_send_msgs=%lu, tot_recv_msgs=%lu\n",
 		      __FUNCTION__,
 		      (unsigned long) tot_send_messages,
 		      (unsigned long) tot_recv_messages);
