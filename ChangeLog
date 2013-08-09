@@ -1,12 +1,12 @@
 08/08/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 2.6.1.1.RC2 'Harding Grim':
+Version 2.6.1.1 'Harding Grim':
 	- Network optimization:
 		* "pure" UDP setup optimized (when no DTLS configured);
 		* Auxiliary listening endpoints (configured by 
 			--aux-server=<ip:port>).
 		* --udp-self-balance option to balance the UDP traffic 
-			among the aux endpoints
-         		(for clients supporting 300 ALTERNATE-SERVER response).
+			among the aux endpoints (for clients supporting 
+			300 ALTERNATE-SERVER response).
 	- Security improvements:
         * no authentication required on the load balancer server (Issue 50).
 		* REST API improvement:
@@ -17,10 +17,10 @@ Version 2.6.1.1.RC2 'Harding Grim':
 		* SSL3 support.
 		* TLS 1.1 and 1.2 support.
 		* SSL2 "encapsulation" mode support.
-		* null OpenSSL cipher is allowed to be negotiated between
+		* NULL OpenSSL cipher is allowed to be negotiated between
 			server and client.
-		* -U option (null cipher) added to the test client.
-		* DTLS crash fixed during overload.
+		* -U option (NULL cipher) added to the test client.
+		* DTLS crash fixed on overload.
 	- STUN enhancements and fixes:
 		* Classic STUN transaction ID fixed (Issue 48).
 		* Classic STUN attribute ERROR fixed (Issue 49).
