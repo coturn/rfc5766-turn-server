@@ -195,7 +195,8 @@ static int init_server(tls_listener_relay_server_type* server,
   if(ifname) STRCPY(server->ifname,ifname);
 
   if(make_ioa_addr((const u08bits*)local_address, port, &server->addr)<0) {
-    return -1;
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot create a TCP/TLS listener for address: %s\n",local_address);
+	  return -1;
   }
 
   server->verbose=verbose;

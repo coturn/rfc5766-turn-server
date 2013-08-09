@@ -303,8 +303,11 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		if (relay_addrs) {
 			size_t i = 0;
 			e->relay_addrs = (ioa_addr*)turn_malloc(relays_number * sizeof(ioa_addr));
-			for (i = 0; i < relays_number; i++)
-				make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]));
+			for (i = 0; i < relays_number; i++) {
+				if(make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]))<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",relay_addrs[i]);
+				}
+			}
 			e->relays_number = relays_number;
 		}
 		e->relay_addr_counter = (size_t) random() % relays_number;

@@ -357,21 +357,31 @@ static void add_tls_alternate_server(const char *saddr)
 //////////////////////////////////////////////////
 
 static void add_listener_addr(const char* addr) {
-	++listener.addrs_number;
-	++listener.services_number;
-	listener.addrs = (char**)realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
-	listener.addrs[listener.addrs_number-1]=strdup(addr);
-	listener.encaddrs = (ioa_addr**)realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
-	listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
-	make_ioa_addr((const u08bits*)addr,0,listener.encaddrs[listener.addrs_number-1]);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
+	ioa_addr baddr;
+	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a listener address: %s\n",addr);
+	} else {
+		++listener.addrs_number;
+		++listener.services_number;
+		listener.addrs = (char**)realloc(listener.addrs, sizeof(char*)*listener.addrs_number);
+		listener.addrs[listener.addrs_number-1]=strdup(addr);
+		listener.encaddrs = (ioa_addr**)realloc(listener.encaddrs, sizeof(ioa_addr*)*listener.addrs_number);
+		listener.encaddrs[listener.addrs_number-1]=(ioa_addr*)turn_malloc(sizeof(ioa_addr));
+		addr_cpy(listener.encaddrs[listener.addrs_number-1],&baddr);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Listener address to use: %s\n",addr);
+	}
 }
 
 static void add_relay_addr(const char* addr) {
-	++relays_number;
-	relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
-	relay_addrs[relays_number-1]=strdup(addr);
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
+	ioa_addr baddr;
+	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",addr);
+	} else {
+		++relays_number;
+		relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
+		relay_addrs[relays_number-1]=strdup(addr);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
+	}
 }
 
 /////////////// add ACL record ///////////////////
@@ -387,13 +397,13 @@ static int add_ip_list_range(char* range, ip_range_list_t * list)
 
 	ioa_addr min, max;
 
-	if (make_ioa_addr((const u08bits*) range, 0, &min) != 0) {
+	if (make_ioa_addr((const u08bits*) range, 0, &min) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", range);
 		return -1;
 	}
 
 	if (separator) {
-		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max)) {
+		if (make_ioa_addr((const u08bits*) separator + 1, 0, &max) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong address format: %s\n", separator + 1);
 			return -1;
 		}
@@ -707,6 +717,15 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 				sm->m.sm.s = s;
 
 				if (s) {
+					if(verbose) {
+						u08bits saddr[129];
+						u08bits rsaddr[129];
+						addr_to_string(get_local_addr_from_ioa_socket(s),saddr);
+						addr_to_string(get_remote_addr_from_ioa_socket(s),rsaddr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"%s: New UDP endpoint: local addr %s, remote addr %s\n",
+							__FUNCTION__, (char*) saddr,(char*) rsaddr);
+					}
 					s->e = rs->ioa_eng;
 					add_socket_to_map(s, amap);
 					open_client_connection_session(rs->server, &(sm->m.sm));
@@ -2017,9 +2036,15 @@ static void set_option(int c, char *value)
 				div[0]=0;
 				++div;
 				ioa_addr apub,apriv;
-				make_ioa_addr((const u08bits*)nval,0,&apub);
-				make_ioa_addr((const u08bits*)div,0,&apriv);
-				ioa_addr_add_mapping(&apub,&apriv);
+				if(make_ioa_addr((const u08bits*)nval,0,&apub)<0) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",nval);
+				} else {
+					if(make_ioa_addr((const u08bits*)div,0,&apriv)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",div);
+					} else {
+						ioa_addr_add_mapping(&apub,&apriv);
+					}
+				}
 				turn_free(nval,strlen(nval)+1);
 			} else {
 				if(external_ip) {
@@ -2027,7 +2052,11 @@ static void set_option(int c, char *value)
 				} else {
 					external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
 					ns_bzero(external_ip,sizeof(ioa_addr));
-					make_ioa_addr((const u08bits*)value,0,external_ip);
+					if(make_ioa_addr((const u08bits*)value,0,external_ip)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
+						turn_free(external_ip,sizeof(ioa_addr));
+						external_ip = NULL;
+					}
 				}
 			}
 		}
