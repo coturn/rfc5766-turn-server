@@ -142,13 +142,13 @@ static void uc_delete_session_elem_data(app_ur_session* cdi) {
 	    	socket_closesocket(cdi->pinfo.tcp_conn[i]->tcp_data_fd);
 	      cdi->pinfo.tcp_conn[i]->tcp_data_fd=-1;
 	    }
-	    free(cdi->pinfo.tcp_conn[i]);
+	    turn_free(cdi->pinfo.tcp_conn[i], 111);
 	    cdi->pinfo.tcp_conn[i]=NULL;
 	  }
 	}
       }
       cdi->pinfo.tcp_conn_number=0;
-      free(cdi->pinfo.tcp_conn);
+      turn_free(cdi->pinfo.tcp_conn, 111);
       cdi->pinfo.tcp_conn=NULL;
     }
     if(cdi->pinfo.ssl && !(cdi->pinfo.broken)) {

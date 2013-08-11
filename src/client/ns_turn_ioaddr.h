@@ -31,7 +31,7 @@
 #ifndef __IOADDR__
 #define __IOADDR__
 
-#include "../ns_turn_defs.h"
+#include "ns_turn_defs.h"
 
 #ifdef __cplusplus
 extern "C" {

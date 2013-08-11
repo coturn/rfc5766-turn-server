@@ -205,13 +205,13 @@ testdaemon() {
 
 test_sin_len() {
     TMPCADDRPROGC=src/client/ns_turn_ioaddr.c
-    ${CC} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+    ${CC} -c ${OSCFLAGS} -DTURN_HAS_SIN_LEN -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 	OSCFLAGS="${OSCFLAGS} -DTURN_HAS_SIN_LEN"
 	${ECHO_CMD} "Sockets code is fine: sin_len field present"
     else
-	${CC} -c ${OSCFLAGS} ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
+	${CC} -c ${OSCFLAGS} -Isrc ${TMPCADDRPROGC} -o ${TMPCADDRPROGO} 2>>/dev/null
 	ER=$?
 	if [ ${ER} -eq 0 ] ; then
 	    ${ECHO_CMD} "Sockets code is fine: no sin_len field present"

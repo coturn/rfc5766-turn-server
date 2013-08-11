@@ -107,13 +107,13 @@ void clean_secrets_list(secrets_list_t *sl)
 {
 	if(sl) {
 		if(sl->secrets) {
-			while(sl->sz>0) {
-				if(sl->secrets[sl->sz-1]) {
-					free(sl->secrets[sl->sz-1]);
+			size_t i = 0;
+			for(i = 0;i<sl->sz;++i) {
+				if(sl->secrets[i]) {
+					turn_free(sl->secrets[i], strlen(sl->secrets[i])+1);
 				}
-				sl->sz -= 1;
 			}
-			free(sl->secrets);
+			turn_free(sl->secrets,(sl->sz)*sizeof(char*));
 			sl->secrets = NULL;
 			sl->sz = 0;
 		}
@@ -210,14 +210,14 @@ static PGconn *get_pqdb_connection(void)
 		if(!co) {
 			if(errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
-				free(errmsg);
+				turn_free(errmsg,strlen(errmsg)+1);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, unknown connection string format error\n",userdb);
 			}
 		} else {
 			PQconninfoFree(co);
 			if(errmsg)
-				free(errmsg);
+				turn_free(errmsg,strlen(errmsg)+1);
 			pqdbconnection = PQconnectdb(userdb);
 			if(!pqdbconnection) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open PostgreSQL DB connection: <%s>, runtime error\n",userdb);
@@ -252,10 +252,10 @@ typedef struct _Myconninfo Myconninfo;
 
 static void MyconninfoFree(Myconninfo *co) {
 	if(co) {
-		if(co->host) free(co->host);
-		if(co->dbname) free(co->dbname);
-		if(co->user) free(co->user);
-		if(co->password) free(co->password);
+		if(co->host) turn_free(co->host,strlen(co->host)+1);
+		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
+		if(co->user) turn_free(co->user, strlen(co->user)+1);
+		if(co->password) turn_free(co->password, strlen(co->password)+1);
 		ns_bzero(co,sizeof(Myconninfo));
 	}
 }
@@ -340,7 +340,7 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 			s = snext;
 		}
 
-		free(s0);
+		turn_free(s0, strlen(s0)+1);
 	}
 	return co;
 }
@@ -362,13 +362,13 @@ static MYSQL *get_mydb_connection(void)
 		if(!co) {
 			if(errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
-				free(errmsg);
+				turn_free(errmsg,strlen(errmsg)+1);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error\n",userdb);
 			}
 		} else if(errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open MySQL DB connection <%s>, connection string format error: %s\n",userdb,errmsg);
-			free(errmsg);
+			turn_free(errmsg,strlen(errmsg)+1);
 			MyconninfoFree(co);
 		} else if(!(co->dbname)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "MySQL Database name is not provided: <%s>\n",userdb);
@@ -415,9 +415,9 @@ typedef struct _Ryconninfo Ryconninfo;
 
 static void RyconninfoFree(Ryconninfo *co) {
 	if(co) {
-		if(co->host) free(co->host);
-		if(co->dbname) free(co->dbname);
-		if(co->password) free(co->password);
+		if(co->host) turn_free(co->host, strlen(co->host)+1);
+		if(co->dbname) turn_free(co->dbname, strlen(co->username)+1);
+		if(co->password) turn_free(co->password, strlen(co->password)+1);
 		ns_bzero(co,sizeof(Ryconninfo));
 	}
 }
@@ -503,7 +503,7 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 			s = snext;
 		}
 
-		free(s0);
+		turn_free(s0, strlen(s0)+1);
 	}
 	return co;
 }
@@ -516,13 +516,13 @@ redis_context_handle get_redis_async_connection(struct event_base *base, char* c
 	if (!co) {
 		if (errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
-			free(errmsg);
+			turn_free(errmsg,strlen(errmsg)+1);
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", userdb);
 		}
 	} else if (errmsg) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
-		free(errmsg);
+		turn_free(errmsg,strlen(errmsg)+1);
 		RyconninfoFree(co);
 	} else {
 
@@ -552,13 +552,13 @@ static redisContext *get_redis_connection(void)
 		if (!co) {
 			if (errmsg) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
-				free(errmsg);
+				turn_free(errmsg,strlen(errmsg)+1);
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error\n", userdb);
 			}
 		} else if (errmsg) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot open Redis DB connection <%s>, connection string format error: %s\n", userdb, errmsg);
-			free(errmsg);
+			turn_free(errmsg,strlen(errmsg)+1);
 			RyconninfoFree(co);
 		} else {
 			char ip[256] = "\0";
@@ -844,7 +844,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 
 						if(pwd) {
 							if(pwd_length<1) {
-								free(pwd);
+								turn_free(pwd,strlen(pwd)+1);
 							} else {
 								if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
 
@@ -857,7 +857,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 										ret = 0;
 									}
 								}
-								free(pwd);
+								turn_free(pwd,pwd_length);
 
 								if(ret==0)
 									break;
@@ -1143,7 +1143,7 @@ int check_new_allocation_quota(u08bits *user)
 				}
 			}
 		}
-		free(username);
+		turn_free(username,strlen(username)+1);
 		ur_string_map_unlock(users->alloc_counters);
 	}
 	return ret;
@@ -1163,7 +1163,7 @@ void release_allocation_quota(u08bits *user)
 		if (users->total_current_allocs)
 			--(users->total_current_allocs);
 		ur_string_map_unlock(users->alloc_counters);
-		free(username);
+		turn_free(username, strlen(username)+1);
 	}
 }
 
@@ -1257,7 +1257,7 @@ int add_user_account(char *user, int dynamic)
 			uname[ulen]=0;
 			if(SASLprep((u08bits*)uname)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-				free(uname);
+				turn_free(uname,sizeof(char)*(ulen+1));
 				return -1;
 			}
 			s = skip_blanks(s+1);
