@@ -1637,11 +1637,21 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	msg.msg_iov->iov_len = (size_t)buf_size;
 	msg.msg_flags = 0;
 
+#if defined(MSG_ERRQUEUE)
+	int try_cycle = 0;
+	try_again:
+#endif
+
 	do {
 		len = recvmsg(fd,&msg,flags);
 	} while (len < 0 && (errno == EINTR));
 
 #if defined(MSG_ERRQUEUE)
+
+	if(flags & MSG_ERRQUEUE) {
+			if((len>0)&&(try_cycle++<128)) goto try_again;
+	}
+
 	if((len<0) && (!(flags & MSG_ERRQUEUE))) {
 		//Linux
 		int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
