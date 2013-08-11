@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "2.6.1.2"
+#define TURN_SERVER_VERSION "2.6.1.3"
 #define TURN_SERVER_VERSION_NAME "Harding Grim"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 

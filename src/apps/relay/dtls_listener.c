@@ -428,10 +428,10 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 
 	(*ndc)->state=NDC_ACCEPTING;
 	addr_cpy(&((*ndc)->info.remote_addr),&client_addr);
-	accept_client_connection(server,ndc);
+	rc = accept_client_connection(server,ndc);
 
 	FUNCEND;
-	return 0;
+	return rc;
 }
 
 static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
