@@ -59,7 +59,7 @@ PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -T -S -i turn_clie
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -t -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12346 $@ ::1 &
 
-sleep1
+sleep 1
 
 type killall >>/dev/null 2>>/dev/null
 ER=$?
