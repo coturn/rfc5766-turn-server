@@ -2,6 +2,7 @@
 Version 2.6.1.2 'Harding Grim':
 	- TLS buffer decreased to avoid memory problems.
 	- TLS BIO object fix.
+	- UDP socket open/reopen process fixed.
 	
 08/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
