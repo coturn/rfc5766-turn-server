@@ -422,7 +422,7 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 
 	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
 	BIO_ctrl(SSL_get_rbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
-			&(ndc->info.remote_addr.ss));
+			&((*ndc)->info.remote_addr.ss));
 
 	if(!rc) return rc;
 
