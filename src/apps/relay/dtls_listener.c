@@ -421,6 +421,8 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 	if(rc<0) return -1;
 
 	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
+	BIO_ctrl(SSL_get_rbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
+			&(ndc->info.remote_addr.ss));
 
 	if(!rc) return rc;
 
@@ -754,11 +756,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 			rc = listen_client_connection(server, &ndc);
 
-			if (rc >= 0) {
-				BIO_set_fd(SSL_get_rbio(connecting_ssl), ndc->info.fd, BIO_NOCLOSE);
-				BIO_ctrl(SSL_get_rbio(connecting_ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
-								&(ndc->info.remote_addr.ss));
-			} else {
+			if (rc < 0) {
 				free_ndc(ndc);
 			}
 		} else {

@@ -1,3 +1,8 @@
+08/10/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 2.6.1.2 'Harding Grim':
+	- TLS buffer decreased to avoid memory problems.
+	- TLS BIO object fix.
+	
 08/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
 	- Network optimization:

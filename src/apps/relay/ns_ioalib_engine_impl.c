@@ -1847,10 +1847,9 @@ static int socket_input_worker(ioa_socket_handle s)
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
 								get_threadsafe_option() | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-			BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
-			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+			bufferevent_setwatermark(s->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 		} else {
 			s->st = TCP_SOCKET;
@@ -1862,7 +1861,7 @@ static int socket_input_worker(ioa_socket_handle s)
 							get_threadsafe_option() | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 					eventcb_bev, s);
-			bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+			bufferevent_setwatermark(s->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 		}
 	}
@@ -2488,7 +2487,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 										get_threadsafe_option() | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
-						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+						bufferevent_setwatermark(s->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 					}
 					break;
@@ -2516,10 +2515,9 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 											BUFFEREVENT_SSL_OPEN,
 											get_threadsafe_option() | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						}
-						BIO_set_fd(SSL_get_rbio(s->ssl), s->fd, BIO_NOCLOSE);
 						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
 							eventcb_bev, s);
-						bufferevent_setwatermark(s->bev, EV_READ, 1, 1024000);
+						bufferevent_setwatermark(s->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
 #endif
 					}
