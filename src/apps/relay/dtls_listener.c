@@ -544,6 +544,8 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	if (bsize < 0) {
 
 		if(to_block) {
+			ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
+			server->sm.m.sm.nd.nbh = NULL;
 			FUNCEND;
 			return;
 		}
@@ -571,6 +573,8 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	#endif
 
 		if(conn_reset) {
+			ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
+			server->sm.m.sm.nd.nbh = NULL;
 			reopen_server_socket(server);
 			FUNCEND;
 			return;
@@ -583,6 +587,8 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 			perror(__FUNCTION__);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
 		}
+		ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
+		server->sm.m.sm.nd.nbh = NULL;
 		FUNCEND;
 		return;
 	}
