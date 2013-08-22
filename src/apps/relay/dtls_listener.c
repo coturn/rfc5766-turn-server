@@ -415,16 +415,11 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 
 	int rc = dtls_listen(server->verbose,(*ndc)->info.ssl,&client_addr);
 
+	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
+
 	if(server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Listen: rc=%d\n",rc);
 
 	if(rc<0) return -1;
-
-	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
-	BIO_set_fd(SSL_get_wbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
-	BIO_ctrl(SSL_get_rbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
-			&((*ndc)->info.remote_addr.ss));
-	BIO_ctrl(SSL_get_wbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
-			&((*ndc)->info.remote_addr.ss));
 
 	if(!rc) return rc;
 

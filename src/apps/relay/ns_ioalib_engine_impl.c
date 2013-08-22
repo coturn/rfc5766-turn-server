@@ -2188,14 +2188,30 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 	}
 }
 
-static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
+static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int verbose)
 {
 
-	if (!ssl || !buffer)
+	if (!s || !(s->ssl) || !buffer)
 		return -1;
+
+	SSL *ssl = s->ssl;
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before write: buffer=0x%lx, len=%d\n", __FUNCTION__,(long)buffer,len);
+	}
+
+	if(s->parent_s) {
+		/* Trick only for "children" sockets: */
+		BIO *wbio = SSL_get_wbio(ssl);
+		if(!wbio)
+			return -1;
+		int fd = BIO_get_fd(wbio,0);
+		int sfd = s->parent_s->fd;
+		if(sfd >= 0) {
+			if(fd != sfd) {
+				BIO_set_fd(wbio,sfd,BIO_NOCLOSE);
+			}
+		}
 	}
 
 	int rc = 0;
@@ -2244,16 +2260,6 @@ static int ssl_send(SSL *ssl, const s08bits* buffer, int len, int verbose)
 			int err = errno;
 			if (!handle_socket_error()) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer, (int)len, (long)ssl);
-				BIO* rbio = SSL_get_rbio(ssl);
-				int rfd = -1;
-				if(rbio)
-					BIO_get_fd(rbio,&rfd);
-				BIO* wbio = SSL_get_rbio(ssl);
-				int wfd = -1;
-				if(wbio)
-					BIO_get_fd(wbio,&wfd);
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL Socket : ssl=0x%lx, rbio=0x%lx, rfd=%d, wbio=0x%lx, wfd=%d\n",
-						(long)ssl,(long)rbio,rfd,(long)wbio,wfd);
 				return -1;
 			} else {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error recoverable: %d\n", err);
@@ -2283,7 +2289,7 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	if(s) {
 		stun_buffer_list_elem *elem = s->bufs.head;
 		while(elem) {
-			int rc = ssl_send(s->ssl, (s08bits*)elem->buf.buf, (size_t)elem->buf.len, s->e->verbose);
+			int rc = ssl_send(s, (s08bits*)elem->buf.buf, (size_t)elem->buf.len, s->e->verbose);
 			if(rc<1)
 				break;
 			++ret;
@@ -2415,7 +2421,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 					} else if (s->ssl) {
 						send_ssl_backlog_buffers(s);
 						ret = ssl_send(
-								s->ssl,
+								s,
 								(s08bits*) ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
 								s->e->verbose);
