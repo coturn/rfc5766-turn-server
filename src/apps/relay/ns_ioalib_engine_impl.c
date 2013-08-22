@@ -1524,21 +1524,32 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
  */
 static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
 {
+	if (!ssl || !buffer || (*read_len<1)) {
+		return -1;
+	}
+
+	stun_buffer buf;
+	ns_bcopy(buffer,buf.buf,*read_len);
+	buf.len = *read_len;
 
 	*read_len = -1;
-
-	if (!ssl || !buffer)
-		return -1;
-
 	int len = 0;
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before read...\n", __FUNCTION__);
 	}
 
+	BIO* rbio = BIO_new_mem_buf(buf.buf, (int)buf.len);
+	BIO_set_mem_eof_return(rbio, -1);
+
+	ssl->rbio = rbio;
+
 	do {
 		len = SSL_read(ssl, buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
+
+	BIO_free(rbio);
+	ssl->rbio = NULL;
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__,len);
@@ -1936,22 +1947,22 @@ static int socket_input_worker(ioa_socket_handle s)
 
 		if(len == 0)
 			len = -1;
-
-	} else if(s->ssl) { /* DTLS */
-		send_ssl_backlog_buffers(s);
-		ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
-		addr_cpy(&remote_addr,&(s->remote_addr));
-		if(ret < 0) {
-			s->tobeclosed = 1;
-			s->broken = 1;
-		}
-		if((ret!=-1)&&(len>0))
-			try_again = 1;
-	} else if(s->fd>=0){ /* UDP */
+	} else if(s->fd>=0){ /* UDP and DTLS */
 		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, s->e->cmsg, 0, NULL);
 		len = ret;
-		if(ret>=0) {
-			try_again = 1;
+		if(s->ssl && (len>0)) { /* DTLS */
+			send_ssl_backlog_buffers(s);
+			ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
+			addr_cpy(&remote_addr,&(s->remote_addr));
+			if(ret < 0) {
+				s->tobeclosed = 1;
+				s->broken = 1;
+			}
+			if((ret!=-1)&&(len>0))
+				try_again = 1;
+		} else { /* UDP */
+			if(ret>=0)
+				try_again = 1;
 		}
 	} else {
 		s->tobeclosed = 1;

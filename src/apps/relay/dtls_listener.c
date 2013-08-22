@@ -154,7 +154,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   calculate_cookie(ssl, cookie_secret, sizeof(cookie_secret));
   
   /* Read peer information */
-  (void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
+  (void) BIO_dgram_get_peer(SSL_get_wbio(ssl), &peer);
   
   /* Create buffer with peer's address and port */
   length = 0;
@@ -299,12 +299,6 @@ static int dtls_accept(int verbose, SSL* ssl)
 		return -1;
 	}
 
-	struct timeval timeout;
-	/* Set and activate timeouts */
-	timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
-	timeout.tv_usec = 0;
-	BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
-
 	return 1;
 }
 
@@ -340,6 +334,11 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	}
 
 	{
+		BIO *rbio = SSL_get_rbio(ssl);
+		if(rbio) {
+			BIO_free(rbio);
+			ssl->rbio = NULL;
+		}
 		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, NULL, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
 		if(ioas) {
 
@@ -421,7 +420,10 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 	if(rc<0) return -1;
 
 	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
+	BIO_set_fd(SSL_get_wbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
 	BIO_ctrl(SSL_get_rbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
+			&((*ndc)->info.remote_addr.ss));
+	BIO_ctrl(SSL_get_wbio((*ndc)->info.ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0,
 			&((*ndc)->info.remote_addr.ss));
 
 	if(!rc) return rc;
@@ -702,23 +704,27 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		SSL* connecting_ssl = NULL;
 
-		BIO *bio = NULL;
+		BIO *rbio = NULL;
+		BIO *wbio = NULL;
 		struct timeval timeout;
 
 		/* Create BIO */
-		bio = BIO_new_dgram(fd, BIO_NOCLOSE);
-		(void)BIO_dgram_set_peer(bio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
+		rbio = BIO_new_dgram(fd, BIO_NOCLOSE);
+		(void)BIO_dgram_set_peer(rbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
+
+		wbio = BIO_new_dgram(fd, BIO_NOCLOSE);
+		(void)BIO_dgram_set_peer(wbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
 
 		/* Set and activate timeouts */
 		timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
 		timeout.tv_usec = 0;
-		BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+		BIO_ctrl(rbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 
 		connecting_ssl = SSL_new(server->dtls_ctx);
 
 		SSL_set_accept_state(connecting_ssl);
 
-		SSL_set_bio(connecting_ssl, bio, bio);
+		SSL_set_bio(connecting_ssl, rbio, wbio);
 		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
 
 		SSL_set_max_cert_list(connecting_ssl, 655350);
