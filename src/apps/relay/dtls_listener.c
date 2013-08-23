@@ -72,14 +72,7 @@ struct dtls_listener_relay_server_info {
 
 };
 
-enum {
-	NDC_LISTENING,
-	NDC_ACCEPTING,
-	NDC_READY
-};
-
 typedef struct _new_dtls_conn {
-	int state;
 	ur_conn_info info;
 	struct event *ev;
 	struct event *to_ev;
@@ -307,7 +300,7 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 
 	FUNCSTART;
 
-	if (!ndc || !(*ndc) || (*ndc)->state != NDC_ACCEPTING)
+	if (!ndc || !(*ndc))
 		return -1;
 
 	SSL* ssl = (*ndc)->info.ssl;
@@ -319,6 +312,8 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 
 		int rc = dtls_accept(server->verbose, (*ndc)->info.ssl);
 
+		BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
+
 		if (rc < 0)
 			return -1;
 	}
@@ -326,8 +321,6 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
 		return 0;
 	}
-
-	(*ndc)->state = NDC_READY;
 
 	addr_debug_print(server->verbose, &((*ndc)->info.remote_addr), "Accepted connection from");
 
@@ -372,74 +365,6 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	return 0;
 }
 
-static int dtls_listen(int verbose, SSL* ssl)
-{
-	/* handshake */
-	/*
-	DTLSv1_listen(ssl, client_addr);
-	*/
-	char s[65535];
-	int rc = SSL_read(ssl,s,sizeof(s));
-
-	if (rc < 0 && SSL_get_error(ssl, rc) == SSL_ERROR_SYSCALL && errno == EMSGSIZE) {
-		int new_mtu = decrease_mtu(ssl, SOSO_MTU, verbose);
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: mtu=%d\n", __FUNCTION__, new_mtu);
-	}
-
-	switch (SSL_get_error(ssl, rc)){
-	case SSL_ERROR_NONE:
-		break;
-	case SSL_ERROR_WANT_READ:
-		return 0;
-	case SSL_ERROR_WANT_WRITE:
-		return 0;
-	case SSL_ERROR_ZERO_RETURN:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_ZERO_RETURN\n");
-		return 0;
-	case SSL_ERROR_SYSCALL:
-	  if (verbose)
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SYSCALL\n");
-	  return -1;
-	case SSL_ERROR_SSL:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: SSL_ERROR_SSL\n");
-		return -1;
-	default:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "listen: UNKNOWN ERROR\n");
-		return -1;
-	}
-
-	return 1;
-}
-
-static int listen_client_connection(dtls_listener_relay_server_type* server, new_dtls_conn **ndc) {
-
-	FUNCSTART;
-
-	if(!ndc || !(*ndc) || (*ndc)->state!=NDC_LISTENING) return -1;
-
-	int rc = 0;
-
-	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
-		rc = dtls_listen(server->verbose,(*ndc)->info.ssl);
-	}
-
-	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
-
-	if(server->verbose) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Listen: rc=%d\n",rc);
-
-	if(rc<0) return -1;
-
-	(*ndc)->state=NDC_ACCEPTING;
-	rc = accept_client_connection(server,ndc);
-
-	FUNCEND;
-	return rc;
-}
-
 static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 {
 
@@ -474,16 +399,7 @@ static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 
 	int ret = 0;
 
-	switch (ndc->state){
-	case NDC_ACCEPTING:
-		ret = accept_client_connection(server, &ndc);
-		break;
-	case NDC_LISTENING:
-		ret = listen_client_connection(server, &ndc);
-		break;
-	default:
-		ret = -1;
-	}
+	ret = accept_client_connection(server, &ndc);
 
 	if(ndc) {
 		if (ret < 0 || (ndc->info.ssl && SSL_get_shutdown(ndc->info.ssl))) {
@@ -748,8 +664,6 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 			ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
 
-			ndc->state = NDC_LISTENING;
-
 			ndc->ev = event_new(server->e->event_base, info.fd, EV_READ | EV_PERSIST, ndc_input_handler, ndc);
 
 			ndc->server = server;
@@ -770,7 +684,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 				evtimer_add(ndc->to_ev,&tv);
 			}
 
-			rc = listen_client_connection(server, &ndc);
+			rc = accept_client_connection(server, &ndc);
 
 			if (rc < 0) {
 				free_ndc(ndc);
