@@ -254,12 +254,12 @@ static void free_ndc(new_dtls_conn *ndc)
 
 static int dtls_accept(int verbose, SSL* ssl)
 {
-
 	if (!ssl)
 		return -1;
 
 	/* handshake */
-	int rc = SSL_accept(ssl);
+	char s[65535];
+	int rc = SSL_read(ssl,s,sizeof(s)); /* SSL_accept(ssl); */
 	int err = errno;
 
 	if (rc < 0 && SSL_get_error(ssl, rc) == SSL_ERROR_SYSCALL && errno == EMSGSIZE) {
@@ -315,11 +315,17 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	if(!ssl)
 		return -1;
 
-	int rc = dtls_accept(server->verbose, (*ndc)->info.ssl);
-	if (rc < 0)
-		return -1;
-	if (!rc)
-		return rc;
+	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
+
+		int rc = dtls_accept(server->verbose, (*ndc)->info.ssl);
+
+		if (rc < 0)
+			return -1;
+	}
+
+	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
+		return 0;
+	}
 
 	(*ndc)->state = NDC_READY;
 
@@ -366,10 +372,14 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	return 0;
 }
 
-static int dtls_listen(int verbose, SSL* ssl, ioa_addr *client_addr)
+static int dtls_listen(int verbose, SSL* ssl)
 {
 	/* handshake */
-	int rc = DTLSv1_listen(ssl, client_addr);
+	/*
+	DTLSv1_listen(ssl, client_addr);
+	*/
+	char s[65535];
+	int rc = SSL_read(ssl,s,sizeof(s));
 
 	if (rc < 0 && SSL_get_error(ssl, rc) == SSL_ERROR_SYSCALL && errno == EMSGSIZE) {
 		int new_mtu = decrease_mtu(ssl, SOSO_MTU, verbose);
@@ -411,9 +421,11 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 
 	if(!ndc || !(*ndc) || (*ndc)->state!=NDC_LISTENING) return -1;
 
-	ioa_addr client_addr;
+	int rc = 0;
 
-	int rc = dtls_listen(server->verbose,(*ndc)->info.ssl,&client_addr);
+	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
+		rc = dtls_listen(server->verbose,(*ndc)->info.ssl);
+	}
 
 	BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
 
@@ -421,10 +433,7 @@ static int listen_client_connection(dtls_listener_relay_server_type* server, new
 
 	if(rc<0) return -1;
 
-	if(!rc) return rc;
-
 	(*ndc)->state=NDC_ACCEPTING;
-	addr_cpy(&((*ndc)->info.remote_addr),&client_addr);
 	rc = accept_client_connection(server,ndc);
 
 	FUNCEND;
