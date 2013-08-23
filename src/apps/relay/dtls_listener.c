@@ -695,7 +695,7 @@ static void server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 #if !defined(TURN_NO_DTLS)
 
-	if (!no_dtls && is_dtls_message(peekbuf, rc)) {
+	if (!no_dtls && is_dtls_handshake_message(peekbuf, rc)) {
 
 		SSL* connecting_ssl = NULL;
 
