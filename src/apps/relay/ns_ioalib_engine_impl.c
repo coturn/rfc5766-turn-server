@@ -65,6 +65,8 @@
 #endif
 */
 
+#define MAX_ERRORS_IN_UDP_BATCH (1024)
+
 struct turn_sock_extended_err {
 	uint32_t ee_errno; /* error number */
 	uint8_t ee_origin; /* where the error originated */
@@ -1522,9 +1524,11 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
  * Return: -1 - error, 0 or >0 - OK
  * *read_len -1 - no data, >=0 - data available
  */
-static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
+int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
 {
-	if (!ssl || !buffer || (*read_len<1)) {
+	int ret = 0;
+
+	if (!ssl || !buffer || (*read_len < 1)) {
 		return -1;
 	}
 
@@ -1539,7 +1543,7 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before read...\n", __FUNCTION__);
 	}
 
-	BIO* rbio = BIO_new_mem_buf(buf.buf, (int)buf.len);
+	BIO* rbio = BIO_new_mem_buf(buf.buf, (int) buf.len);
 	BIO_set_mem_eof_return(rbio, -1);
 
 	ssl->rbio = rbio;
@@ -1548,63 +1552,73 @@ static int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *r
 		len = SSL_read(ssl, buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
 
-	BIO_free(rbio);
-	ssl->rbio = NULL;
-
 	if (eve(verbose)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__,len);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__, len);
 	}
 
 	if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
 		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}
-		return 0;
-	}
-
-	if (eve(verbose)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: read %d bytes\n", __FUNCTION__,(int) len);
-	}
-
-	if (len >= 0) {
-		*read_len = len;
-		return len;
+		ret = 0;
 	} else {
-		switch (SSL_get_error(ssl, len)){
-		case SSL_ERROR_NONE:
-			//???
-			return 0;
-		case SSL_ERROR_WANT_READ:
-			return 0;
-		case SSL_ERROR_WANT_WRITE:
-			return 0;
-		case SSL_ERROR_ZERO_RETURN:
-			return 0;
-		case SSL_ERROR_SYSCALL:
-		{
-			int err = errno;
-			if (handle_socket_error())
-				return 0;
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS Socket read error: %d\n", err);
-			return -1;
+
+		if (eve(verbose)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: read %d bytes\n", __FUNCTION__, (int) len);
 		}
-		case SSL_ERROR_SSL:
-			if (verbose) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL read error: ");
-				s08bits buf[65536];
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf),
-								SSL_get_error(ssl, len));
+
+		if (len >= 0) {
+			*read_len = len;
+			ret = len;
+		} else {
+			switch (SSL_get_error(ssl, len)){
+			case SSL_ERROR_NONE:
+				//???
+				ret = 0;
+				break;
+			case SSL_ERROR_WANT_READ:
+				ret = 0;
+				break;
+			case SSL_ERROR_WANT_WRITE:
+				ret = 0;
+				break;
+			case SSL_ERROR_ZERO_RETURN:
+				ret = 0;
+				break;
+			case SSL_ERROR_SYSCALL:
+			{
+				int err = errno;
+				if (handle_socket_error()) {
+					ret = 0;
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS Socket read error: %d\n", err);
+					ret = -1;
+				}
+				break;
 			}
-			if (verbose)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL connection closed.\n");
-			return -1;
-		default:
-			if (verbose) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading!\n");
+			case SSL_ERROR_SSL:
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL read error: ");
+					s08bits buf[65536];
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n", ERR_error_string(ERR_get_error(), buf), SSL_get_error(ssl, len));
+				}
+				if (verbose)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL connection closed.\n");
+				ret = -1;
+				break;
+			default:
+				if (verbose) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Unexpected error while reading!\n");
+				}
+				ret = -1;
 			}
-			return -1;
 		}
 	}
+
+	BIO_free(rbio);
+	ssl->rbio = NULL;
+
+	return ret;
 }
 
 typedef unsigned char recv_ttl_t;
@@ -1660,7 +1674,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 #if defined(MSG_ERRQUEUE)
 
 	if(flags & MSG_ERRQUEUE) {
-			if((len>0)&&(try_cycle++<128)) goto try_again;
+			if((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH)) goto try_again;
 	}
 
 	if((len<0) && (!(flags & MSG_ERRQUEUE))) {

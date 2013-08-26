@@ -56,6 +56,8 @@ typedef struct {
 
 #define COOKIE_SECRET_LENGTH (32)
 
+#define MAX_SINGLE_UDP_BATCH (16)
+
 struct dtls_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
@@ -245,57 +247,13 @@ static void free_ndc(new_dtls_conn *ndc)
 
 /////////////// io handlers ///////////////////
 
-static int dtls_accept(int verbose, SSL* ssl)
+static int dtls_accept(int verbose, SSL* ssl, u08bits *s, int len)
 {
-	if (!ssl)
-		return -1;
-
 	/* handshake */
-	char s[65535];
-	int rc = SSL_read(ssl,s,sizeof(s)); /* SSL_accept(ssl); */
-	int err = errno;
-
-	if (rc < 0 && SSL_get_error(ssl, rc) == SSL_ERROR_SYSCALL && errno == EMSGSIZE) {
-		int new_mtu = decrease_mtu(ssl, SOSO_MTU, verbose);
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: mtu=%d\n", __FUNCTION__, new_mtu);
-	}
-
-	if (verbose)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Accept: rc=%d, errno=%d\n", rc, err);
-
-	switch (SSL_get_error(ssl, rc)){
-	case SSL_ERROR_NONE:
-		break;
-	case SSL_ERROR_WANT_READ:
-		return 0;
-	case SSL_ERROR_WANT_WRITE:
-		return 0;
-	case SSL_ERROR_ZERO_RETURN:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: SSL_ERROR_ZERO_RETURN\n");
-		return 0;
-	case SSL_ERROR_SYSCALL:
-		if (verbose) {
-			char buf[65536];
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: SSL_ERROR_SYSCALL: %d (%s)\n", err,
-							ERR_error_string(ERR_get_error(), buf));
-		}
-		return -1;
-	case SSL_ERROR_SSL:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: SSL_ERROR_SSL\n");
-		return -1;
-	default:
-		if (verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "accept: UNKNOWN ERROR\n");
-		return -1;
-	}
-
-	return 1;
+	return ssl_read(ssl, (char*)s, ioa_network_buffer_get_capacity(), verbose, &len);
 }
 
-static int accept_client_connection(dtls_listener_relay_server_type* server, new_dtls_conn **ndc)
+static int accept_client_connection(dtls_listener_relay_server_type* server, new_dtls_conn **ndc, u08bits *s, int len)
 {
 
 	FUNCSTART;
@@ -310,9 +268,7 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 
 	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
 
-		int rc = dtls_accept(server->verbose, (*ndc)->info.ssl);
-
-		BIO_set_fd(SSL_get_rbio((*ndc)->info.ssl), (*ndc)->info.fd, BIO_NOCLOSE);
+		int rc = dtls_accept(server->verbose, (*ndc)->info.ssl, s, len);
 
 		if (rc < 0)
 			return -1;
@@ -333,11 +289,6 @@ static int accept_client_connection(dtls_listener_relay_server_type* server, new
 	}
 
 	{
-		BIO *rbio = SSL_get_rbio(ssl);
-		if(rbio) {
-			BIO_free(rbio);
-			ssl->rbio = NULL;
-		}
 		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, NULL, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
 		if(ioas) {
 
@@ -398,8 +349,14 @@ static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
 	}
 
 	int ret = 0;
+	u08bits s[65535];
 
-	ret = accept_client_connection(server, &ndc);
+	do {
+		ret = recv(fd, s, sizeof(s), 0);
+	} while (ret < 0 && (errno == EINTR));
+
+	if(ret>0)
+		ret = accept_client_connection(server, &ndc, s, ret);
 
 	if(ndc) {
 		if (ret < 0 || (ndc->info.ssl && SSL_get_shutdown(ndc->info.ssl))) {
@@ -430,16 +387,106 @@ static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, voi
 #endif
 
 #if !defined(TURN_NO_DTLS)
+
 static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
+
+static void dtls_server_input_handler(evutil_socket_t fd, short what, void* arg, u08bits *buf, int len)
+{
+	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
+
+	FUNCSTART;
+
+	if (!server || !buf || len<1) {
+		return;
+	}
+
+	if (!(what & EV_READ)) {
+		return;
+	}
+
+	SSL* connecting_ssl = NULL;
+
+	BIO *wbio = NULL;
+	struct timeval timeout;
+
+	/* Create BIO */
+	wbio = BIO_new_dgram(fd, BIO_NOCLOSE);
+	(void)BIO_dgram_set_peer(wbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
+
+	/* Set and activate timeouts */
+	timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
+	timeout.tv_usec = 0;
+	BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+
+	connecting_ssl = SSL_new(server->dtls_ctx);
+
+	SSL_set_accept_state(connecting_ssl);
+
+	SSL_set_bio(connecting_ssl, NULL, wbio);
+	SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
+
+	SSL_set_max_cert_list(connecting_ssl, 655350);
+
+	ur_conn_info info;
+
+	ns_bzero(&info, sizeof(ur_conn_info));
+	info.fd = -1;
+	addr_cpy(&(info.remote_addr), &(server->sm.m.sm.nd.src_addr));
+	addr_cpy(&(info.local_addr), &(server->addr));
+	info.ssl = connecting_ssl;
+
+	if ((dtls_open_client_connection_socket(server, &info) >= 0) && info.ssl) {
+
+		new_dtls_conn *ndc = (new_dtls_conn *)turn_malloc(sizeof(new_dtls_conn));
+		ns_bzero(ndc, sizeof(new_dtls_conn));
+
+		ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
+
+		ndc->ev = event_new(server->e->event_base, info.fd, EV_READ | EV_PERSIST, ndc_input_handler, ndc);
+
+		ndc->server = server;
+
+		event_add(ndc->ev, NULL);
+
+		set_mtu_df(ndc->info.ssl, ndc->info.fd, ndc->info.local_addr.ss.ss_family, SOSO_MTU, 1,
+							server->verbose);
+
+		{
+			struct timeval tv;
+
+			tv.tv_sec = DTLS_MAX_CONNECT_TIMEOUT;
+			tv.tv_usec = 0;
+			ndc->to_ev = evtimer_new(server->e->event_base,
+							client_connecting_timeout_handler,
+							ndc);
+			evtimer_add(ndc->to_ev,&tv);
+		}
+
+		int rc = accept_client_connection(server, &ndc, buf, len);
+
+		if (rc < 0) {
+			free_ndc(ndc);
+		}
+	} else {
+		if(connecting_ssl)
+			SSL_free(connecting_ssl);
+	}
+}
+
 #endif
 
-static void udp_server_input_handler(evutil_socket_t fd, void* arg)
+
+static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 	int cycle = 0;
 
 	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
 
 	FUNCSTART;
+
+	if (!(what & EV_READ)) {
+		return;
+	}
 
 	ioa_network_buffer_handle *elem = NULL;
 
@@ -521,11 +568,25 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 		server->sm.m.sm.s = server->udp_listen_s;
 		server->sm.t = RMT_SOCKET;
 
-		int rc = server->udp_eh(server->rs, &(server->sm));
+		int rc = 0;
 
-		if(rc < 0) {
-			if(eve(server->e->verbose)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
+#if !defined(TURN_NO_DTLS)
+		if (!no_dtls && is_dtls_handshake_message(ioa_network_buffer_data(elem),
+						(int)ioa_network_buffer_get_size(elem))) {
+			dtls_server_input_handler(fd, what, arg,
+				ioa_network_buffer_data(elem),
+				(int)ioa_network_buffer_get_size(elem));
+			rc = 1;
+		}
+#endif
+
+		if(!rc) {
+			rc = server->udp_eh(server->rs, &(server->sm));
+
+			if(rc < 0) {
+				if(eve(server->e->verbose)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP event\n");
+				}
 			}
 		}
 	}
@@ -533,197 +594,10 @@ static void udp_server_input_handler(evutil_socket_t fd, void* arg)
 	ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
 	server->sm.m.sm.nd.nbh = NULL;
 
-	if(cycle++<16)
+	if(cycle++<MAX_SINGLE_UDP_BATCH)
 		goto start_udp_cycle;
 
 	FUNCEND;
-}
-
-static void server_input_handler(evutil_socket_t fd, short what, void* arg)
-{
-	dtls_listener_relay_server_type* server = (dtls_listener_relay_server_type*) arg;
-
-	FUNCSTART;
-
-	if (!server) {
-		if(what & EV_READ) {
-			read_spare_buffer(fd);
-		}
-		return;
-	}
-
-	if (!(what & EV_READ)) {
-		return;
-	}
-
-	int read_all = 0;
-	unsigned char peekbuf[4];
-	int rc = 0;
-	int slen = server->slen0;
-
-	if(!no_dtls) {
-		const int flags = MSG_PEEK;
-		int conn_reset = 0;
-		int to_block = 0;
-
-		do {
-			rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-		} while (rc < 0 && (errno == EINTR));
-
-		conn_reset = is_connreset();
-		to_block = would_block();
-
-		if (rc < 0) {
-
-			if(to_block) {
-				FUNCEND;
-				return;
-			}
-
-#if defined(MSG_ERRQUEUE)
-			//Linux
-			int eflags = MSG_ERRQUEUE | MSG_DONTWAIT;
-			static s08bits buffer[65535];
-			u32bits errcode = 0;
-			ioa_addr orig_addr;
-			int ttl = 0;
-			int tos = 0;
-			udp_recvfrom(fd, &orig_addr, &(server->addr), buffer,
-				(int) sizeof(buffer), &ttl, &tos, server->e->cmsg, eflags,
-				&errcode);
-			//try again...
-			do {
-				rc = recvfrom(fd, peekbuf, sizeof(peekbuf), flags,
-					(struct sockaddr*) &(server->sm.m.sm.nd.src_addr),
-					(socklen_t*) &slen);
-			} while (rc < 0 && (errno == EINTR));
-			conn_reset = is_connreset();
-			to_block = would_block();
-#endif
-			if(conn_reset) {
-				reopen_server_socket(server);
-				FUNCEND;
-				return;
-			}
-		}
-
-		if(rc<0) {
-			if(!to_block && !conn_reset) {
-				int ern=errno;
-				perror(__FUNCTION__);
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: recvfrom error %d\n",__FUNCTION__,ern);
-			}
-			FUNCEND;
-			return;
-		}
-	}
-
-#if !defined(TURN_NO_DTLS)
-
-	if (!no_dtls && is_dtls_handshake_message(peekbuf, rc)) {
-
-		SSL* connecting_ssl = NULL;
-
-		BIO *rbio = NULL;
-		BIO *wbio = NULL;
-		struct timeval timeout;
-
-		/* Create BIO */
-		rbio = BIO_new_dgram(fd, BIO_NOCLOSE);
-		(void)BIO_dgram_set_peer(rbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
-
-		wbio = BIO_new_dgram(fd, BIO_NOCLOSE);
-		(void)BIO_dgram_set_peer(wbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
-
-		/* Set and activate timeouts */
-		timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
-		timeout.tv_usec = 0;
-		BIO_ctrl(rbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
-
-		connecting_ssl = SSL_new(server->dtls_ctx);
-
-		SSL_set_accept_state(connecting_ssl);
-
-		SSL_set_bio(connecting_ssl, rbio, wbio);
-		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
-
-		SSL_set_max_cert_list(connecting_ssl, 655350);
-
-		ur_conn_info info;
-
-		ns_bzero(&info, sizeof(ur_conn_info));
-		info.fd = -1;
-		addr_cpy(&(info.remote_addr), &(server->sm.m.sm.nd.src_addr));
-		addr_cpy(&(info.local_addr), &(server->addr));
-		info.ssl = connecting_ssl;
-
-		if ((dtls_open_client_connection_socket(server, &info) >= 0) && info.ssl) {
-
-			new_dtls_conn *ndc = (new_dtls_conn *)turn_malloc(sizeof(new_dtls_conn));
-			ns_bzero(ndc, sizeof(new_dtls_conn));
-
-			ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
-
-			ndc->ev = event_new(server->e->event_base, info.fd, EV_READ | EV_PERSIST, ndc_input_handler, ndc);
-
-			ndc->server = server;
-
-			event_add(ndc->ev, NULL);
-
-			set_mtu_df(ndc->info.ssl, ndc->info.fd, ndc->info.local_addr.ss.ss_family, SOSO_MTU, 1,
-							server->verbose);
-
-			{
-				struct timeval tv;
-
-				tv.tv_sec = DTLS_MAX_CONNECT_TIMEOUT;
-				tv.tv_usec = 0;
-				ndc->to_ev = evtimer_new(server->e->event_base,
-								client_connecting_timeout_handler,
-								ndc);
-				evtimer_add(ndc->to_ev,&tv);
-			}
-
-			rc = accept_client_connection(server, &ndc);
-
-			if (rc < 0) {
-				free_ndc(ndc);
-			}
-		} else {
-			if(connecting_ssl)
-				SSL_free(connecting_ssl);
-			read_all = 1;
-		}
-	} else if(!no_udp) {
-#endif
-		udp_server_input_handler(fd, arg);
-
-#if !defined(TURN_NO_DTLS)
-	} else {
-		read_all = 1;
-	}
-#endif
-
-	if(read_all) {
-
-		char sbuf[0xFFFF+1];
-		do {
-			rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-		} while (rc < 0 && (errno == EINTR));
-
-		if((rc<0) && is_connreset()) {
-			//hm... try again...
-			do {
-				rc = recvfrom(fd, sbuf, sizeof(sbuf), 0, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
-			} while (rc < 0 && (errno == EINTR));
-		}
-
-		if((rc<0) && is_connreset()) {
-		  reopen_server_socket(server);
-		  FUNCEND;
-		  return;
-		}
-	}
 }
 
 ///////////////////// operations //////////////////////////
@@ -826,7 +700,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
   }
 
   server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
-				    EV_READ|EV_PERSIST,server_input_handler,server);
+				    EV_READ|EV_PERSIST,udp_server_input_handler,server);
 
   event_add(server->udp_listen_ev,NULL);
 
@@ -895,7 +769,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server)
 	}
 
 	server->udp_listen_ev = event_new(server->e->event_base, udp_listen_fd,
-				EV_READ | EV_PERSIST, server_input_handler, server);
+				EV_READ | EV_PERSIST, udp_server_input_handler, server);
 
 	event_add(server->udp_listen_ev, NULL );
 
