@@ -1065,6 +1065,12 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 				ioa_network_buffer_set_size(nbh,len);
 			}
 
+			if (server->fingerprint || ss->enforce_fingerprints) {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+				ioa_network_buffer_set_size(nbh, len);
+			}
+
 			write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
 			FUNCEND;
@@ -3184,6 +3190,12 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
 					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 					ioa_network_buffer_set_size(nbh,len);
+				}
+
+				if (server->fingerprint || ss->enforce_fingerprints) {
+					size_t len = ioa_network_buffer_get_size(nbh);
+					stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+					ioa_network_buffer_set_size(nbh, len);
 				}
 			}
 			if (eve(server->verbose)) {
