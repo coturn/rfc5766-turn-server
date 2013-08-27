@@ -1131,11 +1131,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 		return NULL;
 	}
 
-	ioa_addr local_addr;
-	addr_cpy(&local_addr,&(s->local_addr));
-	addr_set_port(&local_addr,0);
-
-	if(bind_ioa_socket(ret, &local_addr)<0) {
+	if(bind_ioa_socket(ret, &(s->local_addr))<0) {
 		IOA_CLOSE_SOCKET(ret);
 		return NULL;
 	}

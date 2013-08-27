@@ -528,18 +528,22 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 			if((method == STUN_METHOD_CONNECTION_ATTEMPT)&& is_TCP_relay()) {
 			  stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-			  if(sar) {
-			    u32bits cid = *((const u32bits*)stun_attr_get_value(sar));
-
-			    if(negative_test) {
-				    tcp_data_connect(elem,(u32bits)random());
-			    } else {
-				    /* positive test */
-				    tcp_data_connect(elem,cid);
-			    }
-
-			    return rc;
+			  u32bits cid = 0;
+			  while(sar) {
+				  int attr_type = stun_attr_get_type(sar);
+				  if(attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
+					  cid = *((const u32bits*)stun_attr_get_value(sar));
+					  break;
+				  }
+				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);
 			  }
+			  if(negative_test) {
+				  tcp_data_connect(elem,(u32bits)random());
+			  } else {
+				  /* positive test */
+				  tcp_data_connect(elem,cid);
+			  }
+			  return rc;
 			} else if (method != STUN_METHOD_DATA) {
 				TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
@@ -578,10 +582,16 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-				if(sar) {
-					u32bits cid = *((const u32bits*)stun_attr_get_value(sar));
-					tcp_data_connect(elem,cid);
+				u32bits cid = 0;
+				while(sar) {
+				  int attr_type = stun_attr_get_type(sar);
+				  if(attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
+					  cid = *((const u32bits*)stun_attr_get_value(sar));
+					  break;
+				  }
+				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);
 				}
+				tcp_data_connect(elem,cid);
 			}
 
 			return rc;
@@ -1256,7 +1266,7 @@ void start_mclient(const char *remote_address, int port,
 					int connect_err = 0;
 					socket_connect(elems[i]->pinfo.fd, &(elems[i]->pinfo.remote_addr), &connect_err);
 				}
-			} else {
+			} else if((i%2) == 0) {
 				if (turn_tcp_connect(clnet_verbose, &(elems[i]->pinfo), &(elems[i]->pinfo.peer_addr)) < 0) {
 					exit(-1);
 				}
@@ -1282,30 +1292,29 @@ void start_mclient(const char *remote_address, int port,
 				for(i=0;i<total_clients;++i) {
 					if(elems[i]->pinfo.is_peer) {
 						completed+=1;
-					} else if(elems[i]->pinfo.tcp_conn_number==1 &&
+					} else if(elems[i]->pinfo.tcp_conn_number>0 &&
 							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
 						completed += elems[i]->pinfo.tcp_conn_number;
 					}
 					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
 				}
-				if((completed) == total_clients)
+				if(completed >= total_clients)
 					break;
 			} else {
 				for(i=0;i<total_clients;++i) {
-					if(elems[i]->pinfo.tcp_conn_number==2 &&
-						elems[i]->pinfo.tcp_conn[0]->tcp_data_bound &&
-						elems[i]->pinfo.tcp_conn[1]->tcp_data_bound) {
+					if(elems[i]->pinfo.tcp_conn_number>0 &&
+							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
 						completed += elems[i]->pinfo.tcp_conn_number;
 					}
 					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
 				}
-				if((completed>>1) == total_clients)
+				if(completed >= total_clients)
 					break;
 			}
 			run_events(0);
 			if(current_time > connect_wait_start_time + STARTING_TCP_RELAY_TIME) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: %d connections are not completed\n",
-						(int)((total_clients<<1) - completed));
+						(int)(total_clients - completed));
 				break;
 			}
 		}
