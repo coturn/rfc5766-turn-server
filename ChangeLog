@@ -5,6 +5,7 @@ Version 2.6.2.1 'Harding Grim':
 	- TODO: --pidfile
 	- Issue 52 (RFC 6062) fixed
 	- Fingerprint added to the indications
+	- Long-term integrity and software added to the indications
 
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.4 'Harding Grim':

@@ -1060,7 +1060,17 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg)
 
 			ioa_network_buffer_set_size(nbh,len);
 
-			if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
+			{
+				static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+				static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+				ioa_network_buffer_set_size(nbh, len);
+			}
+
+			/* We add integrity for both long-term and short-term indication messages */
+			/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
+			{
 				stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 				ioa_network_buffer_set_size(nbh,len);
 			}
@@ -3187,7 +3197,17 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 						&(in_buffer->src_addr));
 				ioa_network_buffer_set_size(nbh,len);
 
-				if(server->ct == TURN_CREDENTIALS_SHORT_TERM) {
+				{
+					static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+					static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+					size_t len = ioa_network_buffer_get_size(nbh);
+					stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+					ioa_network_buffer_set_size(nbh, len);
+				}
+
+				/* We add integrity for both long-term and short-term indication messages */
+				/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
+				{
 					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd);
 					ioa_network_buffer_set_size(nbh,len);
 				}
