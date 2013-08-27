@@ -74,13 +74,6 @@ struct dtls_listener_relay_server_info {
 
 };
 
-typedef struct _new_dtls_conn {
-	ur_conn_info info;
-	struct event *ev;
-	struct event *to_ev;
-	dtls_listener_relay_server_type *server;
-} new_dtls_conn;
-
 ///////////// forward declarations ////////
 
 static int create_server_socket(dtls_listener_relay_server_type* server);
@@ -220,173 +213,49 @@ static int verify_cookie(SSL *ssl, unsigned char *cookie, unsigned int cookie_le
   return 0;
 }
 
-/* NDC free */
-
-static void free_ndc(new_dtls_conn *ndc)
-{
-	if (ndc) {
-		EVENT_DEL(ndc->ev);
-		EVENT_DEL(ndc->to_ev);
-		//We use UDP only sockets here
-		if (ndc->info.ssl) {
-			if (!(SSL_get_shutdown(ndc->info.ssl) & SSL_SENT_SHUTDOWN)) {
-				SSL_set_shutdown(ndc->info.ssl, SSL_RECEIVED_SHUTDOWN);
-				SSL_shutdown(ndc->info.ssl);
-			}
-			SSL_free(ndc->info.ssl);
-			ndc->info.ssl = NULL;
-		}
-
-		if(ndc->info.fd>=0) {
-			socket_closesocket(ndc->info.fd);
-			ndc->info.fd = -1;
-		}
-		turn_free(ndc,sizeof(new_dtls_conn));
-	}
-}
-
 /////////////// io handlers ///////////////////
 
-static int dtls_accept(int verbose, SSL* ssl, u08bits *s, int len)
-{
-	/* handshake */
-	return ssl_read(ssl, (char*)s, ioa_network_buffer_get_capacity(), verbose, &len);
-}
-
-static int accept_client_connection(dtls_listener_relay_server_type* server, new_dtls_conn **ndc, u08bits *s, int len)
+static int dtls_accept_client_connection(dtls_listener_relay_server_type* server,
+				SSL *ssl,
+				ioa_addr *remote_addr, ioa_addr *local_addr,
+				int fd,
+				u08bits *s, int len)
 {
 
 	FUNCSTART;
 
-	if (!ndc || !(*ndc))
+	if (!ssl)
 		return -1;
 
-	SSL* ssl = (*ndc)->info.ssl;
+	int rc = ssl_read(ssl, (s08bits*)s, ioa_network_buffer_get_capacity(), server->verbose, &len);
 
-	if(!ssl)
+	if (rc < 0)
 		return -1;
 
-	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
-
-		int rc = dtls_accept(server->verbose, (*ndc)->info.ssl, s, len);
-
-		if (rc < 0)
-			return -1;
-	}
-
-	if(!SSL_is_init_finished((*ndc)->info.ssl)) {
-		return 0;
-	}
-
-	addr_debug_print(server->verbose, &((*ndc)->info.remote_addr), "Accepted connection from");
-
-	if (server->verbose && SSL_get_peer_certificate(ssl)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
-		X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
-						XN_FLAG_MULTILINE);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n------------------------------------------------------------\n\n");
-	}
+	addr_debug_print(server->verbose, remote_addr, "Accepted connection from");
 
 	{
-		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, (*ndc)->info.fd, NULL, ssl, DTLS_SOCKET, CLIENT_SOCKET, &((*ndc)->info.remote_addr), &((*ndc)->info.local_addr));
+		ioa_socket_handle ioas = create_ioa_socket_from_ssl(server->e, fd, NULL, ssl, DTLS_SOCKET, CLIENT_SOCKET, remote_addr, local_addr);
 		if(ioas) {
 
 			ioas->listener_server = server;
 
-			addr_cpy(&(server->sm.m.sm.nd.src_addr),&((*ndc)->info.remote_addr));
+			addr_cpy(&(server->sm.m.sm.nd.src_addr),remote_addr);
 			server->sm.m.sm.nd.nbh = NULL;
 			server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 			server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 			server->sm.m.sm.s = ioas;
 
 			server->connect_cb(server->e, &(server->sm));
-			(*ndc)->info.ssl = NULL;
-			(*ndc)->info.fd = -1;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create ioa_socket from SSL\n");
 		}
 	}
 
-	free_ndc(*ndc);
-	*ndc = NULL;
-
 	FUNCEND	;
 
 	return 0;
 }
-
-static void ndc_input_handler(ioa_socket_raw fd, short what, void* arg)
-{
-
-	if (!(what & EV_READ))
-		return;
-
-	if(!arg) {
-		read_spare_buffer(fd);
-		return;
-	}
-
-	UNUSED_ARG(fd);
-
-	new_dtls_conn *ndc = (new_dtls_conn *)arg;
-
-	dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *) (ndc->server);
-
-	if (!server) {
-		read_spare_buffer(fd);
-		return;
-	}
-
-	if (ndc->info.fd < 0) {
-		read_spare_buffer(fd);
-		return;
-	}
-
-	if (!(ndc->info.ssl)) {
-		read_spare_buffer(fd);
-		return;
-	}
-
-	int ret = 0;
-	u08bits s[65535];
-
-	do {
-		ret = recv(fd, s, sizeof(s), 0);
-	} while (ret < 0 && (errno == EINTR));
-
-	if(ret>0)
-		ret = accept_client_connection(server, &ndc, s, ret);
-
-	if(ndc) {
-		if (ret < 0 || (ndc->info.ssl && SSL_get_shutdown(ndc->info.ssl))) {
-			free_ndc(ndc);
-		}
-	}
-}
-
-static void client_connecting_timeout_handler(ioa_socket_raw fd, short what, void* arg) {
-
-  if(!arg) return;
-
-  new_dtls_conn *ndc = (new_dtls_conn *)arg;
-
-  dtls_listener_relay_server_type *server = ndc->server;
-
-  FUNCSTART;
-
-  UNUSED_ARG(fd);
-
-  if(!(what&EV_TIMEOUT)) return;
-
-  free_ndc(ndc);
-
-  FUNCEND;
-}
-
-#endif
-
-#if !defined(TURN_NO_DTLS)
 
 static evutil_socket_t dtls_open_client_connection_socket(dtls_listener_relay_server_type* server, ur_conn_info *pinfo);
 
@@ -437,35 +306,23 @@ static void dtls_server_input_handler(evutil_socket_t fd, short what, void* arg,
 
 	if ((dtls_open_client_connection_socket(server, &info) >= 0) && info.ssl) {
 
-		new_dtls_conn *ndc = (new_dtls_conn *)turn_malloc(sizeof(new_dtls_conn));
-		ns_bzero(ndc, sizeof(new_dtls_conn));
+		set_mtu_df(info.ssl, info.fd, info.local_addr.ss.ss_family, SOSO_MTU, 1,
+			server->verbose);
 
-		ns_bcopy(&info, &(ndc->info), sizeof(ur_conn_info));
-
-		ndc->ev = event_new(server->e->event_base, info.fd, EV_READ | EV_PERSIST, ndc_input_handler, ndc);
-
-		ndc->server = server;
-
-		event_add(ndc->ev, NULL);
-
-		set_mtu_df(ndc->info.ssl, ndc->info.fd, ndc->info.local_addr.ss.ss_family, SOSO_MTU, 1,
-							server->verbose);
-
-		{
-			struct timeval tv;
-
-			tv.tv_sec = DTLS_MAX_CONNECT_TIMEOUT;
-			tv.tv_usec = 0;
-			ndc->to_ev = evtimer_new(server->e->event_base,
-							client_connecting_timeout_handler,
-							ndc);
-			evtimer_add(ndc->to_ev,&tv);
-		}
-
-		int rc = accept_client_connection(server, &ndc, buf, len);
+		int rc = dtls_accept_client_connection(server, info.ssl,
+						&info.remote_addr, &info.local_addr,
+						info.fd,
+						buf, len);
 
 		if (rc < 0) {
-			free_ndc(ndc);
+			if (!(SSL_get_shutdown(info.ssl) & SSL_SENT_SHUTDOWN)) {
+				SSL_set_shutdown(info.ssl, SSL_RECEIVED_SHUTDOWN);
+				SSL_shutdown(info.ssl);
+			}
+			SSL_free(info.ssl);
+
+			if(info.fd>=0)
+				socket_closesocket(info.fd);
 		}
 	} else {
 		if(connecting_ssl)

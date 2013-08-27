@@ -1544,15 +1544,31 @@ int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len
 
 	ssl->rbio = rbio;
 
+	int if1 = SSL_is_init_finished(ssl);
+
 	do {
 		len = SSL_read(ssl, buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
+
+	int if2 = SSL_is_init_finished(ssl);
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__, len);
 	}
 
-	if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
+	if (!if1 && if2) {
+
+		if(verbose && SSL_get_peer_certificate(ssl)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
+			X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
+						XN_FLAG_MULTILINE);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n------------------------------------------------------------\n\n");
+		}
+
+		ret = 0;
+
+	} else if (len < 0 && ((errno == ENOBUFS) || (errno == EAGAIN))) {
 		if (eve(verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: ENOBUFS/EAGAIN\n", __FUNCTION__);
 		}

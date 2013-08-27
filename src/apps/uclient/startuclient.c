@@ -42,6 +42,7 @@
 /////////////////////////////////////////
 
 #define MAX_CONNECT_EFFORTS (77)
+#define DTLS_MAX_CONNECT_TIMEOUT (30)
 
 static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
