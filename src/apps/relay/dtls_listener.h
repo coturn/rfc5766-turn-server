@@ -35,6 +35,8 @@
 
 #include "ns_ioalib_impl.h"
 
+#include "ns_turn_server.h"
+
 #include <event2/event.h>
 
 #ifdef __cplusplus
@@ -60,9 +62,9 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port,
 							     int verbose,
 							     ioa_engine_handle e,
-							     relay_server_handle rs,
+							     turn_turnserver *ts,
 							     ioa_engine_new_connection_event_handler send_socket,
-							     ioa_engine_udp_event_handler udp_eh);
+							     ur_addr_map *children_ss);
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 

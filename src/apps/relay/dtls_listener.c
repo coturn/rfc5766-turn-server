@@ -38,6 +38,10 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#if !defined(TURN_NO_THREADS)
+#include <pthread.h>
+#endif
+
 /* #define REQUEST_CLIENT_CERT */
 
 ///////////////////////////////////////////////////
@@ -62,16 +66,15 @@ struct dtls_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
   ioa_engine_handle e;
+  turn_turnserver *ts;
   int verbose;
   SSL_CTX *dtls_ctx;
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
   struct message_to_relay sm;
   int slen0;
-  relay_server_handle rs;
   ioa_engine_new_connection_event_handler connect_cb;
-  ioa_engine_udp_event_handler udp_eh;
-
+  ur_addr_map *children_ss;
 };
 
 ///////////// forward declarations ////////
@@ -332,6 +335,137 @@ static void dtls_server_input_handler(evutil_socket_t fd, short what, void* arg,
 
 #endif
 
+static int handle_udp_packet(ur_addr_map *children_ss, struct message_to_relay *sm,
+				ioa_engine_handle ioa_eng, turn_turnserver *ts)
+{
+	int verbose = ioa_eng->verbose;
+	ioa_socket_handle s = sm->m.sm.s;
+
+	ur_addr_map_value_type mvt = 0;
+	ur_addr_map *amap = NULL;
+
+	if ((ur_addr_map_get(children_ss, get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
+		amap = (ur_addr_map*) mvt;
+	}
+
+	if (!amap) {
+		amap = ur_addr_map_create(65535); /* large map */
+		mvt = (ur_addr_map_value_type) amap;
+		ur_addr_map_put(children_ss,get_local_addr_from_ioa_socket(s), mvt);
+		{
+			u08bits saddr[129];
+			long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+			thrid = (long) pthread_self();
+#endif
+			addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: thrid=0x%lx: New amap 0x%lx for local addr %s\n",
+					__FUNCTION__, thrid, (long) amap, (char*) saddr);
+		}
+	}
+
+	mvt = 0;
+
+	ioa_socket_handle chs = 0;
+	if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt) {
+		chs = (ioa_socket_handle) mvt;
+	}
+
+	if (chs && !ioa_socket_tobeclosed(chs)
+			&& (chs->sockets_container == amap)
+			&& (chs->magic == SOCKET_MAGIC)) {
+		s = chs;
+		sm->m.sm.s = s;
+		if (s->read_cb) {
+			s->e = ioa_eng;
+			s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx);
+			ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
+			sm->m.sm.nd.nbh = NULL;
+
+			if (ioa_socket_tobeclosed(s)) {
+				ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
+				if (ss) {
+					turn_turnserver *server = (turn_turnserver *) ss->server;
+					if (server) {
+						shutdown_client_connection(server, ss);
+					}
+				}
+			}
+		}
+	} else {
+		if (chs && ioa_socket_tobeclosed(chs)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: socket to be closed\n", __FUNCTION__);
+			{
+				u08bits saddr[129];
+				u08bits rsaddr[129];
+				long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+				thrid = (long) pthread_self();
+#endif
+				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
+				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
+					__FUNCTION__, thrid, (long) amap,
+					(long) (chs->sockets_container), (char*) saddr,
+					(char*) rsaddr, (long) s, (int) (chs->done),
+					(int) (chs->tobeclosed));
+			}
+		}
+
+		if (chs && (chs->magic != SOCKET_MAGIC)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: wrong socket magic\n", __FUNCTION__);
+		}
+
+		if (chs && (chs->sockets_container != amap)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: wrong socket container\n", __FUNCTION__);
+			{
+				u08bits saddr[129];
+				u08bits rsaddr[129];
+				long thrid = 0;
+#if !defined(TURN_NO_THREADS)
+				thrid = (long) pthread_self();
+#endif
+				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
+				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
+					__FUNCTION__, thrid, (long) amap,
+					(long) (chs->sockets_container), (char*) saddr,
+					(char*) rsaddr, (long) chs, (int) (chs->done),
+					(int) (chs->tobeclosed), (int) (chs->st),
+					(int) (chs->sat));
+			}
+		}
+		chs = create_ioa_socket_from_fd(ioa_eng, s->fd, s,
+				UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
+				get_local_addr_from_ioa_socket(s));
+
+		s = chs;
+		sm->m.sm.s = s;
+
+		if (s) {
+			if(verbose) {
+				u08bits saddr[129];
+				u08bits rsaddr[129];
+				addr_to_string(get_local_addr_from_ioa_socket(s),saddr);
+				addr_to_string(get_remote_addr_from_ioa_socket(s),rsaddr);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+					"%s: New UDP endpoint: local addr %s, remote addr %s\n",
+					__FUNCTION__, (char*) saddr,(char*) rsaddr);
+			}
+			s->e = ioa_eng;
+			add_socket_to_map(s, amap);
+			open_client_connection_session(ts, &(sm->m.sm));
+		}
+	}
+
+	return 0;
+}
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
@@ -438,7 +572,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 #endif
 
 		if(!rc) {
-			rc = server->udp_eh(server->rs, &(server->sm));
+			rc = handle_udp_packet(server->children_ss, &(server->sm), server->e, server->ts);
 
 			if(rc < 0) {
 				if(eve(server->e->verbose)) {
@@ -664,15 +798,16 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       relay_server_handle rs,
+		       turn_turnserver *ts,
 		       ioa_engine_new_connection_event_handler send_socket,
-		       ioa_engine_udp_event_handler udp_eh) {
+		       ur_addr_map *children_ss) {
 
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
   server->connect_cb = send_socket;
-  server->udp_eh = udp_eh;
+  server->children_ss = children_ss;
+  server->ts = ts;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -686,7 +821,6 @@ static int init_server(dtls_listener_relay_server_type* server,
   server->verbose=verbose;
   
   server->e = e;
-  server->rs = rs;
   
   TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
   
@@ -724,9 +858,9 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     relay_server_handle rs,
+							     turn_turnserver *ts,
 							     ioa_engine_new_connection_event_handler send_socket,
-							     ioa_engine_udp_event_handler udp_eh) {
+							     ur_addr_map *children_ss) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     turn_malloc(sizeof(dtls_listener_relay_server_type));
@@ -737,9 +871,9 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 rs,
+		 ts,
 		 send_socket,
-		 udp_eh)<0) {
+		 children_ss)<0) {
     turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {

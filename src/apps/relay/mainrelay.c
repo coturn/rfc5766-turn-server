@@ -601,136 +601,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 		/* Special case: 'virtual' UDP socket */
 		if (get_ioa_socket_type(s) == UDP_SOCKET) {
 
-			ur_addr_map_value_type mvt = 0;
-			ur_addr_map *amap = NULL;
-			if ((ur_addr_map_get(rs->children_ss,
-					get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
-				amap = (ur_addr_map*) mvt;
-			}
-			if (!amap) {
-				amap = ur_addr_map_create(65535); /* large map */
-				mvt = (ur_addr_map_value_type) amap;
-				ur_addr_map_put(rs->children_ss,
-						get_local_addr_from_ioa_socket(s), mvt);
-
-				{
-					u08bits saddr[129];
-					long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-					thrid = (long) pthread_self();
-#endif
-					addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-							"%s: thrid=0x%lx: New amap 0x%lx for local addr %s\n",
-							__FUNCTION__, thrid, (long) amap, (char*) saddr);
-				}
-			}
-
-			mvt = 0;
-
-			ioa_socket_handle chs = 0;
-			if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0)
-					&& mvt) {
-				chs = (ioa_socket_handle) mvt;
-			}
-
-			if (chs && !ioa_socket_tobeclosed(chs)
-					&& (chs->sockets_container == amap)
-					&& (chs->magic == SOCKET_MAGIC)) {
-				s = chs;
-				sm->m.sm.s = s;
-				if (s->read_cb) {
-					s->e = rs->ioa_eng;
-					s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx);
-					ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
-					sm->m.sm.nd.nbh = NULL;
-
-					if (ioa_socket_tobeclosed(s)) {
-						ts_ur_super_session *ss =
-								(ts_ur_super_session *) s->session;
-						if (ss) {
-							turn_turnserver *server =
-									(turn_turnserver *) ss->server;
-							if (server) {
-								shutdown_client_connection(server, ss);
-							}
-						}
-					}
-				}
-			} else {
-				if (chs && ioa_socket_tobeclosed(chs)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"%s: socket to be closed\n", __FUNCTION__);
-					{
-						u08bits saddr[129];
-						u08bits rsaddr[129];
-						long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-						thrid = (long) pthread_self();
-#endif
-						addr_to_string(get_local_addr_from_ioa_socket(chs),
-								saddr);
-						addr_to_string(get_remote_addr_from_ioa_socket(chs),
-								rsaddr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
-								__FUNCTION__, thrid, (long) amap,
-								(long) (chs->sockets_container), (char*) saddr,
-								(char*) rsaddr, (long) s, (int) (chs->done),
-								(int) (chs->tobeclosed));
-					}
-				}
-
-				if (chs && (chs->magic != SOCKET_MAGIC)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"%s: wrong socket magic\n", __FUNCTION__);
-				}
-
-				if (chs && (chs->sockets_container != amap)) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-							"%s: wrong socket container\n", __FUNCTION__);
-					{
-						u08bits saddr[129];
-						u08bits rsaddr[129];
-						long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-						thrid = (long) pthread_self();
-#endif
-						addr_to_string(get_local_addr_from_ioa_socket(chs),
-								saddr);
-						addr_to_string(get_remote_addr_from_ioa_socket(chs),
-								rsaddr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-								"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
-								__FUNCTION__, thrid, (long) amap,
-								(long) (chs->sockets_container), (char*) saddr,
-								(char*) rsaddr, (long) chs, (int) (chs->done),
-								(int) (chs->tobeclosed), (int) (chs->st),
-								(int) (chs->sat));
-					}
-				}
-				chs = create_ioa_socket_from_fd(rs->ioa_eng, s->fd, s,
-						UDP_SOCKET, CLIENT_SOCKET, &(sm->m.sm.nd.src_addr),
-						get_local_addr_from_ioa_socket(s));
-
-				s = chs;
-				sm->m.sm.s = s;
-
-				if (s) {
-					if(verbose) {
-						u08bits saddr[129];
-						u08bits rsaddr[129];
-						addr_to_string(get_local_addr_from_ioa_socket(s),saddr);
-						addr_to_string(get_remote_addr_from_ioa_socket(s),rsaddr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-							"%s: New UDP endpoint: local addr %s, remote addr %s\n",
-							__FUNCTION__, (char*) saddr,(char*) rsaddr);
-					}
-					s->e = rs->ioa_eng;
-					add_socket_to_map(s, amap);
-					open_client_connection_session(rs->server, &(sm->m.sm));
-				}
-			}
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: UDP socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
+					__FUNCTION__, (long) s->read_event, (long) s->bev);
+			IOA_CLOSE_SOCKET(s);
 
 		} else {
 
@@ -1101,7 +975,7 @@ static void setup_listener_servers(void)
 			int port = (int)addr_get_port(&addr);
 			addr_to_string_no_port(&addr,(u08bits*)saddr);
 
-			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index], send_socket_to_relay, handle_relay_message);
+			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
 
 	#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1140,7 +1014,7 @@ static void setup_listener_servers(void)
 		/* UDP: */
 		if(!no_udp) {
 
-			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index], send_socket_to_relay, handle_relay_message);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1156,7 +1030,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index], send_socket_to_relay, handle_relay_message);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1177,7 +1051,7 @@ static void setup_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index], send_socket_to_relay, handle_relay_message);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1193,7 +1067,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index], send_socket_to_relay, handle_relay_message);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
