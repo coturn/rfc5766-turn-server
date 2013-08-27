@@ -63,8 +63,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int verbose,
 							     ioa_engine_handle e,
 							     turn_turnserver *ts,
-							     ioa_engine_new_connection_event_handler send_socket,
-							     ur_addr_map *children_ss);
+							     ioa_engine_new_connection_event_handler send_socket);
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest);
 

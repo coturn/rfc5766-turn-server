@@ -74,7 +74,6 @@ struct dtls_listener_relay_server_info {
   struct message_to_relay sm;
   int slen0;
   ioa_engine_new_connection_event_handler connect_cb;
-  ur_addr_map *children_ss;
 };
 
 ///////////// forward declarations ////////
@@ -335,7 +334,7 @@ static void dtls_server_input_handler(evutil_socket_t fd, short what, void* arg,
 
 #endif
 
-static int handle_udp_packet(ur_addr_map *children_ss, struct message_to_relay *sm,
+static int handle_udp_packet(struct message_to_relay *sm,
 				ioa_engine_handle ioa_eng, turn_turnserver *ts)
 {
 	int verbose = ioa_eng->verbose;
@@ -344,14 +343,14 @@ static int handle_udp_packet(ur_addr_map *children_ss, struct message_to_relay *
 	ur_addr_map_value_type mvt = 0;
 	ur_addr_map *amap = NULL;
 
-	if ((ur_addr_map_get(children_ss, get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
+	if ((ur_addr_map_get(ioa_eng->children_ss, get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
 		amap = (ur_addr_map*) mvt;
 	}
 
 	if (!amap) {
 		amap = ur_addr_map_create(65535); /* large map */
 		mvt = (ur_addr_map_value_type) amap;
-		ur_addr_map_put(children_ss,get_local_addr_from_ioa_socket(s), mvt);
+		ur_addr_map_put(ioa_eng->children_ss,get_local_addr_from_ioa_socket(s), mvt);
 		{
 			u08bits saddr[129];
 			long thrid = 0;
@@ -572,7 +571,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 #endif
 
 		if(!rc) {
-			rc = handle_udp_packet(server->children_ss, &(server->sm), server->e, server->ts);
+			rc = handle_udp_packet(&(server->sm), server->e, server->ts);
 
 			if(rc < 0) {
 				if(eve(server->e->verbose)) {
@@ -799,14 +798,12 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int verbose,
 		       ioa_engine_handle e,
 		       turn_turnserver *ts,
-		       ioa_engine_new_connection_event_handler send_socket,
-		       ur_addr_map *children_ss) {
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
   server->connect_cb = send_socket;
-  server->children_ss = children_ss;
   server->ts = ts;
 
   if(ifname) STRCPY(server->ifname,ifname);
@@ -859,8 +856,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int verbose,
 							     ioa_engine_handle e,
 							     turn_turnserver *ts,
-							     ioa_engine_new_connection_event_handler send_socket,
-							     ur_addr_map *children_ss) {
+							     ioa_engine_new_connection_event_handler send_socket) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     turn_malloc(sizeof(dtls_listener_relay_server_type));
@@ -872,8 +868,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 verbose,
 		 e,
 		 ts,
-		 send_socket,
-		 children_ss)<0) {
+		 send_socket)<0) {
     turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {

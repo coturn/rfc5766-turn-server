@@ -267,7 +267,6 @@ struct relay_server {
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
 	turn_turnserver *server;
-	ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 	pthread_t thr;
 #endif
@@ -975,7 +974,7 @@ static void setup_listener_servers(void)
 			int port = (int)addr_get_port(&addr);
 			addr_to_string_no_port(&addr,(u08bits*)saddr);
 
-			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
+			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
 
 	#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1014,7 +1013,7 @@ static void setup_listener_servers(void)
 		/* UDP: */
 		if(!no_udp) {
 
-			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1030,7 +1029,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1051,7 +1050,7 @@ static void setup_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1067,7 +1066,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay, udp_relay_servers[udp_relay_server_index]->children_ss);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1238,7 +1237,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 	bufferevent_setcb(rs->auth_in_buf, relay_receive_auth_message, NULL, NULL, rs);
 	bufferevent_enable(rs->auth_in_buf, EV_READ);
 
-	rs->children_ss = ur_addr_map_create(0);
 	rs->server = create_turn_server(rs->id, verbose,
 					rs->ioa_eng, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
