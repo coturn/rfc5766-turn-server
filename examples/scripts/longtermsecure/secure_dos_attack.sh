@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # This is an example of a script to run a DOS attack in a 
-" "secure" environment
+# "secure" environment
 #
 
 if [ -d examples ] ; then

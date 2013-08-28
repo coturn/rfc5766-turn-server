@@ -6,16 +6,14 @@
 
 1) Fedora package.
 
-2) DTLS support for Cygwin.
-
-3) MS Windows support.
+2) MS Windows support.
 
 	Cygwin is supported. A "real" MS-Windows port would 
 	involve a usable GUI.
 	
-4) Debian submission upgrade.
+3) Debian submission upgrade.
 
-5) FreeBSD submission upgrade.
+4) FreeBSD submission upgrade.
 
 ==================================================================
 
@@ -33,8 +31,7 @@
 
 ==================================================================
 
-1) Make DTLS network model the same as UDP. That would also allow DTLS
-in Cygwin / MS WIndows.
+1) Exclusive IP addresses
 
 ==================================================================
 

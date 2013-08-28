@@ -1,11 +1,11 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
-	- (in progress) DTLS scaleability
-	- (in progress) DTLS support in Cygwin
-	- TODO: --pidfile
-	- Issue 52 (RFC 6062) fixed
-	- Fingerprint added to the indications
-	- Long-term integrity and software added to the indications
+	- Issue 56: (in progress) DTLS scaleability
+	- Issue 55: (in progress) DTLS support in Cygwin
+	- Issue 57: (in progress) --pidfile
+	- Issue 52: RFC 6062 relay endpoints fixed.
+	- Issue 53: Fingerprint added to the indications.
+	- Issue 54: Long-term integrity and software attributes added to the indications.
 
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.4 'Harding Grim':
