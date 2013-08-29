@@ -549,7 +549,6 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 		ioa_network_buffer_set_size(elem, (size_t)bsize);
 		server->sm.m.sm.s = server->udp_listen_s;
-		server->sm.t = RMT_SOCKET;
 
 		int rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
 
