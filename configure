@@ -724,9 +724,7 @@ testlib rt
 testlib wldap32
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    #CYGWIN ?
-    TURN_NO_DTLS="-DTURN_NO_DTLS"
-    ${ECHO_CMD} "WARNING: WE DO NOT SUPPORT DTLS ON THIS PLATFORM"
+    echo "CYGWIN ?"
 fi
 testlib wldap64
 testlib intl
