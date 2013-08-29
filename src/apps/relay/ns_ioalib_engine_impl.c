@@ -1251,9 +1251,9 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 }
 
 /* Only must be called for DTLS_SOCKET */
-ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr)
 {
-	ioa_socket_handle ret = create_ioa_socket_from_fd(e, fd, parent_s, st, sat, remote_addr, local_addr);
+	ioa_socket_handle ret = create_ioa_socket_from_fd(e, parent_s->fd, parent_s, st, sat, remote_addr, local_addr);
 
 	if(ret)
 		ret->ssl = ssl;
@@ -1522,7 +1522,7 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
  * Return: -1 - error, 0 or >0 - OK
  * *read_len -1 - no data, >=0 - data available
  */
-int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
+int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
 {
 	int ret = 0;
 
@@ -1539,6 +1539,11 @@ int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len
 
 	if (eve(verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: before read...\n", __FUNCTION__);
+	}
+
+	BIO *wbio = SSL_get_wbio(ssl);
+	if(wbio) {
+		BIO_set_fd(wbio,fd,BIO_NOCLOSE);
 	}
 
 	BIO* rbio = BIO_new_mem_buf(buf.buf, (int) buf.len);
@@ -1980,7 +1985,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		len = ret;
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
-			ret = ssl_read(s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
+			ret = ssl_read(s->fd, s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				s->tobeclosed = 1;

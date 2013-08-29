@@ -140,7 +140,7 @@ struct _ioa_engine
 
 struct _ioa_socket
 {
-	volatile evutil_socket_t fd;
+	evutil_socket_t fd;
 	struct _ioa_socket *parent_s;
 	void *listener_server;
 	u32bits magic;
@@ -221,7 +221,7 @@ void set_ssl_ctx(ioa_engine_handle e,
 void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
-ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
+ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
 void delete_socket_from_parent(ioa_socket_handle s);
@@ -233,7 +233,7 @@ int is_connreset(void);
 int would_block(void);
 int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buffer, int len);
 int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_addr, s08bits* buffer, int buf_size, int *ttl, int *tos, s08bits *ecmsg, int flags, u32bits *errcode);
-int ssl_read(SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len);
+int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len);
 
 int set_raw_socket_ttl_options(evutil_socket_t fd, int family);
 int set_raw_socket_tos_options(evutil_socket_t fd, int family);

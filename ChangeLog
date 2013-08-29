@@ -1,6 +1,6 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
-	- Issue 56: (in progress) DTLS scaleability
+	- Issue 56: DTLS scaleability
 	- Issue 55: (in progress) DTLS support in Cygwin
 	- Issue 57: (in progress) --pidfile
 	- Issue 52: RFC 6062 relay endpoints fixed.
