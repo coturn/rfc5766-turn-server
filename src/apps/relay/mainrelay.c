@@ -974,7 +974,7 @@ static void setup_listener_servers(void)
 			int port = (int)addr_get_port(&addr);
 			addr_to_string_no_port(&addr,(u08bits*)saddr);
 
-			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
+			listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server);
 
 	#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1013,7 +1013,7 @@ static void setup_listener_servers(void)
 		/* UDP: */
 		if(!no_udp) {
 
-			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
+			listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1029,7 +1029,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
+				listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{
@@ -1050,7 +1050,7 @@ static void setup_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
+			listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 			{
@@ -1066,7 +1066,7 @@ static void setup_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, send_socket_to_relay);
+				listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 				{

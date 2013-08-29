@@ -64,7 +64,6 @@ struct dtls_listener_relay_server_info {
   ioa_socket_handle udp_listen_s;
   struct message_to_relay sm;
   int slen0;
-  ioa_engine_new_connection_event_handler connect_cb;
 };
 
 ///////////// forward declarations ////////
@@ -714,13 +713,11 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       turn_turnserver *ts,
-		       ioa_engine_new_connection_event_handler send_socket) {
+		       turn_turnserver *ts) {
 
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
-  server->connect_cb = send_socket;
   server->ts = ts;
 
   if(ifname) STRCPY(server->ifname,ifname);
@@ -772,8 +769,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     turn_turnserver *ts,
-							     ioa_engine_new_connection_event_handler send_socket) {
+							     turn_turnserver *ts) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     turn_malloc(sizeof(dtls_listener_relay_server_type));
@@ -784,8 +780,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 		 ifname, local_address, port,
 		 verbose,
 		 e,
-		 ts,
-		 send_socket)<0) {
+		 ts)<0) {
     turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {
