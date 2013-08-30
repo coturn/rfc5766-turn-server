@@ -1,10 +1,11 @@
 XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
-	- Issue 56: DTLS scaleability
-	- Issue 55: DTLS support in Cygwin
+	- UDP performance improvements.
+	- Issue 56: DTLS scaleability improvements.
+	- Issue 55: DTLS support in Cygwin.
 	- Issue 57: (in progress) --pidfile
-	- Issue 52: RFC 6062 relay endpoints fixed.
-	- Issue 53: Fingerprint added to the indications.
+	- Issue 52: RFC 6062 relay endpoints connection process fixed.
+	- Issue 53: Fingerprints added to the indications.
 	- Issue 54: Long-term integrity and software attributes added to the indications.
 
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>

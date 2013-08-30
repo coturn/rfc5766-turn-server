@@ -101,6 +101,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 
 //////////////// Common params ////////////////////
 
+static char pidfile[1025] = "/var/run/turnserver.pid";
+
 static int verbose=TURN_VERBOSE_NONE;
 static int turn_daemon = 0;
 static int stale_nonce = 0;
@@ -2629,6 +2631,20 @@ int main(int argc, char **argv)
 		}
 		reset_rtpprintf();
 #endif
+	}
+
+	if(pidfile[0]) {
+		FILE *f = fopen(pidfile,"w");
+		if(!f) {
+			char s[2049];
+			sprintf(s,"Cannot create pid file: %s",pidfile);
+			perror(s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", s);
+		} else {
+			fprintf(f,"%lu",(unsigned long)getpid());
+			fclose(f);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", pidfile);
+		}
 	}
 
 	setup_server();
