@@ -290,7 +290,6 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 
 		ns_bzero(e,sizeof(ioa_engine));
 
-		e->children_ss = ur_addr_map_create(0);
 		e->max_bpj = max_bps * SECS_PER_JIFFIE;
 		e->verbose = verbose;
 		e->tp = tp;

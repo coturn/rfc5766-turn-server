@@ -62,6 +62,7 @@ struct dtls_listener_relay_server_info {
   SSL_CTX *dtls_ctx;
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
+  ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
 };
@@ -300,30 +301,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 	ioa_socket_handle s = sm->m.sm.s;
 
 	ur_addr_map_value_type mvt = 0;
-	ur_addr_map *amap = NULL;
-
-	if ((ur_addr_map_get(ioa_eng->children_ss, get_local_addr_from_ioa_socket(s), &mvt) > 0) && mvt) {
-		amap = (ur_addr_map*) mvt;
-	}
-
-	if (!amap) {
-		amap = ur_addr_map_create(65535); /* large map */
-		mvt = (ur_addr_map_value_type) amap;
-		ur_addr_map_put(ioa_eng->children_ss,get_local_addr_from_ioa_socket(s), mvt);
-		{
-			u08bits saddr[129];
-			long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-			thrid = (long) pthread_self();
-#endif
-			addr_to_string(get_local_addr_from_ioa_socket(s), saddr);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"%s: thrid=0x%lx: New amap 0x%lx for local addr %s\n",
-					__FUNCTION__, thrid, (long) amap, (char*) saddr);
-		}
-	}
-
-	mvt = 0;
+	ur_addr_map *amap = server->children_ss;
 
 	ioa_socket_handle chs = NULL;
 	if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt) {
@@ -718,6 +696,7 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
+  server->children_ss = ur_addr_map_create(65535);
 
   if(ifname) STRCPY(server->ifname,ifname);
 

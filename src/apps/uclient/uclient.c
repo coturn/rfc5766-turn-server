@@ -1273,7 +1273,6 @@ void start_mclient(const char *remote_address, int port,
 			}
 		}
 		run_events(1);
-		elems[i]->to_send_timems = current_mstime + 1000 + ((u32bits)random())%500;
 	}
 
 	__turn_getMSTime();
@@ -1296,7 +1295,6 @@ void start_mclient(const char *remote_address, int port,
 							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
 						completed += elems[i]->pinfo.tcp_conn_number;
 					}
-					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
 				}
 				if(completed >= total_clients)
 					break;
@@ -1306,7 +1304,6 @@ void start_mclient(const char *remote_address, int port,
 							elems[i]->pinfo.tcp_conn[0]->tcp_data_bound) {
 						completed += elems[i]->pinfo.tcp_conn_number;
 					}
-					elems[i]->to_send_timems = current_mstime + ((u32bits)random())%1500;
 				}
 				if(completed >= total_clients)
 					break;
@@ -1318,6 +1315,13 @@ void start_mclient(const char *remote_address, int port,
 				break;
 			}
 		}
+	}
+
+	__turn_getMSTime();
+	stime = current_time;
+
+	for(i=0;i<total_clients;i++) {
+		elems[i]->to_send_timems = current_mstime + 1000 + ((u32bits)random())%5000;
 	}
 
 	tot_messages = elems[0]->tot_msgnum * total_clients;

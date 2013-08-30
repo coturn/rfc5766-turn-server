@@ -111,7 +111,6 @@ typedef int (*ioa_engine_udp_event_handler)(relay_server_handle rs, struct messa
 struct _ioa_engine
 {
   struct event_base *event_base;
-  ur_addr_map *children_ss; /* map of maps: local addr / remote addr */
   int deallocate_eb;
   s08bits relay_ifname[1025];
   size_t relays_number;
