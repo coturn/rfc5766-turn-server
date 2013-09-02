@@ -2229,10 +2229,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
 					turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-					if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
-						asl = server->tls_alternate_servers_list;
-					} else if((cst == UDP_SOCKET) && server->self_udp_balance ) {
+					if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance ) {
 						asl = server->aux_servers_list;
+					} else if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
+						asl = server->tls_alternate_servers_list;
 					}
 
 					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
