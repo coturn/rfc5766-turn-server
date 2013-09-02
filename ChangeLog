@@ -1,4 +1,4 @@
-XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
+09/02/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
 	- UDP performance improvements.
 	- Issue 56: DTLS scaleability improvements.

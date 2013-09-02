@@ -65,6 +65,9 @@ to the UDP sockets handling.
 emulation implemented. 
 
 26) Linux UDP sockets workaround added to counter RFC 1122 behavior.
+
+27) DTLS sockets re-implemented for better scalability and for Cygwin 
+compatibility.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.
