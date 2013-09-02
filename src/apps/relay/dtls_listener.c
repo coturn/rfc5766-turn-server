@@ -321,16 +321,28 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			if(sslret < 0) {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 				sm->m.sm.nd.nbh = NULL;
-				return sslret;
-			}
-			if(read_len>0) {
+				ts_ur_super_session *ss = (ts_ur_super_session *) s->session;
+				if (ss) {
+					turn_turnserver *server = (turn_turnserver *) ss->server;
+					if (server) {
+						shutdown_client_connection(server, ss);
+					}
+				} else {
+					close_ioa_socket(s);
+				}
+				ur_addr_map_del(amap, &(sm->m.sm.nd.src_addr), NULL);
+				sm->m.sm.s = NULL;
+				s = NULL;
+				chs = NULL;
+			} else if(read_len>0) {
 				ioa_network_buffer_set_size(sm->m.sm.nd.nbh,(size_t)read_len);
 			} else {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 				sm->m.sm.nd.nbh = NULL;
 			}
 		}
-		if (s->read_cb && sm->m.sm.nd.nbh) {
+
+		if (s && s->read_cb && sm->m.sm.nd.nbh) {
 			s->e = ioa_eng;
 			s->read_cb(s, IOA_EV_READ, &(sm->m.sm.nd), s->read_ctx);
 			ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);

@@ -1562,7 +1562,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: after read: %d\n", __FUNCTION__, len);
 	}
 
-	if (!if1 && if2) {
+	if(SSL_get_shutdown(ssl)) {
+
+		ret = -1;
+
+	} else if (!if1 && if2) {
 
 		if(verbose && SSL_get_peer_certificate(ssl)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
