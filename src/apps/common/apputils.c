@@ -140,19 +140,9 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
 }
 
 int socket_set_reusable(evutil_socket_t fd) {
+
   if(fd<0) return -1;
   else {
-
-#ifndef WIN32
-		{
-			const int on = 1;
-			/* REUSEADDR on Unix means, "don't hang on to this address after the
-			 * listener is closed."  On Windows, though, it means "don't keep other
-			 * processes from binding to this address while we're using it.
-			 */
-			setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
-		}
-#endif
 
 #ifdef SO_REUSEPORT
     {
@@ -161,12 +151,16 @@ int socket_set_reusable(evutil_socket_t fd) {
     }
 #endif
 
-#ifdef SO_REUSEADDR
+#if !defined(WIN32) && defined(SO_REUSEADDR)
     {
       const int on = 1;
+	  /* REUSEADDR on Unix means, "don't hang on to this address after the
+	   * listener is closed."  On Windows, though, it means "don't keep other
+	   * processes from binding to this address while we're using it.
+	   */
       int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
       if(ret<0)
-	perror("SO_REUSEADDR");
+    	  perror("SO_REUSEADDR");
     }
 #endif
 
