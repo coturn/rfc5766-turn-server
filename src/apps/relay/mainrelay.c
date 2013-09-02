@@ -2650,7 +2650,7 @@ int main(int argc, char **argv)
 		} else {
 			sprintf(s,"Cannot create pid file: %s",pidfile);
 			perror(s);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", s);
 
 			{
 				const char *pfs[] = {"/var/run/turnserver.pid",
