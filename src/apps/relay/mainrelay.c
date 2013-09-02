@@ -1649,8 +1649,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						turn server. Multiple allowed-peer-ip can be set.\n"
 "     --denied-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are not allowed to connect to the turn server.\n"
 "						Multiple denied-peer-ip can be set.\n"
-" --cipher-list					Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+" --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
 "						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
+" --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
+"						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
+"						/var/tmp/turnserver.pid .\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1718,7 +1721,8 @@ enum EXTRA_OPTS {
 	MAX_ALLOCATE_TIMEOUT_OPT,
 	ALLOWED_PEER_IPS,
 	DENIED_PEER_IPS,
-	CIPHER_LIST_OPT
+	CIPHER_LIST_OPT,
+	PIDFILE_OPT
 };
 
 static struct option long_options[] = {
@@ -1785,6 +1789,7 @@ static struct option long_options[] = {
 				{ "allowed-peer-ip", required_argument, NULL, ALLOWED_PEER_IPS },
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
+				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -2085,6 +2090,9 @@ static void set_option(int c, char *value)
 		break;
 	case CIPHER_LIST_OPT:
 		STRCPY(cipher_list,value);
+		break;
+	case PIDFILE_OPT:
+		STRCPY(pidfile,value);
 		break;
 	case 'C':
 		if(value && *value) {
@@ -2634,16 +2642,41 @@ int main(int argc, char **argv)
 	}
 
 	if(pidfile[0]) {
+
+		char s[2049];
 		FILE *f = fopen(pidfile,"w");
-		if(!f) {
-			char s[2049];
+		if(f) {
+			STRCPY(s,pidfile);
+		} else {
 			sprintf(s,"Cannot create pid file: %s",pidfile);
 			perror(s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s\n", s);
-		} else {
+
+			{
+				const char *pfs[] = {"/var/run/turnserver.pid",
+						"/var/spool/turnserver.pid",
+						"/var/turnserver.pid",
+						"/var/tmp/turnserver.pid",
+						"/tmp/turnserver.pid",
+						"turnserver.pid",
+						NULL};
+				const char **ppfs = pfs;
+				while(*ppfs) {
+					f = fopen(*ppfs,"w");
+					if(f) {
+						STRCPY(s,*ppfs);
+						break;
+					} else {
+						++ppfs;
+					}
+				}
+			}
+		}
+
+		if(f) {
 			fprintf(f,"%lu",(unsigned long)getpid());
 			fclose(f);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", pidfile);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
 		}
 	}
 

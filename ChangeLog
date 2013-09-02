@@ -3,7 +3,7 @@ Version 2.6.2.1 'Harding Grim':
 	- UDP performance improvements.
 	- Issue 56: DTLS scaleability improvements.
 	- Issue 55: DTLS support in Cygwin.
-	- Issue 57: (in progress) --pidfile
+	- Issue 57: --pidfile option
 	- Issue 52: RFC 6062 relay endpoints connection process fixed.
 	- Issue 53: Fingerprints added to the indications.
 	- Issue 54: Long-term integrity and software attributes added to the indications.

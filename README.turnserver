@@ -397,6 +397,10 @@ Options with required values:
 
 --cipher-list	Allowed OpenSSL cipher list for TLS/DTLS connections.
 				Default value is "ALL:eNULL:aNULL:NULL".
+				
+--pidfile 		File name to store the pid of the process.
+				Default is /var/run/turnserver.pid (if superuser account is used) or
+				/var/tmp/turnserver.pid .
 		
 ==================================
 
