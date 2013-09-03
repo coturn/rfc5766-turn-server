@@ -1136,6 +1136,11 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	addr_cpy(&new_local_addr, &(s->local_addr));
 
 #if !defined(SO_REUSEPORT)
+	/*
+	 * trick for OSes which do not support SO_REUSEPORT.
+	 * Section 5.2 of RFC 6062 will not work correctly
+	 * for those OSes (for example, Linux pre-3.9 kernel).
+	 */
 	addr_set_port(&new_local_addr,0);
 #endif
 
