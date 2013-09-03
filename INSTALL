@@ -1,6 +1,6 @@
 I. TURN Server as a standard OS package
 
-At the present time, two operation systems have this project pre-packaged:
+At the present time, several operation systems have this project pre-packaged:
 
 1) FreeBSD (and PC-BSD) have this project as a "port", named "turnserver",
 in /usr/ports/net/turnserver directory. Installation is very simple:
@@ -20,12 +20,12 @@ http://packages.qa.debian.org/r/rfc5766-turn-server.html
 In the new Debian "jessie", and in the related Ubuntu and Mint, you will 
 be able to just select rfc5766-turn-server from the packages list and 
 install it through Synaptic or through the package manager.
- 
-These two OSs (and Amazon Linux) are the most advanced modern networking 
-OSs and they are the most convenient (and the most recommended) for the 
-TURN Server run-time setup.
 
-If you are a lucky user of FreeBSD or Debian "jessie" then you can skip 
+3) ArchLinux has a TURN server package:
+
+https://aur.archlinux.org/packages/rfc5766-turn-server/
+
+If you are using a pre-packaged TURN server then you can skip 
 to the section IX. 
  
 II. DOWNLOAD 
