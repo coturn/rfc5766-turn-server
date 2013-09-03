@@ -236,9 +236,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		addr_cpy(&(clnet_info->local_addr), &local_addr);
 		clnet_info->fd = clnet_fd;
 		addr_get_from_sock(clnet_fd, &(clnet_info->local_addr));
-		strcpy(clnet_info->lsaddr,local_address);
-		strcpy(clnet_info->rsaddr,remote_address);
-		strcpy(clnet_info->ifname,(const char*)ifname);
+		STRCPY(clnet_info->lsaddr,local_address);
+		STRCPY(clnet_info->rsaddr,remote_address);
+		STRCPY(clnet_info->ifname,(const char*)ifname);
 	}
 
 	if (use_secure) {

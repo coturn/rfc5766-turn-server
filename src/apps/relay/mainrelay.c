@@ -2648,7 +2648,7 @@ int main(int argc, char **argv)
 		if(f) {
 			STRCPY(s,pidfile);
 		} else {
-			sprintf(s,"Cannot create pid file: %s",pidfile);
+		  snprintf(s,sizeof(s),"Cannot create pid file: %s",pidfile);
 			perror(s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", s);
 
