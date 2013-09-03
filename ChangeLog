@@ -1,4 +1,4 @@
-09/02/2013 Oleg Moskalenko <mom040267@gmail.com>
+09/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
 	- UDP performance improvements.
 	- Issue 56: DTLS scaleability improvements.
@@ -6,7 +6,8 @@ Version 2.6.2.1 'Harding Grim':
 	- Issue 57: --pidfile option
 	- Issue 52: RFC 6062 relay endpoints connection process fixed.
 	- Issue 53: Fingerprints added to the indications.
-	- Issue 54: Long-term integrity and software attributes added to the indications.
+	- Issue 54: Long-term credentials mechanism integrity and software attributes 
+	added to the indications.
 
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.4 'Harding Grim':
