@@ -90,6 +90,8 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s);
 
 static int set_accept_cb(ioa_socket_handle s, accept_cb acb, void *arg);
 
+static void close_socket_net_data(ioa_socket_handle s);
+
 /************** Utils **************************/
 
 static int get_threadsafe_option(void)
@@ -1141,12 +1143,13 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	 * Section 5.2 of RFC 6062 will not work correctly
 	 * for those OSes (for example, Linux pre-3.9 kernel).
 	 */
-	addr_set_port(&new_local_addr,0);
+	close_socket_net_data(s);
 #endif
 
 	if(bind_ioa_socket(ret, &new_local_addr)<0) {
 		IOA_CLOSE_SOCKET(ret);
-		return NULL;
+		ret = NULL;
+		goto ccs_end;
 	}
 
 	socket_tcp_set_keepalive(ret->fd);
@@ -1173,8 +1176,27 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 		/* Error starting connection */
 		set_ioa_socket_session(ret, NULL);
 		IOA_CLOSE_SOCKET(ret);
-		return NULL;
+		ret = NULL;
+		goto ccs_end;
 	}
+
+	ccs_end:
+
+#if !defined(SO_REUSEPORT)
+		/*
+		 * trick for OSes which do not support SO_REUSEPORT.
+		 * Section 5.2 of RFC 6062 will not work correctly
+		 * for those OSes (for example, Linux pre-3.9 kernel).
+		 */
+	s->fd = socket(s->family, SOCK_STREAM, 0);
+	if (s->fd < 0) {
+		perror("TCP socket");
+	} else {
+		set_socket_options(s);
+		set_sock_buf_size(s->fd, UR_CLIENT_SOCK_BUF_SIZE);
+		set_accept_cb(s, s->acb, s->acbarg);
+	}
+#endif
 
 	return ret;
 }
@@ -1276,9 +1298,6 @@ static void close_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
 
-		delete_socket_from_map(s);
-		delete_socket_from_parent(s);
-
 		EVENT_DEL(s->read_event);
 		if(s->list_ev) {
 			evconnlistener_free(s->list_ev);
@@ -1375,6 +1394,9 @@ void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *fi
 					((s->st == TCP_SOCKET) ? STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE : STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE),
 					&(s->local_addr));
 		}
+
+		delete_socket_from_map(s);
+		delete_socket_from_parent(s);
 
 		close_socket_net_data(s);
 
