@@ -1152,8 +1152,6 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 		goto ccs_end;
 	}
 
-	socket_tcp_set_keepalive(ret->fd);
-
 	addr_cpy(&(ret->remote_addr), peer_addr);
 
 	set_ioa_socket_session(ret, s->session);
@@ -1191,10 +1189,23 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	s->fd = socket(s->family, SOCK_STREAM, 0);
 	if (s->fd < 0) {
 		perror("TCP socket");
+		if(ret) {
+			set_ioa_socket_session(ret, NULL);
+			IOA_CLOSE_SOCKET(ret);
+			ret = NULL;
+		}
 	} else {
 		set_socket_options(s);
-		set_sock_buf_size(s->fd, UR_CLIENT_SOCK_BUF_SIZE);
-		set_accept_cb(s, s->acb, s->acbarg);
+		sock_bind_to_device(s->fd, (unsigned char*)s->e->relay_ifname);
+		if(bind_ioa_socket(s, &new_local_addr)<0) {
+			if(ret) {
+				set_ioa_socket_session(ret, NULL);
+				IOA_CLOSE_SOCKET(ret);
+				ret = NULL;
+			}
+		} else {
+			set_accept_cb(s, s->acb, s->acbarg);
+		}
 	}
 #endif
 

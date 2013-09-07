@@ -2434,12 +2434,6 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
 #endif
 
-#if defined(SO_REUSEPORT)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 6062 support: full\n");
-#else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 6062 support: limited\n");
-#endif
-
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 }
 
