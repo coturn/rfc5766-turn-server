@@ -1143,7 +1143,11 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	 * Section 5.2 of RFC 6062 will not work correctly
 	 * for those OSes (for example, Linux pre-3.9 kernel).
 	 */
+#if defined(__linux__)
 	close_socket_net_data(s);
+#else
+	addr_set_port(&new_local_addr,0);
+#endif
 #endif
 
 	if(bind_ioa_socket(ret, &new_local_addr)<0) {
@@ -1181,6 +1185,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	ccs_end:
 
 #if !defined(SO_REUSEPORT)
+#if defined(__linux__)
 		/*
 		 * trick for OSes which do not support SO_REUSEPORT.
 		 * Section 5.2 of RFC 6062 will not work correctly
@@ -1207,6 +1212,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 			set_accept_cb(s, s->acb, s->acbarg);
 		}
 	}
+#endif
 #endif
 
 	return ret;
