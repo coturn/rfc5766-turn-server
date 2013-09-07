@@ -2441,6 +2441,8 @@ int main(int argc, char **argv)
 {
 	int c = 0;
 
+	IS_TURN_SERVER = 1;
+
 	set_execdir();
 
 	ns_bzero(&listener,sizeof(struct listener_server));

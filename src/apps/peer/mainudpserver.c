@@ -60,6 +60,8 @@ int main(int argc, char **argv)
 	int c;
 	char ifname[1025] = "\0";
 
+	IS_TURN_SERVER = 1;
+
 	set_logfile("stdout");
 	set_system_parameters(0);
 

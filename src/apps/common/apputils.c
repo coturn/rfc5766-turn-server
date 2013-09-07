@@ -56,6 +56,10 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
+/************************/
+
+int IS_TURN_SERVER = 0;
+
 /*********************** Sockets *********************************/
 
 int socket_set_nonblocking(evutil_socket_t fd)
@@ -139,33 +143,37 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
     return 0;
 }
 
-int socket_set_reusable(evutil_socket_t fd) {
+int socket_set_reusable(evutil_socket_t fd)
+{
 
-  if(fd<0) return -1;
-  else {
+	if (fd < 0)
+		return -1;
+	else {
+
+#if defined(WIN32)
+		int use_reuseaddr = IS_TURN_SERVER;
+#else
+		int use_reuseaddr = 1;
+#endif
 
 #ifdef SO_REUSEPORT
-    {
-      const int on = 1;
-      setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
-    }
+		if (use_reuseaddr) {
+			const int on = 1;
+			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
+		}
 #endif
 
-#if !defined(WIN32) && defined(SO_REUSEADDR)
-    {
-      const int on = 1;
-	  /* REUSEADDR on Unix means, "don't hang on to this address after the
-	   * listener is closed."  On Windows, though, it means "don't keep other
-	   * processes from binding to this address while we're using it.
-	   */
-      int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
-      if(ret<0)
-    	  perror("SO_REUSEADDR");
-    }
+#if defined(SO_REUSEADDR)
+		if (use_reuseaddr) {
+			const int on = 1;
+			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
+			if (ret < 0)
+				perror("SO_REUSEADDR");
+		}
 #endif
 
-    return 0;
-  }
+		return 0;
+	}
 }
 
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {

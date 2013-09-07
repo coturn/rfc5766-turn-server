@@ -50,6 +50,8 @@ extern "C" {
 #define UR_CLIENT_SOCK_BUF_SIZE (65536)
 #define UR_SERVER_SOCK_BUF_SIZE (UR_CLIENT_SOCK_BUF_SIZE * 32)
 
+extern int IS_TURN_SERVER;
+
 /////////// SSL //////////////////////////
 
 enum _TURN_TLS_TYPE {
