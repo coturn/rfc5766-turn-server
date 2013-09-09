@@ -52,6 +52,10 @@
 #include <hiredis/hiredis.h>
 #endif
 
+#if !defined(TURN_NO_THREADS)
+#include <pthread.h>
+#endif
+
 #include <signal.h>
 
 #include <sys/types.h>
@@ -2010,6 +2014,72 @@ void auth_ping(void)
 	}
 #endif
 
+}
+
+///////////////// WHITE/BLACK IP LISTS ///////////////////
+
+#if !defined(TURN_NO_THREADS)
+static pthread_mutex_t* whitelist_mutex = NULL;
+static pthread_mutex_t* blacklist_mutex = NULL;
+#endif
+
+static ip_range_list_t* ipwhitelist = NULL;
+static ip_range_list_t* ipblacklist = NULL;
+
+void init_dynamic_ip_lists(void)
+{
+#if !defined(TURN_NO_THREADS)
+	whitelist_mutex = (pthread_mutex_t*) turn_malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(whitelist_mutex, NULL);
+
+	blacklist_mutex = (pthread_mutex_t*) turn_malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(blacklist_mutex, NULL);
+#endif
+}
+
+void ioa_lock_whitelist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_THREADS)
+	pthread_mutex_lock(whitelist_mutex);
+#endif
+}
+void ioa_unlock_whitelist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_THREADS)
+	pthread_mutex_unlock(whitelist_mutex);
+#endif
+}
+const ip_range_list_t* ioa_get_whitelist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+	return ipwhitelist;
+}
+
+void ioa_lock_blacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_THREADS)
+	pthread_mutex_lock(blacklist_mutex);
+#endif
+}
+void ioa_unlock_blacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+#if !defined(TURN_NO_THREADS)
+	pthread_mutex_unlock(blacklist_mutex);
+#endif
+}
+const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
+{
+	UNUSED_ARG(e);
+	return ipblacklist;
+}
+
+void update_white_and_black_lists(void)
+{
+	//TODO
 }
 
 ///////////////////////////////

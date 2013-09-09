@@ -82,17 +82,6 @@ struct _turn_server_addrs_list {
 
 typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
 
-//////// IP White/black listing ///////////
-
-struct _ip_range_list {
-	char **ranges;
-	ioa_addr_range **encaddrsranges;
-	size_t ranges_number;
-};
-
-typedef struct _ip_range_list ip_range_list_t;
-
-
 ///////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose,

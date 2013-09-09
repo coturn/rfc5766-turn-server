@@ -121,6 +121,26 @@ typedef void (*connect_cb)(int success, void *arg);
 /* Callback on accepted socket from TCP relay endpoint */
 typedef void (*accept_cb)(ioa_socket_handle s, void *arg);
 
+//////// IP White/black listing ///////////
+
+struct _ip_range_list {
+	char **ranges;
+	ioa_addr_range **encaddrsranges;
+	size_t ranges_number;
+};
+
+typedef struct _ip_range_list ip_range_list_t;
+
+void ioa_lock_whitelist(ioa_engine_handle e);
+void ioa_unlock_whitelist(ioa_engine_handle e);
+const ip_range_list_t* ioa_get_whitelist(ioa_engine_handle e);
+
+void ioa_lock_blacklist(ioa_engine_handle e);
+void ioa_unlock_blacklist(ioa_engine_handle e);
+const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e);
+
+////////////////////////////////////////////
+
 /*
  * Network buffer functions
  */

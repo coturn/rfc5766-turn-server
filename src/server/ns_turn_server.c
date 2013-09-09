@@ -185,6 +185,23 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 				}
 			}
 
+			{
+				ioa_lock_whitelist(server->e);
+
+				const ip_range_list_t* wl = ioa_get_whitelist(server->e);
+				if(wl) {
+					// White listing of addr ranges
+					for (i = wl->ranges_number - 1; i >= 0; --i) {
+						if (ioa_addr_in_range(wl->encaddrsranges[i], peer_addr)) {
+							ioa_unlock_whitelist(server->e);
+							return 1;
+						}
+					}
+				}
+
+				ioa_unlock_whitelist(server->e);
+			}
+
 			if(server->ip_blacklist) {
 				// Black listing of addr ranges
 				for (i = server->ip_blacklist->ranges_number - 1; i >= 0; --i) {
@@ -195,6 +212,26 @@ static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 						return 0;
 					}
 				}
+			}
+
+			{
+				ioa_lock_blacklist(server->e);
+
+				const ip_range_list_t* bl = ioa_get_blacklist(server->e);
+				if(bl) {
+					// Black listing of addr ranges
+					for (i = bl->ranges_number - 1; i >= 0; --i) {
+						if (ioa_addr_in_range(bl->encaddrsranges[i], peer_addr)) {
+							ioa_unlock_blacklist(server->e);
+							char saddr[129];
+							addr_to_string_no_port(peer_addr,(u08bits*)saddr);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "A peer IP %s denied in the range: %s\n",saddr,bl->ranges[i]);
+							return 0;
+						}
+					}
+				}
+
+				ioa_unlock_blacklist(server->e);
 			}
 		}
 	}

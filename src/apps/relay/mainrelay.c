@@ -1194,6 +1194,7 @@ static void run_listener_server(struct event_base *eb)
 		 * because it would affect the routing significantly.
 		auth_ping();
 		*/
+		update_white_and_black_lists();
 #endif
 	}
 }
@@ -1331,6 +1332,7 @@ static void* run_auth_server_thread(void *arg)
 	while(run_auth_server_flag) {
 		run_events(eb);
 		read_userdb_file(0);
+		update_white_and_black_lists();
 		auth_ping();
 #if !defined(TURN_NO_HIREDIS)
 		send_message_to_redis(NULL, "publish", "__XXX__", "__YYY__");
@@ -2447,6 +2449,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(&listener,sizeof(struct listener_server));
 	init_secrets_list(&static_auth_secrets);
+	init_dynamic_ip_lists();
 
 	if (!strstr(argv[0], "turnadmin")) {
 		while (((c = getopt_long(argc, argv, OPTIONS, long_options, NULL)) != -1)) {
@@ -2535,6 +2538,7 @@ int main(int argc, char **argv)
 			STRCPY(userdb,DEFAULT_USERDB_FILE);
 
 	read_userdb_file(0);
+	update_white_and_black_lists();
 
 	argc -= optind;
 	argv += optind;

@@ -130,6 +130,8 @@ extern char rest_api_separator;
 extern secrets_list_t static_auth_secrets;
 
 void init_secrets_list(secrets_list_t *sl);
+void init_dynamic_ip_lists(void);
+void update_white_and_black_lists(void);
 void clean_secrets_list(secrets_list_t *sl);
 size_t get_secrets_list_size(secrets_list_t *sl);
 const char* get_secrets_list_elem(secrets_list_t *sl, size_t i);
