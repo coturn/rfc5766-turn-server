@@ -2127,6 +2127,7 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 
 static ip_range_list_t* get_ip_list(const char *kind)
 {
+	UNUSED_ARG(kind);
 	ip_range_list_t *ret = turn_malloc(sizeof(ip_range_list_t));
 	ns_bzero(ret,sizeof(ip_range_list_t));
 
