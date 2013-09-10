@@ -57,6 +57,8 @@
 
 4) Memory fragmentation solution.
 
+5) Use rwlock instead of mutex
+
 ==================================================================
 
 ###   V. SECURITY   ###
