@@ -152,6 +152,8 @@ void auth_ping(void);
 int add_user_account(char *user, int dynamic);
 int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURNADMIN_COMMAND_TYPE ct, int is_st);
 
+int add_ip_list_range(char* range, ip_range_list_t * list);
+
 ///////////// Redis //////////////////////
 
 #if !defined(TURN_NO_HIREDIS)

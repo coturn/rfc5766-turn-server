@@ -12,3 +12,11 @@ CREATE TABLE turnusers_st (
 CREATE TABLE turn_secret (
     value varchar(512)
 );
+
+CREATE TABLE allowed_peer_ip (
+	ip_range varchar(256)
+);
+
+CREATE TABLE denied_peer_ip (
+	ip_range varchar(256)
+);

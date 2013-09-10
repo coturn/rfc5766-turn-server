@@ -1,5 +1,5 @@
 
-Redis database for user authentication has the following schema:
+Redis database for user authentication and peer permissions has the following schema:
 
 1) For the long-term credentials there must be keys "turn/user/<username>/key" 
 and the values must be the the hmackeys. For example, for the user "gorst",
@@ -16,16 +16,27 @@ SQL schema). The key will be "turn/secret/<arbitrary secret ID>" and the value w
 "<secret>". For example, if we have secrets "hero1", "hero2" and "hero3", then we will 
 have keys "turn/secret/A", "turn/secret/B", "turn/secret/777" and their values will be 
 "hero1", "hero2", "hero3". The turnserver will issue command "keys turn/secret/*" it it 
-will try to use the returned keys in arbitrary order.   
+will try to use the returned keys in arbitrary order.
+
+4) The "white" and "black" peer IP ranges are stored as keys of the following form:
+"turn/allowed-peer-ip/<arbitrary>"
+"turn/denied-peer-ip/<arbitrary>"
+
+The meaning of the keys is the same as the meaning of allowed-peer-ip and denied-peer-ip 
+turnserver command-line option. The only difference is that the option values are "static" 
+(they remain the same for the lifetime of the turnserver process) but the database records
+can be dynamically changed and they will be almost immediately "seen" by the turnserver 
+process.
  
-4) Example of a Redis user database setup.
+5) Example of a Redis user database setup.
 
 This example sets user database for the following security mechanism variants:
 
   * long-term credentials with open passwords;
   * long-term credentials with hashed passwords and realm north.gov;
   * short-term credentials mechanism;
-  * TURN REST API with shared secret "logen"
+  * TURN REST API with shared secret "logen";
+  * Black and white IP peer lists used.
   
 The shell command would be:
 
@@ -41,9 +52,15 @@ set turn/user/ninefingers/password "youhavetoberealistic"
 set turn/user/gorst/password "hero"
 
 set turn/secret/1368426581 "logen"
+
+set turn/denied-peer-ip/123456 "172.17.13.133-172.17.14.56"
+set turn/denied-peer-ip/234567 "123::45"
+
+set turn/allowed-peer-ip/345678 "172.17.13.200"
+
 !
 
-5) Redis database configuration parameters
+6) Redis database configuration parameters
 
 TURN Server connects to the Redis and keeps the same connection during the 
 TURN server lifetime. That means that we have to take care about that 

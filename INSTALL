@@ -653,6 +653,19 @@ CREATE TABLE turn_secret (
     value varchar(512)
 );
 
+# Table holding "white" allowed peer IP ranges.
+#
+CREATE TABLE allowed_peer_ip (
+	ip_range varchar(256)
+);
+
+# Table holding "black" denied peer IP ranges.
+#
+CREATE TABLE denied_peer_ip (
+	ip_range varchar(256)
+);
+
+
 The field hmackey contains HEX string representation of the 128 bits key.
 We do not store the user open passwords for long-term credentials, for security reasons.
 Storing only the HMAC key has its own implications - if you change the realm,
