@@ -1,6 +1,7 @@
-09/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
+09/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.3.1 'Harding Grim':
 	- Issue 58: support changing white/black IP lists while server is running.
+	database tables (keys for redis) added for that new functionality.
 	
 09/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.2 'Harding Grim':
