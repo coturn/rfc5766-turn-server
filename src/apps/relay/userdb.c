@@ -2079,9 +2079,112 @@ const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)
 
 static ip_range_list_t* get_ip_list(const char *kind)
 {
-	//TODO
-	UNUSED_ARG(kind);
-	return NULL;
+	ip_range_list_t *ret = turn_malloc(sizeof(ip_range_list_t));
+	ns_bzero(ret,sizeof(ip_range_list_t));
+
+#if !defined(TURN_NO_PQ)
+	PGconn * pqc = get_pqdb_connection();
+	if(pqc) {
+		char statement[LONG_STRING_SIZE];
+		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
+		PGresult *res = PQexec(pqc, statement);
+
+		if(res && (PQresultStatus(res) == PGRES_TUPLES_OK)) {
+			int i = 0;
+			for(i=0;i<PQntuples(res);i++) {
+				char *kval = PQgetvalue(res,i,0);
+				if(kval) {
+					add_ip_list_range(kval,ret);
+				}
+			}
+		}
+
+		if(res) {
+			PQclear(res);
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_MYSQL)
+	MYSQL * myc = get_mydb_connection();
+	if(myc) {
+		char statement[LONG_STRING_SIZE];
+		snprintf(statement,sizeof(statement),"select ip_range from %s_peer_ip",kind);
+		int res = mysql_query(myc, statement);
+		if(res == 0) {
+			MYSQL_RES *mres = mysql_store_result(myc);
+			if(mres && mysql_field_count(myc)==1) {
+				for(;;) {
+					MYSQL_ROW row = mysql_fetch_row(mres);
+					if(!row) {
+						break;
+					} else {
+						if(row[0]) {
+							unsigned long *lengths = mysql_fetch_lengths(mres);
+							if(lengths) {
+								size_t sz = lengths[0];
+								char kval[LONG_STRING_SIZE];
+								ns_bcopy(row[0],kval,sz);
+								kval[sz]=0;
+								add_ip_list_range(kval,ret);
+							}
+						}
+					}
+				}
+			}
+
+			if(mres)
+				mysql_free_result(mres);
+		}
+	}
+#endif
+
+#if !defined(TURN_NO_HIREDIS)
+	redisContext *rc = get_redis_connection();
+	if(rc) {
+		char statement[LONG_STRING_SIZE];
+		snprintf(statement,sizeof(statement),"keys turn/%s-peer-ip/*", kind);
+		redisReply *reply = (redisReply*)redisCommand(rc, statement);
+		if(reply) {
+			secrets_list_t keys;
+			size_t isz = 0;
+			char s[257];
+
+			init_secrets_list(&keys);
+
+			if (reply->type == REDIS_REPLY_ERROR)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", reply->str);
+			else if (reply->type != REDIS_REPLY_ARRAY) {
+				if (reply->type != REDIS_REPLY_NIL)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", reply->type);
+			} else {
+				size_t i;
+				for (i = 0; i < reply->elements; ++i) {
+					add_to_secrets_list(&keys,reply->element[i]->str);
+				}
+			}
+
+			for(isz=0;isz<keys.sz;++isz) {
+				snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
+				redisReply *rget = (redisReply *)redisCommand(rc, s);
+				if(rget) {
+					if (rget->type == REDIS_REPLY_ERROR)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
+					else if (rget->type != REDIS_REPLY_STRING) {
+						if (rget->type != REDIS_REPLY_NIL)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					} else {
+						add_ip_list_range(rget->str,ret);
+					}
+				}
+			}
+
+			clean_secrets_list(&keys);
+		}
+	}
+#endif
+
+	return ret;
 }
 
 static void ip_list_free(ip_range_list_t *l)
