@@ -62,6 +62,7 @@ struct _turn_turnserver {
 	int rfc5780;
 	int stale_nonce;
 	int stun_only;
+	int secure_stun;
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
 	dont_fragment_option_t dont_fragment;
@@ -2252,35 +2253,35 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		if(method != STUN_METHOD_BINDING) {
-			if(server->stun_only) {
+		if((method != STUN_METHOD_BINDING) && (server->stun_only)) {
+
 				no_response = 1;
 				if(server->verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 										"%s: STUN method 0x%x ignored\n",
 										__FUNCTION__, (unsigned int)method);
 				}
-			} else {
 
-				if(method == STUN_METHOD_ALLOCATE) {
-					SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
-					turn_server_addrs_list_t *asl = server->alternate_servers_list;
+		} else if((method != STUN_METHOD_BINDING) || (server->secure_stun)) {
 
-					if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance ) {
-						asl = server->aux_servers_list;
-					} else if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
-						asl = server->tls_alternate_servers_list;
-					}
+			if(method == STUN_METHOD_ALLOCATE) {
+				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
+				turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+				if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance ) {
+					asl = server->aux_servers_list;
+				} else if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
+					asl = server->tls_alternate_servers_list;
 				}
 
-				if(!err_code && !(*resp_constructed) && !no_response) {
-					int postpone_reply = 0;
-					check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
-					if(postpone_reply)
-						no_response = 1;
-				}
+				set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+			}
+
+			if(!err_code && !(*resp_constructed) && !no_response) {
+				int postpone_reply = 0;
+				check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
+				if(postpone_reply)
+					no_response = 1;
 			}
 		}
 
@@ -3359,7 +3360,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int self_udp_balance,
 		int no_multicast_peers, int no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
-		send_cb_socket_to_relay_cb rfc6062cb) {
+		send_cb_socket_to_relay_cb rfc6062cb,
+		int secure_stun) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -3380,6 +3382,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->raqcb = raqcb;
 	server->no_multicast_peers = no_multicast_peers;
 	server->no_loopback_peers = no_loopback_peers;
+	server->secure_stun = secure_stun;
 
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;

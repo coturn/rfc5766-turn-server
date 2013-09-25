@@ -402,6 +402,9 @@ Options with required values:
 --pidfile 		File name to store the pid of the process.
 				Default is /var/run/turnserver.pid (if superuser account is used) or
 				/var/tmp/turnserver.pid .
+				
+--secure-stun	Require authentication of the STUN Binding request.
+				By default, the clients are allowed anonymous access to the STUN Binding functionality.
 		
 ==================================
 

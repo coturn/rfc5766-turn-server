@@ -107,6 +107,7 @@ static int verbose=TURN_VERBOSE_NONE;
 static int turn_daemon = 0;
 static int stale_nonce = 0;
 static int stun_only = 0;
+static int secure_stun = 0;
 
 static int do_not_use_config_file = 0;
 
@@ -1215,7 +1216,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					udp_self_balance,
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
-					send_cb_socket_to_relay);
+					send_cb_socket_to_relay,
+					secure_stun);
 
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
@@ -1476,7 +1478,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						TLS versions 1.0, 1.1 and 1.2. For secure UDP connections, we support\n"
 "						DTLS version 1.\n"
 " --alt-listening-port<port>	<port>		Alternative listening port for STUN CHANGE_REQUEST (in RFC 5780 sense, \n"
-"                                               or in old RFC 3489 sense, default is \"listening port plus one\").\n"
+"                                                or in old RFC 3489 sense, default is \"listening port plus one\").\n"
 " --alt-tls-listening-port	<port>		Alternative listening port for TLS and DTLS,\n"
 " 						the default is \"TLS/DTLS port plus one\".\n"
 " -L, --listening-ip		<ip>		Listener IP address of relay server. Multiple listeners can be specified.\n"
@@ -1486,7 +1488,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6.\n"
 " --udp-self-balance				Automatically balance UDP traffic over auxiliary servers (if configured).\n"
 "						The load balancing is happening by the ALTERNATE-SERVER mechanism.\n"
-"						The TURN client must support 300 ALTERNATE-SERVER response for this functionality."
+"						The TURN client must support 300 ALTERNATE-SERVER response for this functionality.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (optional, Linux only).\n"
 " -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
@@ -1505,7 +1507,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						(in addition to authentication thread and the listener thread).\n"
 "						If set to 0 then application runs TCP in single-threaded mode.\n"
 "						The default TCP thread number is the number of CPUs.\n"
-"                       The number of UDP relay threads is always equal the number of listening endpoints.\n"
+"						The number of UDP relay threads is always equal the number of listening endpoints.\n"
 " --min-port			<port>		Lower bound of the UDP port range for relay endpoints allocation.\n"
 "						Default value is 49152, according to RFC 5766.\n"
 " --max-port			<port>		Upper bound of the UDP port range for relay endpoints allocation.\n"
@@ -1541,7 +1543,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
+"	        	          		\"host=<ip-addr> dbname=<database-name> user=<database-user> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
 "	        	          		All parameters are optional.\n"
 #endif
 #if !defined(TURN_NO_HIREDIS)
@@ -1549,7 +1551,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "	                                	This database can be used for long-term and short-term credentials mechanisms,\n"
 "		                                and it can store the secret value(s) for secret-based timed authentication in TURN RESP API.\n"
 "						The connection string my be space-separated list of parameters:\n"
-"	        	          		\"host=<ip-addr> dbname=<db-number> password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
+"	        	          		\"host=<ip-addr> dbname=<db-number> \\\n								password=<database-user-password> port=<db-port> connect_timeout=<seconds>\".\n"
 "	        	          		All parameters are optional.\n"
 " -O, --redis-statsdb	<connection-string>	Redis status and statistics database connection string, if used \n"
 "						(default - empty, no Redis stats DB used).\n"
@@ -1613,6 +1615,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
 "						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
+" --secure-stun					Require authentication of the STUN Binding request.\n"
+"						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1681,7 +1685,8 @@ enum EXTRA_OPTS {
 	ALLOWED_PEER_IPS,
 	DENIED_PEER_IPS,
 	CIPHER_LIST_OPT,
-	PIDFILE_OPT
+	PIDFILE_OPT,
+	SECURE_STUN_OPT
 };
 
 static struct option long_options[] = {
@@ -1749,6 +1754,7 @@ static struct option long_options[] = {
 				{ "denied-peer-ip", required_argument, NULL, DENIED_PEER_IPS },
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
+				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1842,6 +1848,9 @@ static void set_option(int c, char *value)
 		break;
 	case MAX_PORT_OPT:
 		max_port = atoi(value);
+		break;
+	case SECURE_STUN_OPT:
+		secure_stun = get_bool_value(value);
 		break;
 	case NO_MULTICAST_PEERS_OPT:
 		no_multicast_peers = get_bool_value(value);
