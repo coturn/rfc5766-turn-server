@@ -1,6 +1,7 @@
 09/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.4.1 'Harding Grim':
-	- Optional authentication of STUN Binding request is implemented.
+	- Crash on uninitialized redis db name is fixed (Issue 59).
+	- Optional authentication of STUN Binding request is implemented (Issue 60).
 	
 09/16/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.3.1 'Harding Grim':
