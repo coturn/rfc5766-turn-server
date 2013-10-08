@@ -417,6 +417,13 @@ static MYSQL *get_mydb_connection(void)
 
 #if !defined(TURN_NO_HIREDIS)
 
+static void turnFreeRedisReply(void *reply)
+{
+	if(reply) {
+		freeReplyObject(reply);
+	}
+}
+
 struct _Ryconninfo {
 	char *host;
 	char *dbname;
@@ -554,7 +561,7 @@ redis_context_handle get_redis_async_connection(struct event_base *base, char* c
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 		} else {
 			if (!donot_print_connection_success) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB connection success: %s\n", connection_string);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB async connection success: %s\n", connection_string);
 			}
 		}
 		RyconninfoFree(co);
@@ -606,13 +613,13 @@ static redisContext *get_redis_connection(void)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot initialize Redis DB connection\n");
 			} else {
 				if (co->password) {
-					redisCommand(redisconnection, "AUTH %s", co->password);
+					turnFreeRedisReply(redisCommand(redisconnection, "AUTH %s", co->password));
 				}
 				if (co->dbname) {
-					redisCommand(redisconnection, "select %s", co->dbname);
+					turnFreeRedisReply(redisCommand(redisconnection, "select %s", co->dbname));
 				}
 				if (!donot_print_connection_success) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB connection success: %s\n", userdb);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis DB sync connection success: %s\n", userdb);
 				}
 			}
 			RyconninfoFree(co);
@@ -737,12 +744,15 @@ static int get_auth_secrets(secrets_list_t *sl)
 					} else {
 						add_to_secrets_list(sl,rget->str);
 					}
+					turnFreeRedisReply(rget);
 				}
 			}
 
 			clean_secrets_list(&keys);
 
 			ret = 0;
+
+			turnFreeRedisReply(reply);
 		}
 	}
 #endif
@@ -1004,6 +1014,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						ret = 0;
 					}
 				}
+				turnFreeRedisReply(rget);
 			}
 			if(ret != 0) {
 				snprintf(s,sizeof(s),"get turn/user/%s/password", uname);
@@ -1019,6 +1030,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 							ret = 0;
 						}
 					}
+					turnFreeRedisReply(rget);
 				}
 			}
 		}
@@ -1114,6 +1126,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 					pwd[SHORT_TERM_PASSWORD_SIZE]=0;
 					ret = 0;
 				}
+				turnFreeRedisReply(rget);
 			}
 		}
 	}
@@ -1409,6 +1422,7 @@ static int list_users(int is_st)
 							add_to_secrets_list(&keys,reply->element[i]->str);
 						}
 					}
+					turnFreeRedisReply(reply);
 				}
 			}
 
@@ -1426,6 +1440,7 @@ static int list_users(int is_st)
 						add_to_secrets_list(&keys,reply->element[i]->str);
 					}
 				}
+				turnFreeRedisReply(reply);
 			}
 
 			for(isz=0;isz<keys.sz;++isz) {
@@ -1552,9 +1567,12 @@ static int show_secret(void)
 							printf("%s\n",rget->str);
 						}
 					}
+					turnFreeRedisReply(rget);
 				}
 
 				clean_secrets_list(&keys);
+
+				turnFreeRedisReply(reply);
 			}
 		}
 #endif
@@ -1624,7 +1642,7 @@ static int del_secret(u08bits *secret) {
 				for(isz=0;isz<keys.sz;++isz) {
 					if(!secret || (secret[0]==0)) {
 						snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
-						redisCommand(rc, s);
+						turnFreeRedisReply(redisCommand(rc, s));
 					} else {
 						snprintf(s,sizeof(s),"get %s", keys.secrets[isz]);
 						redisReply *rget = (redisReply *)redisCommand(rc, s);
@@ -1637,16 +1655,19 @@ static int del_secret(u08bits *secret) {
 							} else {
 								if(!strcmp((char*)secret,rget->str)) {
 									snprintf(s,sizeof(s),"del %s", keys.secrets[isz]);
-									redisCommand(rc, s);
+									turnFreeRedisReply(redisCommand(rc, s));
 								}
 							}
+							turnFreeRedisReply(rget);
 						}
 					}
 				}
 
-				redisCommand(rc, "save");
+				turnFreeRedisReply(redisCommand(rc, "save"));
 
 				clean_secrets_list(&keys);
+
+				turnFreeRedisReply(reply);
 			}
 		}
 #endif
@@ -1707,8 +1728,8 @@ static int set_secret(u08bits *secret) {
 
 			snprintf(s,sizeof(s),"set turn/secret/%lu %s", (unsigned long)turn_time(), secret);
 
-			redisCommand(rc, s);
-			redisCommand(rc, "save");
+			turnFreeRedisReply(redisCommand(rc, s));
+			turnFreeRedisReply(redisCommand(rc, "save"));
 		}
 #endif
 	}
@@ -1855,10 +1876,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 			if(ct == TA_DELETE_USER) {
 				if(!is_st) {
 				  snprintf(statement,sizeof(statement),"del turn/user/%s/key",user);
-				  redisCommand(rc, statement);
+				  turnFreeRedisReply(redisCommand(rc, statement));
 				}
 				snprintf(statement,sizeof(statement),"del turn/user/%s/password",user);
-				redisCommand(rc, statement);
+				turnFreeRedisReply(redisCommand(rc, statement));
 			}
 
 			if(ct == TA_UPDATE_USER) {
@@ -1867,10 +1888,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 				} else {
 				  snprintf(statement,sizeof(statement),"set turn/user/%s/key %s",user,skey);
 				}
-				redisCommand(rc, statement);
+				turnFreeRedisReply(redisCommand(rc, statement));
 			}
 
-			redisCommand(rc, "save");
+			turnFreeRedisReply(redisCommand(rc, "save"));
 		}
 #endif
 	} else if(!is_st) {
@@ -2028,7 +2049,7 @@ void auth_ping(void)
 #if !defined(TURN_NO_HIREDIS)
 	redisContext *rc = get_redis_connection();
 	if(rc) {
-		redisCommand(rc, "keys turn/secret/*");
+		turnFreeRedisReply(redisCommand(rc, "keys turn/secret/*"));
 	}
 #endif
 
@@ -2243,10 +2264,13 @@ static ip_range_list_t* get_ip_list(const char *kind)
 					} else {
 						add_ip_list_range(rget->str,ret);
 					}
+					turnFreeRedisReply(rget);
 				}
 			}
 
 			clean_secrets_list(&keys);
+
+			turnFreeRedisReply(reply);
 		}
 	}
 #endif
