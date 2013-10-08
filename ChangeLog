@@ -1,3 +1,7 @@
+10/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 2.6.5.1 'Harding Grim':
+	- Redis-related memory leak fixed (Issue 61).
+	
 09/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.4.1 'Harding Grim':
 	- Crash on uninitialized redis db name is fixed (Issue 59).
