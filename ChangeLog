@@ -1,5 +1,6 @@
 10/09/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 2.6.5.1 'Harding Grim':
+Version 2.6.5.2 'Harding Grim':
+	- Documentation changes.
 	- Redis-related memory leak fixed (Issue 61).
 	
 09/25/2013 Oleg Moskalenko <mom040267@gmail.com>
