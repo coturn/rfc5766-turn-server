@@ -102,7 +102,7 @@ User database settings:
 		
 		Also, see http://www.PostgreSQL.org for full PostgreSQL documentation.
 				  
--M, --mysql-userdb	User database connection string for MySQL. 
+-M, --mysql-userdb	User database connection string for MySQL or MariaDB. 
 		This database can be used for long-term and short-term credentials mechanisms,
 		and it can store the secret value for secret-based timed authentication in TURN RESP API.
 		The connection string format is like that:
@@ -110,7 +110,8 @@ User database settings:
 		"host=<host> dbname=<dbname> user=<db-user> password=<db-user-password> connect_timeout=<seconds>"
 		See the INSTALL file for more explanations and examples.
 		
-		Also, see http://www.mysql.org for full MySQL documentation.
+		Also, see http://www.mysql.org or http://mariadb.org 
+		for full MySQL documentation.
 		
 -N, --redis-userdb	User database connection string for Redis. 
 		This database can be used for long-term and short-term credentials mechanisms,

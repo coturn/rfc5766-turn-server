@@ -173,7 +173,8 @@ After the installation, you may want to adjust the system-wide shared library
 search path by using "ldconfig -n <libdirname>" (Linux), 
 "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" (Solaris). 
 Your system must be able to find the libevent2, openssl and (optionally) 
-PostgreSQL and/or MySQL and/or Redis shared libraries, either with the 
+PostgreSQL and/or MySQL (MariaDB) and/or Redis shared libraries, 
+either with the
 help of the system-wide library search configuration or by using 
 LD_LIBRARY_PATH. "make install" will make a non-garantied effort to add 
 automatically PREFIX/lib and /usr/local/lib to the libraries search path, 
@@ -234,19 +235,20 @@ VII. WHICH EXTRA LIBRARIES AND UTILITIES YOU NEED
 In addition to common *NIX OS services and libraries, to compile this code, 
 OpenSSL (version 1.0.0a or better recommended) and libevent2 (version 2.0.5 
 or better) are required, the PostgreSQL C client development setup is 
-optional, the MySQL C client development setup is optional, and the 
+optional, the MySQL (MariaDB) C client development setup is optional, and the 
 Hiredis development files for Redis database access are optional.
 For fully functional build, the extra set of libraries must be installed
 in full version (the development headers and the libraries to link with). 
 For runtime, only runtime setup is required. If the build is modified for 
 static linking, then even runtime installation is not needed.
 
-OpenSSL, libevent2, PostgreSQL, MySQL and Hiredis library (for redis access)
-can be downloaded from their web sites:
+OpenSSL, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
+libraries can be downloaded from their web sites:
  - http://www.openssl.org;
  - http://www.libevent.org;
  - http://www.postgresql.org;
  - http://www.mysql.org;
+ - http://mariadb.org;
  - http://redis.io .
  
 The installations are pretty straightforward - the usual 
@@ -720,7 +722,7 @@ Fill in users, for example:
   $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
 
-XV. MySQL setup
+XV. MySQL (MariaDB) setup
 
 The MySQL setup is similar to PostgreSQL (same idea), and is well documented 
 on their site http://www.mysql.org. The TURN Server database schema is the 

@@ -58,6 +58,8 @@ set turn/denied-peer-ip/234567 "123::45"
 
 set turn/allowed-peer-ip/345678 "172.17.13.200"
 
+save
+
 !
 
 6) Redis database configuration parameters
