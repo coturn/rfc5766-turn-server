@@ -1439,6 +1439,8 @@ static int make_local_relays_list(int allow_local)
 					continue;
 				if(!strcmp(saddr,"0.0.0.0"))
 				  continue;
+				if(strstr(saddr,"127") == saddr)
+					continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
@@ -1447,6 +1449,8 @@ static int make_local_relays_list(int allow_local)
 					continue;
 				if(!strcmp(saddr,"::"))
 				  continue;
+				if(strstr(saddr,"::1") == saddr)
+					continue;
 			} else
 				continue;
 
