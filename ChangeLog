@@ -1,3 +1,8 @@
+10/14/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 2.6.5.3 'Harding Grim':
+	- Cygwin loopback relay interfaces fixed (Issue 62).
+	- rpath added to the Makefile (Issue 63).
+	
 10/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.5.2 'Harding Grim':
 	- Documentation changes.
