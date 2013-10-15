@@ -46,21 +46,21 @@ testlibevent2_comp() {
 }
 
 testhiredis() {
-	HIREDISCFLAGS=
-	HIREDISLIBS=-lhiredis
+    HIREDISCFLAGS=
+    HIREDISLIBS=-lhiredis
     ${CC} ${HR_TMPCPROGC} -o ${HR_TMPCPROGB} ${OSCFLAGS} ${DBLIBS} ${HIREDISCFLAGS} ${HIREDISLIBS} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD}
-		${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
-		${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
-		${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
-		${ECHO_CMD}
-		return 0
+	${ECHO_CMD}
+	${ECHO_CMD} "HIREDIS DEVELOPMENT LIBRARY (libhiredis.*) AND/OR HEADERS (hiredis/*.h)"
+	${ECHO_CMD} "	ARE NOT INSTALLED PROPERLY ON THIS SYSTEM."
+	${ECHO_CMD} "	THAT'S OK BUT THE TURN SERVER IS BUILDING WITHOUT REDIS SUPPORT."
+	${ECHO_CMD}
+	return 0
     else
-		DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
-		DBLIBS="${DBLIBS} ${HIREDISLIBS}"
-		return 1
+	DBCFLAGS="${DBCFLAGS} ${HIREDISCFLAGS}"
+	DBLIBS="${DBLIBS} ${HIREDISLIBS}"
+	return 1
     fi
 }
 
@@ -70,9 +70,12 @@ testlibpq() {
     POSTCFLAGS="${POSTCFLAGS} -I/usr/pgsql/include -I/usr/include/pgsql/ -I/usr/include/postgres/ -I/usr/postgres/include/ -I/usr/include/postgresql/ -I/usr/postgresql/include/"
     for ilib in ${PREFIX}/pgsql/lib ${PREFIX}/lib/pgsql ${PREFIX}/lib64/pgsql /usr/local/pgsql/lib /usr/local/lib/pgsql /usr/local/lib64/pgsql /usr/pgsql/lib /usr/lib/pgsql /usr/lib64/pgsql ${PREFIX}/postgres/lib ${PREFIX}/lib/postgres ${PREFIX}/lib64/postgres /usr/local/postgres/lib /usr/local/lib/postgres /usr/local/lib64/postgres /usr/postgres/lib /usr/lib/postgres /usr/lib64/postgres ${PREFIX}/postgresql/lib ${PREFIX}/lib/postgresql ${PREFIX}/lib64/postgresql /usr/local/postgresql/lib /usr/local/lib/postgresql /usr/local/lib64/postgresql /usr/postgresql/lib /usr/lib/postgresql /usr/lib64/postgresql
     do
-      if [ -d ${ilib} ] ; then
-    	POSTLIBS="${POSTLIBS} -L${ilib}"
-      fi
+	if [ -d ${ilib} ] ; then
+    	    POSTLIBS="${POSTLIBS} -L${ilib}"
+	    if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+		TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+	    fi
+	fi
     done
     POSTLIBS="${OSLIBS} ${POSTLIBS} -lpq"
     ${CC} ${PQ_TMPCPROGC} -o ${PQ_TMPCPROGB} ${OSCFLAGS} ${DBCFLAGS} ${POSTCFLAGS} ${DBLIBS} ${POSTLIBS} ${OSLIBS} 2>>/dev/null 
@@ -99,6 +102,9 @@ testlibmysql() {
     do
       if [ -d ${ilib} ] ; then
         MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
+	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+	fi
       fi
     done
     MYSQL_LIBS="${OSLIBS} ${MYSQL_LIBS} -lmysqlclient"
@@ -239,7 +245,7 @@ if [ -z "${PORTNAME}" ] ; then
 	PORTNAME=turnserver
 fi
 
-#####################
+#########################
 
 # Installation directory options
 
@@ -434,15 +440,19 @@ OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS}"
 for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/
 do
-  if [ -d ${ilib} ] ; then
-    OSLIBS="${OSLIBS} -L${ilib}"
-  fi
+    if [ -d ${ilib} ] ; then
+	OSLIBS="${OSLIBS} -L${ilib}"
+	TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+    fi
 done
 SYSTEM=`uname`
 
 if [ "${SYSTEM}" = "NetBSD" ] ; then
 	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
 	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
+	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=/usr/pkg/lib"
+	fi
 fi
 
 ###########################
@@ -665,6 +675,14 @@ fi
 
 ${ECHO_CMD} "Compiler: ${CC}"
 
+if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath=/usr/lib 2>>/dev/null
+    ER=$?
+    if [ ${ER} -eq 0 ] ; then
+	TURN_ACCEPT_RPATH=1
+    fi
+fi
+
 ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
@@ -687,26 +705,26 @@ if ! [ ${ER} -eq 0 ] ; then
     ${CC} -Wall ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
+	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
-		${ECHO_CMD} "g++ or something..."
-		GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-		${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-		ER=$?
-		if ! [ ${ER} -eq 0 ] ; then
-	    	${ECHO_CMD} "Not an ordinary g++ compiler"
-			GNUOSCFLAGS="-x c++ -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
-			${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
-			ER=$?
-			if ! [ ${ER} -eq 0 ] ; then
-	    		${ECHO_CMD} "Not an ordinary c++ compiler"
-			else
-			${ECHO_CMD} "Clang++ compiler ?"
-	    		OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
-	    	fi
-		else
+	${ECHO_CMD} "g++ or something..."
+	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+	ER=$?
+	if ! [ ${ER} -eq 0 ] ; then
+	    ${ECHO_CMD} "Not an ordinary g++ compiler"
+	    GNUOSCFLAGS="-x c++ -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+	    ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
+	    ER=$?
+	    if ! [ ${ER} -eq 0 ] ; then
+	    	${ECHO_CMD} "Not an ordinary c++ compiler"
+	    else
+		${ECHO_CMD} "Clang++ compiler ?"
 	    	OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
-		fi
+	    fi
+	else
+	    OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
+	fi
     fi
 else
     OSCFLAGS="${GNUOSCFLAGS} ${OSCFLAGS}"
@@ -964,6 +982,11 @@ fi
 ###############################
 
 OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_RELAY_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
+
+if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=/usr/local/lib"
+    OSLIBS="${OSLIBS} ${TURN_RPATH}"
+fi
 
 ${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
 
