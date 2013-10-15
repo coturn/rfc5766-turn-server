@@ -326,6 +326,9 @@ do
   | --syscon=* | --sysco=* | --sysc=* | --sys=* | --sy=* | -confdir=* | --confdir=*)
     CONFDIR=$ac_optarg ;;
     
+  -disable-rpath | --disable-rpath)
+  	TURN_DISABLE_RPATH=1 ;;
+    
   esac
       
 done
@@ -984,8 +987,10 @@ fi
 OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_RELAY_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -D__USE_OPENSSL__ -DINSTALL_PREFIX=${PREFIX}"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
+  if [ -z "${TURN_DISABLE_RPATH}" ] ; then
     TURN_RPATH="${TURN_RPATH} -Wl,-rpath=/usr/local/lib"
     OSLIBS="${OSLIBS} ${TURN_RPATH}"
+  fi
 fi
 
 ${ECHO_CMD} PREFIX="${PREFIX}" OSLIBS="${OSLIBS}" DBLIBS="${DBLIBS}" OSCFLAGS="${OSCFLAGS}" DBCFLAGS="${DBCFLAGS}" $@
