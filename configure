@@ -73,7 +73,7 @@ testlibpq() {
 	if [ -d ${ilib} ] ; then
     	    POSTLIBS="${POSTLIBS} -L${ilib}"
 	    if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-		TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
 	    fi
 	fi
     done
@@ -103,7 +103,7 @@ testlibmysql() {
       if [ -d ${ilib} ] ; then
         MYSQL_LIBS="${MYSQL_LIBS} -L${ilib}"
 	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
 	fi
       fi
     done
@@ -445,7 +445,7 @@ for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/loc
 do
     if [ -d ${ilib} ] ; then
 	OSLIBS="${OSLIBS} -L${ilib}"
-	TURN_RPATH="${TURN_RPATH} -Wl,-rpath=${ilib}"
+	TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
     fi
 done
 SYSTEM=`uname`
@@ -454,7 +454,7 @@ if [ "${SYSTEM}" = "NetBSD" ] ; then
 	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
 	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
 	if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=/usr/pkg/lib"
+	    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,/usr/pkg/lib"
 	fi
 fi
 
@@ -679,7 +679,7 @@ fi
 ${ECHO_CMD} "Compiler: ${CC}"
 
 if [ -z "${TURN_ACCEPT_RPATH}" ] ; then
-    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath=/usr/lib 2>>/dev/null
+    ${CC} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} -Wl,-rpath,/usr/lib 2>>/dev/null
     ER=$?
     if [ ${ER} -eq 0 ] ; then
 	TURN_ACCEPT_RPATH=1
@@ -988,7 +988,7 @@ OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_RE
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then
-    TURN_RPATH="${TURN_RPATH} -Wl,-rpath=/usr/local/lib"
+    TURN_RPATH="${TURN_RPATH} -Wl,-rpath,/usr/local/lib"
     OSLIBS="${OSLIBS} ${TURN_RPATH}"
   fi
 fi
