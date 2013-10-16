@@ -1379,6 +1379,9 @@ static int make_local_listeners_list(void)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
+			if(!(ifa->ifa_flags & IFF_UP))
+				continue;
+
 			if(!(ifa->ifa_addr))
 				continue;
 
@@ -1423,12 +1426,15 @@ static int make_local_relays_list(int allow_local)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
+			if(!(ifa->ifa_flags & IFF_UP))
+				continue;
+
 			if(!(ifa->ifa_name))
 				continue;
 			if(!(ifa ->ifa_addr))
 				continue;
 
-			if(!allow_local && (strstr(ifa->ifa_name,"lo") == ifa->ifa_name))
+			if(!allow_local && (ifa->ifa_flags & IFF_LOOPBACK))
 				continue;
 
 			if (ifa ->ifa_addr->sa_family == AF_INET) {
@@ -1439,8 +1445,6 @@ static int make_local_relays_list(int allow_local)
 					continue;
 				if(!strcmp(saddr,"0.0.0.0"))
 				  continue;
-				if(strstr(saddr,"127") == saddr)
-					continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
@@ -1449,8 +1453,6 @@ static int make_local_relays_list(int allow_local)
 					continue;
 				if(!strcmp(saddr,"::"))
 				  continue;
-				if(strstr(saddr,"::1") == saddr)
-					continue;
 			} else
 				continue;
 
