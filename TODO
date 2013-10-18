@@ -76,6 +76,12 @@
 	SHA1 is mandatory according to RFC5766. But it would be 
 	nice to have SHA256, as an option. I guess that for some 
 	applications the additional CPU load can be justified.
+	
+3) Add client certificate check option.
+
+4) Add CA path option.
+
+5) Add certficiate check option to the test client.
 
 ==================================================================
 

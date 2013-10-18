@@ -40,6 +40,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <openssl/ssl.h>
 #include <openssl/opensslv.h>
 
@@ -62,8 +65,12 @@ int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 st_password_t g_upwd;
 int use_fingerprints = 1;
+
+static int verify_server_cert = 0;
+static char ca_cert_file[1025]="/etc/ssl/certs";
 SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
+
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
 unsigned char client_ifname[1025] = "\0";
 int passive_tcp = 0;
@@ -395,7 +402,42 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 
-			SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 2);
+			if (verify_server_cert) {
+
+				if (ca_cert_file[0]) {
+					struct stat buf;
+					if (stat(ca_cert_file, &buf) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"ERROR: cannot locate CA directory: %s\n",
+								ca_cert_file);
+					} else if (S_ISREG(buf.st_mode)) {
+						if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file,
+								NULL )) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+									"ERROR: cannot load CA from file: %s\n",
+									ca_cert_file);
+						}
+					} else if (S_ISDIR(buf.st_mode)) {
+						if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], NULL,
+								ca_cert_file)) {
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+									"ERROR: cannot load CA from directory: %s\n",
+									ca_cert_file);
+						}
+					} else {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+								"ERROR: cannot determine type of CA location: %s\n",
+								ca_cert_file);
+					}
+				}
+
+				/* Set to require peer (client) certificate verification */
+				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_PEER, NULL );
+
+				/* Set the verification depth to 99 */
+				SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 99);
+			}
+
 			SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
 		}
 	}

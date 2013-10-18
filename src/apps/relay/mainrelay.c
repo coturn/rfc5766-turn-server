@@ -83,7 +83,7 @@
 
 static void openssl_setup(void);
 
-static char cipher_list[1025]="\0";
+static char cipher_list[1025]="";
 
 #define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
 
@@ -159,10 +159,10 @@ static SSL_CTX *tls_ctx_v1_2 = NULL;
 
 static SSL_CTX *dtls_ctx = NULL;
 
-static char listener_ifname[1025]="\0";
+static char listener_ifname[1025]="";
 
 #if !defined(TURN_NO_HIREDIS)
-static char redis_statsdb[1025]="\0";
+static char redis_statsdb[1025]="";
 static int use_redis_statsdb = 0;
 #endif
 
@@ -172,8 +172,10 @@ static int use_redis_statsdb = 0;
  * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
  *
 */
-static char cert_file[1025]="turn_server_cert.pem\0";
-static char pkey_file[sizeof(cert_file)]="turn_server_pkey.pem\0";
+static int verify_client_cert = 0;
+static char ca_cert_file[1025]="/etc/ssl/certs";
+static char cert_file[1025]="turn_server_cert.pem";
+static char pkey_file[1025]="turn_server_pkey.pem";
 
 struct message_to_listener_to_client {
 	ioa_addr origin;
@@ -236,7 +238,7 @@ static u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
 static int no_multicast_peers = 0;
 static int no_loopback_peers = 0;
 
-static char relay_ifname[1025]="\0";
+static char relay_ifname[1025]="";
 
 static size_t relays_number = 0;
 static char **relay_addrs = NULL;
@@ -1372,7 +1374,7 @@ static int make_local_listeners_list(void)
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
 
-	char saddr[INET6_ADDRSTRLEN] = "\0";
+	char saddr[INET6_ADDRSTRLEN] = "";
 
 	if((getifaddrs(&ifs) == 0) && ifs) {
 
@@ -1418,7 +1420,7 @@ static int make_local_relays_list(int allow_local)
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
 
-	char saddr[INET6_ADDRSTRLEN] = "\0";
+	char saddr[INET6_ADDRSTRLEN] = "";
 
 	getifaddrs(&ifs);
 
@@ -2223,10 +2225,10 @@ static int adminmain(int argc, char **argv)
 	TURNADMIN_COMMAND_TYPE ct = TA_COMMAND_UNKNOWN;
 	int is_st = 0;
 
-	u08bits user[STUN_MAX_USERNAME_SIZE+1]="\0";
-	u08bits realm[STUN_MAX_REALM_SIZE+1]="\0";
-	u08bits pwd[STUN_MAX_PWD_SIZE+1]="\0";
-	u08bits secret[AUTH_SECRET_SIZE+1]="\0";
+	u08bits user[STUN_MAX_USERNAME_SIZE+1]="";
+	u08bits realm[STUN_MAX_REALM_SIZE+1]="";
+	u08bits pwd[STUN_MAX_PWD_SIZE+1]="";
+	u08bits secret[AUTH_SECRET_SIZE+1]="";
 
 	while (((c = getopt_long(argc, argv, ADMIN_OPTIONS, admin_long_options, NULL)) != -1)) {
 		switch (c){
@@ -2749,7 +2751,7 @@ int THREAD_cleanup(void) {
 
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
-	if(cipher_list[0] == 0)
+	if(!(cipher_list[0]))
 		STRCPY(cipher_list,DEFAULT_CIPHER_LIST);
 
 	SSL_CTX_set_cipher_list(ctx, cipher_list);
@@ -2762,13 +2764,45 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	}
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n", protocol);
+		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n", protocol);
+		} else {
+			print_abs_file_name(protocol, ": Private RSA key", pkey_file);
+		}
 	} else {
 		print_abs_file_name(protocol, ": Private key", pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
+	}
+
+	if (verify_client_cert) {
+
+		if(ca_cert_file[0]) {
+			struct stat buf;
+			if(stat(ca_cert_file,&buf)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot locate CA directory: %s\n", ca_cert_file);
+			} else if(S_ISREG(buf.st_mode)) {
+				if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
+						ERR_print_errors_fp(stderr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
+				}
+			} else if(S_ISDIR(buf.st_mode)) {
+				if (!SSL_CTX_load_verify_locations(ctx, NULL, ca_cert_file )) {
+						ERR_print_errors_fp(stderr);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from directory: %s\n", ca_cert_file);
+				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot determine type of CA location: %s\n", ca_cert_file);
+			}
+		}
+
+		/* Set to require peer (client) certificate verification */
+		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+
+		/* Set the verification depth to 99 */
+		SSL_CTX_set_verify_depth(ctx, 99);
 	}
 }
 
