@@ -194,8 +194,6 @@ use only UDP relay endpoints as defined in RFC 5766.
 
 --no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
 
---verify-client-cert	Flag that forces TURN server to verify the client SSL certificates.
-
 -h			Help.
     
 Options with required values:  
@@ -346,8 +344,9 @@ Options with required values:
 --cipher-list			Allowed OpenSSL cipher list for TLS/DTLS connections.
 				Default value is "ALL:eNULL:aNULL:NULL".
 				
---CA-file			CA file in OpenSSL format. That file contains trusted authorities information
-				for client certificates check. Only used if the --verify-client-cert is used.
+--CA-file			CA file in OpenSSL format. 
+				Forces TURN server to verify the client SSL certificates.
+				By default, no CA is set and no client certificate check is performed.
 				
 -l, --log-file			Option to set the full path name of the log file.
 				By default, the turnserver tries to open a log file in 

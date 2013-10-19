@@ -66,7 +66,6 @@ u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 st_password_t g_upwd;
 int use_fingerprints = 1;
 
-static int verify_server_cert = 0;
 static char ca_cert_file[1025]="";
 SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
@@ -101,12 +100,12 @@ static char Usage[] =
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
   "	-O	DOS attack mode (quick connect and exit).\n"
-  " -R  Verify server certificate.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
   "	-k	Private key file (for secure connections only).\n"
-  " -E  CA file (if server certificate to be verified).\n"
+  "	-E	CA file for server certificate verification, \n"
+  "		if the server certificate to be verified.\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
   "	-n	Number of messages to send (Default: 5).\n"
   "	-d	Local interface device (optional).\n"
@@ -149,11 +148,8 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUR")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOU")) != -1) {
 		switch (c){
-		case 'R':
-			verify_server_cert = 1;
-			break;
 		case 'E':
 			STRCPY(ca_cert_file,optarg);
 			break;
@@ -410,24 +406,21 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 
-			if (verify_server_cert) {
-
-				if (ca_cert_file[0]) {
-					if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL )) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"ERROR: cannot load CA from file: %s\n",
-								ca_cert_file);
-					}
+			if (ca_cert_file[0]) {
+				if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL )) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"ERROR: cannot load CA from file: %s\n",
+							ca_cert_file);
 				}
 
 				/* Set to require peer (client) certificate verification */
 				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_PEER, NULL );
+
+				/* Set the verification depth to 9 */
+				SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 9);
 			} else {
 				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_NONE, NULL );
 			}
-
-			/* Set the verification depth to 9 */
-			SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 9);
 
 			SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
 		}

@@ -105,7 +105,6 @@ static SSL_CTX *dtls_ctx = NULL;
  * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
  *
 */
-static int verify_client_cert = 0;
 static char ca_cert_file[1025]="";
 static char cert_file[1025]="turn_server_cert.pem";
 static char pkey_file[1025]="turn_server_pkey.pem";
@@ -1588,9 +1587,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						are specified, then this parameter is not needed.\n"
 " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
 "						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
-" --verify-client-cert				Flag that forces TURN server to verify the client SSL certificates.\n"
-" --CA-file		<filename>		CA file in OpenSSL format. That file contains trusted authorities information\n"
-"						for client certificates check. Only used if the --verify-client-cert is used.\n"
+" --CA-file		<filename>		CA file in OpenSSL format.\n"
+"						Forces TURN server to verify the client SSL certificates.\n"
+"						By default, no CA is set and no client certificate check is performed.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -1699,7 +1698,6 @@ enum EXTRA_OPTS {
 	CIPHER_LIST_OPT,
 	PIDFILE_OPT,
 	SECURE_STUN_OPT,
-	VERIFY_CLIENT_CERT_OPT,
 	CA_FILE_OPT
 };
 
@@ -1769,7 +1767,6 @@ static struct option long_options[] = {
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
-				{ "verify-client-cert", optional_argument, NULL, VERIFY_CLIENT_CERT_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -2050,9 +2047,6 @@ static void set_option(int c, char *value)
 		break;
 	case CERT_FILE_OPT:
 		STRCPY(cert_file,value);
-		break;
-	case VERIFY_CLIENT_CERT_OPT:
-		verify_client_cert = get_bool_value(value);
 		break;
 	case CA_FILE_OPT:
 		STRCPY(ca_cert_file,value);
@@ -2790,24 +2784,23 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
 	}
 
-	if (verify_client_cert) {
+	if(ca_cert_file[0]) {
 
-		if(ca_cert_file[0]) {
-			if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
-			} else {
-				SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
-			}
+		if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
+		} else {
+			SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
 		}
 
 		/* Set to require peer (client) certificate verification */
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, NULL);
+
+		/* Set the verification depth to 9 */
+		SSL_CTX_set_verify_depth(ctx, 9);
+
 	} else {
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 	}
-
-	/* Set the verification depth to 9 */
-	SSL_CTX_set_verify_depth(ctx, 9);
 }
 
 static void adjust_key_file_name(char *fn, const char* file_title)

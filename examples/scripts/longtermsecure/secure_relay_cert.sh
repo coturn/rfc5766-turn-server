@@ -24,8 +24,7 @@
 # 9) "--pkey=..." sets the OpenSSL private key name.
 # 10) "--log-file=stdout" means that all log output will go to the stdout. 
 # 11) "-v" means normal verbose mode (with some moderate logging).
-# 12) --verify-client-cert sets the client certificate check mode.
-# 13) --CA-file sets the CA file for client certificate check.
+# 12) --CA-file sets the CA file for client certificate check.
 # Other parameters (config file name, etc) are default.
 
 if [ -d examples ] ; then
@@ -35,4 +34,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --verify-client-cert --CA-file=etc/turn_server_cert.pem --log-file=stdout -v $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --CA-file=etc/turn_server_cert.pem --log-file=stdout -v $@
