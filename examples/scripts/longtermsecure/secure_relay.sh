@@ -18,8 +18,8 @@
 # 6) "--user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee" means 
 # "allow user 'ninefinger' with generated key '0xbc807ee29df3c9ffa736523fb2c4e8ee' ".
 # 7) "--user=gorst:hero" means "allow user 'gorst' with password 'hero' ".
-# 8) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
-# 9) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
+# 8) "--cert=turn_server_cert.pem" sets the OpenSSL certificate file name. 
+# 9) "--pkey=turn_server_pkey.pem" sets the OpenSSL private key name.
 # 10) "--log-file=stdout" means that all log output will go to the stdout. 
 # 11) "-v" means normal verbose mode (with some moderate logging).
 # Other parameters (config file name, etc) are default.

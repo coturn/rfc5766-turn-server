@@ -120,6 +120,13 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 		} while (rc < 0 && errno == EINTR);
 		if (rc > 0) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s\n",__FUNCTION__,SSL_get_cipher(ssl));
+		  if(clnet_verbose && SSL_get_peer_certificate(ssl)) {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
+		  	X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
+		  						XN_FLAG_MULTILINE);
+		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+		  	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n------------------------------------------------------------\n\n");
+		  }
 		  break;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: cannot connect\n",
