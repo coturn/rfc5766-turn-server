@@ -2756,6 +2756,54 @@ int THREAD_cleanup(void) {
   return 1;
 }
 
+static void adjust_key_file_name(char *fn, const char* file_title)
+{
+	char *full_path_to_file = NULL;
+
+	if(!fn[0]) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: you must set the %s file parameter\n",file_title);
+	  goto keyerr;
+	} else {
+
+	  full_path_to_file = find_config_file(fn, 1);
+	  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
+	  if(!f) {
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (1)\n",file_title,fn);
+	    goto keyerr;
+	  }
+
+	  if(!full_path_to_file) {
+	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (2)\n",file_title,fn);
+	    goto keyerr;
+	  }
+
+	  strncpy(fn,full_path_to_file,sizeof(cert_file)-1);
+	  fn[sizeof(cert_file)-1]=0;
+
+	  if(full_path_to_file)
+	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+	  return;
+	}
+
+	keyerr:
+	{
+	  no_tls = 1;
+	  no_dtls = 1;
+	  if(full_path_to_file)
+	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
+	  return;
+	}
+}
+
+static void adjust_key_file_names(void)
+{
+	if(ca_cert_file[0])
+		adjust_key_file_name(ca_cert_file,"CA");
+	adjust_key_file_name(cert_file,"certificate");
+	adjust_key_file_name(pkey_file,"private key");
+}
+
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
 	if(!(cipher_list[0]))
@@ -2787,10 +2835,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	if(ca_cert_file[0]) {
 
 		if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
-		} else {
-			SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot load CA from file: %s\n", ca_cert_file);
 		}
+
+		SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
 
 		/* Set to require peer (client) certificate verification */
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, NULL);
@@ -2801,52 +2849,6 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	} else {
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 	}
-}
-
-static void adjust_key_file_name(char *fn, const char* file_title)
-{
-	char *full_path_to_file = NULL;
-
-	if(!fn[0]) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"\nERROR: you must set the %s file parameter\n",file_title);
-	  goto keyerr;
-	} else {
-	  
-	  full_path_to_file = find_config_file(fn, 1);
-	  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
-	  if(!f) {
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (1)\n",file_title,fn);
-	    goto keyerr;
-	  }
-	  
-	  if(!full_path_to_file) {
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (2)\n",file_title,fn);
-	    goto keyerr;
-	  }
-	  
-	  strncpy(fn,full_path_to_file,sizeof(cert_file)-1);
-	  fn[sizeof(cert_file)-1]=0;
-	  
-	  if(full_path_to_file)
-	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
-	  return;
-	}
-
-	keyerr:
-	{
-	  no_tls = 1;
-	  no_dtls = 1;
-	  if(full_path_to_file)
-	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
-	  return;
-	}
-}
-
-static void adjust_key_file_names(void)
-{
-	adjust_key_file_name(cert_file,"certificate");
-	adjust_key_file_name(pkey_file,"private key");
 }
 
 static void openssl_setup(void)
