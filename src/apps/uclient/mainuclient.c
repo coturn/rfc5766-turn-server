@@ -55,8 +55,6 @@ int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
 int use_secure=0;
 int use_short_term=0;
-char cert_file[1025]="";
-char pkey_file[1025]="";
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
@@ -67,6 +65,8 @@ st_password_t g_upwd;
 int use_fingerprints = 1;
 
 static char ca_cert_file[1025]="";
+char cert_file[1025]="";
+char pkey_file[1025]="";
 SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
 
@@ -151,7 +151,14 @@ int main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOU")) != -1) {
 		switch (c){
 		case 'E':
-			STRCPY(ca_cert_file,optarg);
+		{
+			char* fn = find_config_file(optarg,1);
+			if(!fn) {
+				fprintf(stderr,"ERROR: file %s not found\n",optarg);
+				exit(-1);
+			}
+			STRCPY(ca_cert_file,fn);
+		}
 			break;
 		case 'O':
 			dos = 1;
@@ -251,8 +258,8 @@ int main(int argc, char **argv)
 			}
 			STRCPY(cert_file,fn);
 			free(fn);
-			break;
 		}
+			break;
 		case 'k':
 		{
 			char* fn = find_config_file(optarg,1);
@@ -262,8 +269,8 @@ int main(int argc, char **argv)
 			}
 			STRCPY(pkey_file,fn);
 			free(fn);
-			break;
 		}
+			break;
 		default:
 			fprintf(stderr, "%s\n", Usage);
 			exit(1);
