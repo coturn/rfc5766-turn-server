@@ -87,6 +87,29 @@ static char cipher_list[1025]="";
 
 #define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
 
+static SSL_CTX *tls_ctx_ssl23 = NULL;
+static SSL_CTX *tls_ctx_v1_0 = NULL;
+
+#if defined(SSL_TXT_TLSV1_1)
+static SSL_CTX *tls_ctx_v1_1 = NULL;
+#if defined(SSL_TXT_TLSV1_2)
+static SSL_CTX *tls_ctx_v1_2 = NULL;
+#endif
+#endif
+
+static SSL_CTX *dtls_ctx = NULL;
+
+/*
+ * openssl genrsa -out pkey 2048
+ * openssl req -new -key pkey -out cert.req
+ * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
+ *
+*/
+static int verify_client_cert = 0;
+static char ca_cert_file[1025]="";
+static char cert_file[1025]="turn_server_cert.pem";
+static char pkey_file[1025]="turn_server_pkey.pem";
+
 //////////// Barrier for the threads //////////////
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
@@ -147,35 +170,12 @@ int no_dtls = 0;
 static int no_tcp_relay = 0;
 static int no_udp_relay = 0;
 
-static SSL_CTX *tls_ctx_ssl23 = NULL;
-static SSL_CTX *tls_ctx_v1_0 = NULL;
-
-#if defined(SSL_TXT_TLSV1_1)
-static SSL_CTX *tls_ctx_v1_1 = NULL;
-#if defined(SSL_TXT_TLSV1_2)
-static SSL_CTX *tls_ctx_v1_2 = NULL;
-#endif
-#endif
-
-static SSL_CTX *dtls_ctx = NULL;
-
 static char listener_ifname[1025]="";
 
 #if !defined(TURN_NO_HIREDIS)
 static char redis_statsdb[1025]="";
 static int use_redis_statsdb = 0;
 #endif
-
-/*
- * openssl genrsa -out pkey 2048
- * openssl req -new -key pkey -out cert.req
- * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
- *
-*/
-static int verify_client_cert = 0;
-static char ca_cert_file[1025]="/etc/ssl/certs";
-static char cert_file[1025]="turn_server_cert.pem";
-static char pkey_file[1025]="turn_server_pkey.pem";
 
 struct message_to_listener_to_client {
 	ioa_addr origin;
@@ -1586,6 +1586,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no-dtls options\n"
 "						are specified, then this parameter is not needed.\n"
+" --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
+"						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
+" --verify-client-cert				Flag that forces TURN server to verify the client SSL certificates.\n"
+" --CA-file		<filename>		CA file in OpenSSL format. That file contains trusted authorities information\n"
+"						for client certificates check. Only used if the --verify-client-cert is used.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -1619,8 +1624,6 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						turn server. Multiple allowed-peer-ip can be set.\n"
 "     --denied-peer-ip=<ip[-ip]> 		Specifies an ip or range of ips that are not allowed to connect to the turn server.\n"
 "						Multiple denied-peer-ip can be set.\n"
-" --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
-"						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
 " --pidfile <\"pid-file-name\">			File name to store the pid of the process.\n"
 "						Default is /var/run/turnserver.pid (if superuser account is used) or\n"
 "						/var/tmp/turnserver.pid .\n"
@@ -1695,7 +1698,9 @@ enum EXTRA_OPTS {
 	DENIED_PEER_IPS,
 	CIPHER_LIST_OPT,
 	PIDFILE_OPT,
-	SECURE_STUN_OPT
+	SECURE_STUN_OPT,
+	VERIFY_CLIENT_CERT_OPT,
+	CA_FILE_OPT
 };
 
 static struct option long_options[] = {
@@ -1764,6 +1769,8 @@ static struct option long_options[] = {
 				{ "cipher-list", required_argument, NULL, CIPHER_LIST_OPT },
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
+				{ "verify-client-cert", optional_argument, NULL, VERIFY_CLIENT_CERT_OPT },
+				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -2043,6 +2050,12 @@ static void set_option(int c, char *value)
 		break;
 	case CERT_FILE_OPT:
 		STRCPY(cert_file,value);
+		break;
+	case VERIFY_CLIENT_CERT_OPT:
+		verify_client_cert = get_bool_value(value);
+		break;
+	case CA_FILE_OPT:
+		STRCPY(ca_cert_file,value);
 		break;
 	case PKEY_FILE_OPT:
 		STRCPY(pkey_file,value);
@@ -2780,30 +2793,21 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	if (verify_client_cert) {
 
 		if(ca_cert_file[0]) {
-			struct stat buf;
-			if(stat(ca_cert_file,&buf)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot locate CA directory: %s\n", ca_cert_file);
-			} else if(S_ISREG(buf.st_mode)) {
-				if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
-						ERR_print_errors_fp(stderr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
-				}
-			} else if(S_ISDIR(buf.st_mode)) {
-				if (!SSL_CTX_load_verify_locations(ctx, NULL, ca_cert_file )) {
-						ERR_print_errors_fp(stderr);
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from directory: %s\n", ca_cert_file);
-				}
+			if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot load CA from file: %s\n", ca_cert_file);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: cannot determine type of CA location: %s\n", ca_cert_file);
+				SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
 			}
 		}
 
 		/* Set to require peer (client) certificate verification */
-		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-
-		/* Set the verification depth to 99 */
-		SSL_CTX_set_verify_depth(ctx, 99);
+		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, NULL);
+	} else {
+		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 	}
+
+	/* Set the verification depth to 9 */
+	SSL_CTX_set_verify_depth(ctx, 9);
 }
 
 static void adjust_key_file_name(char *fn, const char* file_title)

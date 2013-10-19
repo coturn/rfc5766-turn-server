@@ -55,8 +55,8 @@ int clnet_verbose=TURN_VERBOSE_NONE;
 int use_tcp=0;
 int use_secure=0;
 int use_short_term=0;
-char cert_file[1025]="\0";
-char pkey_file[1025]="\0";
+char cert_file[1025]="";
+char pkey_file[1025]="";
 int hang_on=0;
 ioa_addr peer_addr;
 int no_rtcp = 0;
@@ -67,12 +67,12 @@ st_password_t g_upwd;
 int use_fingerprints = 1;
 
 static int verify_server_cert = 0;
-static char ca_cert_file[1025]="/etc/ssl/certs";
+static char ca_cert_file[1025]="";
 SSL_CTX *root_tls_ctx[32];
 int root_tls_ctx_num = 0;
 
 u08bits relay_transport = STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE;
-unsigned char client_ifname[1025] = "\0";
+unsigned char client_ifname[1025] = "";
 int passive_tcp = 0;
 int mandatory_channel_padding = 0;
 int negative_test = 0;
@@ -88,7 +88,7 @@ static char Usage[] =
   "		options -s, -e, -r and -g.\n"
   "	-P	Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
-  "     -U      Secure connection with eNULL cipher.\n"
+  " -U  Secure connection with eNULL cipher.\n"
   "	-v	Verbose.\n"
   "	-s	Use send method.\n"
   "	-y	Use client-to-client connections.\n"
@@ -101,10 +101,12 @@ static char Usage[] =
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
   "	-O	DOS attack mode (quick connect and exit).\n"
+  " -R  Verify server certificate.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
   "	-k	Private key file (for secure connections only).\n"
+  " -E  CA file (if server certificate to be verified).\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
   "	-n	Number of messages to send (Default: 5).\n"
   "	-d	Local interface device (optional).\n"
@@ -147,8 +149,14 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:vsyhcxgtTSAPDNOU")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUR")) != -1) {
 		switch (c){
+		case 'R':
+			verify_server_cert = 1;
+			break;
+		case 'E':
+			STRCPY(ca_cert_file,optarg);
+			break;
 		case 'O':
 			dos = 1;
 			break;
@@ -405,38 +413,21 @@ int main(int argc, char **argv)
 			if (verify_server_cert) {
 
 				if (ca_cert_file[0]) {
-					struct stat buf;
-					if (stat(ca_cert_file, &buf) < 0) {
+					if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file, NULL )) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"ERROR: cannot locate CA directory: %s\n",
-								ca_cert_file);
-					} else if (S_ISREG(buf.st_mode)) {
-						if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], ca_cert_file,
-								NULL )) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-									"ERROR: cannot load CA from file: %s\n",
-									ca_cert_file);
-						}
-					} else if (S_ISDIR(buf.st_mode)) {
-						if (!SSL_CTX_load_verify_locations(root_tls_ctx[sslind], NULL,
-								ca_cert_file)) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-									"ERROR: cannot load CA from directory: %s\n",
-									ca_cert_file);
-						}
-					} else {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-								"ERROR: cannot determine type of CA location: %s\n",
+								"ERROR: cannot load CA from file: %s\n",
 								ca_cert_file);
 					}
 				}
 
 				/* Set to require peer (client) certificate verification */
 				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_PEER, NULL );
-
-				/* Set the verification depth to 99 */
-				SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 99);
+			} else {
+				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_NONE, NULL );
 			}
+
+			/* Set the verification depth to 9 */
+			SSL_CTX_set_verify_depth(root_tls_ctx[sslind], 9);
 
 			SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
 		}

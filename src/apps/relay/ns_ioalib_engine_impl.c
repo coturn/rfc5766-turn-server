@@ -1616,7 +1616,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
 			X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
 						XN_FLAG_MULTILINE);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n------------------------------------------------------------\n\n");
 		}
 

@@ -68,6 +68,8 @@ emulation implemented.
 
 27) DTLS sockets re-implemented for better scalability and for Cygwin 
 compatibility.
+
+28) A number of TLS/DTLS improvements added: multiple protocols support, certificate check option.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

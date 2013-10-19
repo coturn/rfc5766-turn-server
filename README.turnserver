@@ -192,7 +192,9 @@ use only UDP relay endpoints as defined in RFC 5766.
 
 --no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
 
---no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*). 
+--no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
+
+--verify-client-cert	Flag that forces TURN server to verify the client SSL certificates.
 
 -h			Help.
     
@@ -340,6 +342,12 @@ Options with required values:
 				file. If both --no-tls and --no-dtls options 
 				are specified, then this parameter is not needed.
 				Default value is turn_server_pkey.pem.
+
+--cipher-list			Allowed OpenSSL cipher list for TLS/DTLS connections.
+				Default value is "ALL:eNULL:aNULL:NULL".
+				
+--CA-file			CA file in OpenSSL format. That file contains trusted authorities information
+				for client certificates check. Only used if the --verify-client-cert is used.
 				
 -l, --log-file			Option to set the full path name of the log file.
 				By default, the turnserver tries to open a log file in 
@@ -400,9 +408,6 @@ Options with required values:
 				machines reachable by the turn server, but would otherwise be unreachable from the 
 				internet (e.g. when the turn server is sitting behind a NAT). The 'white" and "black" peer 
 				IP ranges can also be dynamically changed in the database.
-
---cipher-list	Allowed OpenSSL cipher list for TLS/DTLS connections.
-				Default value is "ALL:eNULL:aNULL:NULL".
 				
 --pidfile 		File name to store the pid of the process.
 				Default is /var/run/turnserver.pid (if superuser account is used) or
