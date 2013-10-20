@@ -1,9 +1,10 @@
-10/17/2013 Oleg Moskalenko <mom040267@gmail.com>
+10/20/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.0 'Harding Grim':
 	- Cygwin loopback relay interfaces fixed (Issue 62).
 	- rpath added to the Makefile (Issue 63).
 	- CONFLICTS added to FreeBSD port Makefile (Issue 64).
 	- Certificate check options, for server and for the test client (Issue 65).
+	- Some compilation cleaning.
 	
 10/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.5.2 'Harding Grim':
