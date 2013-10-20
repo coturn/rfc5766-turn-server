@@ -12,7 +12,7 @@ in /usr/ports/net/turnserver directory. Installation is very simple:
   $ cd /usr/ports/net/turnserver
   $ sudo make install clean
   
-2) Future Debian "jessie" (and eventually future Ubuntu and Mint) will 
+2) Debian "jessie" (and the recent version of Ubuntu and Mint)  
 have this project packaged as "rfc5766-turn-server", see the link:
 
 http://packages.qa.debian.org/r/rfc5766-turn-server.html
