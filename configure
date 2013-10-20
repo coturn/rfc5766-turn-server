@@ -699,7 +699,8 @@ fi
 # or Clang compiler flags
 ###########################
 
-GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
+GNUOSCFLAGS="${GNUOSCFLAGS} -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wnested-externs -Wstrict-prototypes  -Wmissing-prototypes -Wpointer-arith -Wcast-qual"
+GNUOSCFLAGS="${GNUOSCFLAGS} -Wno-write-strings"
 
 ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 ER=$?
@@ -711,12 +712,12 @@ if ! [ ${ER} -eq 0 ] ; then
 	${ECHO_CMD} "Not an ordinary GNU or Clang compiler"
     else
 	${ECHO_CMD} "g++ or something..."
-	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+	GNUOSCFLAGS="-Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual -Wno-write-strings"
 	${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	ER=$?
 	if ! [ ${ER} -eq 0 ] ; then
 	    ${ECHO_CMD} "Not an ordinary g++ compiler"
-	    GNUOSCFLAGS="-x c++ -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual"
+	    GNUOSCFLAGS="-x c++ -Wall -Wno-deprecated-declarations -Wextra -Wformat-security -Wpointer-arith -Wcast-qual -Wno-write-strings"
 	    ${CC} -Werror ${GNUOSCFLAGS} ${TMPCPROGC} ${OSCFLAGS} -o ${TMPCPROGB} 2>>/dev/null
 	    ER=$?
 	    if ! [ ${ER} -eq 0 ] ; then

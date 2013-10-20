@@ -1613,11 +1613,11 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 	} else if (!if1 && if2) {
 
 		if(verbose && SSL_get_peer_certificate(ssl)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
-			X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
-						XN_FLAG_MULTILINE);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n------------------------------------------------------------\n\n");
+		  printf("\n------------------------------------------------------------\n");
+		  X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
+					XN_FLAG_MULTILINE);
+		  printf("\n\n Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+		  printf("\n------------------------------------------------------------\n\n");
 		}
 
 		ret = 0;
