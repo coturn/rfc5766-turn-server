@@ -110,7 +110,7 @@ The command:
 
 will install everything into the system file structure (see below).
 
-(NOTE: On NetBSD, use "su root -c" in place of sudo).
+(NOTE: On NetBSD, use "su root -c").
 
 The command:
 
@@ -169,14 +169,19 @@ using DESTDIR variable, for example:
  
 In this example, the root installation directory will be /opt/usr.  
 
-After the installation, you may want to adjust the system-wide shared library 
-search path by using "ldconfig -n <libdirname>" (Linux), 
-"ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" (Solaris). 
-Your system must be able to find the libevent2, openssl and (optionally) 
-PostgreSQL and/or MySQL (MariaDB) and/or Redis shared libraries, 
-either with the
-help of the system-wide library search configuration or by using 
-LD_LIBRARY_PATH. "make install" will make a non-garantied effort to add 
+The "configure" script by default generates a Makefile with "rpath" option
+set for the binaries linking (if your compiler allows that option). If that 
+is not desirable (like in some OS packaging procedures), then run the 
+"configure" script with --disable-rpath option.
+
+If you do not want to use the rpath linking option, or you OS or compiler 
+do not allows that, then after the installation, you may have to adjust the 
+system-wide shared library search path by using "ldconfig -n <libdirname>" 
+(Linux), "ldconfig -m <libdirname>" (BSD) or "crle -u -l <libdirname>" 
+(Solaris). Your system must be able to find the libevent2, openssl and 
+(optionally) PostgreSQL and/or MySQL (MariaDB) and/or Redis shared libraries, 
+either with the help of the system-wide library search configuration or by 
+using LD_LIBRARY_PATH. "make install" will make a non-garantied effort to add 
 automatically PREFIX/lib and /usr/local/lib to the libraries search path, 
 but if you have some libraries in different non-default directories 
 you will have to add them manually to the search path, or you 
