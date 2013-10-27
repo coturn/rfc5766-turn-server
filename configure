@@ -439,6 +439,22 @@ if [ -z "${ARCHIVERCMD}" ] ; then
 	ARCHIVERCMD="ar -r"
 fi
 
+if [ -z "${MORECMD}" ]; then
+	type more 2>>/dev/null
+	ER=$?
+	if [ ${ER} -eq 0 ] ; then
+		MORECMD="more"
+	else
+		type less 2>>/dev/null
+		ER=$?
+		if [ ${ER} -eq 0 ] ; then
+			MORECMD="less"
+		else
+			MORECMD="cat"
+		fi
+	fi
+fi
+
 OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS}"
 for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/
@@ -505,20 +521,6 @@ fi
 INSTALL_DIR="cp -rpf"
 MKBUILDDIR="mkdir -p"
 RMCMD="rm -rf"
-
-type more 2>>/dev/null
-ER=$?
-if [ ${ER} -eq 0 ] ; then
-    MORECMD="more"
-else
-    type less 2>>/dev/null
-    ER=$?
-    if [ ${ER} -eq 0 ] ; then
-		MORECMD="less"
-    else
-		MORECMD="cat"
-    fi
-fi
 
 #############################
 # Adjustments for Solaris
