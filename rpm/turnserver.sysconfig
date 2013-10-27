@@ -1,0 +1,5 @@
+#
+# TURN Server startup options
+#
+
+OPTIONS="-c /etc/turnserver/turnserver.conf -o --no-stdout-log"
