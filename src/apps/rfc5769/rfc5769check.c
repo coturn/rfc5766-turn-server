@@ -41,6 +41,8 @@
 
 //////////////////////////////////////////////////
 
+static SHATYPE shatype = SHATYPE_SHA1;
+
 int main(int argc, const char **argv)
 {
 	int res = -1;
@@ -92,7 +94,7 @@ int main(int argc, const char **argv)
 			u08bits upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
-			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(reqstc) - 1, uname, realm, upwd);
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(reqstc) - 1, uname, realm, upwd, &shatype);
 			printf("RFC 5769 simple request short-term credentials and integrity test result: ");
 
 			if (res > 0) {
@@ -156,7 +158,7 @@ int main(int argc, const char **argv)
 		strcpy((char*)nonce,"f//499k954d6OL34oL9FSTvy64sA");
 
 		res = stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, sizeof(reqltc) - 1, uname, realm,
-						upwd);
+						upwd, &shatype);
 
 		printf("RFC 5769 message structure, long-term credentials and integrity test result: ");
 
@@ -184,7 +186,7 @@ int main(int argc, const char **argv)
 			buf16[1]=0;
 			buf32[1]=nswap32(STUN_MAGIC_COOKIE);
 			stun_tid_message_cpy(buf, &tid);
-			stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce);
+			stun_attr_add_integrity_by_user_str(buf, &len, uname, realm, upwd, nonce, shatype);
 			if(len != (sizeof(reqltc)-1)) {
 				printf("failure: length %d, must be %d\n",(int)len,(int)(sizeof(reqltc)-1));
 				exit(-1);
@@ -212,7 +214,7 @@ int main(int argc, const char **argv)
 		//Negative test:
 		buf[32] = 10;
 		res = stun_check_message_integrity_str(TURN_CREDENTIALS_LONG_TERM, buf, sizeof(reqltc) - 1, uname, realm,
-						upwd);
+						upwd, &shatype);
 
 		printf("RFC 5769 NEGATIVE long-term credentials test result: ");
 
@@ -260,7 +262,7 @@ int main(int argc, const char **argv)
 			u08bits upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
-			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv4) - 1, uname, realm, upwd);
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv4) - 1, uname, realm, upwd, &shatype);
 			printf("RFC 5769 IPv4 response short-term credentials and integrity test result: ");
 
 			if (res > 0) {
@@ -348,7 +350,7 @@ int main(int argc, const char **argv)
 			u08bits upwd[33];
 			strcpy((char*) upwd, "VOkJxbRl1RmTxUk/WvJxBt");
 
-			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv6) - 1, uname, realm, upwd);
+			res = stun_check_message_integrity_str(TURN_CREDENTIALS_SHORT_TERM, buf, sizeof(respv6) - 1, uname, realm, upwd, &shatype);
 			printf("RFC 5769 IPv6 response short-term credentials and integrity test result: ");
 
 			if (res > 0) {

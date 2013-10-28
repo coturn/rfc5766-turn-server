@@ -70,6 +70,8 @@ emulation implemented.
 compatibility.
 
 28) A number of TLS/DTLS improvements added: multiple protocols support, certificate check option.
+
+29) SHA256 support added.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

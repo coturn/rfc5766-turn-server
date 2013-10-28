@@ -67,11 +67,7 @@
 
 1) RADIUS integration ?
 
-2) Add SHA256 security.
-
-	SHA1 is mandatory according to RFC5766. But it would be 
-	nice to have SHA256, as an option. I guess that for some 
-	applications the additional CPU load can be justified.
+2) Watch new TURN security draft. 
 
 ==================================================================
 

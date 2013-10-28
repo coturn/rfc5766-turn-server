@@ -109,6 +109,8 @@ static char ca_cert_file[1025]="";
 static char cert_file[1025]="turn_server_cert.pem";
 static char pkey_file[1025]="turn_server_pkey.pem";
 
+static SHATYPE shatype = SHATYPE_SHA1;
+
 //////////// Barrier for the threads //////////////
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
@@ -1218,7 +1220,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_cb_socket_to_relay,
-					secure_stun);
+					secure_stun, shatype);
 
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
@@ -1628,6 +1630,12 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						/var/tmp/turnserver.pid .\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
+" --sha256					Require SHA256 digest function to be used for the message integrity.\n"
+"						By default, the server accepts both SHA1 (as per TURN standard specs)\n"
+"						and SHA256 (as an extension) functions and the server switches to SHA256\n"
+"						only if the client session uses it. With this option, the server always\n"
+"						requires the stronger SHA256 function. The client application must\n"
+"						support this extension.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -1698,7 +1706,8 @@ enum EXTRA_OPTS {
 	CIPHER_LIST_OPT,
 	PIDFILE_OPT,
 	SECURE_STUN_OPT,
-	CA_FILE_OPT
+	CA_FILE_OPT,
+	SHA256_OPT
 };
 
 static struct option long_options[] = {
@@ -1768,6 +1777,7 @@ static struct option long_options[] = {
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
+				{ "sha256", optional_argument, NULL, SHA256_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -1864,6 +1874,12 @@ static void set_option(int c, char *value)
 		break;
 	case SECURE_STUN_OPT:
 		secure_stun = get_bool_value(value);
+		break;
+	case SHA256_OPT:
+		if(get_bool_value(value))
+			shatype = SHATYPE_SHA256;
+		else
+			shatype = SHATYPE_SHA1;
 		break;
 	case NO_MULTICAST_PEERS_OPT:
 		no_multicast_peers = get_bool_value(value);

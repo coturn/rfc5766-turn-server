@@ -108,7 +108,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    ip_range_list_t* ip_whitelist,
 				    ip_range_list_t* ip_blacklist,
 				    send_cb_socket_to_relay_cb rfc6062cb,
-				    int secure_stun);
+				    int secure_stun,
+				    SHATYPE shatype);
 
 void delete_turn_server(turn_turnserver* server);
 

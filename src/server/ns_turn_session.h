@@ -66,6 +66,7 @@ typedef struct {
   u32bits sent_packets;
   u32bits received_bytes;
   u32bits sent_bytes;
+  SHATYPE shatype;
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

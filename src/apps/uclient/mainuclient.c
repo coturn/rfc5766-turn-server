@@ -77,6 +77,8 @@ int mandatory_channel_padding = 0;
 int negative_test = 0;
 int dos = 0;
 
+SHATYPE shatype = SHATYPE_SHA1;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -87,7 +89,7 @@ static char Usage[] =
   "		options -s, -e, -r and -g.\n"
   "	-P	Passive TCP (RFC6062 with active peer). Implies -T.\n"
   "	-S	Secure connection: TLS for TCP, DTLS for UDP.\n"
-  " -U  Secure connection with eNULL cipher.\n"
+  "	-U	Secure connection with eNULL cipher.\n"
   "	-v	Verbose.\n"
   "	-s	Use send method.\n"
   "	-y	Use client-to-client connections.\n"
@@ -100,6 +102,8 @@ static char Usage[] =
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
   "	-O	DOS attack mode (quick connect and exit).\n"
+  "	-H	SHA256 digest function for message integrity calculation.\n"
+  "		Without this option, by default, SHA1 is used.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
@@ -120,10 +124,6 @@ static char Usage[] =
   "	-C	TURN REST API username/timestamp separator symbol (character). The default value is ':'.\n";
 
 //////////////////////////////////////////////////
-
-#if !defined(SHA_DIGEST_LENGTH)
-#define SHA_DIGEST_LENGTH (20)
-#endif
 
 int main(int argc, char **argv)
 {
@@ -148,8 +148,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOU")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUH")) != -1) {
 		switch (c){
+		case 'H':
+			shatype = SHATYPE_SHA256;
+			break;
 		case 'E':
 		{
 			char* fn = find_config_file(optarg,1);
@@ -294,10 +297,20 @@ int main(int argc, char **argv)
 			STRCPY(g_uname,new_uname);
 		}
 		{
-			u08bits hmac[1025]="\0";
-			unsigned int hmac_len = SHA_DIGEST_LENGTH;
+			u08bits hmac[MAXSHASIZE];
+			unsigned int hmac_len;
 
-			if(calculate_hmac(g_uname, strlen((char*)g_uname), auth_secret, strlen(auth_secret), hmac, &hmac_len)>=0) {
+			switch(shatype) {
+			case SHATYPE_SHA256:
+				hmac_len = SHA256SIZEBYTES;
+				break;
+			default:
+				hmac_len = SHA1SIZEBYTES;
+			};
+
+			hmac[0]=0;
+
+			if(stun_calculate_hmac(g_uname, strlen((char*)g_uname), (u08bits*)auth_secret, strlen(auth_secret), hmac, &hmac_len, shatype)>=0) {
 				size_t pwd_length = 0;
 				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 

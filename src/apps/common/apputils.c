@@ -799,37 +799,4 @@ unsigned char *base64_decode(const char *data,
     return decoded_data;
 }
 
-/////////////////////////// HMAC ////////////////////////////
-
-#if defined(__USE_OPENSSL__)
-
-#include <openssl/md5.h>
-#include <openssl/hmac.h>
-#include <openssl/ssl.h>
-
-int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len)
-{
-	if (!HMAC(EVP_sha1(), key, key_len, buf, len, hmac, hmac_len)) {
-		return -1;
-	} else {
-		return 0;
-	}
-}
-
-#else
-
-int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len)
-{
-	UNUSED_ARG(buf);
-	UNUSED_ARG(len);
-	UNUSED_ARG(key);
-	UNUSED_ARG(key_len);
-	UNUSED_ARG(hmac);
-	UNUSED_ARG(hmac_len);
-
-	return -1;
-}
-
-#endif
-
 //////////////////////////////////////////////////////////////

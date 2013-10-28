@@ -194,6 +194,13 @@ use only UDP relay endpoints as defined in RFC 5766.
 
 --no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
 
+--sha256			Require SHA256 digest function to be used for the message integrity.
+					By default, the server accepts both SHA1 (as per TURN standard specs) 
+					and SHA256 (as an extension) functions and the server switches to SHA256 
+					only if the client session uses it. With this option, the server always 
+					requires the stronger SHA256 function. The client application must support
+					this extension.
+
 -h			Help.
     
 Options with required values:  
@@ -784,4 +791,6 @@ SEE ALSO
 	Vladimir Tsanev <tsachev@gmail.com>
 	
 	Po-sheng Lin <personlin118@gmail.com>
+	
+	Peter Dunkley <peter.dunkley@crocodilertc.net>
 	

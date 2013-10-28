@@ -516,9 +516,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
 			if(use_short_term) {
+				SHATYPE sht = shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 							elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-							elem->pinfo.realm, g_upwd)<1) {
+							elem->pinfo.realm, g_upwd, &sht)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in indication message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
 					return -1;
 				}
@@ -572,9 +573,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 
 			if(elem->pinfo.nonce[0] || use_short_term) {
+				SHATYPE sht = shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 								elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-								elem->pinfo.realm, g_upwd)<0) {
+								elem->pinfo.realm, g_upwd, &sht)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in success message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
 					return -1;
 				}
@@ -1386,13 +1388,13 @@ turn_credential_type get_turn_credentials_type(void)
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
 	if(use_short_term) {
-		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd)<0) {
+		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd, shatype)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 			return -1;
 		}
 	} else if(clnet_info->nonce[0]) {
 		if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
-					clnet_info->realm, g_upwd, clnet_info->nonce)<0) {
+					clnet_info->realm, g_upwd, clnet_info->nonce, shatype)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 			return -1;
 		}

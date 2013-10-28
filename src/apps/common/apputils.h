@@ -145,10 +145,6 @@ unsigned char *base64_decode(const char *data,
                              size_t input_length,
                              size_t *output_length);
 
-//////////////////// HMAC ///////////////////////////
-
-int calculate_hmac(u08bits *buf, size_t len, const void *key, int key_len, u08bits *hmac, unsigned int *hmac_len);
-
 ///////////////////////////////////////////////////////
 
 #ifdef __cplusplus
