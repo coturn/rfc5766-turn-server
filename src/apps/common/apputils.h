@@ -145,6 +145,10 @@ unsigned char *base64_decode(const char *data,
                              size_t input_length,
                              size_t *output_length);
 
+///////////// SSL ////////////////
+
+const char* turn_get_ssl_method(SSL *ssl);
+
 ///////////////////////////////////////////////////////
 
 #ifdef __cplusplus

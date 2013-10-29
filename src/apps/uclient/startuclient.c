@@ -77,7 +77,9 @@ static int get_allocate_address_family(ioa_addr *relay_addr) {
 
 static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 {
-	SSL *ssl = SSL_new(root_tls_ctx[random()%root_tls_ctx_num]);
+	int ctxtype = (int)random()%root_tls_ctx_num;
+
+	SSL *ssl = SSL_new(root_tls_ctx[ctxtype]);
 
 	if(use_tcp) {
 		SSL_set_fd(ssl, fd);
@@ -119,7 +121,8 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 			rc = SSL_connect(ssl);
 		} while (rc < 0 && errno == EINTR);
 		if (rc > 0) {
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s\n",__FUNCTION__,SSL_get_cipher(ssl));
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: client session connected with cipher %s, method=%s\n",__FUNCTION__,
+				  SSL_get_cipher(ssl),turn_get_ssl_method(ssl));
 		  if(clnet_verbose && SSL_get_peer_certificate(ssl)) {
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "------------------------------------------------------------\n");
 		  	X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ssl)), 1,
