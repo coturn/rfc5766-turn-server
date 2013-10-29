@@ -17,8 +17,8 @@ To build the TURN server:
     Install the dependencies for building the TURN server: gcc, make, redhat-rpm-config, openssl-devel, libevent-devel >= 2.0.0, mysql-devel, postgresql-devel, hiredis-devel
     mkdir ~/rpmbuild
     mkdir ~/rpmbuild/SOURCES
-    Export the TURN server from SVN, "svn export http://rfc5766-turn-server.googlecode.com/svn/trunk/ turnserver-2.6.6.0"
-    Create a tarball, "tar zcf ~/rpmbuild/SOURCES/turnserver-2.6.6.0.tar.gz turnserver-2.6.6.0"
-    Build the RPMs, "rpmbuild -ta ~/rpmbuild/SOURCES/turnserver-2.6.6.0.tar.gz"
+    Export the TURN server from SVN, "svn export http://rfc5766-turn-server.googlecode.com/svn/trunk/ turnserver-2.6.6.1"
+    Create a tarball, "tar zcf ~/rpmbuild/SOURCES/turnserver-2.6.6.1.tar.gz turnserver-2.6.6.1"
+    Build the RPMs, "rpmbuild -ta ~/rpmbuild/SOURCES/turnserver-2.6.6.1.tar.gz"
 
 

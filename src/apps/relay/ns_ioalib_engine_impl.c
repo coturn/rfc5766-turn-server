@@ -1842,6 +1842,7 @@ int udp_recvfrom(evutil_socket_t fd, ioa_addr* orig_addr, const ioa_addr *like_a
 	return len;
 }
 
+#if !defined(TURN_NO_TLS)
 static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 {
 	TURN_TLS_TYPE ret = TURN_TLS_NO;
@@ -1867,6 +1868,7 @@ static TURN_TLS_TYPE check_tentative_tls(ioa_socket_raw fd)
 
 	return ret;
 }
+#endif
 
 static int socket_input_worker(ioa_socket_handle s)
 {
@@ -1917,6 +1919,7 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->st == TENTATIVE_TCP_SOCKET) {
 		EVENT_DEL(s->read_event);
+#if !defined(TURN_NO_TLS)
 		TURN_TLS_TYPE tls_type = check_tentative_tls(s->fd);
 		if(tls_type) {
 			s->st = TLS_SOCKET;
@@ -1952,7 +1955,9 @@ static int socket_input_worker(ioa_socket_handle s)
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
-		} else {
+		} else
+#endif //TURN_NO_TLS
+		{
 			s->st = TCP_SOCKET;
 			if(s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);

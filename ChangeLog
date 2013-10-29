@@ -1,8 +1,13 @@
+10/28/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 2.6.6.2 'Harding Grim':
+	- TURN_NO_TLS compilation cleaning.
+	- Text files cleaning.
+	
 10/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.1 'Harding Grim':
 	- SHA256 added as a non-standard message integrity option.
 	- CentOS rpm specs added.
-	- Peter Dunkley added to the authors list
+	- Peter Dunkley added to the authors list.
 	
 10/20/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.0 'Harding Grim':
