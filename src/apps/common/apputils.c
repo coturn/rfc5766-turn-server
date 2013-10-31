@@ -801,12 +801,9 @@ unsigned char *base64_decode(const char *data,
 
 ////////////////// SSL /////////////////////
 
-const char* turn_get_ssl_method(SSL *ssl)
+static const char* turn_get_method(SSL_METHOD *method)
 {
-	if(!ssl)
-		return "EMPTY";
-	else {
-		SSL_METHOD *method = SSL_get_ssl_method(ssl);
+	{
 		if(!method)
 			return "NULL";
 		else {
@@ -814,27 +811,39 @@ const char* turn_get_ssl_method(SSL *ssl)
 					return "SSLv2";
 			} else if(method == SSLv2_client_method()) {
 				return "SSLv2";
+			} else if(method == SSLv2_method()) {
+				return "SSLv2";
 			} else if(method == SSLv3_server_method()) {
 					return "SSLv3";
 			} else if(method == SSLv3_client_method()) {
 					return "SSLv3";
+			} else if(method == SSLv3_method()) {
+				return "SSLv3";
 			} else if(method == SSLv23_server_method()) {
 					return "SSLv23";
 			} else if(method == SSLv23_client_method()) {
 					return "SSLv23";
+			} else if(method == SSLv23_method()) {
+				return "SSLv23";
 			} else if(method == TLSv1_server_method()) {
 					return "TLSv1.0";
 			} else if(method == TLSv1_client_method()) {
+				return "TLSv1.0";
+			} else if(method == TLSv1_method()) {
 					return "TLSv1.0";
 #if defined(SSL_TXT_TLSV1_1)
 			} else if(method == TLSv1_1_server_method()) {
 					return "TLSv1.1";
 			} else if(method == TLSv1_1_client_method()) {
+				return "TLSv1.1";
+			} else if(method == TLSv1_1_method()) {
 					return "TLSv1.1";
 #if defined(SSL_TXT_TLSV1_2)
 			} else if(method == TLSv1_2_server_method()) {
 					return "TLSv1.2";
 			} else if(method == TLSv1_2_client_method()) {
+				return "TLSv1.2";
+			} else if(method == TLSv1_2_method()) {
 					return "TLSv1.2";
 #endif
 #endif
@@ -842,6 +851,8 @@ const char* turn_get_ssl_method(SSL *ssl)
 			} else if(method == DTLSv1_server_method()) {
 					return "DTLSv1.0";
 			} else if(method == DTLSv1_client_method()) {
+				return "DTLSv1.0";
+			} else if(method == DTLSv1_method()) {
 					return "DTLSv1.0";
 #endif
 			} else {
@@ -850,6 +861,19 @@ const char* turn_get_ssl_method(SSL *ssl)
 		}
 	}
 
+}
+
+const char* turn_get_ssl_method(SSL *ssl)
+{
+	if(!ssl)
+		return "EMPTY";
+	else {
+		SSL_METHOD *method = SSL_get_ssl_method(ssl);
+		if(!method)
+			return "NULL";
+		else
+			return turn_get_method(method);
+	}
 }
 
 //////////////////////////////////////////////////////////////

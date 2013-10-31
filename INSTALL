@@ -321,7 +321,8 @@ installation:
 	compiled, unless you install it "manually" before the TURN 
 	server compilation. For Amazon EC2 AMIs, we install the 
 	redis manually in the system. But the TURN server can be 
-	perfectly installed without redis support.
+	perfectly installed without redis support - if you do not 
+	need it.
 		
 	*****) Some OSes in Debian family (Debian Squeeze and 
 	pre-11.10 Ubuntus) setups are similar to Debian Wheezy, 
@@ -330,7 +331,8 @@ installation:
 	******) On some CentOS / RedHat 6.x systems you have to install 
 	libevent2 "manually", and optionally you have to download and 
 	install Hiredis, but everything else can be found in the software 
-	repository. 
+	repository. Also, if you would like to make an RPM for CentOS,
+	check the directory rpm/ with the instructions.
 
 NOTE: If your tools are installed in non-standard locations, you will 
 have to adjust CFLAGS and LDFLAGS environment variables for TURN 
@@ -398,19 +400,19 @@ compile the TURN Server with TLS support.
 NOTE: An older libevent version, version 1.x.x, is often included in some *NIX 
 distributions. That version has its deficiencies and is inferior to the newer 
 libevent2, especially in the performance department. This is why we are 
-not providing backward compatibility with the older libevent version. 
+not providing backward compatibility with the older libevent 1.x version. 
 If you have a system with older libevent, then you have to install the new 
 libevent2 from their web site. It was tested with older *NIXes 
 (like FreeBSD 6.x) and it works just fine.
 
-NOTE: OpenSSL version 1.0.0a or newer is recommended. Older versions do not 
-support DTLS, reliably, in some cases. For example, the Debian 'Squeeze' 
-Linux with supplied 0.9.8 version of OpenSSL, does not work correctly with 
-DTLS over IPv6. If your system already has an older version OpenSSL 
-installed (usually in directory /usr) then you may want to install your 
-newer OpenSSL "over" the old one (because it will most probably will not 
-allow removal of the old one). When installing the newer OpenSSL,
-run the OpenSSL's configure command like this:
+NOTE: For DTLS support, OpenSSL version 1.0.0a or newer is recommended. 
+Older versions do not support DTLS, reliably, in some cases. For example, 
+the Debian 'Squeeze' Linux supplies 0.9.8 version of OpenSSL, that does 
+not work correctly with DTLS over IPv6. If your system already has an 
+older version of OpenSSL installed (usually in directory /usr) then you 
+may want to install your newer OpenSSL "over" the old one (because it 
+will most probably will not allow removal of the old one). When installing 
+the newer OpenSSL, run the OpenSSL's configure command like this:
 
     $ ./config --prefix=/usr
 
@@ -906,7 +908,7 @@ You can turn off the multi-threading by using "-m 0" parameter
 (or "--relay-threads=0"). It will keep all network packets processing within
 one thread, eliminating context switch etc - it may be a more efficient 
 option for your system. There still will be a separate authentication thread
-because the authentication process must not be holding the normalpackets 
+because the authentication process must not be holding the normal packets 
 routing.
 
 You can use "-m 0" option and run multiple TURN servers on your system, one 
@@ -916,3 +918,11 @@ its own relay IP and/or relay ports range - so the configuration will be
 complicated - but the performance will be the best possible. You can use 
 ALTERNATE-SERVER mechanism to present the whole "pack" as a single "initial"
 TURN server front-end to the external world.
+
+XVI. TURN Server setup
+
+Read the project wiki pages: http://code.google.com/p/rfc5766-turn-server/w/list
+
+Also, check the project from page links to the TURN/WebRTC configuration examples.
+It may give you an idea how it can be done.
+
