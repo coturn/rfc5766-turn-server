@@ -1298,8 +1298,11 @@ ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_han
 {
 	ioa_socket_handle ret = create_ioa_socket_from_fd(e, parent_s->fd, parent_s, st, sat, remote_addr, local_addr);
 
-	if(ret)
+	if(ret) {
 		ret->ssl = ssl;
+		if(st == DTLS_SOCKET)
+			STRCPY(ret->orig_ctx_type,"DTLSv1.0");
+	}
 
 	return ret;
 }
@@ -1932,19 +1935,23 @@ static int socket_input_worker(ioa_socket_handle s)
 			switch(tls_type) {
 			case TURN_TLS_v1_0:
 				s->ssl = SSL_new(s->e->tls_ctx_v1_0);
+				STRCPY(s->orig_ctx_type,"TLSv1.0");
 				break;
 #if defined(SSL_TXT_TLSV1_1)
 			case TURN_TLS_v1_1:
 				s->ssl = SSL_new(s->e->tls_ctx_v1_1);
+				STRCPY(s->orig_ctx_type,"TLSv1.1");
 				break;
 #if defined(SSL_TXT_TLSV1_2)
 			case TURN_TLS_v1_2:
 				s->ssl = SSL_new(s->e->tls_ctx_v1_2);
+				STRCPY(s->orig_ctx_type,"TLSv1.2");
 				break;
 #endif
 #endif
 			default:
 				s->ssl = SSL_new(s->e->tls_ctx_ssl23);
+				STRCPY(s->orig_ctx_type,"SSLv23");
 			};
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
@@ -2615,6 +2622,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						if(!(s->ssl)) {
 							//??? how we can get to this point ???
 							s->ssl = SSL_new(e->tls_ctx_ssl23);
+							STRCPY(s->orig_ctx_type,"SSLv23");
 							s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 											s->fd,
 											s->ssl,
@@ -2751,7 +2759,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu, cipher=%s, method=%s\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl));
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
 					}

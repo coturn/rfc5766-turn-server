@@ -150,6 +150,7 @@ struct _ioa_socket
 	SOCKET_TYPE st;
 	SOCKET_APP_TYPE sat;
 	SSL* ssl;
+	char orig_ctx_type[16];
 	int bound;
 	int local_addr_known;
 	ioa_addr local_addr;

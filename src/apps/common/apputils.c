@@ -801,7 +801,7 @@ unsigned char *base64_decode(const char *data,
 
 ////////////////// SSL /////////////////////
 
-static const char* turn_get_method(SSL_METHOD *method)
+static const char* turn_get_method(const SSL_METHOD *method)
 {
 	{
 		if(!method)
@@ -868,7 +868,7 @@ const char* turn_get_ssl_method(SSL *ssl)
 	if(!ssl)
 		return "EMPTY";
 	else {
-		SSL_METHOD *method = SSL_get_ssl_method(ssl);
+		const SSL_METHOD *method = SSL_get_ssl_method(ssl);
 		if(!method)
 			return "NULL";
 		else
