@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	2.6.6.1
+Version:	2.6.6.2
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -235,6 +235,8 @@ rm -rf "$RPM_BUILD_ROOT"
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Thu Oct 31 2013 Oleg Moskalenko <mom040267@gmail.com>
+  - Updated for version 2.6.6.2
 * Sun Oct 27 2013 Oleg Moskalenko <mom040267@gmail.com>
   - Updated for version 2.6.6.1
 * Sun Oct 27 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
