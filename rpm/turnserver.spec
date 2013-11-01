@@ -235,9 +235,9 @@ rm -rf "$RPM_BUILD_ROOT"
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
-* Sun Oct 27 2013
+* Sun Oct 27 2013 Oleg Moskalenko <mom040267@gmail.com>
   - Updated for version 2.6.6.1
-* Sun Oct 27 2013
+* Sun Oct 27 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
   - Updated for version 2.6.6.0
 * Fri May 3 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
   - First version
