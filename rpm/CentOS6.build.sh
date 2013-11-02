@@ -79,7 +79,19 @@ if ! [ -f ${EPELRPM} ] ; then
     fi
 fi
 
-PACKS="epel-release-6-8.noarch.rpm mysql-devel postgresql-devel hiredis-devel"
+PACK=epel-release-6-8.noarch.rpm
+sudo yum install ${PACK}
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    sudo yum update ${PACK}
+    ER=$?
+    if ! [ ${ER} -eq 0 ] ; then
+	echo "Cannot install package ${PACK}"
+	exit -1
+    fi
+fi
+
+PACKS="mysql-devel postgresql-devel hiredis-devel"
 sudo yum install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
