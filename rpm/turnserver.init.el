@@ -50,7 +50,7 @@ stop() {
 }
 
 [ -f $DEFAULTS ] && . $DEFAULTS
-OPTIONS="-c $TURNCFG -o --no-stdout-log $EXTRA_OPTIONS"
+OPTIONS="-c $TURNCFG -o --no-stdout-log --syslog $EXTRA_OPTIONS"
 
 # See how we were called.
 case "$1" in
