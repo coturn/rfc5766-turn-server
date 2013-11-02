@@ -18,15 +18,13 @@ mkdir -p ${BUILDDIR}/tmp
 
 # Common packs
 
-for PACK in "make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn"
-do
-    sudo yum update ${PACK}
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-	echo "Cannot install package ${PACK}"
-	exit -1
-    fi
-done
+PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn"
+sudo yum install ${PACKS}
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "Cannot install packages ${PACKS}"
+    exit -1
+fi
 
 # Libevent2:
 
@@ -54,15 +52,21 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
-for PACK in "${BUILDDIR}/RPMS/${ARCH}/libevent-${LIBEVENT2VERSION}-1.el6.${ARCH}.rpm ${BUILDDIR}/RPMS/${ARCH}/libevent-devel-${LIBEVENT2VERSION}-1.el6.${ARCH}.rpm"
-do
-    sudo yum --skip-broken update ${PACK}
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-	echo "Cannot install package ${PACK}"
-	exit -1
-    fi
-done
+PACK=${BUILDDIR}/RPMS/${ARCH}/libevent-${LIBEVENT2VERSION}-1.el6.${ARCH}.rpm
+sudo rpm -i --force ${PACK}
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "Cannot install packages ${PACK}"
+    exit -1
+fi
+
+PACK=${BUILDDIR}/RPMS/${ARCH}/libevent-devel-${LIBEVENT2VERSION}-1.el6.${ARCH}.rpm
+sudo rpm -i --force ${PACK}
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "Cannot install packages ${PACK}"
+    exit -1
+fi
 
 # TURN
 
@@ -75,15 +79,13 @@ if ! [ -f ${EPELRPM} ] ; then
     fi
 fi
 
-for PACK in "epel-release-6-8.noarch.rpm mysql-devel postgresql-devel hiredis-devel"
-do
-    sudo yum update ${PACK}
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-	echo "Cannot install package ${PACK}"
-	exit -1
-    fi
-done
+PACKS="epel-release-6-8.noarch.rpm mysql-devel postgresql-devel hiredis-devel"
+sudo yum install ${PACKS}
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    echo "Cannot install packages ${PACKS}"
+    exit -1
+fi
 
 cd ${BUILDDIR}/tmp
 rm -rf turnserver-${TURNVERSION}
