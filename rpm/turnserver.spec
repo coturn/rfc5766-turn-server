@@ -9,10 +9,17 @@ URL:		https://code.google.com/p/rfc5766-turn-server/
 Source0:	https://rfc5766-turn-server.googlecode.com/files/%{name}-%{version}.tar.gz
 
 BuildRequires:	gcc, make, redhat-rpm-config
-BuildRequires:	openssl-devel, libevent-devel >= 2.0.0, mysql-devel
-BuildRequires:	postgresql-devel epel-release hiredis-devel
+BuildRequires:	openssl-devel, libevent-devel >= 2.0.0, postgresql-devel
+BuildRequires:	hiredis-devel
 Requires:	openssl, libevent >= 2.0.0, mysql-libs, postgresql-libs
-Requires:	epel-release hiredis perl-DBI perl-libwww-perl
+Requires:	hiredis, perl-DBI, perl-libwww-perl
+%if 0%{?el6}
+BuildRequires:	epel-release, mysql-devel
+Requires:	epel-release, mysql-libs
+%else
+BuildRequires:	mariadb-devel
+Requires: 	mariadb-libs
+%endif
 
 
 %description
@@ -101,9 +108,6 @@ make
 %install
 rm -rf $RPM_BUILD_ROOT
 DESTDIR=$RPM_BUILD_ROOT make install
-mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d
-install -m755 rpm/turnserver.init.el \
-		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m644 rpm/turnserver.sysconfig \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/turnserver
@@ -111,6 +115,15 @@ mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default \
 	$RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf.default \
 	$RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf
+%if 0%{?el6}
+mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d
+install -m755 rpm/turnserver.init.el \
+		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
+%else
+mkdir -p $RPM_BUILD_ROOT/%{_unitdir}
+install -m755 rpm/turnserver.service.fc \
+		$RPM_BUILD_ROOT/%{_unitdir}/turnserver.service
+%endif
 
 %clean
 rm -rf "$RPM_BUILD_ROOT"
@@ -121,11 +134,27 @@ rm -rf "$RPM_BUILD_ROOT"
 		%{_datadir}/%{name} turnserver 2> /dev/null || :
 
 %post
+%if 0%{?el6}
 /sbin/chkconfig --add turnserver
+%else
+/bin/systemctl --system daemon-reload
+%endif
 
 %preun
-/sbin/service turnserver stop > /dev/null 2>&1
-/sbin/chkconfig --del turnserver
+if [ $1 = 0 ]; then
+%if 0%{?el6}
+	/sbin/service turnserver stop > /dev/null 2>&1
+	/sbin/chkconfig --del turnserver
+%else
+	/bin/systemctl stop turnserver.service
+	/bin/systemctl disable turnserver.service 2> /dev/null
+%endif
+fi
+
+%postun
+%if 0%{?fedora}
+/bin/systemctl --system daemon-reload
+%endif
 
 %files
 %defattr(-,root,root)
@@ -138,7 +167,11 @@ rm -rf "$RPM_BUILD_ROOT"
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnserver.conf
 %config(noreplace) %attr(0644,turnserver,turnserver) %{_sysconfdir}/%{name}/turnuserdb.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/turnserver
+%if 0%{?el6}
 %config %{_sysconfdir}/rc.d/init.d/turnserver
+%else
+%config %{_unitdir}/turnserver.service
+%endif
 %dir %{_docdir}/%{name}
 %{_docdir}/%{name}/INSTALL
 %{_docdir}/%{name}/postinstall.txt
@@ -235,6 +268,8 @@ rm -rf "$RPM_BUILD_ROOT"
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Nov 2 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
+  - Added Fedora support
 * Thu Oct 31 2013 Oleg Moskalenko <mom040267@gmail.com>
   - Updated for version 2.6.6.2
 * Sun Oct 27 2013 Oleg Moskalenko <mom040267@gmail.com>
