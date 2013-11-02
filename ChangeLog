@@ -1,15 +1,16 @@
-10/31/2013 Oleg Moskalenko <mom040267@gmail.com>
+10/31/2013 Oleg Moskalenko <mom040267@gmail.com>,
+	Peter Dunkley <peter.dunkley@crocodilertc.net>
 Version 2.6.6.2 'Harding Grim':
 	- TURN_NO_TLS compilation cleaning.
 	- Text files cleaning.
 	- CentOS files updated.
-	
+
 10/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.1 'Harding Grim':
 	- SHA256 added as a non-standard message integrity option.
 	- CentOS rpm specs added.
 	- Peter Dunkley added to the authors list.
-	
+
 10/20/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.0 'Harding Grim':
 	- Cygwin loopback relay interfaces fixed (Issue 62).
@@ -17,27 +18,27 @@ Version 2.6.6.0 'Harding Grim':
 	- CONFLICTS added to FreeBSD port Makefile (Issue 64).
 	- Certificate check options, for server and for the test client (Issue 65).
 	- Some compilation cleaning.
-	
+
 10/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.5.2 'Harding Grim':
 	- Documentation changes.
 	- Redis-related memory leak fixed (Issue 61).
-	
+
 09/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.4.1 'Harding Grim':
 	- Crash on uninitialized redis db name is fixed (Issue 59).
 	- Optional authentication of STUN Binding request is implemented (Issue 60).
-	
+
 09/16/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.3.1 'Harding Grim':
 	- Issue 58: support changing white/black IP lists while server is running.
 	database tables (keys for redis) added for that new functionality.
-	
+
 09/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.2 'Harding Grim':
-	- Issue 52: RFC 6062 relay endpoints connection process 
+	- Issue 52: RFC 6062 relay endpoints connection process
 	fixed for Linux pre-3.9 kernel.
-	
+
 09/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.2.1 'Harding Grim':
 	- UDP performance improvements.
@@ -46,37 +47,37 @@ Version 2.6.2.1 'Harding Grim':
 	- Issue 57: --pidfile option
 	- Issue 52: RFC 6062 relay endpoints connection process fixed.
 	- Issue 53: Fingerprints added to the indications.
-	- Issue 54: Long-term credentials mechanism integrity and software attributes 
+	- Issue 54: Long-term credentials mechanism integrity and software attributes
 	added to the indications.
 
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.4 'Harding Grim':
 	- UDP memory leak fixed.
-	
+
 08/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.3 'Harding Grim':
 	- DTLS crash fix.
-	
+
 08/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.2 'Harding Grim':
 	- TLS buffer decreased to avoid memory problems.
 	- TLS BIO object fix.
 	- UDP socket open/reopen process fixed.
-	
+
 08/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.1.1 'Harding Grim':
 	- Network optimization:
 		* "pure" UDP setup optimized (when no DTLS configured);
-		* Auxiliary listening endpoints (configured by 
+		* Auxiliary listening endpoints (configured by
 			--aux-server=<ip:port>).
-		* --udp-self-balance option to balance the UDP traffic 
-			among the aux endpoints (for clients supporting 
+		* --udp-self-balance option to balance the UDP traffic
+			among the aux endpoints (for clients supporting
 			300 ALTERNATE-SERVER response).
 	- Security improvements:
         * no authentication required on the load balancer server (Issue 50).
 		* REST API improvement:
-			= --secret-ts-exp-time option deprecated; 
-			= In REST API timestamp, we are now using 
+			= --secret-ts-exp-time option deprecated;
+			= In REST API timestamp, we are now using
 				the expiration time (Issue 31).
 		* Configurable cipher suite in the TURN server.
 		* SSL3 support.
@@ -91,13 +92,13 @@ Version 2.6.1.1 'Harding Grim':
 		* Classic STUN attribute ERROR fixed (Issue 49).
 		* Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
 		* resources optimization for stun-only: short connection expiration time.
-	
+
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
 Version 2.5.2.1 'Shivers':
 	- log file placement changes.
 	- Base64 encode/decode memory initialization fix.
-	
+
 07/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Po-sheng Lin <personlin118@gmail.com>
 Version 2.5.1.2 'Shivers':
@@ -105,24 +106,24 @@ Version 2.5.1.2 'Shivers':
 	- cosmetic changes.
 	- allow anonymous alternate-server functionality.
 
-07/21/2013 Oleg Moskalenko <mom040267@gmail.com> 
+07/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.5.1.1 'Shivers':
 	- Improved "split" network engine:
 	two different threading models for TCP and UDP.
 	- DTLS crash fixed.
 	- Multithreading with Cygwin.
-	
-07/20/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+07/20/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.1.3.1 'Shivers':
 	- DTLS improvements for DOS attacks
 	- deeper optimization for DOS attack (mostly for Linux)
-	
-07/19/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+07/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.1.2.0 'Shivers':
 	- deeper optimization for DOS attack (mostly for Linux)
 
 07/18/2013 Oleg Moskalenko <mom040267@gmail.com>,
-			Po-sheng Lin <personlin118@gmail.com> 
+			Po-sheng Lin <personlin118@gmail.com>
 Version 2.1.1.1 'Shivers':
 	- udp fixes.
 	- Makefile cleaning.
@@ -130,16 +131,16 @@ Version 2.1.1.1 'Shivers':
 	- DOS attack client emulation.
 	- DOS attack defense logic added to the server.
 
-07/14/2013 Oleg Moskalenko <mom040267@gmail.com> 
+07/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.0.0.0 'Shivers':
 	- new networking engine:
-		- scalable UDP socket model. 
+		- scalable UDP socket model.
 		- multithreaded TCP relay implemented.
 		- race condition fixed in authentication of TCP sessions.
-		- Cygwin "port" fixed. 
+		- Cygwin "port" fixed.
 
 06/23/2013 Oleg Moskalenko <mom040267@gmail.com>,
-			Vladimir Tsanev <tsachev@gmail.com> 
+			Vladimir Tsanev <tsachev@gmail.com>
 Version 1.8.7.0 'Black Dow':
 
 	- Added support for obsolete "classic" STUN RFC 3489;
@@ -150,37 +151,37 @@ Version 1.8.7.0 'Black Dow':
 	- Multiple Makefile and ./configure script fixes implemented:
 		* Changes taken from Arch Linux port;
 		* Manpages installation and deinstallation;
-		* rfc5769check utility removed from installation, it is used for the 
+		* rfc5769check utility removed from installation, it is used for the
 		compilation result test only and makes no sense for the end user;
 		* "--parameter" format support in ./configure script; it allows
 		simpler native OS package definitions (like in Debian package);
 		* Mac OS X linking warnings removed.
 		* pthread test fixed.
 
-06/08/2013 Oleg Moskalenko <mom040267@gmail.com> 
+06/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.6.3 'Black Dow':
 
 	- DONT-FRAGMENT flag removed on UDP listening (clients-facing) sockets.
 	- UDP fix for Cygwin only: UDP channels work fine now.
 	- docs fixes.
-	
-06/06/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+06/06/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.6.2 'Black Dow':
 
 	- Just cosmetic re-packaging for Debian, tarball warnings removed.
-	
-06/05/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+06/05/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.6.1 'Black Dow':
 
 	- Peer permissions bug fixed.
-	
-06/03/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+06/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.6.0 'Black Dow':
 
 	- Optimization.
 	- Mac OS X compilation fixes.
-	
-06/01/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+06/01/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.5.4 'Black Dow':
 
 	- Issues 29 and 30 fixed (channels padding).
@@ -188,25 +189,25 @@ Version 1.8.5.4 'Black Dow':
 	- Mac OS X compilation fixes.
 	- Cygwin-related compilation fixes and INSTALL additions.
 
-05/31/2013 Oleg Moskalenko <mom040267@gmail.com> 
+05/31/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.5.3 'Black Dow':
 
 	- REST API extra script example and docs extention.
-	
-05/26/2013 Oleg Moskalenko <mom040267@gmail.com> 
+
+05/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.5.1 'Black Dow':
 
 	- Config file parsing fixed (Issue 28)
 
 05/20/2013 Oleg Moskalenko <mom040267@gmail.com>,
-			Erik Johnston <erikj@openmarket.com> 
+			Erik Johnston <erikj@openmarket.com>
 Version 1.8.5.0 'Black Dow':
 
 	- IP access control lists.
 	- log file name fix.
-	- alt-* ports default behavior changed. 
+	- alt-* ports default behavior changed.
 	- "passive TCP" option in uclient.
-	
+
 05/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.5 'Black Dow':
 
@@ -227,7 +228,7 @@ Version 1.8.4.3 'Black Dow':
 
 	- Compilation warning removed.
 	- Log file fixed (Issue 26)
-	
+
 05/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.2 'Black Dow':
 
@@ -238,16 +239,16 @@ Version 1.8.4.1 'Black Dow':
 
         - Cosmetics (docs, warnings, etc).
         - More complex case of TURN-server-behind-NAT is implemented,
-        when multiple public-ip/private-ip mappings are involved. 
-        
+        when multiple public-ip/private-ip mappings are involved.
+
 05/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.4.0 'Black Dow':
 
         - Redis DB support added.
         - Crash on help text fixed.
         - Max allocation time can be changed in the command-line or
-        in the config file.  
-        
+        in the config file.
+
 05/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.9 'Black Dow':
 
@@ -258,59 +259,59 @@ Version 1.8.3.8 'Black Dow':
 
 	- multicast and loopback addresses disallow options added.
 	- option to direct all log messages to the system log (syslog).
-	
+
 05/02/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.7 'Black Dow':
 
 	- Allocation status log.
-	
+
 05/01/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.6 'Black Dow':
 
 	- Stuntman client interoperability fixed.
 	- Manpages installation fixed.
-	
+
 04/30/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.5 'Black Dow':
 
 	- Lintian fixes.
-	
+
 04/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.4 'Black Dow':
 
 	- Installation fixes.
-	
+
 04/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.3 'Black Dow':
 
 	- Log file midnight rollover implemented (Issue 15).
-	
+
 04/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.1 'Black Dow':
 
 	- Configurable REST API separator symbol (Issue 16).
 	- Stale Nonce bug fixed (Issue 17).
 	- Minor client fix.
-	
+
 04/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.3.0 'Black Dow':
 
 	- STUN stand-alone functionality improved according to RFC 5389.
 	- ALTERNATE-SERVER implemented as "light" load balancing feature.
-	- stun-only option implemented. 
+	- stun-only option implemented.
 	- scripts directory reorganized.
-	
+
 04/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.2.1 'Black Dow':
 
 	- Misc docs fixes.
-	
+
 04/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.2.0 'Black Dow':
 
 	- Multiple database shared secrets supported for REST API.
 	- Added support for some OpenSSL FIPS versions (like openssl 0.9.8e-fips-rhel5).
-	
+
 04/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.3 'Black Dow':
 
@@ -319,7 +320,7 @@ Version 1.8.1.3 'Black Dow':
 	are support for client-to-server communications (as in RFC 5766 and
 	RFC 6062). UDP supported only for relay communications. DTLS is not 
 	supported at all. The problem is in Winsock UDP sockets implementation.
-	
+
 04/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.2 'Black Dow':
 
@@ -328,19 +329,19 @@ Version 1.8.1.2 'Black Dow':
 04/9/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.1 'Black Dow':
 
-	- Docs improvements. 
-	- Load balancing use case added to TurnNetworks.pdf. 
+	- Docs improvements.
+	- Load balancing use case added to TurnNetworks.pdf.
 	- Verbose mode split into 'normal' and 'extra' modes.
 	- Logging extended and fixed.
-	
+
 04/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.1.0 'Black Dow':
 
 	- Compilation flags improved.
 	- utility programs renamed and moved to bin/ directory.
-	- README and turnserver man page separated into three sections - 
+	- README and turnserver man page separated into three sections -
 	turnserver, turnadmin, turnutils.
-	
+
 04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.6 'Black Dow':
 
@@ -348,7 +349,7 @@ Version 1.8.0.6 'Black Dow':
 	between PostgreSQL and MySQL stuff.
 	- turnadmin flat files handling fixed.
 	- added set/show commands to turnadmin for secret key.
-	 
+
 04/6/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.5 'Black Dow':
 
@@ -356,25 +357,25 @@ Version 1.8.0.5 'Black Dow':
 	- minor cosmetic changes.
 	- Added "list" commands for long-term and short-term users,
 	 to turnadmin.
-	
+
 04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.4 'Black Dow':
 
 	- Minor compilation fixes.
 	- Minor docs fixes.
-	- "connect_timeout" option support for MySQL.  
-	
+	- "connect_timeout" option support for MySQL.
+
 04/5/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.3 'Black Dow':
 
 	- Issue 11 (secret timestamp check) fixed.
-	
+
 04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.2 'Black Dow':
 
 	- TCP sockets flush removed.
 	- rfc5769check utility removed from the Makefile.
-	
+
 04/4/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.8.0.1 'Black Dow':
 
@@ -385,19 +386,19 @@ Version 1.8.0.1 'Black Dow':
 Version 1.8.0.0 'Black Dow':
 
 	- Short-term credentials mechanism implemented.
-	
+
 04/2/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.3.1 'Superior Glokta':
 
 	- Listeners code cleaned.
 	- The default number of extra relay threads changes from 0 to 1.
-	  
+
 04/1/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.3.0 'Superior Glokta':
 
 	- Issue 10 fixed: log file control options.
 	  Two options added: --no-stdout-log and --log-file.
-	
+
 03/29/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.2.0 'Superior Glokta':
 
@@ -405,24 +406,24 @@ Version 1.7.2.0 'Superior Glokta':
 	- Secret-based authentication implemented (see TURNServerRESTAPI.pdf).
 	- Uclient docs fixed.
 	- database schema extended (table for the secret added).
-	
+
 03/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.1.2 'Superior Glokta':
 
-	- CHANNEL BIND request handling fixed: now it produces an error 
-		when client is trying to tie the same peer address to 
+	- CHANNEL BIND request handling fixed: now it produces an error
+		when client is trying to tie the same peer address to
 		different channels.
-	- uclient and peer test apps upgraded so that RTP channels 
-		are talking  to <port> and RTCP channels are talking 
+	- uclient and peer test apps upgraded so that RTP channels
+		are talking  to <port> and RTCP channels are talking
 		to <port+1> in client-to-peer communication patterns.
 	- compilation warning is fixed when MySQL is not used.
-	
+
 03/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.1.1 'Superior Glokta':
 
 	- CONNECT response fixed in RFC 6062.
 	- uclient checks server responses integrity.
-	
+
 03/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.1.0 'Superior Glokta':
 
@@ -430,68 +431,68 @@ Version 1.7.1.0 'Superior Glokta':
 	- PostgreSQL support improved.
 	- Docs fixed.
 	- 64 bits platform fixes.
-	
+
 03/23/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.0.0 'Glokta':
 
 	- Authentication fix.
 	- PostgreSQL database can be used as the user keys repository.
-	
+
 03/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.1.3 'Whirrun':
 
 	- UDP segmentation fault fixed
-	
+
 03/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.1.2 'Whirrun':
 
 	- RFC 6062 fix
-	
+
 03/21/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.1.1 'Whirrun':
 
 	- Authentication error fixed
-	
+
 03/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.1.0 'Whirrun':
 
-	- --stale-nonce option 
+	- --stale-nonce option
 	- working on userdb
 	- "hang on" option fixed in uclient
-	
+
 03/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.2 'Whirrun':
 
 	- working on userdb
 	- c++ compilation fix
-	
+
 03/17/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.1 'Whirrun':
 
 	- uclient performance improved
 	- TurnNetworks.pdf document added
-	
+
 03/15/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.6.0.0 'Whirrun':
 
 	- "Pure" TCP relaying (RFC 6062) implemented.
 	- Network interactions fixes.
 	- RFC 6062 test scripts added.
-	
+
 03/03/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.8 'Iosiv Lestek':
 
 	- authorization processing improvements.
 	- peer application fixed.
 	- some ICE attributes added.
-	
+
 02/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.7 'Iosiv Lestek':
 
 	- authorization processing improvements
 	- Issue 4 fixed.
 	- secure client-to-client script added
-	
+
 02/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.6 'Iosiv Lestek':
 
@@ -500,7 +501,7 @@ Version 1.5.2.6 'Iosiv Lestek':
 	- uclient statistics fixed
 	- software attribute fixed
 	- example scripts fixed
-	
+
 02/16/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.5 'Lestek':
 
@@ -512,11 +513,11 @@ Version 1.5.2.4 'Lestek':
 
 	- Crash fixed on unconfigured interfaces
 	- Docs fixes
-	
+
 02/12/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.3 'Lestek':
 
-	- Added feature: TURN Server always uses fingerprints in a session if 
+	- Added feature: TURN Server always uses fingerprints in a session if
 	  the session client is using fingerprints.
 	- Default unsecure alternative port changed to 3479,
 	  default secure alternative port changed to 5350.
@@ -524,26 +525,26 @@ Version 1.5.2.3 'Lestek':
 	  turn_server_cert.pem and for default private key file
 	  turn_server_pkey.pem, if not certificate or private key is
 	  explicitly configured.
-	- configurable packet rate in the uclient test program. 
+	- configurable packet rate in the uclient test program.
 	- default peer port changed to 3480.
 	- -z, --no-auth option added to turnserver.
-	
+
 02/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.2 'Lestek':
 
 	- Some cleanup added to the network input handlers.
-	
+
 02/9/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.1 'Lestek':
 
 	- Binding requests do not require authentication.
 	- SOFTWARE in the end of the message.
-	
+
 02/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.2.0 'Lestek':
 
 	- NAT discovery fixed (RFC5780).
-	
+
 02/8/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.6 'Calder':
 
@@ -554,15 +555,14 @@ Version 1.5.1.5 'Calder':
 
 	- Mac compilation fixes.
 	- Fixes for old Linuxes.
-	
+
 02/7/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.4 'Calder':
 
 	- Configuration alert (warning) messages.
 	- Relay addresses by default use listener addresses.
 	- Realm/user sequence fixed in the config file reading.
-	
-	
+
 01/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.3 'Calder':
 
@@ -573,70 +573,70 @@ Version 1.5.1.2 'Calder':
 
 	- Alternative ports moved to 20000-ish territory.
 	- Docs fixes.
-	
+
 01/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.1 'Calder':
 
 	- Docs fixes.
-	
+
 01/22/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.1.0 'Calder':
 
 	- C++ compatible headers and build.
-	- C++ library header. 
+	- C++ library header.
 	- HTML-formatted development reference.
-	
+
 01/14/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.5.0.0 'Calder':
 
 	- RFC 5769 check utility implemented.
-	- RFC 5780 STUN extension implemented. 
-	
+	- RFC 5780 STUN extension implemented.
+
 01/13/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.5 'Scale':
 
 	- Issue 2 fixed.
-	
+
 01/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.4 'Scale':
 
 	- Bogus "Bind to device" error message removed (Linux).
 	- Docs improvements.
-	
+
 01/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.3 'Scale':
 
 	- Bandwidth limitation implemented (--max-bps option).
 	- DTLS communications improved.
-	
+
 01/07/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.2 'Scale':
 
 	- Output messages fixed.
 	- Peer test application accepts multiple listening addresses.
 	- config search directories improved.
-	
+
 01/06/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2.1 'Scale':
 
 	- Examples directory structure fixed
 	- Installation fixes
 	- Output messages fixed
-	
+
 01/05/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.2 'Scale':
 
 	- Daemon execution improved
 	- Installation fixes
 	- Added comments to the scripts
-	
+
 01/04/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.1.2 'Scale':
 
 	- Configure script introduced
 	- Installation fixes
 	- Run as daemon
-	
+
 01/01/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4.1 'Scale':
 
@@ -644,7 +644,7 @@ Version 1.4.1 'Scale':
 	- Build fixes
 	- Script fixes
 	- Installation fixes
-	
+
 12/31/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.4 'Scale':
 
@@ -652,7 +652,7 @@ Version 1.4 'Scale':
 	- Build fixes
 	- Script fixes
 	- Logging fixes
-	
+
 12/29/2012 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.3.0.2 'Ferro':
 
