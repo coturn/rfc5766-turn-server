@@ -19,34 +19,38 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-turn=/usr/bin/turnserver
-prog=turnserver
-pidfile=/var/run/$prog.pid
-lockfile=/var/lock/subsys/$prog
-user=turnserver
+TURN=/usr/bin/turnserver
+PROG=turnserver
+TURNCFG=/etc/turnserver/$PROG.conf
+PID_FILE=/var/run/$PROG.pid
+LOCK_FILE=/var/lock/subsys/$PROG
+DEFAULTS=/etc/sysconfig/$PROG
 RETVAL=0
-
-[ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+USER=turnserver
 
 start() {
-	echo -n $"Starting $prog: "
-	# there is something at end of this output which is needed to
-	# report proper [ OK ] status in CentOS scripts
-	daemon --pidfile=$pidfile --user=$user $turn $OPTIONS
+	echo -n $"Starting $PROG: "
+	daemon --user=$USER $TURN $OPTIONS
 	RETVAL=$?
+	if [ $RETVAL = 0 ]; then
+		pidofproc $TURN > $PID_FILE
+		RETVAL=$?
+		[ $RETVAL = 0 ] && touch $LOCK_FILE && success
+	fi
 	echo
-	[ $RETVAL = 0 ] && touch $lockfile
+	return $RETVAL
 }
 
 stop() {
-	echo -n $"Stopping $prog: "
-	killproc $turn
+	echo -n $"Stopping $PROG: "
+	killproc $TURN
 	RETVAL=$?
 	echo
-	[ $RETVAL = 0 ] && rm -f $lockfile $pidfile
+	[ $RETVAL = 0 ] && rm -f $LOCK_FILE $PID_FILE
 }
 
-[ -z "$OPTIONS" ] && OPTIONS="-c /etc/turnserver/turnserver.conf -o --no-stdout-log"
+[ -f $DEFAULTS ] && . $DEFAULTS
+OPTIONS="-c $TURNCFG -o --no-stdout-log $EXTRA_OPTIONS"
 
 # See how we were called.
 case "$1" in
@@ -57,7 +61,7 @@ case "$1" in
 		stop
 		;;
 	status)
-		status $turn
+		status $TURN
 		RETVAL=$?
 		;;
 	restart)
@@ -65,13 +69,13 @@ case "$1" in
 		start
 		;;
 	condrestart)
-		if [ -f /var/run/$prog.pid ] ; then
+		if [ -f $PID_FILE ] ; then
 			stop
 			start
 		fi
 		;;
 	*)
-		echo $"Usage: $prog {start|stop|restart|condrestart|status|help}"
+		echo $"Usage: $PROG {start|stop|restart|condrestart|status|help}"
 		exit 1
 esac
 
