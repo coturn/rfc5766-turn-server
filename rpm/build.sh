@@ -6,36 +6,9 @@ BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
 TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/trunk/
 
-WGETOPTIONS="--no-check-certificate"
-
-# DIRS
-
-mkdir -p ${BUILDDIR}
-mkdir -p ${BUILDDIR}/SOURCES
-mkdir -p ${BUILDDIR}/SPECS
-mkdir -p ${BUILDDIR}/RPMS
-mkdir -p ${BUILDDIR}/tmp
-
-# Common packs
-
-PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn"
-sudo yum -y install ${PACKS}
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    echo "Cannot install packages ${PACKS}"
-    exit -1
-fi
-
 # Required packages
 
 PACKS="postgresql-devel hiredis-devel"
-
-rpm -q -i mysql-devel
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    # Fedora ?
-    PACKS="mariadb-devel ${PACKS}"
-fi
 
 sudo yum -y install ${PACKS}
 ER=$?

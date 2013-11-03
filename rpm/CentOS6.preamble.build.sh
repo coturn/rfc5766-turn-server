@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # CentOS6 preparation script.
-# Fedora does not need it.
 
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
