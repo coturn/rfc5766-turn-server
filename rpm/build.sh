@@ -4,7 +4,7 @@ TURNVERSION=2.6.7.0
 
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
-TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/trunk/
+TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/
 
 # Required packages
 
@@ -21,7 +21,7 @@ fi
 
 cd ${BUILDDIR}/tmp
 rm -rf turnserver-${TURNVERSION}
-svn export ${TURNSERVER_SVN_URL} turnserver-${TURNVERSION}
+svn export ${TURNSERVER_SVN_URL}/trunk turnserver-${TURNVERSION}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     exit -1
@@ -45,12 +45,15 @@ cd ${BUILDDIR}/RPMS/${ARCH}
 mkdir -p di
 mv *debuginfo* di
 mv *devel* di
+rm -rf turnserver-${TURNVERSION}
+mkdir turnserver-${TURNVERSION}
+mv *.rpm turnserver-${TURNVERSION}/
 
-cat <<EOF >install.sh
+cat <<EOF >turnserver-${TURNVERSION}/install.sh
 #!/bin/sh
 sudo rpm -i --force *.rpm
 EOF
 
-chmod a+x install.sh
+chmod a+x turnserver-${TURNVERSION}/install.sh
 
-tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz *.rpm install.sh
+tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz turnserver-${TURNVERSION}

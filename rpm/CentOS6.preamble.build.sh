@@ -4,12 +4,14 @@
 
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
+TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/
+
 EPELRPM=epel-release-6-8.noarch.rpm
 LIBEVENT_MAJOR_VERSION=2
 LIBEVENT_VERSION=${LIBEVENT_MAJOR_VERSION}.0.21
 LIBEVENT_DISTRO=libevent-${LIBEVENT_VERSION}-stable.tar.gz
 LIBEVENT_SPEC_DIR=libevent.rpm
-LIBEVENTSPEC_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/${LIBEVENT_SPEC_DIR}/
+LIBEVENTSPEC_SVN_URL=${TURNSERVER_SVN_URL}/${LIBEVENT_SPEC_DIR}/
 LIBEVENT_SPEC_FILE=libevent.spec
 
 WGETOPTIONS="--no-check-certificate"
