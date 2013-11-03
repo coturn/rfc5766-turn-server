@@ -26,15 +26,25 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
-# TURN
+# Required packages
 
-PACKS="mysql-devel postgresql-devel hiredis-devel"
+PACKS="postgresql-devel hiredis-devel"
+
+rpm -q -i mysql-devel
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+    # Fedora ?
+    PACKS="mariadb-devel ${PACKS}"
+fi
+
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACKS}"
     exit -1
 fi
+
+# TURN
 
 cd ${BUILDDIR}/tmp
 rm -rf turnserver-${TURNVERSION}
@@ -55,3 +65,11 @@ ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
+
+# Make binary tarball
+
+cd ${BUILDDIR}/RPMS/${ARCH}
+mkdir -p di
+mv *debuginfo* di
+mv *devel* di
+tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz *.rpm
