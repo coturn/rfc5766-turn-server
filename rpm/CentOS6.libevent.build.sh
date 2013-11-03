@@ -1,14 +1,14 @@
 #!/bin/bash
 
-TURNVERSION=2.6.6.2
+# CentOS6 preparation script.
+# Fedora does not need it.
 
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
+EPELRPM=epel-release-6-8.noarch.rpm
 LIBEVENT_MAJOR_VERSION=2
 LIBEVENT_VERSION=${LIBEVENT_MAJOR_VERSION}.0.21
 LIBEVENT_DISTRO=libevent-${LIBEVENT_VERSION}-stable.tar.gz
-EPELRPM=epel-release-6-8.noarch.rpm
-TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/trunk/
 LIBEVENT_SPEC_DIR=libevent.rpm
 LIBEVENTSPEC_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/${LIBEVENT_SPEC_DIR}/
 LIBEVENT_SPEC_FILE=libevent.spec
@@ -61,7 +61,7 @@ if ! [ -f ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE} ] ; then
     cp ${LIBEVENT_SPEC_DIR}/${LIBEVENT_SPEC_FILE} ${BUILDDIR}/SPECS
 fi
 
-cd ${BUILDDIR}/SPECS
+!cd ${BUILDDIR}/SPECS
 rpmbuild -ba ${BUILDDIR}/SPECS/${LIBEVENT_SPEC_FILE}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
@@ -84,7 +84,7 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
-# TURN
+# EPEL (for hiredis)
 
 cd ${BUILDDIR}/RPMS
 if ! [ -f ${EPELRPM} ] ; then
@@ -106,33 +106,4 @@ if ! [ ${ER} -eq 0 ] ; then
 	exit -1
     fi
 fi
-
-PACKS="mysql-devel postgresql-devel hiredis-devel"
-sudo yum install ${PACKS}
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    echo "Cannot install packages ${PACKS}"
-    exit -1
-fi
-
-cd ${BUILDDIR}/tmp
-rm -rf turnserver-${TURNVERSION}
-svn export ${TURNSERVER_SVN_URL} turnserver-${TURNVERSION}
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    exit -1
-fi
-
-tar zcf ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz turnserver-${TURNVERSION}
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    exit -1
-fi
-
-rpmbuild -ta ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz
-ER=$?
-if ! [ ${ER} -eq 0 ] ; then
-    exit -1
-fi
-
  
