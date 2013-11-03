@@ -13,7 +13,7 @@ LIBEVENT_SPEC_DIR=libevent.rpm
 LIBEVENTSPEC_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/${LIBEVENT_SPEC_DIR}/
 LIBEVENT_SPEC_FILE=libevent.spec
 
-WGETOPTIONS="-r --no-check-certificate"
+WGETOPTIONS="--no-check-certificate"
 
 # DIRS
 
