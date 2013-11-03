@@ -1,10 +1,6 @@
 #!/bin/bash
 
-TURNVERSION=2.6.7.0
-
-BUILDDIR=~/rpmbuild
-ARCH=`uname -p`
-TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/
+. ./common.build.sh
 
 # Required packages
 
@@ -51,7 +47,7 @@ mv *.rpm turnserver-${TURNVERSION}/
 
 cat <<EOF >turnserver-${TURNVERSION}/install.sh
 #!/bin/sh
-sudo rpm -i --force *.rpm
+sudo rpm ${RPMOPTIONS} *.rpm
 EOF
 
 chmod a+x turnserver-${TURNVERSION}/install.sh

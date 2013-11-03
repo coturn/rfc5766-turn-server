@@ -1,3 +1,6 @@
+MANUAL PROCESS FOR CENTOS 6:
+
+
 The first thing you need to build/use the TURN server with CentOS is to build and install libevent 2.x.x.  CentOS 6 ships with libevent 1.x.x.  You can find a .spec file to build libevent 2.x.x here: https://github.com/crocodilertc/libevent
 
 To build libevent:
@@ -23,4 +26,18 @@ To build the TURN server:
     7) Create a tarball, "tar zcf ~/rpmbuild/SOURCES/turnserver-2.6.7.0.tar.gz turnserver-2.6.7.0"
     8) Build the RPMs, "rpmbuild -ta ~/rpmbuild/SOURCES/turnserver-2.6.7.0.tar.gz"
 
+
+AUTOMATED PROCESS FOR CENTOS 6:
+
+$ cd <...>/rfc57666-turn-server/rpm
+$ ./CentOS6.preamble.build.sh
+$ ./build.sh
+(then see the tarball in ~/rpmbuild/RPMS)
+
+AUTOMATED PROCESS FOR Fedora:
+
+$ cd <...>/rfc57666-turn-server/rpm
+$ ./Fedora.preamble.build.sh
+$ ./build.sh
+(then see the tarball in ~/rpmbuild/RPMS)
 

@@ -2,9 +2,7 @@
 
 # CentOS6 preparation script.
 
-BUILDDIR=~/rpmbuild
-ARCH=`uname -p`
-TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn/
+. ./common.preamble.build.sh
 
 EPELRPM=epel-release-6-8.noarch.rpm
 LIBEVENT_MAJOR_VERSION=2
@@ -14,23 +12,13 @@ LIBEVENT_SPEC_DIR=libevent.rpm
 LIBEVENTSPEC_SVN_URL=${TURNSERVER_SVN_URL}/${LIBEVENT_SPEC_DIR}/
 LIBEVENT_SPEC_FILE=libevent.spec
 
-WGETOPTIONS="--no-check-certificate"
-
-# DIRS
-
-mkdir -p ${BUILDDIR}
-mkdir -p ${BUILDDIR}/SOURCES
-mkdir -p ${BUILDDIR}/SPECS
-mkdir -p ${BUILDDIR}/RPMS
-mkdir -p ${BUILDDIR}/tmp
-
 # Common packs
 
-PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn mysql-devel"
+PACKS="mysql-devel"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    echo "Cannot install packages ${PACKS}"
+    echo "Cannot install package(s) ${PACKS}"
     exit -1
 fi
 
@@ -70,7 +58,7 @@ if ! [ ${ER} -eq 0 ] ; then
 fi
 
 PACK=${BUILDDIR}/RPMS/${ARCH}/libevent-${LIBEVENT_MAJOR_VERSION}*.rpm
-sudo rpm -i --force ${PACK}
+sudo rpm ${RPMOPTIONS} ${PACK}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACK}"
@@ -78,7 +66,7 @@ if ! [ ${ER} -eq 0 ] ; then
 fi
 
 PACK=${BUILDDIR}/RPMS/${ARCH}/libevent-devel*.rpm
-sudo rpm -i --force ${PACK}
+sudo rpm ${RPMOPTIONS} ${PACK}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACK}"
@@ -97,14 +85,10 @@ if ! [ -f ${EPELRPM} ] ; then
 fi
 
 PACK=epel-release-6-8.noarch.rpm
-sudo yum -y install ${PACK}
+sudo rpm ${RPMOPTIONS} ${PACK}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    sudo yum -y update ${PACK}
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-	echo "Cannot install package ${PACK}"
-	exit -1
-    fi
+    echo "Cannot install package ${PACK}"
+    exit -1
 fi
  
