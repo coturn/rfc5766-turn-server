@@ -72,4 +72,12 @@ cd ${BUILDDIR}/RPMS/${ARCH}
 mkdir -p di
 mv *debuginfo* di
 mv *devel* di
-tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz *.rpm
+
+cat <<EOF >install.sh
+#!/bin/sh
+sudo rpm -i --force *.rpm
+EOF
+
+chmod a+x install.sh
+
+tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz *.rpm install.sh
