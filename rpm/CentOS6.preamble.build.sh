@@ -26,7 +26,7 @@ mkdir -p ${BUILDDIR}/tmp
 # Common packs
 
 PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn"
-sudo yum install ${PACKS}
+sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACKS}"
@@ -96,10 +96,10 @@ if ! [ -f ${EPELRPM} ] ; then
 fi
 
 PACK=epel-release-6-8.noarch.rpm
-sudo yum install ${PACK}
+sudo yum -y install ${PACK}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
-    sudo yum update ${PACK}
+    sudo yum -y update ${PACK}
     ER=$?
     if ! [ ${ER} -eq 0 ] ; then
 	echo "Cannot install package ${PACK}"

@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	2.6.6.2
+Version:	2.6.7.0
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -268,13 +268,15 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sun Nov 3 2013 Oleg Moskalenko <mom040267@gmail.com>
+  - Updated to version 2.6.7.0
 * Sat Nov 2 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
   - Added Fedora support
 * Thu Oct 31 2013 Oleg Moskalenko <mom040267@gmail.com>
-  - Updated for version 2.6.6.2
+  - Updated to version 2.6.6.2
 * Sun Oct 27 2013 Oleg Moskalenko <mom040267@gmail.com>
-  - Updated for version 2.6.6.1
+  - Updated to version 2.6.6.1
 * Sun Oct 27 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
-  - Updated for version 2.6.6.0
+  - Updated to version 2.6.6.0
 * Fri May 3 2013 Peter Dunkley <peter.dunkley@crocodilertc.net>
   - First version

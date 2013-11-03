@@ -1,9 +1,11 @@
-10/31/2013 Oleg Moskalenko <mom040267@gmail.com>,
+11/03/2013 Oleg Moskalenko <mom040267@gmail.com>,
 	Peter Dunkley <peter.dunkley@crocodilertc.net>
-Version 2.6.6.2 'Harding Grim':
+Version 2.6.7.0 'Harding Grim':
+	- "Official" CentOS 6 pre-compiled distribution (TODO).
+	- Tentative Fedora pre-compiled distribution (TODO).
+	- FreeBSD pre-compiled package (TODO).
 	- TURN_NO_TLS compilation cleaning.
-	- Text files cleaning.
-	- CentOS files updated.
+	- Text files cleaning.!
 
 10/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.1 'Harding Grim':

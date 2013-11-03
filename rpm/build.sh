@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TURNVERSION=2.6.6.2
+TURNVERSION=2.6.7.0
 
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
@@ -19,7 +19,7 @@ mkdir -p ${BUILDDIR}/tmp
 # Common packs
 
 PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel wget svn"
-sudo yum install ${PACKS}
+sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACKS}"
@@ -29,7 +29,7 @@ fi
 # TURN
 
 PACKS="mysql-devel postgresql-devel hiredis-devel"
-sudo yum install ${PACKS}
+sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACKS}"
