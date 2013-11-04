@@ -77,6 +77,9 @@ for i in *.rpm ; do
     fi
   fi
 done
+
+echo SUCCESS !
+
 EOF
 
 chmod a+x turnserver-${TURNVERSION}/install.sh

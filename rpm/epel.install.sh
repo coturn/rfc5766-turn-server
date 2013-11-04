@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CPWD = `pwd`
+CPWD=`pwd`
 
 # Epel installation script
 
