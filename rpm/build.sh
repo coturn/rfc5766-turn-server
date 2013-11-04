@@ -47,7 +47,18 @@ mv *.rpm turnserver-${TURNVERSION}/
 
 cat <<EOF >turnserver-${TURNVERSION}/install.sh
 #!/bin/sh
-sudo rpm ${RPMOPTIONS} *.rpm
+for i in *.rpm ; do
+  sudo rpm -Uvh \${i}
+  ER=\$?
+  if ! [ \${ER} -eq 0 ] ; then
+    sudo rpm -ivh --force \${i}
+    ER=\$?
+    if ! [ \${ER} -eq 0 ] ; then
+      echo "ERROR: cannot install package \${i}"
+      exit -1
+    fi
+  fi
+done
 EOF
 
 chmod a+x turnserver-${TURNVERSION}/install.sh
