@@ -2,7 +2,7 @@
 
 # Fedora preparation script.
 
-. ./common.preamble.build.sh
+. ./common.pre.build.sh
 
 PACKS="mariadb-devel"
 sudo yum -y install ${PACKS}

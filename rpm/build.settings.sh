@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Common preparation script.
+# Common settings script.
 
 TURNVERSION=2.6.7.0
 BUILDDIR=~/rpmbuild

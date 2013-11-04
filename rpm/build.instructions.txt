@@ -30,14 +30,14 @@ To build the TURN server:
 AUTOMATED PROCESS FOR CENTOS 6:
 
 $ cd <...>/rfc57666-turn-server/rpm
-$ ./CentOS6.preamble.build.sh
+$ ./CentOS6.pre.build.sh
 $ ./build.sh
-(then see the tarball in ~/rpmbuild/RPMS)
+(then see the tarball in ~/rpmbuild/RPMS/<arch>)
 
 AUTOMATED PROCESS FOR Fedora:
 
 $ cd <...>/rfc57666-turn-server/rpm
-$ ./Fedora.preamble.build.sh
+$ ./Fedora.pre.build.sh
 $ ./build.sh
-(then see the tarball in ~/rpmbuild/RPMS)
+(then see the tarball in ~/rpmbuild/RPMS/<arch>)
 

@@ -2,7 +2,7 @@
 
 # CentOS6 preparation script.
 
-. ./common.preamble.build.sh
+. ./common.pre.build.sh
 
 EPELRPM=epel-release-6-8.noarch.rpm
 LIBEVENT_MAJOR_VERSION=2

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ./common.build.sh
+. ./build.settings.sh
 
 # Required packages
 

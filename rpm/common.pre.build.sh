@@ -2,7 +2,7 @@
 
 # Common preparation script.
 
-. ./common.build.sh
+. ./build.settings.sh
 
 # Common packs
 
