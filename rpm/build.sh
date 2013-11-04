@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CPWD=`pwd`
+
 . ./build.settings.sh
 
 # Required packages
@@ -10,6 +12,7 @@ sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     echo "Cannot install packages ${PACKS}"
+    cd ${CPWD}
     exit -1
 fi
 
@@ -20,18 +23,21 @@ rm -rf turnserver-${TURNVERSION}
 svn export ${TURNSERVER_SVN_URL}/trunk turnserver-${TURNVERSION}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
+    cd ${CPWD}
     exit -1
 fi
 
 tar zcf ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz turnserver-${TURNVERSION}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
+    cd ${CPWD}
     exit -1
 fi
 
 rpmbuild -ta ${BUILDDIR}/SOURCES/turnserver-${TURNVERSION}.tar.gz
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
+    cd ${CPWD}
     exit -1
 fi
 
@@ -45,17 +51,29 @@ rm -rf turnserver-${TURNVERSION}
 mkdir turnserver-${TURNVERSION}
 mv *.rpm turnserver-${TURNVERSION}/
 
-cat <<EOF >turnserver-${TURNVERSION}/install.sh
-#!/bin/sh
+rm -rf turnserver-${TURNVERSION}/install.sh
+
+if [ -f ${BUILDDIR}/install.sh ] ; then
+    cat ${BUILDDIR}/install.sh > turnserver-${TURNVERSION}/install.sh
+else
+    echo "#!/bin/sh" > turnserver-${TURNVERSION}/install.sh
+fi
+
+cat <<EOF >>turnserver-${TURNVERSION}/install.sh
+
 for i in *.rpm ; do
-  sudo rpm -Uvh \${i}
+  sudo yum -y install \${i}
   ER=\$?
   if ! [ \${ER} -eq 0 ] ; then
-    sudo rpm -ivh --force \${i}
+    sudo rpm -Uvh \${i}
     ER=\$?
     if ! [ \${ER} -eq 0 ] ; then
-      echo "ERROR: cannot install package \${i}"
-      exit -1
+      sudo rpm -ivh --force \${i}
+      ER=\$?
+      if ! [ \${ER} -eq 0 ] ; then
+        echo "ERROR: cannot install package \${i}"
+        exit -1
+      fi
     fi
   fi
 done
@@ -66,3 +84,5 @@ chmod a+x turnserver-${TURNVERSION}/install.sh
 PLATFORM=`cat ${BUILDDIR}/platform`
 
 tar cvfz turnserver-${TURNVERSION}-${PLATFORM}-${ARCH}.tar.gz turnserver-${TURNVERSION}
+
+cd ${CPWD}
