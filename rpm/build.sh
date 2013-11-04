@@ -63,4 +63,6 @@ EOF
 
 chmod a+x turnserver-${TURNVERSION}/install.sh
 
-tar cvfz turnserver-${TURNVERSION}-rpms-${ARCH}.tar.gz turnserver-${TURNVERSION}
+PLATFORM=`cat ${BUILDDIR}/platform`
+
+tar cvfz turnserver-${TURNVERSION}-${PLATFORM}-${ARCH}.tar.gz turnserver-${TURNVERSION}

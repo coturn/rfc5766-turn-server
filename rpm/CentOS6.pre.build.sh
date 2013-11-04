@@ -92,3 +92,4 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
  
+echo "CentOS6" > ${BUILDDIR}/platform
