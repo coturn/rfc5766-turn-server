@@ -2,7 +2,7 @@
 	Peter Dunkley <peter.dunkley@crocodilertc.net>
 Version 2.6.7.0 'Harding Grim':
 	- CentOS 6 pre-compiled distribution.
-	- Fedora pre-compiled distribution (TODO).
+	- Fedora pre-compiled distribution.
 	- TURN_NO_TLS case compilation cleaning.
 	- Text files cleaning.
 	- Issue 68 fixed (no-stun option added).
