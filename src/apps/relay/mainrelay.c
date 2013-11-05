@@ -131,6 +131,7 @@ static int verbose=TURN_VERBOSE_NONE;
 static int turn_daemon = 0;
 static int stale_nonce = 0;
 static int stun_only = 0;
+static int no_stun = 0;
 static int secure_stun = 0;
 
 static int do_not_use_config_file = 0;
@@ -1213,6 +1214,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					no_udp_relay,
 					stale_nonce,
 					stun_only,
+					no_stun,
 					&alternate_servers_list,
 					&tls_alternate_servers_list,
 					&aux_servers_list,
@@ -1612,6 +1614,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
 " --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
+"     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
 " --alternate-server		<ip:port>	Set the TURN server to redirect the allocate requests (UDP and TCP services).\n"
 "						Multiple alternate-server options can be set for load balancing purposes.\n"
 "						See the docs for more information.\n"
@@ -1707,7 +1710,8 @@ enum EXTRA_OPTS {
 	PIDFILE_OPT,
 	SECURE_STUN_OPT,
 	CA_FILE_OPT,
-	SHA256_OPT
+	SHA256_OPT,
+	NO_STUN_OPT
 };
 
 static struct option long_options[] = {
@@ -1758,6 +1762,7 @@ static struct option long_options[] = {
 				{ "no-tcp-relay", optional_argument, NULL, NO_TCP_RELAY_OPT },
 				{ "stale-nonce", optional_argument, NULL, STALE_NONCE_OPT },
 				{ "stun-only", optional_argument, NULL, 'S' },
+				{ "no-stun", optional_argument, NULL, NO_STUN_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
 				{ "log-file", required_argument, NULL, 'l' },
@@ -1896,6 +1901,9 @@ static void set_option(int c, char *value)
 		break;
 	case 'S':
 		stun_only = get_bool_value(value);
+		break;
+	case NO_STUN_OPT:
+		no_stun = get_bool_value(value);
 		break;
 	case 'L':
 		add_listener_addr(value);

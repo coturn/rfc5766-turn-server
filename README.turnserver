@@ -188,7 +188,11 @@ use only UDP relay endpoints as defined in RFC 5766.
 			
 --syslog		With this flag, all log will be redirected to the system log (syslog).
 
--S, --stun-only		Run as STUN server only, all TURN requests will be ignored.
+-S, --stun-only		Run as STUN server only, all TURN requests will be ignored. 
+					Option to suppress TURN functionality, only STUN requests will be processed.
+
+--no-stun			Run as TURN server only, all STUN requests will be ignored. 
+					Option to suppress STUN functionality, only TURN requests will be processed.
 
 --no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
 

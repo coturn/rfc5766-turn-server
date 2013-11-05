@@ -62,6 +62,7 @@ struct _turn_turnserver {
 	int rfc5780;
 	int stale_nonce;
 	int stun_only;
+	int no_stun;
 	int secure_stun;
 	SHATYPE shatype;
 	get_alt_addr_cb alt_addr_cb;
@@ -2295,7 +2296,16 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		if((method != STUN_METHOD_BINDING) && (server->stun_only)) {
+		if((method == STUN_METHOD_BINDING) && (server->no_stun)) {
+
+			no_response = 1;
+			if(server->verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"%s: STUN method 0x%x ignored\n",
+									__FUNCTION__, (unsigned int)method);
+			}
+
+		} else if((method != STUN_METHOD_BINDING) && (server->stun_only)) {
 
 				no_response = 1;
 				if(server->verbose) {
@@ -3128,7 +3138,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			return 0;
 		}
 
-	} else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie)) {
+	} else if (!(server->no_stun) && old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie)) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
@@ -3398,6 +3408,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int no_udp_relay,
 		int stale_nonce,
 		int stun_only,
+		int no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
@@ -3439,6 +3450,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->stale_nonce = stale_nonce;
 	server->stun_only = stun_only;
+	server->no_stun = no_stun;
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;

@@ -4,7 +4,8 @@ Version 2.6.7.0 'Harding Grim':
 	- CentOS 6 pre-compiled distribution.
 	- Fedora pre-compiled distribution (TODO).
 	- TURN_NO_TLS case compilation cleaning.
-	- Text files cleaning.!
+	- Text files cleaning.
+	- Issue 68 fixed (no-stun option added).
 
 10/27/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.6.1 'Harding Grim':
