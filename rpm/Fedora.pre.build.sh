@@ -6,7 +6,7 @@ CPWD=`pwd`
 
 . ./common.pre.build.sh
 
-PACKS="mariadb-devel"
+PACKS="libevent-devel mariadb-devel"
 sudo yum -y install ${PACKS}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
@@ -15,6 +15,6 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
-echo "CentOS6" > ${BUILDDIR}/platform
+echo "Fedora" > ${BUILDDIR}/platform
 
 cd ${CPWD}
