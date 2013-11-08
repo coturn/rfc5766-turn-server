@@ -3,6 +3,7 @@
 Version 2.6.7.1 'Harding Grim':
 	- CentOS  / Fedora uninstall script.
 	- Debian compilation error fixed.
+	- OpenSSL 0.9.7 and earlier build fixed.
 
 11/03/2013 Oleg Moskalenko <mom040267@gmail.com>,
 	Peter Dunkley <peter.dunkley@crocodilertc.net>

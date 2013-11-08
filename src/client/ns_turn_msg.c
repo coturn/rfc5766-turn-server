@@ -41,16 +41,21 @@
 int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t keylen, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype)
 {
 	ERR_clear_error();
+	UNUSED_ARG(shatype);
 
+#if !defined(OPENSSL_NO_SHA256)
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	if(shatype == SHATYPE_SHA256) {
-		if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
-			return -1;
-		}
-	} else {
-		if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
-			return -1;
-		}
-	}
+	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
+	    return -1;
+	  }
+	} else
+#endif
+#endif
+
+	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
+	    return -1;
+	  }
 
 	return 0;
 }
