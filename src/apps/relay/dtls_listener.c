@@ -53,8 +53,6 @@
 
 #define MAX_SINGLE_UDP_BATCH (16)
 
-#define TURN_UDP_LISTENER_NUMBER_OF_SOCKETS (1)
-
 struct dtls_listener_relay_server_info {
   char ifname[1025];
   ioa_addr addr;
@@ -62,8 +60,8 @@ struct dtls_listener_relay_server_info {
   turn_turnserver *ts;
   int verbose;
   SSL_CTX *dtls_ctx;
-  struct event *udp_listen_evs[TURN_UDP_LISTENER_NUMBER_OF_SOCKETS];
-  ioa_socket_handle udp_listen_ss[TURN_UDP_LISTENER_NUMBER_OF_SOCKETS];
+  struct event *udp_listen_ev;
+  ioa_socket_handle udp_listen_s;
   ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
@@ -454,19 +452,6 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 	return 0;
 }
 
-void printf_server_socket(dtls_listener_relay_server_type* server, evutil_socket_t fd);
-void printf_server_socket(dtls_listener_relay_server_type* server, evutil_socket_t fd)
-{
-	int i = 0;
-	for(i=0;i<TURN_UDP_LISTENER_NUMBER_OF_SOCKETS;i++) {
-		if(server->udp_listen_ss[i]->fd == fd) {
-			printf("%s: i=%d\n",__FUNCTION__,i);
-			return;
-		}
-	}
-	printf("%s: i=UNKNOWN\n",__FUNCTION__);
-}
-
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 {
 	int cycle = 0;
@@ -590,9 +575,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
   clean_server(server);
 
-  int i = 0;
-  for(i=0;i<TURN_UDP_LISTENER_NUMBER_OF_SOCKETS;i++) {
-
+  {
 	  ioa_socket_raw udp_listen_fd = -1;
 
 	  udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
@@ -601,9 +584,9 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 		  return -1;
 	  }
 
-	  server->udp_listen_ss[i] = create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
+	  server->udp_listen_s = create_ioa_socket_from_fd(server->e, udp_listen_fd, NULL, UDP_SOCKET, LISTENER_SOCKET, NULL, &(server->addr));
 
-	  server->udp_listen_ss[i]->listener_server = server;
+	  server->udp_listen_s->listener_server = server;
 
 	  set_sock_buf_size(udp_listen_fd,UR_SERVER_SOCK_BUF_SIZE);
 
@@ -619,11 +602,11 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 		  return -1;
 	  }
 
-	  server->udp_listen_evs[i] = event_new(server->e->event_base,udp_listen_fd,
+	  server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
 				    EV_READ|EV_PERSIST,udp_server_input_handler,
-				    server->udp_listen_ss[i]);
+				    server->udp_listen_s);
 
-	  event_add(server->udp_listen_evs[i],NULL);
+	  event_add(server->udp_listen_ev,NULL);
 
 	  if(addr_get_from_sock(udp_listen_fd, &(server->addr))) {
 		  perror("Cannot get local socket addr");
@@ -645,25 +628,22 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 
 static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_socket_t fd)
 {
+	UNUSED_ARG(fd);
+
 	if(!server)
 		return 0;
 
 	FUNCSTART;
 
-	int i = 0;
-	for(i=0;i<TURN_UDP_LISTENER_NUMBER_OF_SOCKETS;i++) {
+	{
+		EVENT_DEL(server->udp_listen_ev);
 
-		if(server->udp_listen_ss[i]->fd != fd)
-			continue;
-
-		EVENT_DEL(server->udp_listen_evs[i]);
-
-		if(server->udp_listen_ss[i]->fd>=0) {
-			socket_closesocket(server->udp_listen_ss[i]->fd);
-			server->udp_listen_ss[i]->fd = -1;
+		if(server->udp_listen_s->fd>=0) {
+			socket_closesocket(server->udp_listen_s->fd);
+			server->udp_listen_s->fd = -1;
 		}
 
-		if (!(server->udp_listen_ss[i])) {
+		if (!(server->udp_listen_s)) {
 			return create_server_socket(server);
 		}
 
@@ -674,11 +654,11 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 			return -1;
 		}
 
-		server->udp_listen_ss[i]->fd = udp_listen_fd;
+		server->udp_listen_s->fd = udp_listen_fd;
 
 		/* some UDP sessions may fail due to the race condition here */
 
-		set_socket_options(server->udp_listen_ss[i]);
+		set_socket_options(server->udp_listen_s);
 
 		set_sock_buf_size(udp_listen_fd, UR_SERVER_SOCK_BUF_SIZE);
 
@@ -696,13 +676,11 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 			return -1;
 		}
 
-		server->udp_listen_evs[i] = event_new(server->e->event_base, udp_listen_fd,
+		server->udp_listen_ev = event_new(server->e->event_base, udp_listen_fd,
 				EV_READ | EV_PERSIST, udp_server_input_handler,
-				server->udp_listen_ss[i]);
+				server->udp_listen_s);
 
-		event_add(server->udp_listen_evs[i], NULL );
-
-		break;
+		event_add(server->udp_listen_ev, NULL );
 	}
 
 	if (!no_udp && !no_dtls)
@@ -782,12 +760,9 @@ static int init_server(dtls_listener_relay_server_type* server,
 
 static int clean_server(dtls_listener_relay_server_type* server) {
   if(server) {
-	  int i;
-	  for(i=0;i<TURN_UDP_LISTENER_NUMBER_OF_SOCKETS;i++) {
-		  EVENT_DEL(server->udp_listen_evs[i]);
-		  close_ioa_socket(server->udp_listen_ss[i]);
-		  server->udp_listen_ss[i] = NULL;
-	  }
+	  EVENT_DEL(server->udp_listen_ev);
+	  close_ioa_socket(server->udp_listen_s);
+	  server->udp_listen_s = NULL;
   }
   return 0;
 }
@@ -829,8 +804,8 @@ ioa_engine_handle get_engine(dtls_listener_relay_server_type* server)
 
 void udp_send_message(dtls_listener_relay_server_type *server, ioa_network_buffer_handle nbh, ioa_addr *dest)
 {
-	if(server && dest && nbh && (server->udp_listen_ss[0]))
-		udp_send(server->udp_listen_ss[0], dest, (s08bits*)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
+	if(server && dest && nbh && (server->udp_listen_s))
+		udp_send(server->udp_listen_s, dest, (s08bits*)ioa_network_buffer_data(nbh), (int)ioa_network_buffer_get_size(nbh));
 }
 
 //////////////////////////////////////////////////////////////////
