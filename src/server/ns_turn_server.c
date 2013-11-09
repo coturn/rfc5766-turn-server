@@ -2219,7 +2219,7 @@ static int check_stun_auth(turn_turnserver *server,
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect: SHA function is too weak\n",
 						__FUNCTION__, (char*)uname);
-		*err_code = 401;
+		*err_code = SHA_TOO_WEAK;
 		*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
 		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
 			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);

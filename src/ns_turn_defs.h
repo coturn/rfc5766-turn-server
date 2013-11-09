@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "2.6.7.1"
+#define TURN_SERVER_VERSION "2.6.7.2"
 #define TURN_SERVER_VERSION_NAME "Harding Grim"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
@@ -165,6 +165,8 @@ enum _SHATYPE {
 typedef enum _SHATYPE SHATYPE;
 
 #define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : "SHA UNKNOWN"))
+
+#define SHA_TOO_WEAK (441)
 
 ////////////////////////////////////////////////////////
 

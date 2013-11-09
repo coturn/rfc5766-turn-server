@@ -358,7 +358,7 @@ static int clnet_allocate(int verbose,
 						allocate_finished = 1;
 
 						if(clnet_info->nonce[0] || use_short_term) {
-							SHATYPE sht = shatype;
+							SHATYPE sht = clnet_info->shatype;
 							if(stun_check_message_integrity_str(get_turn_credentials_type(),
 											message.buf, (size_t)(message.len), g_uname,
 										clnet_info->realm, g_upwd, &sht)<1) {
@@ -396,6 +396,9 @@ static int clnet_allocate(int verbose,
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
 									clnet_info->realm,clnet_info->nonce)) {
+						if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1)) {
+							clnet_info->shatype = SHATYPE_SHA256;
+						}
 						goto beg_allocate;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 
@@ -404,7 +407,7 @@ static int clnet_allocate(int verbose,
 						if(err_code == 300) {
 
 							if(clnet_info->nonce[0] || use_short_term) {
-								SHATYPE sht = shatype;
+								SHATYPE sht = clnet_info->shatype;
 								if(stun_check_message_integrity_str(get_turn_credentials_type(),
 											message.buf, (size_t)(message.len), g_uname,
 											clnet_info->realm, g_upwd, &sht)<1) {
@@ -528,7 +531,10 @@ static int clnet_allocate(int verbose,
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
 										clnet_info->realm,clnet_info->nonce)) {
-							goto beg_refresh;
+						if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1)) {
+							clnet_info->shatype = SHATYPE_SHA256;
+						}
+						goto beg_refresh;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 						refresh_received = 1;
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "error %d (%s)\n",
@@ -609,7 +615,7 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 					cb_received = 1;
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = shatype;
+						SHATYPE sht = clnet_info->shatype;
 						if(stun_check_message_integrity_str(get_turn_credentials_type(),
 										message.buf, (size_t)(message.len), g_uname,
 									clnet_info->realm, g_upwd, &sht)<1) {
@@ -625,7 +631,10 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
 										clnet_info->realm,clnet_info->nonce)) {
-										goto beg_bind;
+					if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1)) {
+						clnet_info->shatype = SHATYPE_SHA256;
+					}
+					goto beg_bind;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cb_received = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "channel bind: error %d (%s)\n",
@@ -703,7 +712,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 					cp_received = 1;
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = shatype;
+						SHATYPE sht = clnet_info->shatype;
 						if(stun_check_message_integrity_str(get_turn_credentials_type(),
 										message.buf, (size_t)(message.len), g_uname,
 											clnet_info->realm, g_upwd, &sht)<1) {
@@ -718,6 +727,9 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
 									clnet_info->realm,clnet_info->nonce)) {
+					if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1)) {
+						clnet_info->shatype = SHATYPE_SHA256;
+					}
 					goto beg_cp;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cp_received = 1;
@@ -1121,7 +1133,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				if (stun_is_success_response(&message)) {
 
 					if(clnet_info->nonce[0] || use_short_term) {
-						SHATYPE sht = shatype;
+						SHATYPE sht = clnet_info->shatype;
 						if(stun_check_message_integrity_str(get_turn_credentials_type(),
 										message.buf, (size_t)(message.len), g_uname,
 									clnet_info->realm, g_upwd, &sht)<1) {
@@ -1140,6 +1152,9 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 										&err_code,err_msg,sizeof(err_msg),
 										clnet_info->realm,clnet_info->nonce)) {
+					if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1)) {
+						clnet_info->shatype = SHATYPE_SHA256;
+					}
 					goto beg_cb;
 				} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 					cb_received = 1;

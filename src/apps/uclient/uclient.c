@@ -111,6 +111,7 @@ static app_ur_session* init_app_session(app_ur_session *ss) {
   if(ss) {
     ns_bzero(ss,sizeof(app_ur_session));
     ss->pinfo.fd=-1;
+    ss->pinfo.shatype = shatype;
   }
   return ss;
 }
@@ -516,7 +517,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
 			if(use_short_term) {
-				SHATYPE sht = shatype;
+				SHATYPE sht = elem->pinfo.shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 							elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
 							elem->pinfo.realm, g_upwd, &sht)<1) {
@@ -573,7 +574,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_success_response(&(elem->in_buffer))) {
 
 			if(elem->pinfo.nonce[0] || use_short_term) {
-				SHATYPE sht = shatype;
+				SHATYPE sht = elem->pinfo.shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 								elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
 								elem->pinfo.realm, g_upwd, &sht)<0) {
@@ -600,6 +601,9 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		} else if (stun_is_challenge_response_str(elem->in_buffer.buf, (size_t)elem->in_buffer.len,
 							&err_code,err_msg,sizeof(err_msg),
 							clnet_info->realm,clnet_info->nonce)) {
+			if(err_code == SHA_TOO_WEAK && (elem->pinfo.shatype == SHATYPE_SHA1)) {
+				elem->pinfo.shatype = SHATYPE_SHA256;
+			}
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
 			} else if(stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
@@ -843,6 +847,7 @@ static int start_client(const char *remote_address, int port,
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
   ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
+  clnet_info_probe.shatype = shatype;
 
   app_ur_conn_info *clnet_info=&(ss->pinfo);
   app_ur_conn_info *clnet_info_rtcp=NULL;
@@ -938,6 +943,7 @@ static int start_c2c(const char *remote_address, int port,
   app_ur_conn_info clnet_info_probe; /* for load balancing probe */
   ns_bzero(&clnet_info_probe,sizeof(clnet_info_probe));
   clnet_info_probe.fd = -1;
+  clnet_info_probe.shatype = shatype;
 
   app_ur_conn_info *clnet_info1=&(ss1->pinfo);
   app_ur_conn_info *clnet_info1_rtcp=NULL;
@@ -1388,13 +1394,13 @@ turn_credential_type get_turn_credentials_type(void)
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 {
 	if(use_short_term) {
-		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd, shatype)<0) {
+		if(stun_attr_add_integrity_by_user_short_term_str(message->buf, (size_t*)&(message->len), g_uname, g_upwd, clnet_info->shatype)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 			return -1;
 		}
 	} else if(clnet_info->nonce[0]) {
 		if(stun_attr_add_integrity_by_user_str(message->buf, (size_t*)&(message->len), g_uname,
-					clnet_info->realm, g_upwd, clnet_info->nonce, shatype)<0) {
+					clnet_info->realm, g_upwd, clnet_info->nonce, clnet_info->shatype)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO," Cannot add integrity to the message\n");
 			return -1;
 		}
@@ -1404,3 +1410,4 @@ int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message)
 }
 
 ///////////////////////////////////////////
+

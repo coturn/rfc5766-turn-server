@@ -1638,7 +1638,9 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						and SHA256 (as an extension) functions and the server switches to SHA256\n"
 "						only if the client session uses it. With this option, the server always\n"
 "						requires the stronger SHA256 function. The client application must\n"
-"						support this extension.\n"
+"						support SHA256 hash function if this option is used. If the server obtains\n"
+"						a message from the client with a weaker (SHA1) hash function then the server\n"
+"						returns error code 441.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
