@@ -1,3 +1,7 @@
+XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.x.x.x 'Practical Frost':
+	- New network engine for Linux kernel 3.9+.
+	
 11/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.7.2 'Harding Grim':
 	- SHA256 agility changed: 441 error code on too weak SHA function.

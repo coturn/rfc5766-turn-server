@@ -60,6 +60,8 @@
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 
+#include <sys/utsname.h>
+
 #include "ns_turn_utils.h"
 #include "ns_turn_khash.h"
 
@@ -224,6 +226,8 @@ static struct listener_server listener;
 
 static ip_range_list_t ip_whitelist = {NULL, NULL, 0};
 static ip_range_list_t ip_blacklist = {NULL, NULL, 0};
+
+static int new_net_engine = 0;
 
 //////////////// Relay servers //////////////////////////////////
 
@@ -2444,7 +2448,46 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
 #endif
 
+	if(new_net_engine)
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.0\n");
+	else
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n");
+
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+}
+
+static void set_network_engine(void)
+{
+	struct utsname un;
+	if(!uname(&un)) {
+		char *sptr = ((char*)un.sysname)+1;
+		if(strstr(sptr, "inux" ) == sptr) {
+			char* sr = (char*)un.release;
+			double r = strtod(sr,NULL);
+			if(r>=4.0) {
+				new_net_engine = 0;
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX)
+				new_net_engine = 1;
+#endif
+			} else if(r>=3.0) {
+				char srel[129];
+				sprintf(srel,"%lg",r);
+				char *spoint = strstr(srel,".");
+				if(spoint) {
+					spoint[0]=0;
+					++spoint;
+					int subrel = atoi(spoint);
+					if(subrel>=9) {
+						new_net_engine = 0;
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX)
+						new_net_engine = 1;
+#endif
+					}
+				}
+
+			}
+		}
+	}
 }
 
 int main(int argc, char **argv)
@@ -2454,6 +2497,8 @@ int main(int argc, char **argv)
 	IS_TURN_SERVER = 1;
 
 	set_execdir();
+
+	set_network_engine();
 
 	ns_bzero(&listener,sizeof(struct listener_server));
 	init_secrets_list(&static_auth_secrets);
