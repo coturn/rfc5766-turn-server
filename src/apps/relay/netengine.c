@@ -531,10 +531,8 @@ static void *run_udp_listener_thread(void *arg)
 
 #endif
 
-static void setup_listener_servers(void)
+static void setup_listener(void)
 {
-	size_t i = 0;
-
 	listener.tp = turnipports_create(min_port, max_port);
 
 	listener.event_base = event_base_new();
@@ -588,6 +586,11 @@ static void setup_listener_servers(void)
 	} else {
 		listener.services_number = listener.services_number * 2;
 	}
+}
+
+static void setup_listener_servers(void)
+{
+	size_t i = 0;
 
 	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
 	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
@@ -603,55 +606,63 @@ static void setup_listener_servers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
-	/* UDP: */
-	if(!no_udp) {
+	if(!new_net_engine) {
 
-		barrier_count += listener.addrs_number;
+		/* UDP: */
+		if(!no_udp) {
 
-		if(rfc5780) {
 			barrier_count += listener.addrs_number;
+
+			if(rfc5780) {
+				barrier_count += listener.addrs_number;
+			}
+		}
+
+		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
+
+			barrier_count += listener.addrs_number;
+
+			if(rfc5780) {
+				barrier_count += listener.addrs_number;
+			}
+		}
+
+		if(!no_udp || !no_dtls) {
+			barrier_count += (unsigned int)aux_servers_list.size;
 		}
 	}
-
-	if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
-
-		barrier_count += listener.addrs_number;
-
-		if(rfc5780) {
-			barrier_count += listener.addrs_number;
-		}
-	}
-
-	if(!no_udp || !no_dtls) {
-		barrier_count += (unsigned int)aux_servers_list.size;
-	}
-
 #endif
 
 	/* Adjust udp relay number */
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 
-	if(!no_udp) {
+	if (new_net_engine) {
+		udp_relay_servers_number = nonudp_relay_servers_number;
+		udp_relay_servers = nonudp_relay_servers;
+	} else {
 
-		udp_relay_servers_number += listener.addrs_number;
+		if (!no_udp) {
 
-		if(rfc5780) {
 			udp_relay_servers_number += listener.addrs_number;
+
+			if (rfc5780) {
+				udp_relay_servers_number += listener.addrs_number;
+			}
 		}
-	}
 
-	if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
+		if (!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-		udp_relay_servers_number += listener.addrs_number;
-
-		if(rfc5780) {
 			udp_relay_servers_number += listener.addrs_number;
-		}
-	}
 
-	if(!no_udp || !no_dtls) {
-		udp_relay_servers_number += (unsigned int)aux_servers_list.size;
+			if (rfc5780) {
+				udp_relay_servers_number += listener.addrs_number;
+			}
+		}
+
+		if (!no_udp || !no_dtls) {
+			udp_relay_servers_number += (unsigned int) aux_servers_list.size;
+		}
 	}
 
 #endif
@@ -663,22 +674,24 @@ static void setup_listener_servers(void)
 
 #endif
 
-	if(!no_udp || !no_dtls) {
-		udp_relay_servers = (struct relay_server**)turn_malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
-		ns_bzero(udp_relay_servers,sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
+	if (!new_net_engine) {
+		if (!no_udp || !no_dtls) {
+			udp_relay_servers = (struct relay_server**) turn_malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
+			ns_bzero(udp_relay_servers,sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 
-		for(i=0;i<get_real_udp_relay_servers_number();i++) {
-			ioa_engine_handle e = listener.ioa_eng;
-			int is_5780 = rfc5780;
+			for (i = 0; i < get_real_udp_relay_servers_number(); i++) {
+				ioa_engine_handle e = listener.ioa_eng;
+				int is_5780 = rfc5780;
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-			e = create_new_listener_engine();
-			is_5780 = is_5780 && (i>=(size_t)(aux_servers_list.size));
+				e = create_new_listener_engine();
+				is_5780 = is_5780 && (i >= (size_t) (aux_servers_list.size));
 #endif
-			struct relay_server* udp_rs = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
-			ns_bzero(udp_rs, sizeof(struct relay_server));
-			udp_rs->id = (turnserver_id)i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-			setup_relay_server(udp_rs, e, is_5780);
-			udp_relay_servers[i] = udp_rs;
+				struct relay_server* udp_rs = (struct relay_server*) turn_malloc(sizeof(struct relay_server));
+				ns_bzero(udp_rs, sizeof(struct relay_server));
+				udp_rs->id = (turnserver_id) i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+				setup_relay_server(udp_rs, e, is_5780);
+				udp_relay_servers[i] = udp_rs;
+			}
 		}
 	}
 
@@ -996,7 +1009,7 @@ static void *run_nonudp_relay_thread(void *arg)
   static int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
   
-  setup_relay_server(rs, NULL, 0);
+  setup_relay_server(rs, NULL, new_net_engine && rfc5780);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
@@ -1028,7 +1041,7 @@ static void setup_nonudp_relay_servers(void)
 		setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng, 0);
 #else
 		if(nonudp_relay_servers_number == 0) {
-			setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng, 0);
+			setup_relay_server(nonudp_relay_servers[i], listener.ioa_eng, new_net_engine && rfc5780);
 			nonudp_relay_servers[i]->thr = pthread_self();
 		} else {
 			if(pthread_create(&(nonudp_relay_servers[i]->thr), NULL, run_nonudp_relay_thread, nonudp_relay_servers[i])<0) {
@@ -1116,13 +1129,14 @@ void setup_server(void)
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
 	/* relay threads plus auth thread plus main listener thread */
-	/* address listener thread(s) will start later */
+	/* udp address listener thread(s) will start later */
 	barrier_count = nonudp_relay_servers_number+2;
 
 #endif
 
-	setup_listener_servers();
+	setup_listener();
 	setup_nonudp_relay_servers();
+	setup_listener_servers();
 	setup_auth_server();
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
