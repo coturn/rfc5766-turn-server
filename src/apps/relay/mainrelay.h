@@ -113,7 +113,7 @@ extern int stun_only;
 extern int no_stun;
 extern int secure_stun;
 
-int do_not_use_config_file;
+extern int do_not_use_config_file;
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
