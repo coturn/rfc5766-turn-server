@@ -588,20 +588,8 @@ static void setup_listener(void)
 	}
 }
 
-static void setup_listener_servers(void)
+static void setup_barriers(void)
 {
-	size_t i = 0;
-
-	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
-	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
-
-	listener.aux_udp_services = (dtls_listener_relay_server_type**)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type*)*aux_servers_list.size+1);
-
-	listener.tcp_services = (tls_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
-	listener.tls_services = (tls_listener_relay_server_type**)realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
-
-	listener.aux_tcp_services = (tls_listener_relay_server_type**)realloc(listener.aux_tcp_services, sizeof(tls_listener_relay_server_type*)*aux_servers_list.size+1);
-
 	/* Adjust barriers: */
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
@@ -632,6 +620,23 @@ static void setup_listener_servers(void)
 	}
 #endif
 
+#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
+
+	if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
+		perror("barrier init");
+
+#endif
+}
+
+static void setup_udp_listener_servers(void)
+{
+	size_t i = 0;
+
+	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+
+	listener.aux_udp_services = (dtls_listener_relay_server_type**)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type*)*aux_servers_list.size+1);
+
 	/* Adjust udp relay number */
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
@@ -659,13 +664,6 @@ static void setup_listener_servers(void)
 			udp_relay_servers_number += (unsigned int) aux_servers_list.size;
 		}
 	}
-
-#endif
-
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
-
-	if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
-		perror("barrier init");
 
 #endif
 
@@ -720,21 +718,6 @@ static void setup_listener_servers(void)
 					pthread_detach(thr);
 				}
 	#endif
-		}
-	}
-
-	/* Aux TCP servers */
-	if(!no_tls || !no_tcp) {
-
-		for(i=0; i<aux_servers_list.size; i++) {
-
-			ioa_addr addr;
-			char saddr[129];
-			addr_cpy(&addr,&aux_servers_list.addrs[i]);
-			int port = (int)addr_get_port(&addr);
-			addr_to_string_no_port(&addr,(u08bits*)saddr);
-
-			listener.aux_tcp_services[i] = create_tls_listener_server(listener_ifname, saddr, port, verbose, listener.ioa_eng, send_socket_to_relay);
 		}
 	}
 
@@ -818,6 +801,39 @@ static void setup_listener_servers(void)
 			if(rfc5780)
 				listener.dtls_services[index+1] = NULL;
 		}
+	}
+}
+
+static void setup_tcp_listener_servers(void)
+{
+	size_t i = 0;
+
+	listener.tcp_services = (tls_listener_relay_server_type**)realloc(listener.tcp_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
+	listener.tls_services = (tls_listener_relay_server_type**)realloc(listener.tls_services, sizeof(tls_listener_relay_server_type*)*listener.services_number);
+
+	listener.aux_tcp_services = (tls_listener_relay_server_type**)realloc(listener.aux_tcp_services, sizeof(tls_listener_relay_server_type*)*aux_servers_list.size+1);
+
+	/* Create listeners */
+
+	/* Aux TCP servers */
+	if(!no_tls || !no_tcp) {
+
+		for(i=0; i<aux_servers_list.size; i++) {
+
+			ioa_addr addr;
+			char saddr[129];
+			addr_cpy(&addr,&aux_servers_list.addrs[i]);
+			int port = (int)addr_get_port(&addr);
+			addr_to_string_no_port(&addr,(u08bits*)saddr);
+
+			listener.aux_tcp_services[i] = create_tls_listener_server(listener_ifname, saddr, port, verbose, listener.ioa_eng, send_socket_to_relay);
+		}
+	}
+
+	/* Main servers */
+	for(i=0; i<listener.addrs_number; i++) {
+
+		int index = rfc5780 ? i*2 : i;
 
 		/* TCP: */
 		if(!no_tcp) {
@@ -1130,8 +1146,10 @@ void setup_server(void)
 #endif
 
 	setup_listener();
+	setup_barriers();
 	setup_nonudp_relay_servers();
-	setup_listener_servers();
+	setup_udp_listener_servers();
+	setup_tcp_listener_servers();
 	setup_auth_server();
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
