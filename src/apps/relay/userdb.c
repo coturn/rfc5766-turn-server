@@ -67,6 +67,7 @@
 #include <event2/buffer.h>
 
 #include "userdb.h"
+#include "mainrelay.h"
 
 #include "ns_turn_utils.h"
 

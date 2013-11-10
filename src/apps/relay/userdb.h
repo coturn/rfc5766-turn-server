@@ -115,8 +115,6 @@ extern turn_user_db *users;
 
 extern s08bits global_realm[STUN_MAX_REALM_SIZE+1];
 
-extern void send_auth_message_to_auth_server(struct auth_message *am);
-
 /////////// SHARED SECRETS //////////////////
 
 struct _secrets_list {

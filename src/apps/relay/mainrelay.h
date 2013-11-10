@@ -86,10 +86,6 @@
 
 //////////////// OpenSSL Init //////////////////////
 
-extern char cipher_list[1025];
-
-#define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
-
 extern SSL_CTX *tls_ctx_ssl23;
 extern SSL_CTX *tls_ctx_v1_0;
 
@@ -102,28 +98,9 @@ extern SSL_CTX *tls_ctx_v1_2;
 
 extern SSL_CTX *dtls_ctx;
 
-/*
- * openssl genrsa -out pkey 2048
- * openssl req -new -key pkey -out cert.req
- * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
- *
-*/
-extern char ca_cert_file[1025];
-extern char cert_file[1025];
-extern char pkey_file[1025];
-
 extern SHATYPE shatype;
 
-//////////// Barrier for the threads //////////////
-
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
-extern unsigned int barrier_count;
-extern pthread_barrier_t barrier;
-#endif
-
 //////////////// Common params ////////////////////
-
-extern char pidfile[1025];
 
 extern int verbose;
 extern int turn_daemon;
@@ -218,7 +195,7 @@ struct listener_server {
 #endif
 };
 
-extern struct listener_server listener;
+extern struct listener_server listener;;
 
 extern ip_range_list_t ip_whitelist;
 extern ip_range_list_t ip_blacklist;
@@ -255,28 +232,6 @@ extern int fingerprint;
 extern turnserver_id nonudp_relay_servers_number;
 extern turnserver_id udp_relay_servers_number;
 
-#define get_real_nonudp_relay_servers_number() (nonudp_relay_servers_number > 1 ? nonudp_relay_servers_number : 1)
-#define get_real_udp_relay_servers_number() (udp_relay_servers_number > 1 ? udp_relay_servers_number : 1)
-
-struct relay_server {
-	turnserver_id id;
-	struct event_base* event_base;
-	struct bufferevent *in_buf;
-	struct bufferevent *out_buf;
-	struct evbuffer *in_buf_ev;
-	struct evbuffer *out_buf_ev;
-	struct bufferevent *auth_in_buf;
-	struct bufferevent *auth_out_buf;
-	ioa_engine_handle ioa_eng;
-	turn_turnserver *server;
-#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-	pthread_t thr;
-#endif
-};
-
-extern struct relay_server **nonudp_relay_servers;
-extern struct relay_server **udp_relay_servers;
-
 ////////////// Auth server ////////////////////////////////////////////////
 
 struct auth_server {
@@ -295,10 +250,30 @@ extern struct auth_server authserver;
 extern turn_server_addrs_list_t aux_servers_list;
 extern int udp_self_balance;
 
+void add_aux_server(const char *saddr);
+
 /////////////// ALTERNATE SERVERS ////////////////
 
 extern turn_server_addrs_list_t alternate_servers_list;
 extern turn_server_addrs_list_t tls_alternate_servers_list;
+
+void add_alternate_server(const char *saddr);
+void add_tls_alternate_server(const char *saddr);
+
+////////// Addrs ////////////////////
+
+void add_listener_addr(const char* addr);
+void add_relay_addr(const char* addr);
+
+///////// Auth ////////////////
+
+void send_auth_message_to_auth_server(struct auth_message *am);
+
+/////////// Setup server ////////
+
+void init_listener(void);
+void setup_server(void);
+void run_listener_server(struct event_base *eb);
 
 ///////////////////////////////
 
