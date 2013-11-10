@@ -606,8 +606,7 @@ static void setup_listener_servers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
-	if(!new_net_engine) {
-
+	{
 		/* UDP: */
 		if(!no_udp) {
 
@@ -637,11 +636,7 @@ static void setup_listener_servers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 
-	if (new_net_engine) {
-		udp_relay_servers_number = nonudp_relay_servers_number;
-		udp_relay_servers = nonudp_relay_servers;
-	} else {
-
+	{
 		if (!no_udp) {
 
 			udp_relay_servers_number += listener.addrs_number;
@@ -674,7 +669,7 @@ static void setup_listener_servers(void)
 
 #endif
 
-	if (!new_net_engine) {
+	{
 		if (!no_udp || !no_dtls) {
 			udp_relay_servers = (struct relay_server**) turn_malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 			ns_bzero(udp_relay_servers,sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
