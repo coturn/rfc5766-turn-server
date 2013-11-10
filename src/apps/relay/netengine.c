@@ -586,6 +586,11 @@ static void setup_listener(void)
 	} else {
 		listener.services_number = listener.services_number * 2;
 	}
+
+	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
+
+	listener.aux_udp_services = (dtls_listener_relay_server_type**)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type*)*aux_servers_list.size+1);
 }
 
 static void setup_barriers(void)
@@ -594,7 +599,8 @@ static void setup_barriers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
-	{
+	if(!new_net_engine) {
+
 		/* UDP: */
 		if(!no_udp) {
 
@@ -631,11 +637,6 @@ static void setup_barriers(void)
 static void setup_udp_listener_servers(void)
 {
 	size_t i = 0;
-
-	listener.udp_services = (dtls_listener_relay_server_type**)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
-	listener.dtls_services = (dtls_listener_relay_server_type**)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type*)*listener.services_number);
-
-	listener.aux_udp_services = (dtls_listener_relay_server_type**)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type*)*aux_servers_list.size+1);
 
 	/* Adjust udp relay number */
 
@@ -795,6 +796,85 @@ static void setup_udp_listener_servers(void)
 					pthread_detach(thr);
 				}
 #endif
+			}
+		} else {
+			listener.dtls_services[index] = NULL;
+			if(rfc5780)
+				listener.dtls_services[index+1] = NULL;
+		}
+	}
+}
+
+static void setup_new_udp_listener_servers(void)
+{
+	size_t i = 0;
+	size_t relayindex = 0;
+
+	/* Create listeners */
+
+	for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+		while(!(nonudp_relay_servers[relayindex]->ioa_eng) || !(nonudp_relay_servers[relayindex]->server))
+			usleep(10);
+	}
+
+	/* Aux UDP servers */
+	for(i=0; i<aux_servers_list.size; i++) {
+
+		int index = i;
+
+		if(!no_udp || !no_dtls) {
+
+			ioa_addr addr;
+			char saddr[129];
+			addr_cpy(&addr,&aux_servers_list.addrs[i]);
+			int port = (int)addr_get_port(&addr);
+			addr_to_string_no_port(&addr,(u08bits*)saddr);
+
+			for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+				listener.aux_udp_services[index] = create_dtls_listener_server(listener_ifname, saddr, port, verbose,
+						nonudp_relay_servers[relayindex]->ioa_eng, nonudp_relay_servers[relayindex]->server);
+			}
+		}
+	}
+
+	/* Main servers */
+	for(i=0; i<listener.addrs_number; i++) {
+
+		int index = rfc5780 ? i*2 : i;
+
+		/* UDP: */
+		if(!no_udp) {
+
+			for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+				listener.udp_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose,
+						nonudp_relay_servers[relayindex]->ioa_eng, nonudp_relay_servers[relayindex]->server);
+			}
+
+			if(rfc5780) {
+
+				for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+					listener.udp_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose,
+							nonudp_relay_servers[relayindex]->ioa_eng, nonudp_relay_servers[relayindex]->server);
+				}
+			}
+		} else {
+			listener.udp_services[index] = NULL;
+			if(rfc5780)
+				listener.udp_services[index+1] = NULL;
+		}
+		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
+
+			for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+				listener.dtls_services[index] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose,
+						nonudp_relay_servers[relayindex]->ioa_eng, nonudp_relay_servers[relayindex]->server);
+			}
+
+			if(rfc5780) {
+
+				for(relayindex=0;relayindex<get_real_nonudp_relay_servers_number();relayindex++) {
+					listener.dtls_services[index+1] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose,
+							nonudp_relay_servers[relayindex]->ioa_eng, nonudp_relay_servers[relayindex]->server);
+				}
 			}
 		} else {
 			listener.dtls_services[index] = NULL;
@@ -1148,7 +1228,10 @@ void setup_server(void)
 	setup_listener();
 	setup_barriers();
 	setup_nonudp_relay_servers();
-	setup_udp_listener_servers();
+	if(!new_net_engine)
+		setup_udp_listener_servers();
+	else
+		setup_new_udp_listener_servers();
 	setup_tcp_listener_servers();
 	setup_auth_server();
 

@@ -292,13 +292,13 @@ Options with required values:
 				is behind A NAT.
 				By default, this value is empty, and no address mapping is used.
 				
--m, --relay-threads		Number of non-UDP relay threads to handle the established connections
+-m, --relay-threads		Number of relay threads to handle the established connections
 				(in addition to authentication thread and the listener thread).
-				If set to 0 then application runs TCP/TLS/DTLS relay process in a single thread,
+				If set to 0 then application runs relay process in a single thread,
 				in the same thread with the listener process (the authentication thread will 
-				still be a separate thread).
-				The number of UDP threads is always one per network listening endpoint - including
-				the auxiliary endpoints.
+				still be a separate thread). In older systems (before Linux kernel 3.9),
+				the number of UDP threads is always one threads per network listening endpoint - 
+				including the auxiliary endpoints.
 
 --min-port			Lower bound of the UDP port range for relay 
 				endpoints allocation.

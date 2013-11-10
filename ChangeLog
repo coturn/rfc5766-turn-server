@@ -1,6 +1,6 @@
-XX/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.x.x.x 'Practical Frost':
-	- New network engine for Linux kernel 3.9+ (TODO).
+11/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.0.0.0 'Practical Frost':
+	- New network engine for Linux kernel 3.9+.
 	- Co-located relay endpoints communications optimization (TODO).
 	
 11/08/2013 Oleg Moskalenko <mom040267@gmail.com>

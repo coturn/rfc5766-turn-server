@@ -84,6 +84,10 @@
 #include "hiredis_libevent2.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////// OpenSSL Init //////////////////////
 
 extern SSL_CTX *tls_ctx_ssl23;
@@ -276,5 +280,9 @@ void setup_server(void);
 void run_listener_server(struct event_base *eb);
 
 ///////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__MAIN_RELAY__
