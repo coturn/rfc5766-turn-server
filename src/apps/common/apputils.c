@@ -537,7 +537,7 @@ char *skip_blanks(char* s)
 #define ETCDIR INSTALL_PREFIX/etc/
 #define QETCDIR QUOTE(ETCDIR)
 
-static const char *config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/usr/local/etc/", QETCDIR, NULL };
+static const char *config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/etc/turnserver/", "/etc/rfc5766-turn-server/", "/usr/local/etc/", "/usr/local/etc/turnserver/", "/usr/local/etc/rfc5766-turn-server/", QETCDIR, NULL };
 static char *c_execdir=NULL;
 
 void set_execdir(void)
