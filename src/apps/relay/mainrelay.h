@@ -199,7 +199,7 @@ struct listener_server {
 #endif
 };
 
-extern struct listener_server listener;;
+extern struct listener_server listener;
 
 extern ip_range_list_t ip_whitelist;
 extern ip_range_list_t ip_blacklist;
