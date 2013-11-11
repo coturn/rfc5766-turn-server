@@ -4,7 +4,7 @@
 
 ==================================================================
 
-1) Fedora package.
+1) Fedora official package (turnserver or rfc5766-turn-server ? TBD).
 
 2) MS Windows support.
 
@@ -26,8 +26,6 @@
 ==================================================================
 
 ###   III. NETWORK ENGINE   ###
-
-1) Shortcut for co-located endpoints 
 
 ==================================================================
 
@@ -57,7 +55,7 @@
 	I/O technique, but still the underlying stock TCP/IP stack 
 	is a limitation.  
 	
-3) Multiple authentication servers, each in a separate thread.
+3) Multiple authentication threads, each in a separate thread.
 
 4) Memory fragmentation solution.
 
@@ -92,7 +90,6 @@ it if it is accepted:
 
 ==================================================================
 
-
 1) Locale support (?).
 
 	Currently we assume that all text data is 8-bits encoded, 
@@ -125,6 +122,7 @@ it if it is accepted:
 
 ==================================================================
 
+Nope
 
 ==================================================================
 

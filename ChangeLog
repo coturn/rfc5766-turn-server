@@ -1,11 +1,10 @@
 11/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':
 	- New network engine for Linux kernel 3.9+.
-	- Co-located relay endpoints communications optimization (TODO).
 	
 11/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.7.2 'Harding Grim':
-	- SHA256 agility changed: 441 error code on too weak SHA function.
+	- SHA256 agility updated: 441 error code on too weak SHA function.
 	
 11/07/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.7.1 'Harding Grim':

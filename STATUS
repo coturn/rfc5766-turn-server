@@ -72,6 +72,8 @@ compatibility.
 28) A number of TLS/DTLS improvements added: multiple protocols support, certificate check option.
 
 29) SHA256 support added.
+
+30) UDP network engine optimized for the new Linux kernels (3.9+).  
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.
