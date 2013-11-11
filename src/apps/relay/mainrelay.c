@@ -1255,7 +1255,7 @@ static void set_network_engine(void)
 #endif
 			} else if(r>=3.0) {
 				char srel[129];
-				sprintf(srel,"%lg",r);
+				snprintf(srel,sizeof(srel)-1,"%lg",r);
 				char *spoint = strstr(srel,".");
 				if(spoint) {
 					spoint[0]=0;
