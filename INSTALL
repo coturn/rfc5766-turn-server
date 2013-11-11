@@ -25,6 +25,10 @@ install it through Synaptic or through the package manager.
 
 https://aur.archlinux.org/packages/rfc5766-turn-server/
 
+4) OpenSUSE has a package, too:
+
+https://build.opensuse.org/package/show/home:ehauenstein/rfc5766-turn-server
+
 If you are using a pre-packaged TURN server then you can skip 
 to the section IX. 
  
@@ -209,6 +213,8 @@ The following platforms have been used in the development:
 	- OpenBSD 5.3
 	- Amazon Linux
 	- Mac OS X Mountain Lion
+	- ArchLinux
+	- Fedora 19
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
@@ -223,7 +229,7 @@ and for the performance reasons.
 
 The tested C compilers are:
 
-	- gcc 3.4.4 thru 4.7.2
+	- gcc 3.4.4 thru 4.8.1
 	- clang 3.0 or better
 	- Solaris Studio 12.3 C compiler, version 5.12
 
@@ -249,12 +255,11 @@ static linking, then even runtime installation is not needed.
 
 OpenSSL, libevent2, PostgreSQL, MySQL (or MariaDB) and Hiredis 
 libraries can be downloaded from their web sites:
- - http://www.openssl.org;
- - http://www.libevent.org;
- - http://www.postgresql.org;
- - http://www.mysql.org;
- - http://mariadb.org;
- - http://redis.io .
+ - http://www.openssl.org (required);
+ - http://www.libevent.org (required);
+ - http://www.postgresql.org (optional);
+ - http://www.mysql.org (or http://mariadb.org) (optional);
+ - http://redis.io (optional).
  
 The installations are pretty straightforward - the usual 
 "./configure" and "make install" commands. Install them into their default 
@@ -405,12 +410,12 @@ If you have a system with older libevent, then you have to install the new
 libevent2 from their web site. It was tested with older *NIXes 
 (like FreeBSD 6.x) and it works just fine.
 
-NOTE: For DTLS support, OpenSSL version 1.0.0a or newer is recommended. 
-Older versions do not support DTLS, reliably, in some cases. For example, 
-the Debian 'Squeeze' Linux supplies 0.9.8 version of OpenSSL, that does 
-not work correctly with DTLS over IPv6. If your system already has an 
-older version of OpenSSL installed (usually in directory /usr) then you 
-may want to install your newer OpenSSL "over" the old one (because it 
+NOTE: For extra security features (DTLS and SHA256) support, OpenSSL version 
+1.0.0a or newer is recommended. Older versions do not support DTLS, reliably, 
+in some cases. For example, the Debian 'Squeeze' Linux supplies 0.9.8 version 
+of OpenSSL, that does not work correctly with DTLS over IPv6. If your system 
+already has an older version of OpenSSL installed (usually in directory /usr) 
+then you may want to install your newer OpenSSL "over" the old one (because it 
 will most probably will not allow removal of the old one). When installing 
 the newer OpenSSL, run the OpenSSL's configure command like this:
 
@@ -552,13 +557,14 @@ XI. MS Windows and Cygwin support
 
 Currently, this project cannot be compiled under MS Windows.
 
-As the project is using fairly straightforward *NIX API, it can be compiled 
-under Cygwin environment in MS Windows. 
+As the project is using fairly straightforward *NIX API, it is supported 
+under Cygwin environment in MS Windows.
 
 One note for Cygwin users: we recommended libevent2 installation from the cygwin
 "ports" site: http://sourceware.org/cygwinports/ . You will have to install 
-libevent2 runtime and libevent-devel packages.
-
+libevent2 runtime and libevent-devel packages. "Manual" libevent2 compilation
+and installation in Cygwin is not recommended and does not garantee a good 
+outcome.
 
 XII. CLIENT API LIBRARY.
 
@@ -867,9 +873,15 @@ tcp-keepalive 60
 
 XV. Performance tuning
 
-The TURN Server performance depends on how efficiently the operational system
-handles the TCP/IP stack. Usually, the TCP part of it is properly optimized, 
-but the UDP handling is often suboptimal - so far, a typical UDP stack 
+If you are using Linux kernel 3.9 or newer, and you have TURN Server 
+version 3.0.0.0 or newer, then you can skip this section. Your TURN 
+server architecture is very finely tuned for your platform and it is 
+already reasonably optimal as-is. If you are using a different system, 
+then read on.
+
+The TURN Server performance mostly depends on how efficiently the operational 
+system handles the TCP/IP stack. Usually, the TCP part of it is properly 
+optimized, but the UDP handling is often suboptimal - so far, a typical UDP stack 
 implementation is not very well tuned for the "persistent" UDP sessions like 
 ones used in TURN. For example, by default the Linux kernel hashes all UDP 
 sockets in just 128 buckets; if you have thousands UDP sessions then you have 
@@ -900,8 +912,8 @@ between TCP and UDP typical "vanilla" OS networking stack implementations.
 This is not a specialised system tuned for a very particular hardware, 
 a particular OS or a particular load pattern. The TURN Server design is 
 tuned for very wide range of possible applications, so it may not be 
-100% most optimal for a particular application. But it must be good enough
-to be usable everywhere. 
+100% most optimal for a particular application on the particulkar platform. 
+But it must be good enough to be usable everywhere. 
   
 The TURN server parameter -m allows tuning of the threading configuration. 
 You can turn off the multi-threading by using "-m 0" parameter 
