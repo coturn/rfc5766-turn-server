@@ -1242,36 +1242,12 @@ static void print_features(void)
 
 static void set_network_engine(void)
 {
-	struct utsname un;
-	if(!uname(&un)) {
-		char *sptr = ((char*)un.sysname)+1;
-		if(strstr(sptr, "inux" ) == sptr) {
-			char* sr = (char*)un.release;
-			double r = strtod(sr,NULL);
-			if(r>=4.0) {
-				new_net_engine = 0;
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX)
-				new_net_engine = 1;
+	new_net_engine = 0;
+#if defined(SO_REUSEPORT)
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+	new_net_engine = 1;
 #endif
-			} else if(r>=3.0) {
-				char srel[129];
-				snprintf(srel,sizeof(srel)-1,"%lg",r);
-				char *spoint = strstr(srel,".");
-				if(spoint) {
-					spoint[0]=0;
-					++spoint;
-					int subrel = atoi(spoint);
-					if(subrel>=9) {
-						new_net_engine = 0;
-#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX)
-						new_net_engine = 1;
 #endif
-					}
-				}
-
-			}
-		}
-	}
 }
 
 int main(int argc, char **argv)

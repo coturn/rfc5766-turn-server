@@ -537,7 +537,13 @@ char *skip_blanks(char* s)
 #define ETCDIR INSTALL_PREFIX/etc/
 #define QETCDIR QUOTE(ETCDIR)
 
-static const char *config_file_search_dirs[] = {"./", "./etc/", "../etc/", "/etc/", "/etc/turnserver/", "/etc/rfc5766-turn-server/", "/usr/local/etc/", "/usr/local/etc/turnserver/", "/usr/local/etc/rfc5766-turn-server/", QETCDIR, NULL };
+#define ETCDIR1 INSTALL_PREFIX/etc/turnserver/
+#define QETCDIR1 QUOTE(ETCDIR1)
+
+#define ETCDIR2 INSTALL_PREFIX/etc/rfc5766-turn-server/
+#define QETCDIR2 QUOTE(ETCDIR2)
+
+static const char *config_file_search_dirs[] = {"./", "./turnserver/", "./rfc5766-turn-server/", "./etc/", "./etc/turnserver/", "./etc/rfc5766-turn-server/", "../etc/", "../etc/turnserver/", "../etc/rfc5766-turn-server/", "/etc/", "/etc/turnserver/", "/etc/rfc5766-turn-server/", "/usr/local/etc/", "/usr/local/etc/turnserver/", "/usr/local/etc/rfc5766-turn-server/", QETCDIR, QETCDIR1, QETCDIR2, NULL };
 static char *c_execdir=NULL;
 
 void set_execdir(void)
