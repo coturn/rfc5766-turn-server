@@ -45,14 +45,19 @@
 
 ////////// LOG TIME OPTIMIZATION ///////////
 
+static volatile turn_time_t log_start_time = 0;
 volatile int _log_time_value_set = 0;
 volatile turn_time_t _log_time_value = 0;
 
 static inline turn_time_t log_time(void)
 {
-	if(_log_time_value_set)
-		return _log_time_value;
-	return turn_time();
+  if(!log_start_time)
+    log_start_time = turn_time();
+
+  if(_log_time_value_set)
+    return (_log_time_value - log_start_time);
+
+  return (turn_time() - log_start_time);
 }
 
 ////////// MUTEXES /////////////
@@ -230,7 +235,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 	}
 }
 
-/******* Log ************/
+/*************************************/
 
 #define FILE_STR_LEN (1025)
 
