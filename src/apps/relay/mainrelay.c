@@ -1245,7 +1245,9 @@ static void set_network_engine(void)
 	new_net_engine = 0;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#if !defined(TURN_OLD_NET_ENGINE)
 	new_net_engine = 1;
+#endif
 #endif
 #endif
 }
