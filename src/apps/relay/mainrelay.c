@@ -132,9 +132,9 @@ ioa_addr *external_ip = NULL;
 int fingerprint = 0;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-turnserver_id nonudp_relay_servers_number = 0;
+turnserver_id general_relay_servers_number = 0;
 #else
-turnserver_id nonudp_relay_servers_number = 1;
+turnserver_id general_relay_servers_number = 1;
 #endif
 
 turnserver_id udp_relay_servers_number = 0;
@@ -634,13 +634,13 @@ static void set_option(int c, char *value)
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: threading is not supported for relay,\n I am using single thread.\n");
 #elif defined(OPENSSL_THREADS) 
-		if(atoi(value)>MAX_NUMBER_OF_NONUDP_RELAY_SERVERS) {
+		if(atoi(value)>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
-			nonudp_relay_servers_number = MAX_NUMBER_OF_NONUDP_RELAY_SERVERS;
+			general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 		} else if(atoi(value)<0) {
-			nonudp_relay_servers_number = 0;
+			general_relay_servers_number = 0;
 		} else {
-			nonudp_relay_servers_number = atoi(value);
+			general_relay_servers_number = atoi(value);
 		}
 #else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
@@ -1298,12 +1298,12 @@ int main(int argc, char **argv)
 
 #if defined(_SC_NPROCESSORS_ONLN) && !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 
-	nonudp_relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
+	general_relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
 
-	if(nonudp_relay_servers_number<1)
-		nonudp_relay_servers_number = 1;
-	else if(nonudp_relay_servers_number>MAX_NUMBER_OF_NONUDP_RELAY_SERVERS)
-		nonudp_relay_servers_number = MAX_NUMBER_OF_NONUDP_RELAY_SERVERS;
+	if(general_relay_servers_number<1)
+		general_relay_servers_number = 1;
+	else if(general_relay_servers_number>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+		general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
 #endif
 

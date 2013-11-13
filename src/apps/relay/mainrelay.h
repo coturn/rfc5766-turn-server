@@ -188,9 +188,9 @@ struct listener_server {
 	ioa_addr **encaddrs;
 	size_t addrs_number;
 	size_t services_number;
-	dtls_listener_relay_server_type **udp_services;
-	dtls_listener_relay_server_type **dtls_services;
-	dtls_listener_relay_server_type **aux_udp_services;
+	dtls_listener_relay_server_type ***udp_services;
+	dtls_listener_relay_server_type ***dtls_services;
+	dtls_listener_relay_server_type ***aux_udp_services;
 	tls_listener_relay_server_type **tcp_services;
 	tls_listener_relay_server_type **tls_services;
 	tls_listener_relay_server_type **aux_tcp_services;
@@ -208,7 +208,7 @@ extern int new_net_engine;
 
 //////////////// Relay servers //////////////////////////////////
 
-#define MAX_NUMBER_OF_NONUDP_RELAY_SERVERS (128)
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS (128)
 
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP (0xFFFF)
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
@@ -233,7 +233,7 @@ extern ioa_addr *external_ip;
 
 extern int fingerprint;
 
-extern turnserver_id nonudp_relay_servers_number;
+extern turnserver_id general_relay_servers_number;
 extern turnserver_id udp_relay_servers_number;
 
 ////////////// Auth server ////////////////////////////////////////////////
