@@ -2,6 +2,7 @@
 Version 3.0.0.1 'Practical Frost':
 	- Cosmetic changes.
 	- Log output time starts with 0.
+	- RFC 5780 cleaning.
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':

@@ -8,6 +8,7 @@ in /usr/ports/net/turnserver directory. Installation is very simple:
 # optional commands, to update the ports tree:
   $ sudo portsnap fetch 
   $ sudo portsnap update
+
 # Build and install the TURN Server: 
   $ cd /usr/ports/net/turnserver
   $ sudo make install clean
@@ -215,6 +216,7 @@ The following platforms have been used in the development:
 	- Mac OS X Mountain Lion
 	- ArchLinux
 	- Fedora 19
+	- OpenSUSE 12.3 x86_64
 
 It must work on many other *NIXes, as well. The configure script and/or 
 Makefile may need adjustments for other *NIXes not mentioned above.
