@@ -69,7 +69,7 @@ struct dtls_listener_relay_server_info {
 
 ///////////// forward declarations ////////
 
-static int create_server_socket(dtls_listener_relay_server_type* server);
+static int create_server_socket(dtls_listener_relay_server_type* server, int report_creation);
 static int clean_server(dtls_listener_relay_server_type* server);
 static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_socket_t fd);
 
@@ -567,7 +567,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 ///////////////////// operations //////////////////////////
 
-static int create_server_socket(dtls_listener_relay_server_type* server) {
+static int create_server_socket(dtls_listener_relay_server_type* server, int report_creation) {
 
   FUNCSTART;
 
@@ -614,12 +614,14 @@ static int create_server_socket(dtls_listener_relay_server_type* server) {
 	  }
   }
 
-  if(!no_udp && !no_dtls)
-	  addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on ");
-  else if(!no_dtls)
-	  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on ");
-  else if(!no_udp)
-	  addr_debug_print(server->verbose, &server->addr,"UDP listener opened on ");
+  if(report_creation) {
+	  if(!no_udp && !no_dtls)
+		  addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on");
+	  else if(!no_dtls)
+		  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on");
+	  else if(!no_udp)
+		  addr_debug_print(server->verbose, &server->addr,"UDP listener opened on");
+  }
 
   FUNCEND;
   
@@ -644,7 +646,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 		}
 
 		if (!(server->udp_listen_s)) {
-			return create_server_socket(server);
+			return create_server_socket(server,1);
 		}
 
 		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
@@ -717,7 +719,8 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       turn_turnserver *ts) {
+		       turn_turnserver *ts,
+		       int report_creation) {
 
   if(!server) return -1;
 
@@ -738,7 +741,9 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   server->e = e;
   
-  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
+  if(report_creation) {
+	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
+  }
   
   if(server->dtls_ctx) {
 
@@ -755,7 +760,7 @@ static int init_server(dtls_listener_relay_server_type* server,
 #endif
   }
 
-  return create_server_socket(server);
+  return create_server_socket(server, report_creation);
 }
 
 static int clean_server(dtls_listener_relay_server_type* server) {
@@ -774,7 +779,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int port, 
 							     int verbose,
 							     ioa_engine_handle e,
-							     turn_turnserver *ts) {
+							     turn_turnserver *ts,
+							     int report_creation) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     turn_malloc(sizeof(dtls_listener_relay_server_type));
@@ -784,8 +790,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   if(init_server(server,
 		 ifname, local_address, port,
 		 verbose,
-		 e,
-		 ts)<0) {
+		 e, ts, report_creation)<0) {
     turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {
