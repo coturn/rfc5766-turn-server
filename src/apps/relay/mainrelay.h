@@ -55,7 +55,6 @@
 
 #include <pwd.h>
 #include <grp.h>
-#include <uuid/uuid.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
