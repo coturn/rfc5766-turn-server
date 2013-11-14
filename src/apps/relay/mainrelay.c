@@ -74,8 +74,10 @@ int secure_stun = 0;
 
 int do_not_use_config_file = 0;
 
-static gid_t groupid = 0;
-static uid_t userid = 0;
+static gid_t procgroupid = 0;
+static uid_t procuserid = 0;
+static gid_t procgroupid_set = 0;
+static uid_t procuserid_set = 0;
 static char procusername[1025]="\0";
 static char procgroupname[1025]="\0";
 
@@ -584,8 +586,8 @@ static struct option long_options[] = {
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ "sha256", optional_argument, NULL, SHA256_OPT },
-				{ "proc-user", optional_argument, NULL, PROC_USER_OPT },
-				{ "proc-group", optional_argument, NULL, PROC_GROUP_OPT },
+				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
+				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -646,7 +648,8 @@ static void set_option(int c, char *value)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n",value);
 			exit(-1);
 		} else {
-			userid = pwd->pw_uid;
+			procuserid = pwd->pw_uid;
+			procuserid_set = 1;
 			STRCPY(procusername,value);
 		}
 	}
@@ -657,7 +660,8 @@ static void set_option(int c, char *value)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown group name: %s\n",value);
 			exit(-1);
 		} else {
-			groupid = gr->gr_gid;
+			procgroupid = gr->gr_gid;
+			procgroupid_set = 1;
 			STRCPY(procgroupname,value);
 		}
 	}
@@ -1289,29 +1293,29 @@ static void set_network_engine(void)
 
 static void drop_privileges(void)
 {
-	if(groupid) {
-		if(getgid() != groupid) {
-			if (setgid(groupid) != 0) {
+	if(procgroupid_set) {
+		if(getgid() != procgroupid) {
+			if (setgid(procgroupid) != 0) {
 				perror("setgid: Unable to change group privileges");
 				exit(-1);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)groupid);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
 			}
 		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep GID: %s(%lu)\n", procgroupname, (unsigned long)groupid);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep GID: %s(%lu)\n", procgroupname, (unsigned long)procgroupid);
 		}
 	}
 
-	if(userid) {
-		if(userid != getuid()) {
-			if (setuid(userid) != 0) {
+	if(procuserid_set) {
+		if(procuserid != getuid()) {
+			if (setuid(procuserid) != 0) {
 				perror("setuid: Unable to change user privileges");
 				exit(-1);
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)userid);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
 			}
 		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep UID: %s(%lu)\n", procusername, (unsigned long)userid);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep UID: %s(%lu)\n", procusername, (unsigned long)procuserid);
 		}
 	}
 }

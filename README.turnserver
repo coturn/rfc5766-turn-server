@@ -225,7 +225,7 @@ Options with required values:
 
 -p, --listening-port	TURN listener port for UDP and TCP listeners (Default: 3478).
 			Note: actually, TLS & DTLS sessions can connect to the "plain" TCP & UDP
-			port(s), too - if allowed by configuration. 				
+			port(s), too - if allowed by configuration.
 
 --tls-listening-port	TURN listener port for TLS and DTLS listeners (Default: 5349).
 			Note: actually, "plain" TCP & UDP sessions can connect to the TLS & DTLS
@@ -238,14 +238,14 @@ Options with required values:
 			For secure UDP connections, we support DTLS version 1.
 
 --alt-listening-port	Alternative listening port for UDP and TCP listeners;
-			default (or zero) value means "listening port plus one". 
-			This is needed for STUN CHANGE_REQUEST  - in RFC 5780 sense
-                	or in old RFC 3489 sense - for NAT behavior discovery). The TURN Server 
-			supports CHANGE_REQUEST only if it is started with more than one 
+			default (or zero) value means "listening port plus one".
+			This is needed for STUN CHANGE_REQUEST - in RFC 5780 sense
+                	or in old RFC 3489 sense - for NAT behavior discovery). The TURN Server
+			supports CHANGE_REQUEST only if it is started with more than one
 			listening IP address of the same family (IPv4 or IPv6). The CHANGE_REQUEST
 			is only supported by UDP protocol, other protocols are listening
 			on that endpoint only for "symmetry".
-							 
+
 --alt-tls-listening-port	Alternative listening port for TLS and DTLS protocols.
 				Default (or zero) value means "TLS listening port plus one".
 				
@@ -334,8 +334,8 @@ Options with required values:
 --static-auth-secret	Static authentication secret value (a string) for TURN REST API only.
 			If not set, then the turn server will try to use the dynamic value 
 			in turn_secret table in user database (if present). The database-stored
-			value can be changed on-the-fly by a separate program, so this is why 
-			that other mode is dynamic.	Multiple shared secrets can be used 
+			value can be changed on-the-fly by a separate program, so this is why
+			that other mode is dynamic. Multiple shared secrets can be used
 			(both in the database and in the "static" fashion).
 
 -s, --max-bps		Max bytes-per-second bandwidth a TURN session is allowed to handle
