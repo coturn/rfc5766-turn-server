@@ -74,6 +74,11 @@ int secure_stun = 0;
 
 int do_not_use_config_file = 0;
 
+static gid_t groupid = 0;
+static uid_t userid = 0;
+static char procusername[1025]="\0";
+static char procgroupname[1025]="\0";
+
 ////////////////  Listener server /////////////////
 
 int listener_port = DEFAULT_STUN_PORT;
@@ -429,6 +434,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						support SHA256 hash function if this option is used. If the server obtains\n"
 "						a message from the client with a weaker (SHA1) hash function then the server\n"
 "						returns error code 441.\n"
+" --proc-user <user-name>			User ID to run the process. After the initialization, the turnserver process\n"
+"						will make an attempt to change the current user ID to that user.\n"
+" --proc-group <group-name>			Group ID to run the process. After the initialization, the turnserver process\n"
+"						will make an attempt to change the current group ID to that group.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -501,7 +510,9 @@ enum EXTRA_OPTS {
 	SECURE_STUN_OPT,
 	CA_FILE_OPT,
 	SHA256_OPT,
-	NO_STUN_OPT
+	NO_STUN_OPT,
+	PROC_USER_OPT,
+	PROC_GROUP_OPT
 };
 
 static struct option long_options[] = {
@@ -573,6 +584,8 @@ static struct option long_options[] = {
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
 				{ "sha256", optional_argument, NULL, SHA256_OPT },
+				{ "proc-user", optional_argument, NULL, PROC_USER_OPT },
+				{ "proc-group", optional_argument, NULL, PROC_GROUP_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -626,7 +639,29 @@ static void set_option(int c, char *value)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options (like --user=<username>).\n",(char)c,(char)c);
   }
 
-	switch (c){
+	switch (c) {
+	case PROC_USER_OPT: {
+		struct passwd* pwd = getpwnam(value);
+		if(!pwd) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n",value);
+			exit(-1);
+		} else {
+			userid = pwd->pw_uid;
+			STRCPY(procusername,value);
+		}
+	}
+	break;
+	case PROC_GROUP_OPT: {
+		struct group* gr = getgrnam(value);
+		if(!gr) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown group name: %s\n",value);
+			exit(-1);
+		} else {
+			groupid = gr->gr_gid;
+			STRCPY(procgroupname,value);
+		}
+	}
+	break;
 	case 'i':
 		STRCPY(relay_ifname, value);
 		break;
@@ -1252,6 +1287,35 @@ static void set_network_engine(void)
 #endif
 }
 
+static void drop_privileges(void)
+{
+	if(groupid) {
+		if(getgid() != groupid) {
+			if (setgid(groupid) != 0) {
+				perror("setgid: Unable to change group privileges");
+				exit(-1);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New GID: %s(%lu)\n", procgroupname, (unsigned long)groupid);
+			}
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep GID: %s(%lu)\n", procgroupname, (unsigned long)groupid);
+		}
+	}
+
+	if(userid) {
+		if(userid != getuid()) {
+			if (setuid(userid) != 0) {
+				perror("setuid: Unable to change user privileges");
+				exit(-1);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "New UID: %s(%lu)\n", procusername, (unsigned long)userid);
+			}
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Keep UID: %s(%lu)\n", procusername, (unsigned long)userid);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int c = 0;
@@ -1502,6 +1566,8 @@ int main(int argc, char **argv)
 	}
 
 	setup_server();
+
+	drop_privileges();
 
 	run_listener_server(listener.event_base);
 
