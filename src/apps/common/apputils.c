@@ -64,7 +64,7 @@ int IS_TURN_SERVER = 0;
 
 int socket_set_nonblocking(evutil_socket_t fd)
 {
-#ifdef WIN32
+#if defined(WIN32)
 	unsigned long nonblocking = 1;
     ioctlsocket(fd, FIONBIO, (unsigned long*) &nonblocking);
 #else

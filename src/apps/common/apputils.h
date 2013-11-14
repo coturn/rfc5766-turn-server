@@ -79,7 +79,7 @@ typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
 
 ///////////////////////// Sockets ///////////////////////////////
 
-#ifdef WIN32
+#if defined(WIN32)
 /** Do the platform-specific call needed to close a socket returned from
     socket() or accept(). */
 #define socket_closesocket(s) closesocket(s)
