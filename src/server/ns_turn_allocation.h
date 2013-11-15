@@ -134,8 +134,8 @@ typedef turn_permission_info** turn_permission_map;
 
 typedef struct _allocation {
   int is_valid;
-  turn_time_t expiration_time;
   stun_tid tid;
+  turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   turn_permission_map addr_to_perm;
   ts_ur_session relay_session;

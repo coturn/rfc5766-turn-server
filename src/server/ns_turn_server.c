@@ -2481,6 +2481,10 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 			switch (method){
 
+			case STUN_METHOD_BINDING:
+				//ICE ?
+				break;
+
 			case STUN_METHOD_SEND:
 
 				handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
