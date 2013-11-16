@@ -741,10 +741,6 @@ static int init_server(dtls_listener_relay_server_type* server,
   
   server->e = e;
   
-  if(report_creation) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method: %s\n",event_base_get_method(server->e->event_base));
-  }
-  
   if(server->dtls_ctx) {
 
 #if defined(REQUEST_CLIENT_CERT)

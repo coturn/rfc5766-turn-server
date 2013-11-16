@@ -298,7 +298,7 @@ Options with required values:
 			in the same thread with the listener process (the authentication thread will 
 			still be a separate thread). In older systems (before Linux kernel 3.9),
 			the number of UDP threads is always one threads per network listening endpoint -
-			unless "-m 0" is set.
+			unless "-m 0" or "-m 1" is set.
 
 --min-port		Lower bound of the UDP port range for relay 
 			endpoints allocation.

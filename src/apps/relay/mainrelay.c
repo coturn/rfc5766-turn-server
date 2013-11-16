@@ -139,10 +139,12 @@ ioa_addr *external_ip = NULL;
 int fingerprint = 0;
 
 #if defined(TURN_NO_THREADS) || defined(TURN_NO_RELAY_THREADS)
-turnserver_id general_relay_servers_number = 0;
+#define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (0)
 #else
-turnserver_id general_relay_servers_number = 1;
+#define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
 #endif
+
+turnserver_id general_relay_servers_number = DEFAULT_GENERAL_RELAY_SERVERS_NUMBER;
 
 turnserver_id udp_relay_servers_number = 0;
 
@@ -1215,7 +1217,7 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\n");
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "version %s\n",TURN_SOFTWARE);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n==== Show them the instruments, Practical Frost: ====\n\n");
 
 #if !defined(TURN_NO_THREADS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading supported\n");
@@ -1276,7 +1278,7 @@ static void print_features(void)
 	else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n");
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n=====================================================\n\n");
 }
 
 static void set_network_engine(void)

@@ -438,7 +438,7 @@ If set to 0 then application runs relay process in a single thread,
 in the same thread with the listener process (the authentication thread will 
 still be a separate thread). In older systems (before Linux kernel 3.9),
 the number of UDP threads is always one threads per network listening endpoint \-
-unless "\fB\-m\fP 0" is set.
+unless "\fB\-m\fP 0" or "\fB\-m\fP 1" is set.
 .TP
 .B
 \fB\-\-min\-port\fP
