@@ -5,6 +5,7 @@ Version 3.0.1.0 'Practical Frost':
 	- Dropping user privileges added.
 	- OpenSUSE support added.
 	- "-m 0" and "-m 1" options fixed.
+	- Mobility draft (TODO).
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':

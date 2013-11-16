@@ -239,6 +239,8 @@ extern int fingerprint;
 extern turnserver_id general_relay_servers_number;
 extern turnserver_id udp_relay_servers_number;
 
+extern int mobility;
+
 ////////////// Auth server ////////////////////////////////////////////////
 
 struct auth_server {

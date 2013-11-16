@@ -142,6 +142,12 @@
 #define STUN_ATTRIBUTE_TRANSPORT_DTLS_VALUE (250)
 /* <<== RFC 6062 */
 
+/* Mobility ==>> */
+#define STUN_ATTRIBUTE_MOBILITY_TICKET (0x802E)
+#define STUN_ATTRIBUTE_MOBILITY_EVENT (0x802)
+#define STUN_ATTRIBUTE_MOBILITY_SUPPORT (0x8000)
+/* <<== Mobility */
+
 ////////////////////////////////////////////////
 
 #endif //__LIB_TURN_MSG_DEFS__

@@ -148,6 +148,8 @@ turnserver_id general_relay_servers_number = DEFAULT_GENERAL_RELAY_SERVERS_NUMBE
 
 turnserver_id udp_relay_servers_number = 0;
 
+int mobility = 0;
+
 ////////////// Auth server ////////////////////////////////////////////////
 
 struct auth_server authserver;
@@ -442,6 +444,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						will make an attempt to change the current user ID to that user.\n"
 " --proc-group <group-name>			Group ID to run the process. After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
+" --mobility					Mobility with ICE (MICE) specs support. Forces -m 1 option.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -516,7 +519,8 @@ enum EXTRA_OPTS {
 	SHA256_OPT,
 	NO_STUN_OPT,
 	PROC_USER_OPT,
-	PROC_GROUP_OPT
+	PROC_GROUP_OPT,
+	MOBILITY_OPT
 };
 
 static struct option long_options[] = {
@@ -590,6 +594,7 @@ static struct option long_options[] = {
 				{ "sha256", optional_argument, NULL, SHA256_OPT },
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
+				{ "mobility", optional_argument, NULL, MOBILITY_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -643,7 +648,10 @@ static void set_option(int c, char *value)
     TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: option -%c is possibly used incorrectly. The short form of the option must be used as this: -%c <value>, no \'equals\' sign may be used, that sign is used only with long form options (like --user=<username>).\n",(char)c,(char)c);
   }
 
-	switch (c) {
+  switch (c) {
+	case MOBILITY_OPT:
+		mobility = get_bool_value(value);
+		break;
 	case PROC_USER_OPT: {
 		struct passwd* pwd = getpwnam(value);
 		if(!pwd) {
@@ -949,7 +957,7 @@ static void set_option(int c, char *value)
 	default:
 		fprintf(stderr,"\n%s\n", Usage);
 		exit(-1);
-	}
+  }
 }
 
 static int parse_arg_string(char *sarg, int *c, char **value)
@@ -1405,6 +1413,9 @@ int main(int argc, char **argv)
 	    set_option(c,optarg);
 	  }
 	}
+
+	if(mobility && general_relay_servers_number>1)
+		general_relay_servers_number = 1;
 
 	if(no_udp_relay && no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
