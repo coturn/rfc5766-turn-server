@@ -313,7 +313,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						If set to 0 then application runs in single-threaded mode.\n"
 "						The default thread number is the number of CPUs.\n"
 "						In older systems (pre-Linux 3.9) the number of UDP relay threads always equals\n"
-"						the number of listening endpoints.\n"
+"						the number of listening endpoints (unless -m 0 is set).\n"
 " --min-port			<port>		Lower bound of the UDP port range for relay endpoints allocation.\n"
 "						Default value is 49152, according to RFC 5766.\n"
 " --max-port			<port>		Upper bound of the UDP port range for relay endpoints allocation.\n"
@@ -676,7 +676,7 @@ static void set_option(int c, char *value)
 		if(atoi(value)>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
 			general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
-		} else if(atoi(value)<0) {
+		} else if(atoi(value)<=0) {
 			general_relay_servers_number = 0;
 		} else {
 			general_relay_servers_number = atoi(value);

@@ -612,7 +612,7 @@ static void setup_barriers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS) && !defined(TURN_NO_THREAD_BARRIERS)
 
-	if(!new_net_engine) {
+	if(!new_net_engine && general_relay_servers_number) {
 
 		/* UDP: */
 		if(!no_udp) {
@@ -655,7 +655,8 @@ static void setup_udp_listener_servers(void)
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
 
-	{
+	if(general_relay_servers_number) {
+
 		if (!no_udp) {
 
 			udp_relay_servers_number += listener.addrs_number;
@@ -690,8 +691,10 @@ static void setup_udp_listener_servers(void)
 				ioa_engine_handle e = listener.ioa_eng;
 				int is_5780 = rfc5780;
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-				e = create_new_listener_engine();
-				is_5780 = is_5780 && (i >= (size_t) (aux_servers_list.size));
+				if(general_relay_servers_number) {
+					e = create_new_listener_engine();
+					is_5780 = is_5780 && (i >= (size_t) (aux_servers_list.size));
+				}
 #endif
 				struct relay_server* udp_rs = (struct relay_server*) turn_malloc(sizeof(struct relay_server));
 				ns_bzero(udp_rs, sizeof(struct relay_server));
@@ -723,15 +726,15 @@ static void setup_udp_listener_servers(void)
 			listener.aux_udp_services[index][0] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 	#if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-				{
-					++udp_relay_server_index;
-					pthread_t thr;
-					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.aux_udp_services[index][0])<0) {
-						perror("Cannot create aux listener thread\n");
-						exit(-1);
-					}
-					pthread_detach(thr);
+			if(general_relay_servers_number) {
+				++udp_relay_server_index;
+				pthread_t thr;
+				if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.aux_udp_services[index][0])<0) {
+					perror("Cannot create aux listener thread\n");
+					exit(-1);
 				}
+				pthread_detach(thr);
+			}
 	#endif
 		}
 	}
@@ -748,7 +751,7 @@ static void setup_udp_listener_servers(void)
 			listener.udp_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-			{
+			if(general_relay_servers_number) {
 				++udp_relay_server_index;
 				pthread_t thr;
 				if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.udp_services[index][0])<0) {
@@ -765,7 +768,7 @@ static void setup_udp_listener_servers(void)
 				listener.udp_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-				{
+				if(general_relay_servers_number) {
 					++udp_relay_server_index;
 					pthread_t thr;
 					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.udp_services[index+1][0])<0) {
@@ -787,7 +790,7 @@ static void setup_udp_listener_servers(void)
 			listener.dtls_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-			{
+			if(general_relay_servers_number) {
 				++udp_relay_server_index;
 				pthread_t thr;
 				if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.dtls_services[index][0])<0) {
@@ -804,7 +807,7 @@ static void setup_udp_listener_servers(void)
 				listener.dtls_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 #if !defined(TURN_NO_THREADS) && !defined(TURN_NO_RELAY_THREADS)
-				{
+				if(general_relay_servers_number) {
 					++udp_relay_server_index;
 					pthread_t thr;
 					if(pthread_create(&thr, NULL, run_udp_listener_thread, listener.dtls_services[index+1][0])<0) {

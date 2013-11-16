@@ -4,6 +4,7 @@ Version 3.0.1.0 'Practical Frost':
 	- Log output time starts with 0.
 	- Dropping user privileges added.
 	- OpenSUSE support added.
+	- "-m 0" option fixed.
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':
@@ -116,7 +117,7 @@ Version 2.6.1.1 'Harding Grim':
 		* Classic STUN attribute ERROR fixed (Issue 49).
 		* Unused RFC 5780 functionality removed from TCP, TLS and DTLS relays.
 		* resources optimization for stun-only: short connection expiration time.
-
+		
 07/26/2013 Oleg Moskalenko <mom040267@gmail.com>,
 			Vladimir Tsanev <tsachev@gmail.com>
 Version 2.5.2.1 'Shivers':
@@ -410,7 +411,7 @@ Version 1.8.0.1 'Black Dow':
 Version 1.8.0.0 'Black Dow':
 
 	- Short-term credentials mechanism implemented.
-
+	
 04/2/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 1.7.3.1 'Superior Glokta':
 
