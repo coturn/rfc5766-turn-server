@@ -677,7 +677,7 @@ static void setup_udp_listener_servers(void)
 
 				if(general_relay_servers_number<=1) {
 					while(!(general_relay_servers[0]->ioa_eng))
-						pthread_yield();
+						sched_yield();
 					udp_relay_servers[i] = general_relay_servers[0];
 					continue;
 				} else if(general_relay_servers_number>1) {
@@ -814,7 +814,7 @@ static void setup_new_udp_listener_servers(void)
 
 	for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 		while(!(general_relay_servers[relayindex]->ioa_eng) || !(general_relay_servers[relayindex]->server))
-			pthread_yield();
+			sched_yield();
 	}
 
 	/* Aux UDP servers */
