@@ -84,7 +84,7 @@ struct _turn_turnserver {
 	int no_udp_relay;
 	int no_tcp_relay;
 	ur_map *tcp_relay_connections;
-	send_cb_socket_to_relay_cb rfc6062cb;
+	send_socket_to_relay_cb send_socket_to_relay;
 	/* <<== RFC 6062 */
 
 	/* Alternate servers ==>> */
@@ -98,6 +98,9 @@ struct _turn_turnserver {
 	/* White/black listing of address ranges */
 	ip_range_list_t* ip_whitelist;
 	ip_range_list_t* ip_blacklist;
+
+	/* Mobility */
+	int mobility;
 };
 
 ///////////////////////////////////////////
@@ -1295,11 +1298,11 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 			;
 
 		} else {
-			if(server->rfc6062cb) {
+			if(server->send_socket_to_relay) {
 				u32bits sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_session.s;
 				ioa_socket_handle new_s = detach_ioa_socket(s);
-				server->rfc6062cb(sid, id, tid, new_s, message_integrity);
+				server->send_socket_to_relay(sid, id, tid, new_s, message_integrity);
 			} else {
 				*err_code = 500;
 			}
@@ -3419,8 +3422,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int self_udp_balance,
 		int no_multicast_peers, int no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
-		send_cb_socket_to_relay_cb rfc6062cb,
-		int secure_stun, SHATYPE shatype) {
+		send_socket_to_relay_cb send_socket_to_relay,
+		int secure_stun, SHATYPE shatype, int mobility) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -3443,6 +3446,9 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->no_loopback_peers = no_loopback_peers;
 	server->secure_stun = secure_stun;
 	server->shatype = shatype;
+	server->mobility = mobility;
+
+	printf("%s: 111.111\n",__FUNCTION__);
 
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
@@ -3469,7 +3475,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->ip_whitelist = ip_whitelist;
 	server->ip_blacklist = ip_blacklist;
 
-	server->rfc6062cb = rfc6062cb;
+	server->send_socket_to_relay = send_socket_to_relay;
 
 	if (init_server(server) < 0) {
 	  turn_free(server,sizeof(turn_turnserver));

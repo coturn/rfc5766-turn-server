@@ -273,7 +273,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	return 0;
 }
 
-static int send_cb_socket_to_relay(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+static int send_socket_to_relay(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity)
 {
 	if(id >= get_real_general_relay_servers_number())
 		id = get_real_general_relay_servers_number()-1;
@@ -695,17 +695,12 @@ static void setup_udp_listener_servers(void)
 				if(general_relay_servers_number==1) {
 					while(!(general_relay_servers[0]->ioa_eng))
 						usleep(10);
-					e = general_relay_servers[0]->ioa_eng;
+					udp_relay_servers[i] = general_relay_servers[0];
 				} else if(general_relay_servers_number>1) {
 					e = create_new_listener_engine();
 					is_5780 = is_5780 && (i >= (size_t) (aux_servers_list.size));
 				}
 #endif
-				struct relay_server* udp_rs = (struct relay_server*) turn_malloc(sizeof(struct relay_server));
-				ns_bzero(udp_rs, sizeof(struct relay_server));
-				udp_rs->id = (turnserver_id) i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-				setup_relay_server(udp_rs, e, is_5780);
-				udp_relay_servers[i] = udp_rs;
 			}
 		}
 	}
@@ -1122,8 +1117,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					udp_self_balance,
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
-					send_cb_socket_to_relay,
-					secure_stun, shatype);
+					send_socket_to_relay,
+					secure_stun, shatype, mobility);
 
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
