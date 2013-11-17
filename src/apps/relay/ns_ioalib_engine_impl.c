@@ -2531,7 +2531,21 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 									(s08bits*) ioa_network_buffer_data(nbh),ioa_network_buffer_get_size(nbh));
 						if (ret < 0) {
 							s->tobeclosed = 1;
+#if defined(EADDRNOTAVAIL)
+							int perr=errno;
+#endif
 							perror("udp send");
+#if defined(EADDRNOTAVAIL)
+							if(dest_addr && (perr==EADDRNOTAVAIL)) {
+							  char sfrom[129];
+							  addr_to_string(&(s->local_addr), (u08bits*)sfrom);
+							  char sto[129];
+							  addr_to_string(dest_addr, (u08bits*)sto);
+							  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+									"%s: network error: address unreachable from %s to %s\n", 
+									__FUNCTION__,sfrom,sto);
+							}
+#endif
 						}
 					}
 				}
