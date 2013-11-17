@@ -3448,7 +3448,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->shatype = shatype;
 	server->mobility = mobility;
 
-	printf("%s: 111.111\n",__FUNCTION__);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"turn server id=%d created\n",(int)id);
 
 	server->no_tcp_relay = no_tcp_relay;
 	server->no_udp_relay = no_udp_relay;
