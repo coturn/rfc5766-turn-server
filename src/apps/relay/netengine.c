@@ -696,11 +696,17 @@ static void setup_udp_listener_servers(void)
 					while(!(general_relay_servers[0]->ioa_eng))
 						usleep(10);
 					udp_relay_servers[i] = general_relay_servers[0];
+					continue;
 				} else if(general_relay_servers_number>1) {
 					e = create_new_listener_engine();
 					is_5780 = is_5780 && (i >= (size_t) (aux_servers_list.size));
 				}
 #endif
+				struct relay_server* udp_rs = (struct relay_server*) turn_malloc(sizeof(struct relay_server));
+				ns_bzero(udp_rs, sizeof(struct relay_server));
+				udp_rs->id = (turnserver_id) i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+				setup_relay_server(udp_rs, e, is_5780);
+				udp_relay_servers[i] = udp_rs;
 			}
 		}
 	}
