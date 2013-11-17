@@ -4,8 +4,9 @@ Version 3.0.1.0 'Practical Frost':
 	- Log output time starts with 0.
 	- Dropping user privileges added.
 	- OpenSUSE support added.
-	- "-m 0" and "-m 1" options fixed.
+	- "-m 0" and "-m 1" options improved.
 	- Mobility draft (TODO).
+	- non-threading environment support dropped.
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':

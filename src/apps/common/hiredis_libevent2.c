@@ -301,9 +301,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
   struct bufferevent *pair[2];
   int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-#if !defined(TURN_NO_THREADS)
   opts |= BEV_OPT_THREADSAFE;
-#endif
 
   bufferevent_pair_new(base, opts, pair);
   e->in_buf = pair[0];

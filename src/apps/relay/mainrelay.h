@@ -42,9 +42,7 @@
 #include <locale.h>
 #include <libgen.h>
 
-#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
-#endif
 
 #include <signal.h>
 
@@ -247,9 +245,7 @@ struct auth_server {
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
-#if !defined(TURN_NO_THREADS)
 	pthread_t thr;
-#endif
 };
 
 extern struct auth_server authserver;

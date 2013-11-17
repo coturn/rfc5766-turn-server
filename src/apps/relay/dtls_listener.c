@@ -38,9 +38,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
-#endif
 
 /* #define REQUEST_CLIENT_CERT */
 
@@ -368,10 +366,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			{
 				u08bits saddr[129];
 				u08bits rsaddr[129];
-				long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-				thrid = (long) pthread_self();
-#endif
+				long thrid = (long) pthread_self();
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -394,10 +389,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 			{
 				u08bits saddr[129];
 				u08bits rsaddr[129];
-				long thrid = 0;
-#if !defined(TURN_NO_THREADS)
-				thrid = (long) pthread_self();
-#endif
+				long thrid = (long) pthread_self();
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,

@@ -763,33 +763,17 @@ test_sin_len
 # Can we use multi-threading ?
 ###########################
 
-if [ -z ${TURN_NO_THREADS} ] ; then 
-
-    pthread_testlib
-    ER=$?
-    if [ ${ER} -eq 0 ] ; then
-		${ECHO_CMD} "WARNING: Cannot find pthread library functions."
-		${ECHO_CMD} "Using single-thread mode."
-		TURN_NO_THREADS="-DTURN_NO_THREADS"
-    fi
-    
-else
-    TURN_NO_THREADS="-DTURN_NO_THREADS"
+pthread_testlib
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "ERROR: Cannot find pthread library functions."
+	exit
 fi
 
 if [ -z ${TURN_NO_THREAD_BARRIERS} ] ; then 
 	pthread_testbarriers
 else 
 	TURN_NO_THREAD_BARRIERS="-DTURN_NO_THREAD_BARRIERS"
-fi
-
-if [ -z ${TURN_NO_RELAY_THREADS} ] ; then 
-
-    #fine
-    ${ECHO_CMD} "relay threads can be used... may be..."
-    
-else
-    TURN_NO_RELAY_THREADS="-DTURN_NO_RELAY_THREADS"
 fi
 
 ###########################
@@ -893,16 +877,13 @@ else
 	TURN_NO_TLS="-DTURN_NO_TLS"
 fi
 
-if [ -z "${TURN_NO_THREADS}" ] ; then
-    testlib event_pthreads
-    ER=$?
-    if ! [ ${ER} -eq 0 ] ; then
-    	${ECHO_CMD} "Libevent2 pthreads found."
-    else
-    	${ECHO_CMD} "WARNING: Libevent2 development libraries are not compiled with threads support."
-    	${ECHO_CMD} "Using single-thread mode."
-		TURN_NO_THREADS="-DTURN_NO_THREADS"
-    fi
+testlib event_pthreads
+ER=$?
+if ! [ ${ER} -eq 0 ] ; then
+	${ECHO_CMD} "Libevent2 pthreads found."
+else
+   	${ECHO_CMD} "ERROR: Libevent2 development libraries are not compiled with threads support."
+	exit
 fi
 
 ###########################
@@ -987,7 +968,7 @@ fi
 # So, what we have now:
 ###############################
 
-OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREADS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_RELAY_THREADS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
+OSCFLAGS="${OSCFLAGS} ${TURN_NO_THREAD_BARRIERS} ${TURN_NO_DTLS} ${TURN_NO_TLS} -DINSTALL_PREFIX=${PREFIX}"
 
 if ! [ -z "${TURN_ACCEPT_RPATH}" ] ; then
   if [ -z "${TURN_DISABLE_RPATH}" ] ; then

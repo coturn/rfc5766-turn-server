@@ -45,9 +45,7 @@
 #include <libgen.h>
 #include <fcntl.h>
 
-#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
-#endif
 
 #include <signal.h>
 

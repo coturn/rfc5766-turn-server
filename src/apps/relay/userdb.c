@@ -52,9 +52,7 @@
 #include <hiredis/hiredis.h>
 #endif
 
-#if !defined(TURN_NO_THREADS)
 #include <pthread.h>
-#endif
 
 #include <signal.h>
 
@@ -2080,7 +2078,6 @@ void auth_ping(void)
 
 ///////////////// WHITE/BLACK IP LISTS ///////////////////
 
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 static pthread_rwlock_t* whitelist_rwlock = NULL;
 static pthread_rwlock_t* blacklist_rwlock = NULL;
@@ -2088,14 +2085,12 @@ static pthread_rwlock_t* blacklist_rwlock = NULL;
 static turn_mutex whitelist_mutex;
 static turn_mutex blacklist_mutex;
 #endif
-#endif
 
 static ip_range_list_t* ipwhitelist = NULL;
 static ip_range_list_t* ipblacklist = NULL;
 
 void init_dynamic_ip_lists(void)
 {
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	whitelist_rwlock = (pthread_rwlock_t*) turn_malloc(sizeof(pthread_rwlock_t));
 	pthread_rwlock_init(whitelist_rwlock, NULL);
@@ -2106,40 +2101,33 @@ void init_dynamic_ip_lists(void)
 	turn_mutex_init(&whitelist_mutex);
 	turn_mutex_init(&blacklist_mutex);
 #endif
-#endif
 }
 
 void ioa_lock_whitelist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_rdlock(whitelist_rwlock);
 #else
 	turn_mutex_lock(&whitelist_mutex);
 #endif
-#endif
 }
 void ioa_unlock_whitelist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_unlock(whitelist_rwlock);
 #else
 	turn_mutex_unlock(&whitelist_mutex);
 #endif
-#endif
 }
 static void ioa_wrlock_whitelist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_wrlock(whitelist_rwlock);
 #else
 	turn_mutex_lock(&whitelist_mutex);
-#endif
 #endif
 }
 const ip_range_list_t* ioa_get_whitelist(ioa_engine_handle e)
@@ -2151,34 +2139,28 @@ const ip_range_list_t* ioa_get_whitelist(ioa_engine_handle e)
 void ioa_lock_blacklist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_rdlock(blacklist_rwlock);
 #else
 	turn_mutex_lock(&blacklist_mutex);
 #endif
-#endif
 }
 void ioa_unlock_blacklist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_unlock(blacklist_rwlock);
 #else
 	turn_mutex_unlock(&blacklist_mutex);
 #endif
-#endif
 }
 static void ioa_wrlock_blacklist(ioa_engine_handle e)
 {
 	UNUSED_ARG(e);
-#if !defined(TURN_NO_THREADS)
 #if !defined(TURN_NO_RWLOCK)
 	pthread_rwlock_wrlock(blacklist_rwlock);
 #else
 	turn_mutex_lock(&blacklist_mutex);
-#endif
 #endif
 }
 const ip_range_list_t* ioa_get_blacklist(ioa_engine_handle e)

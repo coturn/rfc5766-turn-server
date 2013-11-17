@@ -39,9 +39,7 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 
-#if !defined(TURN_NO_THREADS)
 #include <event2/thread.h>
-#endif
 
 #include <openssl/ssl.h>
 
