@@ -1460,7 +1460,9 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 
 void *get_ioa_socket_session(ioa_socket_handle s)
 {
-	return s->session;
+	if(s)
+		return s->session;
+	return NULL;
 }
 
 void set_ioa_socket_session(ioa_socket_handle s, void *ss)
@@ -1478,7 +1480,9 @@ void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss)
 
 void *get_ioa_socket_sub_session(ioa_socket_handle s)
 {
-	return s->sub_session;
+	if(s)
+		return s->sub_session;
+	return NULL;
 }
 
 void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc)
@@ -1881,6 +1885,9 @@ static int socket_input_worker(ioa_socket_handle s)
 	int try_cycle = 0;
 	const int MAX_TRIES = 16;
 
+	if(!s)
+		return 0;
+
 	if(s->done) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
@@ -2116,6 +2123,9 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	ioa_socket_handle s = (ioa_socket_handle)arg;
 
+	if(!s)
+		return;
+
 	if(s->done) {
 		read_spare_buffer(fd);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
@@ -2142,7 +2152,7 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 {
-	if (ioa_socket_tobeclosed(s)) {
+	if (s && ioa_socket_tobeclosed(s)) {
 		switch (s->sat){
 		case TCP_CLIENT_DATA_SOCKET:
 		case TCP_RELAY_DATA_SOCKET:
@@ -2163,7 +2173,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 				if (server) {
 					s->session = NULL;
 					s->sub_session = NULL;
-					shutdown_client_connection(server, ss);
+					shutdown_client_connection(server, ss, 0);
 				}
 			}
 		}
@@ -2216,7 +2226,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 					if (server) {
 						s->session=NULL;
 						s->sub_session=NULL;
-						shutdown_client_connection(server, ss);
+						shutdown_client_connection(server, ss, 0);
 					}
 				}
 			}
@@ -2265,7 +2275,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 					if (server) {
 						s->session = NULL;
 						s->sub_session = NULL;
-						shutdown_client_connection(server, ss);
+						shutdown_client_connection(server, ss, 0);
 					}
 				}
 			}
@@ -2411,6 +2421,9 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 	int rc = 0;
 	evutil_socket_t fd = -1;
 
+	if(!s)
+		return -1;
+
 	if(s->parent_s)
 		fd = s->parent_s->fd;
 	else
@@ -2459,6 +2472,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 				int ttl, int tos)
 {
 	int ret = -1;
+
+	if(!s)
+		return -1;
 
 	if (s->done || (s->fd == -1)) {
 		TURN_LOG_FUNC(
@@ -2697,7 +2713,8 @@ int ioa_socket_tobeclosed_func(ioa_socket_handle s, const char *func, const char
 
 void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 {
-	s->tobeclosed = 1;
+	if(s)
+		s->tobeclosed = 1;
 }
 
 /*

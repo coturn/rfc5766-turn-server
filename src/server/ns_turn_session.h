@@ -72,7 +72,6 @@ typedef struct {
 ////////////// ss /////////////////////
 
 allocation* get_allocation_ss(ts_ur_super_session *ss);
-int shutdown_client_connection_ss(ts_ur_super_session *ss);
 
 ///////////////////////////////////////////////////////
 

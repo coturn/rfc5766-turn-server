@@ -127,7 +127,7 @@ void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb sm
 ///////////////////////////////////////////
 
 int open_client_connection_session(turn_turnserver* server, struct socket_message *sm);
-int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss);
+int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force);
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
 
 int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity);

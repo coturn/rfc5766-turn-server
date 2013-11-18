@@ -326,7 +326,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *) ss->server;
 					if (server) {
-						shutdown_client_connection(server, ss);
+						shutdown_client_connection(server, ss, 0);
 					}
 				} else {
 					close_ioa_socket(s);
@@ -354,7 +354,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *) ss->server;
 					if (server) {
-						shutdown_client_connection(server, ss);
+						shutdown_client_connection(server, ss, 0);
 					}
 				}
 			}

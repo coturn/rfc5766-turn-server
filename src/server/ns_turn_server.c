@@ -2764,7 +2764,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 /////////////// Client actions /////////////////
 
-int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss) {
+int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force) {
 
 	FUNCSTART;
 
@@ -2772,6 +2772,22 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 		return -1;
 
 	ts_ur_session* elem = &(ss->client_session);
+
+	if(server->mobility && !force) {
+
+		if(elem->s) {
+			clear_ioa_socket_session_if(elem->s,ss);
+			//IOA_CLOSE_SOCKET(elem->s);
+		}
+
+		if (server->verbose) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN mobile connection closed, user <%s>\n",(char*)ss->username);
+		}
+
+		FUNCEND;
+
+		return 0;
+	}
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -2802,11 +2818,13 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 	if (server->disconnect)
 		server->disconnect(ss);
 
-	clear_ioa_socket_session_if(elem->s,ss);
-	IOA_CLOSE_SOCKET(elem->s);
+	if(elem->s) {
+		clear_ioa_socket_session_if(elem->s,ss);
+		IOA_CLOSE_SOCKET(elem->s);
+	}
 
 	if (server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN connection closed, user <%s>\n",(char*)ss->username);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN full connection closed, user <%s>\n",(char*)ss->username);
 	}
 
 	turn_server_remove_all_from_ur_map_ss(ss);
@@ -2814,11 +2832,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss)
 	FUNCEND;
 
 	return 0;
-}
-
-int shutdown_client_connection_ss(ts_ur_super_session *ss)
-{
-  return shutdown_client_connection((turn_turnserver*)ss->server, ss);
 }
 
 static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
@@ -2860,7 +2873,7 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 
 	if(to_close) {
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
-		shutdown_client_connection(server, ss);
+		shutdown_client_connection(server, ss, 1);
 	}
 
 	FUNCEND;
@@ -2918,7 +2931,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
 	FUNCSTART;
 
-	shutdown_client_connection(server, ss);
+	shutdown_client_connection(server, ss, 1);
 
 	FUNCEND;
 }
