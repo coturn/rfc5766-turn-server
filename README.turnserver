@@ -205,7 +205,7 @@ Flags:
 			requires the stronger SHA256 function. The client application must support
 			SHA256 hash function if this option is used. If the server obtains a message 
 			from the client with a weaker (SHA1) hash function then the server returns 
-			error code 441.
+			error code 426.
 			
 --mobility		Mobility with ICE (MICE) specs support. Forces -m 1 option.
 

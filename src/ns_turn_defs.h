@@ -166,7 +166,7 @@ typedef enum _SHATYPE SHATYPE;
 
 #define shatype_name(sht) ((sht == SHATYPE_SHA1) ? "SHA1" : ((sht == SHATYPE_SHA256) ? "SHA256" : "SHA UNKNOWN"))
 
-#define SHA_TOO_WEAK (441)
+#define SHA_TOO_WEAK (426)
 
 ////////////////////////////////////////////////////////
 

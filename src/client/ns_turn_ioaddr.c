@@ -41,10 +41,15 @@ u32bits get_ioa_addr_len(const ioa_addr* addr) {
 ///////////////////////////////////////////////////////////////
 
 void addr_set_any(ioa_addr *addr) {
-  ns_bzero(addr,sizeof(ioa_addr));
+	if(addr)
+		ns_bzero(addr,sizeof(ioa_addr));
 }
 
 int addr_any(const ioa_addr* addr) {
+
+	if(!addr)
+		return 1;
+
   if(addr->ss.ss_family == AF_INET) {
     return ((addr->s4.sin_addr.s_addr==0)&&(addr->s4.sin_port==0));
   } else if(addr->ss.ss_family == AF_INET6) {
@@ -60,6 +65,9 @@ int addr_any(const ioa_addr* addr) {
 }
 
 int addr_any_no_port(const ioa_addr* addr) {
+	if(!addr)
+		return 1;
+
   if(addr->ss.ss_family == AF_INET) {
     return (addr->s4.sin_addr.s_addr==0);
   } else if(addr->ss.ss_family == AF_INET6) {
@@ -89,6 +97,9 @@ u64bits hash_int64(u64bits a)
 
 u32bits addr_hash(const ioa_addr *addr)
 {
+	if(!addr)
+		return 0;
+
 	u32bits ret = 0;
 	if (addr->ss.ss_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
@@ -101,6 +112,9 @@ u32bits addr_hash(const ioa_addr *addr)
 
 u32bits addr_hash_no_port(const ioa_addr *addr)
 {
+	if(!addr)
+		return 0;
+
 	u32bits ret = 0;
 	if (addr->ss.ss_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
@@ -112,15 +126,18 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 }
 
 void addr_cpy(ioa_addr* dst, const ioa_addr* src) {
-  ns_bcopy(src,dst,sizeof(ioa_addr));
+	if(dst && src)
+		ns_bcopy(src,dst,sizeof(ioa_addr));
 }
 
 void addr_cpy4(ioa_addr* dst, const struct sockaddr_in* src) {
-  ns_bcopy(src,dst,sizeof(struct sockaddr_in));
+	if(src && dst)
+		ns_bcopy(src,dst,sizeof(struct sockaddr_in));
 }
 
 void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src) {
-  ns_bcopy(src,dst,sizeof(struct sockaddr_in6));
+	if(src && dst)
+		ns_bcopy(src,dst,sizeof(struct sockaddr_in6));
 }
 
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2) {
@@ -225,6 +242,9 @@ static char* get_addr_string_and_port(char* s0, int *port)
 
 int make_ioa_addr_from_full_string(const u08bits* saddr, int default_port, ioa_addr *addr)
 {
+	if(!addr)
+		return -1;
+
 	int ret = -1;
 	int port = 0;
 	char* s = strdup((const char*)saddr);
@@ -301,6 +321,9 @@ void addr_set_port(ioa_addr* addr, int port) {
 }
 
 int addr_get_port(const ioa_addr* addr) {
+	if(!addr)
+		return 0;
+
   if(addr->s4.sin_family == AF_INET) {
     return nswap16(addr->s4.sin_port);
   } else if(addr->s6.sin6_family == AF_INET6) {

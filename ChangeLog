@@ -7,6 +7,8 @@ Version 3.0.1.0 'Practical Frost':
 	- "-m 0" and "-m 1" options improved.
 	- Mobility draft implemented (TODO).
 	- non-threading environment support dropped.
+	- stability fixes.
+	- SHA256 agility updated: 426 error code on too weak SHA function.
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':
