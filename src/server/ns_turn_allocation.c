@@ -441,7 +441,7 @@ void delete_tcp_connection(tcp_connection *tc)
 	}
 }
 
-tcp_connection *get_tcp_connection_by_id(ur_map *map, tcp_connection_id id)
+tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_id id)
 {
 	if(map) {
 		ur_map_value_type t = 0;

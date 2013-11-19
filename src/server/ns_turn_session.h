@@ -46,6 +46,8 @@ typedef u64bits turnsession_id;
 
 #define NONCE_MAX_SIZE (NONCE_LENGTH_32BITS*4+1)
 
+typedef u64bits mobile_id_t;
+
 typedef struct {
   void* server; 
   turnsession_id id;
@@ -67,6 +69,8 @@ typedef struct {
   u32bits received_bytes;
   u32bits sent_bytes;
   SHATYPE shatype;
+  /* Mobile */
+  mobile_id_t mobile_id;
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////

@@ -101,6 +101,7 @@ struct _turn_turnserver {
 
 	/* Mobility */
 	int mobility;
+	ur_map *mobile_connections_map;
 };
 
 ///////////////////////////////////////////
@@ -281,16 +282,66 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
 
 /////////// SS /////////////////
 
+static mobile_id_t get_new_mobile_id(turn_turnserver* server)
+{
+	mobile_id_t newid = 0;
+
+	if(server && server->mobile_connections_map) {
+		ur_map *map = server->mobile_connections_map;
+		u64bits sid = server->id;
+		sid = sid<<56;
+		do {
+			while (!newid) {
+				newid = (mobile_id_t)random();
+				if(!newid) {
+					continue;
+				}
+				newid = newid & 0x00FFFFFFFFFFFFFF;
+				if(!newid) {
+					continue;
+				}
+				newid = newid | sid;
+			}
+		} while(ur_map_get(map, (ur_map_key_type)newid, NULL));
+	}
+	return newid;
+}
+
+static void put_session_into_mobile_map(ts_ur_super_session *ss)
+{
+	if(ss && ss->server) {
+		turn_turnserver* server = (turn_turnserver*)(ss->server);
+		if(server->mobile_connections_map) {
+			if(!(ss->mobile_id)) {
+				ss->mobile_id = get_new_mobile_id(server);
+			}
+			ur_map_put(server->mobile_connections_map, (ur_map_key_type)(ss->mobile_id), (ur_map_value_type)ss);
+		}
+	}
+
+}
+
 static void put_session_into_map(ts_ur_super_session *ss)
 {
-	if(ss) {
+	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		if(!(ss->id)) {
 			ss->id = ++(server->session_id_counter);
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
+		put_session_into_mobile_map(ss);
 	}
 
+}
+
+static void delete_session_from_mobile_map(ts_ur_super_session *ss)
+{
+	if(ss && ss->server && ss->mobile_id) {
+		turn_turnserver* server = (turn_turnserver*)(ss->server);
+		if(server->mobile_connections_map) {
+			ur_map_del(server->mobile_connections_map, (ur_map_key_type)(ss->mobile_id), NULL);
+		}
+	}
 }
 
 static void delete_session_from_map(ts_ur_super_session *ss)
@@ -299,6 +350,7 @@ static void delete_session_from_map(ts_ur_super_session *ss)
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		ur_map_del(server->sessions_map, (ur_map_key_type)(ss->id), NULL);
 	}
+	delete_session_from_mobile_map(ss);
 }
 
 static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnsession_id sid)
@@ -1346,7 +1398,7 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 		int err_code = 0;
 		ts_ur_super_session *ss = NULL;
 
-		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 		if(!tc) {
 			err_code = 400;
 		} else {
@@ -3476,6 +3528,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->secure_stun = secure_stun;
 	server->shatype = shatype;
 	server->mobility = mobility;
+	if(mobility)
+		server->mobile_connections_map = ur_map_create();
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"turn server id=%d created\n",(int)id);
 
