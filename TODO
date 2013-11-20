@@ -38,6 +38,11 @@
 ==================================================================
 
 1) A smarter load balancer has to be implemented.
+
+	If the load-balancer can perform deep-packet-inspection and 
+	route the related sessions to the right server, then a real
+	load-balancer without client involvement (like 300 error support) 
+	can be implemented.
  
 	The load balancer has to have a heartbeat channels with 
 	the slave servers, currently it is only just a dumb 
