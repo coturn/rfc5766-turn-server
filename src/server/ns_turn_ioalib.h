@@ -224,6 +224,18 @@ int ioa_socket_tobeclosed_func(ioa_socket_handle s, const char *func, const char
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);
 
+////////////////// Base64 /////////////////////////////
+
+char *base64_encode(const unsigned char *data,
+                    size_t input_length,
+                    size_t *output_length);
+
+void build_base64_decoding_table(void);
+
+unsigned char *base64_decode(const char *data,
+                             size_t input_length,
+                             size_t *output_length);
+
 ///////////////////////////////////////
 
 #ifdef __cplusplus

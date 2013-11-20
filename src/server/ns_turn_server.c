@@ -282,6 +282,57 @@ static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
 
 /////////// SS /////////////////
 
+static int mobile_id_to_string(mobile_id_t mid, char *dst, size_t dst_sz)
+{
+	size_t output_length = 0;
+
+	if(!dst)
+		return -1;
+
+	char *s = base64_encode((const unsigned char *)&mid,
+	                    sizeof(mid),
+	                    &output_length);
+
+	if(!s)
+		return -1;
+
+	if(!output_length || (output_length+1 > dst_sz)) {
+		turn_free(s, output_length);
+		return -1;
+	}
+
+	ns_bcopy(s, dst, output_length);
+
+	turn_free(s, output_length);
+
+	dst[output_length] = 0;
+
+	return (int)output_length;
+}
+
+static mobile_id_t string_to_mobile_id(char* src)
+{
+	mobile_id_t mid = 0;
+
+	if(src) {
+
+		size_t output_length = 0;
+
+		unsigned char *out = base64_decode(src, strlen(src), &output_length);
+
+		if(out) {
+
+			if(output_length == sizeof(mid)) {
+				mid = *((mobile_id_t*)out);
+			}
+
+			turn_free(out, output_length);
+		}
+	}
+
+	return mid;
+}
+
 static mobile_id_t get_new_mobile_id(turn_turnserver* server)
 {
 	mobile_id_t newid = 0;
@@ -293,6 +344,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver* server)
 		do {
 			while (!newid) {
 				newid = (mobile_id_t)random();
+				newid = (newid<<32) + (mobile_id_t)random();
 				if(!newid) {
 					continue;
 				}
@@ -311,7 +363,7 @@ static void put_session_into_mobile_map(ts_ur_super_session *ss)
 {
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
-		if(server->mobile_connections_map) {
+		if(server->mobility && server->mobile_connections_map) {
 			if(!(ss->mobile_id)) {
 				ss->mobile_id = get_new_mobile_id(server);
 			}
@@ -349,8 +401,8 @@ static void delete_session_from_map(ts_ur_super_session *ss)
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		ur_map_del(server->sessions_map, (ur_map_key_type)(ss->id), NULL);
+		delete_session_from_mobile_map(ss);
 	}
-	delete_session_from_mobile_map(ss);
 }
 
 static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnsession_id sid)
@@ -359,6 +411,18 @@ static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnse
 	if(server) {
 		ur_map_value_type value = 0;
 		if(ur_map_get(server->sessions_map, (ur_map_key_type)sid, &value) && value) {
+			ss = (ts_ur_super_session*)value;
+		}
+	}
+	return ss;
+}
+
+static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server, mobile_id_t mid)
+{
+	ts_ur_super_session *ss = NULL;
+	if(server && server->mobility && server->mobile_connections_map && mid) {
+		ur_map_value_type value = 0;
+		if(ur_map_get(server->mobile_connections_map, (ur_map_key_type)mid, &value) && value) {
 			ss = (ts_ur_super_session*)value;
 		}
 	}

@@ -768,35 +768,28 @@ unsigned char *base64_decode(const char *data,
     if (decoded_data == NULL) return NULL;
 
     size_t i,j;
-    for (i = 0, j = 0; i < input_length;) {
+	for (i = 0, j = 0; i < input_length;) {
 
-        u32bits sextet_a = 0;
-        if(data[i] != '=')
-        	sextet_a = (u32bits)decoding_table[(int)data[i]];
-        ++i;
-        u32bits sextet_b = 0;
-        if(data[i] != '=')
-        	sextet_b = (u32bits)decoding_table[(int)data[i]];
-        ++i;
-        u32bits sextet_c = 0;
-        if(data[i] != '=')
-        	sextet_c = (u32bits)decoding_table[(int)data[i]];
-        ++i;
-        u32bits sextet_d = 0;
-        if(data[i] != '=')
-        	sextet_c = (u32bits)decoding_table[(int)data[i]];
+		uint32_t sextet_a =
+				data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+		uint32_t sextet_b =
+				data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+		uint32_t sextet_c =
+				data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+		uint32_t sextet_d =
+				data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
 
-        ++i;
+		uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6)
+				+ (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
 
-        u32bits triple = (sextet_a << 3 * 6)
-        + (sextet_b << 2 * 6)
-        + (sextet_c << 1 * 6)
-        + (sextet_d << 0 * 6);
+		if (j < *output_length)
+			decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
+		if (j < *output_length)
+			decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
+		if (j < *output_length)
+			decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
 
-        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
-        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
-    }
+	}
 
     return decoded_data;
 }

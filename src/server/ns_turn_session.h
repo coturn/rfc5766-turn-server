@@ -70,6 +70,7 @@ typedef struct {
   u32bits sent_bytes;
   SHATYPE shatype;
   /* Mobile */
+  int is_mobile;
   mobile_id_t mobile_id;
 } ts_ur_super_session;
 
