@@ -767,8 +767,9 @@ unsigned char *base64_decode(const char *data,
     unsigned char *decoded_data = (unsigned char*)turn_malloc(*output_length);
     if (decoded_data == NULL) return NULL;
 
-    size_t i,j;
-	for (i = 0, j = 0; i < input_length;) {
+    int i;
+    size_t j;
+    for (i = 0, j = 0; i < (int)input_length;) {
 
 		uint32_t sextet_a =
 				data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
@@ -789,7 +790,7 @@ unsigned char *base64_decode(const char *data,
 		if (j < *output_length)
 			decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
 
-	}
+    }
 
     return decoded_data;
 }
