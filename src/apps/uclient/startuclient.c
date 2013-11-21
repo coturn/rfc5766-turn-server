@@ -299,9 +299,9 @@ static int clnet_allocate(int verbose,
 		if(current_reservation_token)
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		if(!dos)
-			stun_set_allocate_request(&message, 1800, af, relay_transport);
+			stun_set_allocate_request(&message, 1800, af, relay_transport, mobility);
 		else
-			stun_set_allocate_request(&message, 300, af, relay_transport);
+			stun_set_allocate_request(&message, 300, af, relay_transport, mobility);
 		if(dont_fragment)
 			stun_attr_add(&message, STUN_ATTRIBUTE_DONT_FRAGMENT, NULL, 0);
 		if(!no_rtcp) {

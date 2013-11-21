@@ -79,6 +79,8 @@ int dos = 0;
 
 SHATYPE shatype = SHATYPE_SHA1;
 
+int mobility = 0;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -104,6 +106,7 @@ static char Usage[] =
   "	-O	DOS attack mode (quick connect and exit).\n"
   "	-H	SHA256 digest function for message integrity calculation.\n"
   "		Without this option, by default, SHA1 is used.\n"
+  "	-M	ICE Mobility engaged.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only).\n"
@@ -148,8 +151,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUH")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHM")) != -1) {
 		switch (c){
+		case 'M':
+			mobility = 1;
+			break;
 		case 'H':
 			shatype = SHATYPE_SHA256;
 			break;

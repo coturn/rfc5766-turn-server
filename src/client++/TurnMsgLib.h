@@ -848,8 +848,8 @@ public:
 	/**
 	 * Construct allocate request
 	 */
-	void constructAllocateRequest(u32bits lifetime, int address_family, u08bits transport) {
-		stun_set_allocate_request_str(_buffer, &_sz, lifetime, address_family, transport);
+	void constructAllocateRequest(u32bits lifetime, int address_family, u08bits transport, int mobile) {
+		stun_set_allocate_request_str(_buffer, &_sz, lifetime, address_family, transport, mobile);
 	}
 
 	/**
@@ -1014,13 +1014,13 @@ public:
 					   const ioa_addr &relayed_addr,
 					   const ioa_addr &reflexive_addr,
 					   u32bits lifetime, int error_code, const u08bits *reason,
-					   u64bits reservation_token) {
+					   u64bits reservation_token, char *mobile_id) {
 
 		stun_set_allocate_response_str(_buffer, &_sz, &tid,
 						   &relayed_addr,
 						   &reflexive_addr,
 						   lifetime, error_code, reason,
-						   reservation_token);
+						   reservation_token, mobile_id);
 	}
 
 	/**

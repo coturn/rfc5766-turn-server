@@ -539,7 +539,7 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 ////////// ALLOCATE ///////////////////////////////////
 
 int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family,
-				u08bits transport) {
+				u08bits transport, int mobile) {
 
   stun_init_request_str(STUN_METHOD_ALLOCATE, buf, len);
 
@@ -558,6 +558,10 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
     if(lifetime<1) lifetime=STUN_DEFAULT_ALLOCATE_LIFETIME;
     u32bits field=nswap32(lifetime);
     if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
+  }
+
+  if(mobile) {
+	  if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(const u08bits*)"",0)<0) return -1;
   }
 
   //ADRESS-FAMILY
@@ -586,7 +590,7 @@ int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, i
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr, const ioa_addr *reflexive_addr,
 				   u32bits lifetime, int error_code, const u08bits *reason,
-				   u64bits reservation_token) {
+				   u64bits reservation_token, char* mobile_id) {
 
   if(!error_code) {
 
@@ -611,6 +615,10 @@ int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 
       u32bits field=nswap32(lifetime);
       if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_LIFETIME,(u08bits*)(&field),sizeof(field))<0) return -1;
+    }
+
+    if(mobile_id && *mobile_id) {
+	    if(stun_attr_add_str(buf,len,STUN_ATTRIBUTE_MOBILITY_TICKET,(u08bits*)mobile_id,strlen(mobile_id))<0) return -1;
     }
 
   } else {

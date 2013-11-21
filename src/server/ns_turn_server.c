@@ -366,6 +366,7 @@ static void put_session_into_mobile_map(ts_ur_super_session *ss)
 		if(server->mobility && server->mobile_connections_map) {
 			if(!(ss->mobile_id)) {
 				ss->mobile_id = get_new_mobile_id(server);
+				 mobile_id_to_string(ss->mobile_id, ss->s_mobile_id, sizeof(ss->s_mobile_id));
 			}
 			ur_map_put(server->mobile_connections_map, (ur_map_key_type)(ss->mobile_id), (ur_map_value_type)ss);
 		}
@@ -600,7 +601,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 							tid,
 							&xor_relayed_addr,
 							get_remote_addr_from_ioa_socket(elem->s),
-							(a->expiration_time - turn_time()), 0, NULL, 0);
+							(a->expiration_time - turn_time()), 0, NULL, 0,
+							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
 			}
@@ -622,6 +624,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
 							    ioa_network_buffer_get_size(in_buffer->nbh));
 		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+
 			int attr_type = stun_attr_get_type(sar);
 
 			if(attr_type == STUN_ATTRIBUTE_USERNAME) {
@@ -640,6 +643,17 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
+			case STUN_ATTRIBUTE_MOBILITY_TICKET:
+				if(!(server->mobility)) {
+					*err_code = 403;
+					*reason = (const u08bits *)"Mobility Forbidden";
+				} else if (stun_attr_get_len(sar) != 0) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Wrong Mobility Field";
+				} else {
+					ss->is_mobile = 1;
+				}
+				break;
 			case STUN_ATTRIBUTE_REQUESTED_TRANSPORT: {
 				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
@@ -787,6 +801,14 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 		} else {
 
+			if(server->mobility) {
+				if(!(ss->is_mobile)) {
+					delete_session_from_mobile_map(ss);
+					ss->mobile_id = 0;
+					ss->s_mobile_id[0] = 0;
+				}
+			}
+
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
@@ -834,7 +856,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 									&xor_relayed_addr,
 									get_remote_addr_from_ioa_socket(elem->s), lifetime,
 									0,NULL,
-									out_reservation_token);
+									out_reservation_token,
+									ss->s_mobile_id);
 					ioa_network_buffer_set_size(nbh,len);
 					*resp_constructed = 1;
 
@@ -851,7 +874,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 		}
 
 		size_t len = ioa_network_buffer_get_size(nbh);
-		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, 0, *err_code, *reason, 0);
+		stun_set_allocate_response_str(ioa_network_buffer_data(nbh), &len, tid, NULL, NULL, 0, *err_code, *reason, 0, ss->s_mobile_id);
 		ioa_network_buffer_set_size(nbh,len);
 		*resp_constructed = 1;
 	}

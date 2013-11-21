@@ -74,6 +74,7 @@ extern int mandatory_channel_padding;
 extern int negative_test;
 extern int dos;
 extern SHATYPE shatype;
+extern int mobility;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 

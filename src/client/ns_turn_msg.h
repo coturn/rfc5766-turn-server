@@ -152,12 +152,12 @@ int stun_attr_get_first_addr_str(const u08bits *buf, size_t len, u16bits attr_ty
 int stun_attr_add_channel_number_str(u08bits* buf, size_t *len, u16bits chnumber);
 u16bits stun_attr_get_first_channel_number_str(const u08bits *buf, size_t len);
 
-int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family, u08bits transport);
+int stun_set_allocate_request_str(u08bits* buf, size_t *len, u32bits lifetime, int address_family, u08bits transport, int mobile);
 int stun_set_allocate_response_str(u08bits* buf, size_t *len, stun_tid* tid, 
 				   const ioa_addr *relayed_addr,
 				   const ioa_addr *reflexive_addr,
 				   u32bits lifetime, int error_code, const u08bits *reason,
-				   u64bits reservation_token);
+				   u64bits reservation_token, char *mobile_id);
 
 u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
 					  const ioa_addr* peer_addr, u16bits channel_number);
