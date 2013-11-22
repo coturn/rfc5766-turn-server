@@ -366,7 +366,7 @@ static void put_session_into_mobile_map(ts_ur_super_session *ss)
 		if(server->mobility && server->mobile_connections_map) {
 			if(!(ss->mobile_id)) {
 				ss->mobile_id = get_new_mobile_id(server);
-				 mobile_id_to_string(ss->mobile_id, ss->s_mobile_id, sizeof(ss->s_mobile_id));
+				mobile_id_to_string(ss->mobile_id, ss->s_mobile_id, sizeof(ss->s_mobile_id));
 			}
 			ur_map_put(server->mobile_connections_map, (ur_map_key_type)(ss->mobile_id), (ur_map_value_type)ss);
 		}
@@ -394,6 +394,8 @@ static void delete_session_from_mobile_map(ts_ur_super_session *ss)
 		if(server->mobile_connections_map) {
 			ur_map_del(server->mobile_connections_map, (ur_map_key_type)(ss->mobile_id), NULL);
 		}
+		ss->mobile_id = 0;
+		ss->s_mobile_id[0] = 0;
 	}
 }
 
@@ -804,8 +806,6 @@ static int handle_turn_allocate(turn_turnserver *server,
 			if(server->mobility) {
 				if(!(ss->is_mobile)) {
 					delete_session_from_mobile_map(ss);
-					ss->mobile_id = 0;
-					ss->s_mobile_id[0] = 0;
 				}
 			}
 
@@ -993,6 +993,15 @@ static int handle_turn_refresh(turn_turnserver *server,
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME,
 						(const u08bits*) &lt, 4);
 				ioa_network_buffer_set_size(nbh,len);
+
+				if(ss->is_mobile) {
+					delete_session_from_mobile_map(ss);
+					put_session_into_mobile_map(ss);
+					stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
+							STUN_ATTRIBUTE_MOBILITY_TICKET,
+							(u08bits*)ss->s_mobile_id,strlen(ss->s_mobile_id));
+					ioa_network_buffer_set_size(nbh,len);
+				}
 
 				*resp_constructed = 1;
 			}
