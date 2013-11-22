@@ -85,6 +85,7 @@ typedef struct {
   size_t tcp_conn_number;
   int is_peer;
   SHATYPE shatype;
+  char s_mobile_id[33];
 } app_ur_conn_info;
 
 typedef struct {

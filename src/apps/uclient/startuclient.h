@@ -73,6 +73,8 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid);
 
 int socket_connect(evutil_socket_t clnet_fd, ioa_addr *remote_addr, int *connect_err);
 
+int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message);
+
 ////////////////////////////////////////////
 
 #ifdef __cplusplus

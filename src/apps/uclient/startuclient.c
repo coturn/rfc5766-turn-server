@@ -266,6 +266,32 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	return 0;
 }
 
+int read_mobility_ticket(app_ur_conn_info *clnet_info, stun_buffer *message)
+{
+	int ret = 0;
+	if(clnet_info && message) {
+		stun_attr_ref s_mobile_id_sar = stun_attr_get_first_by_type(message, STUN_ATTRIBUTE_MOBILITY_TICKET);
+		if(s_mobile_id_sar) {
+			int smid_len = stun_attr_get_len(s_mobile_id_sar);
+			if(smid_len>0 && (((size_t)smid_len)<sizeof(clnet_info->s_mobile_id))) {
+				const u08bits* smid_val = stun_attr_get_value(s_mobile_id_sar);
+				if(smid_val) {
+					ns_bcopy(smid_val, clnet_info->s_mobile_id, (size_t)smid_len);
+					clnet_info->s_mobile_id[smid_len] = 0;
+					if (clnet_verbose)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+									"%s: smid=%s\n", __FUNCTION__, clnet_info->s_mobile_id);
+				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: ERROR: smid_len=%d\n", __FUNCTION__, smid_len);
+				ret = -1;
+			}
+		}
+	}
+	return ret;
+}
+
 static int clnet_allocate(int verbose,
 		app_ur_conn_info *clnet_info,
 		ioa_addr *relay_addr,
@@ -299,7 +325,7 @@ static int clnet_allocate(int verbose,
 		if(current_reservation_token)
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 		if(!dos)
-			stun_set_allocate_request(&message, 1800, af, relay_transport, mobility);
+			stun_set_allocate_request(&message, 800, af, relay_transport, mobility);
 		else
 			stun_set_allocate_request(&message, 300, af, relay_transport, mobility);
 		if(dont_fragment)
@@ -393,6 +419,9 @@ static int clnet_allocate(int verbose,
 						if (verbose)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 									"%s: rtv=%llu\n", __FUNCTION__, rtv);
+
+						read_mobility_ticket(clnet_info, &message);
+
 					} else if (stun_is_challenge_response_str(message.buf, (size_t)message.len,
 									&err_code,err_msg,sizeof(err_msg),
 									clnet_info->realm,clnet_info->nonce)) {
@@ -485,6 +514,10 @@ static int clnet_allocate(int verbose,
 			stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt,
 					4);
 
+			if(clnet_info->s_mobile_id[0]) {
+				stun_attr_add(&message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)clnet_info->s_mobile_id, strlen(clnet_info->s_mobile_id));
+			}
+
 			if(add_integrity(clnet_info, &message)<0) return -1;
 
 			stun_attr_add_fingerprint_str(message.buf,(size_t*)&(message.len));
@@ -524,6 +557,7 @@ static int clnet_allocate(int verbose,
 					int err_code = 0;
 					u08bits err_msg[129];
 					if (stun_is_success_response(&message)) {
+						read_mobility_ticket(clnet_info, &message);
 						refresh_received = 1;
 						if (verbose) {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "success\n");

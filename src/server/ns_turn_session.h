@@ -72,7 +72,7 @@ typedef struct {
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
-  char s_mobile_id[65];
+  char s_mobile_id[33];
 } ts_ur_super_session;
 
 ////////////// ss /////////////////////
