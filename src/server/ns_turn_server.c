@@ -123,7 +123,7 @@ static void accept_tcp_connection(ioa_socket_handle s, void *arg);
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
-				  int can_resume);
+				  int can_resume, int count_usage);
 
 static int need_stun_authentication(turn_turnserver *server);
 
@@ -2188,7 +2188,7 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 			}
 
-			read_client_connection(server,elem,ss,in_buffer,0);
+			read_client_connection(server,elem,ss,in_buffer,0,0);
 
 			close_ioa_socket_after_processing_if_necessary(ss->client_session.s);
 
@@ -3218,7 +3218,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
-				  int can_resume) {
+				  int can_resume, int count_usage) {
 
 	FUNCSTART;
 
@@ -3238,9 +3238,11 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		return -1;
 	}
 
-	++(ss->received_packets);
-	ss->received_bytes += (u32bits)ioa_network_buffer_get_size(in_buffer->nbh);
-	turn_report_session_usage(ss);
+	if(count_usage) {
+		++(ss->received_packets);
+		ss->received_bytes += (u32bits)ioa_network_buffer_get_size(in_buffer->nbh);
+		turn_report_session_usage(ss);
+	}
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
@@ -3525,7 +3527,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 
 	switch (elem->state) {
 	case UR_STATE_READY:
-		read_client_connection(server, elem, ss, data, 1);
+		read_client_connection(server, elem, ss, data, 1, 1);
 		break;
 	case UR_STATE_DONE:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,

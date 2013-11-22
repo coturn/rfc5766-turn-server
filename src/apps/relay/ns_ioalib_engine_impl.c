@@ -2838,7 +2838,7 @@ void turn_report_session_usage(void *session)
 	if(session) {
 		ts_ur_super_session *ss = (ts_ur_super_session *)session;
 		turn_turnserver *server = (turn_turnserver*)ss->server;
-		if(server) {
+		if(server && (ss->received_packets || ss->sent_packets)) {
 			ioa_engine_handle e = turn_server_get_engine(server);
 			allocation *a = &(ss->alloc);
 			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
