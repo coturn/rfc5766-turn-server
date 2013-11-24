@@ -749,20 +749,22 @@ int set_socket_options(ioa_socket_handle s)
 #endif
 
 #ifdef IP_RECVERR
-		//Linux for pure UDP sockets
-		//DTLS sockets are handled by DTLS receive procedure
-		if ((s->st != DTLS_SOCKET) && (s->family != AF_INET6)) {
-			int on = 1;
+		if (s->family != AF_INET6) {
+			int on = 0;
+#ifdef TURN_USE_RECVERR
+			on = 1;
+#endif
 			if(setsockopt(s->fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IP_RECVERR");
 		}
 #endif
 
 #ifdef IPV6_RECVERR
-		//Linux for pure UDP sockets
-		//DTLS sockets are handled by DTLS receive procedure
-		if ((s->st != DTLS_SOCKET) && (s->family == AF_INET6)) {
-			int on = 1;
+		if (s->family == AF_INET6) {
+			int on = 0;
+#ifdef TURN_USE_RECVERR
+			on = 1;
+#endif
 			if(setsockopt(s->fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IPV6_RECVERR");
 		}

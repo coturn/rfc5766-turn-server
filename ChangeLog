@@ -1,13 +1,15 @@
 11/11/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.0.1.0 'Practical Frost':
+Version 3.0.1.1 'Practical Frost':
+	- Mobility draft implemented.
+	- DTLS communications fixes.
+	- UDP Linux optimization.
 	- Log output time starts with 0.
 	- Dropping user privileges option added.
-	- OpenSUSE support added.
+	- SHA256 agility updated: 426 error code on too weak SHA function.
 	- "-m 0" and "-m 1" options improved.
-	- Mobility draft implemented.
 	- non-threading environment support dropped.
 	- stability fixes.
-	- SHA256 agility updated: 426 error code on too weak SHA function.
+	- OpenSUSE support added.
 
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':

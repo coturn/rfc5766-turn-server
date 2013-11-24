@@ -501,11 +501,20 @@ static int clnet_allocate(int verbose,
 		  int fd = clnet_info->fd;
 		  SSL* ssl = clnet_info->ssl;
 
-		  if(ssl) {
-			  SSL_shutdown(ssl);
-			  SSL_free(ssl);
-		  } else if(fd>=0) {
-			  close(fd);
+		  int close_now = (int)(random()%2);
+
+		  if(close_now) {
+			  int close_socket = (int)(random()%2);
+			  if(ssl && !close_socket) {
+				  SSL_shutdown(ssl);
+				  SSL_free(ssl);
+				  ssl = NULL;
+				  fd = -1;
+			  } else if(fd>=0) {
+				  close(fd);
+				  fd = -1;
+				  ssl = NULL;
+			  }
 		  }
 
 		  app_ur_conn_info ci;
@@ -519,6 +528,13 @@ static int clnet_allocate(int verbose,
 		  		(unsigned char*)ci.ifname, ci.lsaddr, clnet_verbose,
 		  		clnet_info)<0) {
 			  exit(-1);
+		  }
+
+		  if(ssl) {
+			  SSL_shutdown(ssl);
+		  	  SSL_free(ssl);
+		  } else if(fd>=0) {
+		  	  close(fd);
 		  }
 	  }
 
