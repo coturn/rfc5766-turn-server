@@ -497,12 +497,23 @@ static int clnet_allocate(int verbose,
 	  af_cycle = 0;
 
 	  if(clnet_info->s_mobile_id[0]) {
-		  close(clnet_info->fd);
-		  clnet_info->fd = -1;
-		  clnet_info->ssl = NULL;
+
+		  int fd = clnet_info->fd;
+		  SSL* ssl = clnet_info->ssl;
+
+		  if(ssl) {
+			  SSL_shutdown(ssl);
+			  SSL_free(ssl);
+		  } else if(fd>=0) {
+			  close(fd);
+		  }
 
 		  app_ur_conn_info ci;
 		  ns_bcopy(clnet_info,&ci,sizeof(ci));
+		  ci.fd = -1;
+		  ci.ssl = NULL;
+		  clnet_info->fd = -1;
+		  clnet_info->ssl = NULL;
 		  //Reopen:
 		  if(clnet_connect(addr_get_port(&(ci.remote_addr)), ci.rsaddr,
 		  		(unsigned char*)ci.ifname, ci.lsaddr, clnet_verbose,
