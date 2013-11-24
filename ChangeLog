@@ -1,11 +1,10 @@
 11/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.1.0 'Practical Frost':
-	- Cosmetic changes.
 	- Log output time starts with 0.
-	- Dropping user privileges added.
+	- Dropping user privileges option added.
 	- OpenSUSE support added.
 	- "-m 0" and "-m 1" options improved.
-	- Mobility draft implemented (TODO).
+	- Mobility draft implemented.
 	- non-threading environment support dropped.
 	- stability fixes.
 	- SHA256 agility updated: 426 error code on too weak SHA function.

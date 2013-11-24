@@ -583,10 +583,6 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				}
 			}
 
-			if(stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
-				read_mobility_ticket(&(elem->pinfo), &(elem->in_buffer));
-			}
-
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
 				u32bits cid = 0;
@@ -1083,9 +1079,6 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		stun_init_request(STUN_METHOD_REFRESH, &message);
 		uint32_t lt = htonl(600);
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
-		if(elem->pinfo.s_mobile_id[0]) {
-			stun_attr_add(&message, STUN_ATTRIBUTE_MOBILITY_TICKET, (const char*)elem->pinfo.s_mobile_id, strlen(elem->pinfo.s_mobile_id));
-		}
 		if(add_integrity(clnet_info, &message)<0) return -1;
 		if(use_fingerprints)
 			    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));

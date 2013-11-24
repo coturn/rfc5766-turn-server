@@ -496,6 +496,21 @@ static int clnet_allocate(int verbose,
 
 	  af_cycle = 0;
 
+	  if(clnet_info->s_mobile_id[0]) {
+		  close(clnet_info->fd);
+		  clnet_info->fd = -1;
+		  clnet_info->ssl = NULL;
+
+		  app_ur_conn_info ci;
+		  ns_bcopy(clnet_info,&ci,sizeof(ci));
+		  //Reopen:
+		  if(clnet_connect(addr_get_port(&(ci.remote_addr)), ci.rsaddr,
+		  		(unsigned char*)ci.ifname, ci.lsaddr, clnet_verbose,
+		  		clnet_info)<0) {
+			  exit(-1);
+		  }
+	  }
+
 		beg_refresh:
 
 	  if(af_cycle++>32) {
@@ -846,7 +861,6 @@ int start_connection(uint16_t clnet_remote_port0,
 
 	if (!dos) {
 		if (!do_not_use_channel) {
-
 			/* These multiple "channel bind" requests are here only because
 			 * we are playing with the TURN server trying to screw it */
 			if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp)

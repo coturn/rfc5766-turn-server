@@ -316,11 +316,18 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 		ioa_socket_handle s = sm->m.sm.s;
 
-		/* Special case: 'virtual' UDP socket */
+		/* Special case: UDP socket */
 		if (get_ioa_socket_type(s) == UDP_SOCKET) {
 
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"%s: UDP socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
+					__FUNCTION__, (long) s->read_event, (long) s->bev);
+			IOA_CLOSE_SOCKET(s);
+
+		} else if (get_ioa_socket_type(s) == DTLS_SOCKET) {
+
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: DTLS socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
 			IOA_CLOSE_SOCKET(s);
 

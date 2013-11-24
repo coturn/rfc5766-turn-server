@@ -68,7 +68,7 @@ int turn_mutex_destroy(turn_mutex* mutex);
 /////// Sockets //////////////////////////////
 
 #define IOA_EV_TIMEOUT	0x01
-#define IOA_EV_READ	0x02
+#define IOA_EV_READ		0x02
 #define IOA_EV_WRITE	0x04
 #define IOA_EV_SIGNAL	0x08
 #define IOA_EV_CLOSE	0x10
@@ -216,6 +216,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_
 #define close_ioa_socket(s) close_ioa_socket_func((s),__FUNCTION__,__FILE__,__LINE__)
 void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *file, int line);
 ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
+void detach_socket_net_data(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket_func(S,__FUNCTION__,__FILE__,__LINE__); S = NULL; } } while(0)
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);
 void set_do_not_use_df(ioa_socket_handle s);

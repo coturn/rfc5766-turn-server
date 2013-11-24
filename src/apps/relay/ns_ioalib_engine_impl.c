@@ -1350,7 +1350,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 	}
 }
 
-static void detach_socket_net_data(ioa_socket_handle s)
+void detach_socket_net_data(ioa_socket_handle s)
 {
 	if(s) {
 		EVENT_DEL(s->read_event);
@@ -1448,6 +1448,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ret->local_addr_known = s->local_addr_known;
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
+		ret->parent_s = s->parent_s;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
 		s->ssl = NULL;
