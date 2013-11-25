@@ -358,7 +358,7 @@ static mobile_id_t get_new_mobile_id(turn_turnserver* server)
 				if(!newid) {
 					continue;
 				}
-				newid = newid & 0x00FFFFFFFFFFFFFF;
+				newid = newid & 0x00FFFFFFFFFFFFFFLL;
 				if(!newid) {
 					continue;
 				}
