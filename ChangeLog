@@ -4,7 +4,7 @@ Version 3.0.1.2 'Practical Frost':
 	- DTLS communications fixes.
 	- UDP Linux optimization.
 	- Log output time starts with 0.
-	- A new "drop user privileges" options:
+	- A new "drop root privileges" options:
 		--proc-user and --proc-group added. 
 	- SHA256 agility updated: 426 error code on too weak SHA function.
 	- "-m 0" and "-m 1" options improved.
