@@ -187,6 +187,9 @@ Flags:
 			the log file only (unless the log file itself is stdout).
 			
 --syslog		With this flag, all log will be redirected to the system log (syslog).
+				
+--secure-stun		Require authentication of the STUN Binding request.
+			By default, the clients are allowed anonymous access to the STUN Binding functionality.
 
 -S, --stun-only		Run as STUN server only, all TURN requests will be ignored. 
 			Option to suppress TURN functionality, only STUN requests will be processed.
@@ -426,9 +429,6 @@ Options with required values:
 --pidfile 		File name to store the pid of the process.
 			Default is /var/run/turnserver.pid (if superuser account is used) or
 			/var/tmp/turnserver.pid .
-				
---secure-stun		Require authentication of the STUN Binding request.
-			By default, the clients are allowed anonymous access to the STUN Binding functionality.
 				
 --proc-user		User ID to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current user ID to that user.
