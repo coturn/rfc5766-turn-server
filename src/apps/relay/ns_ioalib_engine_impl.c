@@ -82,6 +82,8 @@ struct turn_sock_extended_err {
 
 /************** Forward function declarations ******/
 
+static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr);
+
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
@@ -751,7 +753,7 @@ int set_socket_options(ioa_socket_handle s)
 #ifdef IP_RECVERR
 		if (s->family != AF_INET6) {
 			int on = 0;
-#ifdef TURN_USE_RECVERR
+#ifdef TURN_IP_RECVERR
 			on = 1;
 #endif
 			if(setsockopt(s->fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
@@ -762,7 +764,7 @@ int set_socket_options(ioa_socket_handle s)
 #ifdef IPV6_RECVERR
 		if (s->family == AF_INET6) {
 			int on = 0;
-#ifdef TURN_USE_RECVERR
+#ifdef TURN_IP_RECVERR
 			on = 1;
 #endif
 			if(setsockopt(s->fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
@@ -1691,6 +1693,50 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 	return ret;
 }
 
+static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr)
+{
+	if ((fd < 0) || !orig_addr)
+		return -1;
+
+#if defined(CMSG_SPACE) && defined(MSG_ERRQUEUE) && defined(IP_RECVERR)
+
+	u08bits ecmsg[TURN_CMSG_SZ+1];
+	int flags = MSG_ERRQUEUE;
+	int len = 0;
+
+	struct msghdr msg;
+	struct iovec iov;
+	char buffer[65536];
+
+	char *cmsg = (char*)ecmsg;
+
+	msg.msg_control = cmsg;
+	msg.msg_controllen = TURN_CMSG_SZ;
+	/* CMSG_SPACE(sizeof(recv_ttl)+sizeof(recv_tos)) */
+
+	msg.msg_name = orig_addr;
+	msg.msg_namelen = (socklen_t)get_ioa_addr_len(orig_addr);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_iov->iov_base = buffer;
+	msg.msg_iov->iov_len = sizeof(buffer);
+	msg.msg_flags = 0;
+
+	int try_cycle = 0;
+
+	do {
+
+		do {
+			len = recvmsg(fd,&msg,flags);
+		} while (len < 0 && (errno == EINTR));
+
+	} while((len>0)&&(try_cycle++<MAX_ERRORS_IN_UDP_BATCH));
+
+#endif
+
+	return 0;
+}
+
 typedef unsigned char recv_ttl_t;
 typedef unsigned char recv_tos_t;
 
@@ -2314,6 +2360,14 @@ static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int ver
 	}
 
 	int rc = 0;
+	int try_again = 1;
+
+#if !defined(TURN_IP_RECVERR)
+	try_again = 0;
+#endif
+
+	try_start:
+
 	do {
 		rc = SSL_write(ssl, buffer, len);
 	} while (rc < 0 && errno == EINTR);
@@ -2358,6 +2412,24 @@ static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int ver
 		{
 			int err = errno;
 			if (!handle_socket_error()) {
+				if(s->st == DTLS_SOCKET) {
+					if(is_connreset()) {
+						if(try_again) {
+							BIO *wbio = SSL_get_wbio(ssl);
+							if(wbio) {
+								int fd = BIO_get_fd(wbio,0);
+								if(fd>=0) {
+									try_again = 0;
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket, tring to recover write operation...\n");
+									socket_readerr(fd, &(s->local_addr));
+									goto try_start;
+								}
+							}
+						}
+					}
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket lost packet... fine\n");
+					return 0;
+				}
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS Socket write error unrecoverable: %d; buffer=0x%lx, len=%d, ssl=0x%lx\n", err, (long)buffer, (int)len, (long)ssl);
 				return -1;
 			} else {
@@ -2434,7 +2506,17 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 
 	if(fd>=0) {
 
-		int cycle = 0;
+		int try_again = 1;
+
+		int cycle;
+
+#if !defined(TURN_IP_RECVERR)
+		try_again = 0;
+#endif
+
+		try_start:
+
+		cycle = 0;
 
 		if (dest_addr) {
 
@@ -2461,6 +2543,12 @@ int udp_send(ioa_socket_handle s, const ioa_addr* dest_addr, const s08bits* buff
 				//Lost packet due to overload ... fine.
 				rc = len;
 			} else if(is_connreset()) {
+				if(try_again) {
+					try_again = 0;
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "UDP Socket, tring to recover write operation...\n");
+					socket_readerr(fd, &(s->local_addr));
+					goto try_start;
+				}
 				//Lost packet - sent to nowhere... fine.
 				rc = len;
 			}

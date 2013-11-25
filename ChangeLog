@@ -1,5 +1,5 @@
 11/11/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.0.1.1 'Practical Frost':
+Version 3.0.1.2 'Practical Frost':
 	- Mobility draft implemented.
 	- DTLS communications fixes.
 	- UDP Linux optimization.
