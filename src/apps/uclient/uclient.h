@@ -72,6 +72,7 @@ extern struct event_base* client_event_base;
 extern int passive_tcp;
 extern int mandatory_channel_padding;
 extern int negative_test;
+extern int negative_protocol_test;
 extern int dos;
 extern SHATYPE shatype;
 extern int mobility;

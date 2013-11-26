@@ -190,6 +190,14 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 
 	char *buffer = (char*) (message->buf);
 
+	if(negative_protocol_test && (message->len>0)) {
+		if(random()%10 == 0) {
+			int pos = (int)((unsigned long)random()%(unsigned long)message->len);
+			int val = (int)((unsigned long)random()%256);
+			message->buf[pos]=(u08bits)val;
+		}
+	}
+
 	SSL *ssl = clnet_info->ssl;
 	ioa_socket_raw fd = clnet_info->fd;
 

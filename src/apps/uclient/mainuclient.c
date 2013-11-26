@@ -75,6 +75,7 @@ unsigned char client_ifname[1025] = "";
 int passive_tcp = 0;
 int mandatory_channel_padding = 0;
 int negative_test = 0;
+int negative_protocol_test = 0;
 int dos = 0;
 
 SHATYPE shatype = SHATYPE_SHA1;
@@ -103,6 +104,7 @@ static char Usage[] =
   "		the long-term credentials mechanism if authentication is required.\n"
   "	-D	Mandatory channel padding (like in pjnath).\n"
   "	-N	Negative tests (some limited cases only).\n"
+  "	-R	Negative protocol tests.\n"
   "	-O	DOS attack mode (quick connect and exit).\n"
   "	-H	SHA256 digest function for message integrity calculation.\n"
   "		Without this option, by default, SHA1 is used.\n"
@@ -151,7 +153,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHM")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHMR")) != -1) {
 		switch (c){
 		case 'M':
 			mobility = 1;
@@ -180,6 +182,9 @@ int main(int argc, char **argv)
 			break;
 		case 'N':
 			negative_test = 1;
+			break;
+		case 'R':
+			negative_protocol_test = 1;
 			break;
 		case 'z':
 			RTP_PACKET_INTERVAL = atoi(optarg);
