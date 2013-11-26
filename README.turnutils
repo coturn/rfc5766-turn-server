@@ -97,6 +97,8 @@ Flags:
 
 -N		do negative tests (some limited cases only).
 
+-R		do negative protocol tests.
+
 -O		DOS attack mode.
 
 -H		SHA256 digest function for message integrity calculation.
