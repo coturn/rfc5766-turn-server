@@ -236,7 +236,12 @@ fi
 %{_datadir}/%{name}/scripts/shorttermsecure/secure_relay_short_term_mech.sh
 %{_datadir}/%{name}/scripts/shorttermsecure/secure_tcp_client_c2c_tcp_relay_short_term.sh
 %{_datadir}/%{name}/scripts/shorttermsecure/secure_udp_client_short_term.sh
-
+%dir %{_datadir}/%{name}/scripts/mobile
+%{_datadir}/%{name}/scripts/mobile/mobile_relay.sh
+%{_datadir}/%{name}/scripts/mobile/mobile_dtls_client.sh
+%{_datadir}/%{name}/scripts/mobile/mobile_tcp_client.sh
+%{_datadir}/%{name}/scripts/mobile/mobile_tls_client_c2c_tcp_relay.sh
+%{_datadir}/%{name}/scripts/mobile/mobile_udp_client.sh
 
 %files 		utils
 %defattr(-,root,root)
