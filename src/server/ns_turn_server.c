@@ -3079,7 +3079,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	ts_ur_session* elem = &(ss->client_session);
 
-	if(server->mobility && !force) {
+	if(server->mobility && !force && ss->is_mobile) {
 
 		if(elem->s) {
 			clear_ioa_socket_session_if(elem->s,ss);
