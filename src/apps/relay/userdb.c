@@ -1787,6 +1787,10 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		if(is_st) {
 			strncpy((char*)passwd,(char*)pwd,sizeof(st_password_t));
 		} else {
+			if(!(realm[0])) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: with long-term mechanism, you must specify the realm !\n");
+				exit(-1);
+			}
 			stun_produce_integrity_key_str(user, realm, pwd, key);
 			size_t i = 0;
 			int maxsz = (int)sizeof(skey);
