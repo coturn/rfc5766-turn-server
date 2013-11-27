@@ -370,7 +370,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
+					"%s: 111.111: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d\n",
 					__FUNCTION__, thrid, (long) amap,
 					(long) (chs->sockets_container), (char*) saddr,
 					(char*) rsaddr, (long) s, (int) (chs->done),
@@ -393,7 +393,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 				addr_to_string(get_local_addr_from_ioa_socket(chs),saddr);
 				addr_to_string(get_remote_addr_from_ioa_socket(chs),rsaddr);
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-					"%s: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
+					"%s: 111.222: thrid=0x%lx: Amap = 0x%lx, socket container=0x%lx, local addr %s, remote addr %s, s=0x%lx, done=%d, tbc=%d, st=%d, sat=%d\n",
 					__FUNCTION__, thrid, (long) amap,
 					(long) (chs->sockets_container), (char*) saddr,
 					(char*) rsaddr, (long) chs, (int) (chs->done),

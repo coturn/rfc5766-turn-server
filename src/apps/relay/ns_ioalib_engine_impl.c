@@ -1452,8 +1452,16 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ret->local_addr_known = s->local_addr_known;
 		addr_cpy(&(ret->local_addr),&(s->local_addr));
 		ret->connected = s->connected;
-		ret->parent_s = s->parent_s;
+		ioa_socket_handle parent_s = s->parent_s;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
+
+		ur_addr_map *sockets_container = s->sockets_container;
+
+		delete_socket_from_map(s);
+		delete_socket_from_parent(s);
+
+		add_socket_to_parent(parent_s, ret);
+		add_socket_to_map(ret,sockets_container);
 
 		s->ssl = NULL;
 		s->fd = -1;

@@ -1053,9 +1053,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 							//Transfer socket:
 
-							ioa_socket_handle s = ss->client_session.s;
-							detach_socket_net_data(s);
-							ss->client_session.s = NULL;
+							ioa_socket_handle s = detach_ioa_socket(ss->client_session.s);
 
 							attach_socket_to_session(server, s, orig_ss);
 
