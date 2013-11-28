@@ -2,7 +2,8 @@
 11/28/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.1.4 'Practical Frost':
 	- CentOS/Fedora packaging fixed.
-	
+	- PID file fixed.
+
 11/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.1.3 'Practical Frost':
 	- Misc cosmetic changes.
@@ -15,7 +16,7 @@ Version 3.0.1.2 'Practical Frost':
 	- UDP Linux optimization.
 	- Log output time starts with 0.
 	- A new "drop root privileges" options:
-		--proc-user and --proc-group added. 
+		--proc-user and --proc-group added.
 	- SHA256 agility updated: 426 error code on too weak SHA function.
 	- "-m 0" and "-m 1" options improved.
 	- non-threading environment support dropped.
@@ -25,11 +26,11 @@ Version 3.0.1.2 'Practical Frost':
 11/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.0.0 'Practical Frost':
 	- New network engine for Linux kernel 3.9+.
-	
+
 11/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.7.2 'Harding Grim':
 	- SHA256 agility updated: 441 error code on too weak SHA function.
-	
+
 11/07/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 2.6.7.1 'Harding Grim':
 	- CentOS  / Fedora uninstall script.

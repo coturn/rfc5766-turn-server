@@ -1562,7 +1562,7 @@ int main(int argc, char **argv)
 		}
 
 		if(f) {
-			fprintf(f,"%lu",(unsigned long)getpid());
+			fprintf(f,"%lu\n",(unsigned long)getpid());
 			fclose(f);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "pid file created: %s\n", s);
 		}
