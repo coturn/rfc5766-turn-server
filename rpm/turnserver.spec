@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.0.1.3
+Version:	3.0.1.4
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -111,19 +111,27 @@ DESTDIR=$RPM_BUILD_ROOT make install
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m644 rpm/turnserver.sysconfig \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/turnserver
-mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default \
-	$RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mv $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf.default \
 	$RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnuserdb.conf
 %if 0%{?el6}
+cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
+    sed s/#syslog/syslog/g | \
+    sed s/#no-stdout-log/no-stdout-log/g > \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d
 install -m755 rpm/turnserver.init.el \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/rc.d/init.d/turnserver
 %else
+cat $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default | \
+    sed s/#syslog/syslog/g | \
+    sed s/#no-stdout-log/no-stdout-log/g | \
+    sed s/#pidfile/pidfile/g > \
+    $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf
 mkdir -p $RPM_BUILD_ROOT/%{_unitdir}
 install -m755 rpm/turnserver.service.fc \
 		$RPM_BUILD_ROOT/%{_unitdir}/turnserver.service
 %endif
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/turnserver.conf.default
 
 %clean
 rm -rf "$RPM_BUILD_ROOT"
@@ -273,8 +281,10 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Thu Nov 28 2013 Oleg Moskalenko <mom040267@gmail.com>
+  - Config file setting fixed: version 3.0.1.4.
 * Wed Nov 27 2013 Oleg Moskalenko <mom040267@gmail.com>
-  - Config file setting fixed.
+  - Config file setting fixed: version 3.0.1.3.
 * Mon Nov 25 2013 Oleg Moskalenko <mom040267@gmail.com>
   - Updated to version 3.0.1.2
 * Sun Nov 10 2013 Oleg Moskalenko <mom040267@gmail.com>
