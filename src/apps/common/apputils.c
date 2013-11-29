@@ -674,6 +674,14 @@ char* find_config_file(const char *config_file, int print_file_name)
 
 /////////////////// SYS SETTINGS ///////////////////////
 
+void ignore_sigpipe(void)
+{
+	/* Ignore SIGPIPE from TCP sockets */
+	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+		perror("Cannot set SIGPIPE handler");
+	}
+}
+
 void set_system_parameters(int max_resources)
 {
 	srandom((unsigned int) time(NULL));
@@ -681,8 +689,7 @@ void set_system_parameters(int max_resources)
 
 	build_base64_decoding_table();
 
-	/* Ignore SIGPIPE from TCP sockets */
-	signal(SIGPIPE, SIG_IGN);
+	ignore_sigpipe();
 
 	if(max_resources) {
 		struct rlimit rlim;

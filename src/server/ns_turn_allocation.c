@@ -416,7 +416,6 @@ void delete_tcp_connection(tcp_connection *tc)
 		}
 		tc->done = 1;
 
-		clear_unsent_buffer(&(tc->ub_to_peer));
 		clear_unsent_buffer(&(tc->ub_to_client));
 
 		IOA_EVENT_DEL(tc->peer_conn_timeout);

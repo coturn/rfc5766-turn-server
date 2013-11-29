@@ -1163,6 +1163,23 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 /* RFC 6062 ==>> */
 
+static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s)
+{
+	if(ub && s && ub->bufs && ub->sz) {
+		size_t i = 0;
+		do {
+			ioa_network_buffer_handle nbh = top_unsent_buffer(ub);
+			if(!nbh)
+				break;
+			int ret = send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+			if (ret < 0) {
+				set_ioa_socket_tobeclosed(s);
+			}
+			pop_unsent_buffer(ub);
+		} while(!ioa_socket_tobeclosed(s) && ((i++)<MAX_UNSENT_BUFFER_SIZE));
+	}
+}
+
 static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
@@ -1172,11 +1189,11 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 
 	tcp_connection *tc = (tcp_connection*)arg;
 
-	if(tc->state != TC_STATE_READY)
+	if((tc->state != TC_STATE_READY) || !(tc->client_s)) {
+		add_unsent_buffer(&(tc->ub_to_client), in_buffer->nbh);
+		in_buffer->nbh = NULL;
 		return;
-
-	if(!(tc->client_s))
-		return;
+	}
 
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
@@ -1273,6 +1290,18 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 
 		if(!success) {
 			delete_tcp_connection(tc);
+		} else if(111.111) {
+			int i = 0;
+			for(i=0;i<22;i++) {
+				ioa_network_buffer_handle nbh_test = ioa_network_buffer_allocate(server->e);
+				size_t len_test = ioa_network_buffer_get_size(nbh_test);
+				u08bits *data = ioa_network_buffer_data(nbh_test);
+				const char* data_test="111.111.111.111.111";
+				len_test = strlen(data_test);
+				ns_bcopy(data_test,data,len_test);
+				ioa_network_buffer_set_size(nbh_test,len_test);
+				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE);
+			}
 		}
 	}
 }
@@ -1445,6 +1474,20 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		}
 
 		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+
+		if(111.111) {
+			int i = 0;
+			for(i=0;i<22;i++) {
+				ioa_network_buffer_handle nbh_test = ioa_network_buffer_allocate(server->e);
+				size_t len_test = ioa_network_buffer_get_size(nbh_test);
+				u08bits *data = ioa_network_buffer_data(nbh_test);
+				const char* data_test="111.222.222.222.222";
+				len_test = strlen(data_test);
+				ns_bcopy(data_test,data,len_test);
+				ioa_network_buffer_set_size(nbh_test,len_test);
+				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE);
+			}
+		}
 
 		FUNCEND;
 	}
@@ -1696,6 +1739,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 		if(ss && !err_code) {
 			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
+			tcp_deliver_delayed_buffer(&(tc->ub_to_client),s);
 			FUNCEND;
 			return 0;
 		} else {

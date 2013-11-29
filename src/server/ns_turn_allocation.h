@@ -109,7 +109,6 @@ typedef struct
 	stun_tid tid;
 	void *owner; //a
 	int done;
-	unsent_buffer ub_to_peer;
 	unsent_buffer ub_to_client;
 } tcp_connection;
 

@@ -528,6 +528,8 @@ static void *run_udp_listener_thread(void *arg)
 {
   static int always_true = 1;
 
+  ignore_sigpipe();
+
 #if !defined(TURN_NO_THREAD_BARRIERS)
   if((pthread_barrier_wait(&barrier)<0) && errno)
 	  perror("barrier wait");
@@ -1112,6 +1114,8 @@ static void *run_general_relay_thread(void *arg)
 
   int we_need_rfc5780 = udp_reuses_the_same_relay_server && rfc5780;
 
+  ignore_sigpipe();
+
   setup_relay_server(rs, NULL, we_need_rfc5780);
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
@@ -1162,6 +1166,8 @@ static void* run_auth_server_thread(void *arg)
 	if((pthread_barrier_wait(&barrier)<0) && errno)
 		perror("barrier wait");
 #endif
+
+	ignore_sigpipe();
 
 	while(run_auth_server_flag) {
 		run_events(eb);
