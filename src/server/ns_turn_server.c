@@ -1290,7 +1290,10 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 
 		if(!success) {
 			delete_tcp_connection(tc);
-		} else if(111.111) {
+		}
+		/* test */
+		else if(0)
+		{
 			int i = 0;
 			for(i=0;i<22;i++) {
 				ioa_network_buffer_handle nbh_test = ioa_network_buffer_allocate(server->e);
@@ -1475,7 +1478,8 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
 
-		if(111.111) {
+		/* test */
+		if(0) {
 			int i = 0;
 			for(i=0;i<22;i++) {
 				ioa_network_buffer_handle nbh_test = ioa_network_buffer_allocate(server->e);
