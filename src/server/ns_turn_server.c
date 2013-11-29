@@ -129,7 +129,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 
 static int write_client_connection(turn_turnserver *server, ts_ur_super_session* ss, ioa_network_buffer_handle nbh, int ttl, int tos);
 
-static void accept_tcp_connection(ioa_socket_handle s, void *arg);
+static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg);
 
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
@@ -831,7 +831,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
-							accept_tcp_connection) < 0) {
+							tcp_peer_accept_connection) < 0) {
 
 				(server->raqcb)(username);
 
@@ -1163,7 +1163,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 /* RFC 6062 ==>> */
 
-static void tcp_peer_data_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
@@ -1187,7 +1187,7 @@ static void tcp_peer_data_input_handler(ioa_socket_handle s, int event_type, ioa
 	}
 }
 
-static void tcp_client_data_input_handler(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
+static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_type, ioa_net_data *in_buffer, void *arg)
 {
 	if (!(event_type & IOA_EV_READ) || !arg)
 		return;
@@ -1211,7 +1211,7 @@ static void tcp_client_data_input_handler(ioa_socket_handle s, int event_type, i
 	}
 }
 
-static void conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
+static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
 {
 	UNUSED_ARG(e);
 	if(arg) {
@@ -1220,7 +1220,7 @@ static void conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
 	}
 }
 
-static void client_to_peer_connect_callback(int success, void *arg)
+static void tcp_peer_connection_completed_callback(int success, void *arg)
 {
 	if(arg) {
 		tcp_connection *tc = (tcp_connection *)arg;
@@ -1235,7 +1235,7 @@ static void client_to_peer_connect_callback(int success, void *arg)
 		size_t len = ioa_network_buffer_get_size(nbh);
 
 		if(success) {
-			if(register_callback_on_ioa_socket(server->e, tc->peer_s, IOA_EV_READ, tcp_peer_data_input_handler, tc, 1)<0) {
+			if(register_callback_on_ioa_socket(server->e, tc->peer_s, IOA_EV_READ, tcp_peer_input_handler, tc, 1)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
 				success=0;
 				err_code = 500;
@@ -1250,8 +1250,8 @@ static void client_to_peer_connect_callback(int success, void *arg)
 
 			IOA_EVENT_DEL(tc->conn_bind_timeout);
 			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
-									conn_bind_timeout_handler, tc, 0,
-									"conn_bind_timeout_handler");
+									tcp_conn_bind_timeout_handler, tc, 0,
+									"tcp_conn_bind_timeout_handler");
 
 		} else {
 			tc->state = TC_STATE_FAILED;
@@ -1277,14 +1277,14 @@ static void client_to_peer_connect_callback(int success, void *arg)
 	}
 }
 
-static void peer_conn_timeout_handler(ioa_engine_handle e, void *arg)
+static void tcp_peer_conn_timeout_handler(ioa_engine_handle e, void *arg)
 {
 	UNUSED_ARG(e);
 
-	client_to_peer_connect_callback(0,arg);
+	tcp_peer_connection_completed_callback(0,arg);
 }
 
-static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid,
+static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_session *ss, stun_tid *tid,
 				allocation *a, ioa_addr *peer_addr,
 				int *err_code, const u08bits **reason)
 {
@@ -1319,10 +1319,10 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 
 	IOA_EVENT_DEL(tc->peer_conn_timeout);
 	tc->peer_conn_timeout = set_ioa_timer(server->e, TCP_PEER_CONN_TIMEOUT, 0,
-						peer_conn_timeout_handler, tc, 0,
-						"peer_conn_timeout_handler");
+						tcp_peer_conn_timeout_handler, tc, 0,
+						"tcp_peer_conn_timeout_handler");
 
-	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(a->relay_session.s, peer_addr, client_to_peer_connect_callback, tc);
+	ioa_socket_handle tcs = ioa_create_connecting_tcp_relay_socket(a->relay_session.s, peer_addr, tcp_peer_connection_completed_callback, tc);
 	if(!tcs) {
 		delete_tcp_connection(tc);
 		*err_code = 500;
@@ -1339,110 +1339,114 @@ static int start_tcp_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	return 0;
 }
 
-static void accept_tcp_connection(ioa_socket_handle s, void *arg)
+static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 {
 	if(s) {
-		if(arg) {
-			ts_ur_super_session *ss = (ts_ur_super_session*)arg;
-			turn_turnserver *server=(turn_turnserver*)(ss->server);
 
-			FUNCSTART;
-
-			allocation *a = &(ss->alloc);
-			ioa_addr *peer_addr = get_remote_addr_from_ioa_socket(s);
-			if(!good_peer_addr(server, peer_addr)) {
-				u08bits saddr[256];
-				addr_to_string(peer_addr, saddr);
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n", __FUNCTION__,saddr);
-				close_ioa_socket(s);
-				FUNCEND;
-				return;
-			}
-			tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
-			if(tc) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer data socket with this address already exist\n", __FUNCTION__);
-				close_ioa_socket(s);
-				FUNCEND;
-				return;
-			}
-
-			if(!can_accept_tcp_connection_from_peer(a,peer_addr)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
-				close_ioa_socket(s);
-				FUNCEND;
-				return;
-			}
-
-			stun_tid tid;
-			ns_bzero(&tid,sizeof(stun_tid));
-			int err_code=0;
-			tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
-			if(!tc) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
-				close_ioa_socket(s);
-				FUNCEND;
-				return;
-			}
-
-			tc->state = TC_STATE_PEER_CONNECTED;
-			tc->peer_s = s;
-
-			set_ioa_socket_session(s,ss);
-			set_ioa_socket_sub_session(s,tc);
-
-			if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_data_input_handler, tc, 1)<0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
-				close_ioa_socket(s);
-				tc->peer_s = NULL;
-				tc->state = TC_STATE_UNKNOWN;
-				FUNCEND;
-				return;
-			}
-
-			IOA_EVENT_DEL(tc->conn_bind_timeout);
-			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
-								conn_bind_timeout_handler, tc, 0,
-								"conn_bind_timeout_handler");
-
-			ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
-			size_t len = ioa_network_buffer_get_size(nbh);
-
-			stun_init_indication_str(STUN_METHOD_CONNECTION_ATTEMPT, ioa_network_buffer_data(nbh), &len);
-			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
-						(const u08bits*)&(tc->id), 4);
-			stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
-
-			ioa_network_buffer_set_size(nbh,len);
-
-			{
-				static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-				static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
-				size_t len = ioa_network_buffer_get_size(nbh);
-				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-				ioa_network_buffer_set_size(nbh, len);
-			}
-
-			/* We add integrity for both long-term and short-term indication messages */
-			/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
-			{
-				adjust_shatype(server,ss);
-				stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
-				ioa_network_buffer_set_size(nbh,len);
-			}
-
-			if (server->fingerprint || ss->enforce_fingerprints) {
-				size_t len = ioa_network_buffer_get_size(nbh);
-				stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
-				ioa_network_buffer_set_size(nbh, len);
-			}
-
-			write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
-
-			FUNCEND;
-
-		} else {
+		if(!arg) {
 			close_ioa_socket(s);
+			return;
 		}
+
+		ts_ur_super_session *ss = (ts_ur_super_session*)arg;
+		turn_turnserver *server=(turn_turnserver*)(ss->server);
+
+		FUNCSTART;
+
+		allocation *a = &(ss->alloc);
+		ioa_addr *peer_addr = get_remote_addr_from_ioa_socket(s);
+
+		tcp_connection *tc = get_tcp_connection_by_peer(a, peer_addr);
+		if(tc) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer data socket with this address already exist\n", __FUNCTION__);
+			if(tc->peer_s != s)
+				close_ioa_socket(s);
+			FUNCEND;
+			return;
+		}
+
+		if(!good_peer_addr(server, peer_addr)) {
+			u08bits saddr[256];
+			addr_to_string(peer_addr, saddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: an attempt to connect from a peer with forbidden address: %s\n", __FUNCTION__,saddr);
+			close_ioa_socket(s);
+			FUNCEND;
+			return;
+		}
+
+		if(!can_accept_tcp_connection_from_peer(a,peer_addr)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
+			close_ioa_socket(s);
+			FUNCEND;
+			return;
+		}
+
+		stun_tid tid;
+		ns_bzero(&tid,sizeof(stun_tid));
+		int err_code=0;
+		tc = create_tcp_connection(server->id, a, &tid, peer_addr, &err_code);
+		if(!tc) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot create TCP connection\n", __FUNCTION__);
+			close_ioa_socket(s);
+			FUNCEND;
+			return;
+		}
+
+		tc->state = TC_STATE_PEER_CONNECTED;
+		tc->peer_s = s;
+
+		set_ioa_socket_session(s,ss);
+		set_ioa_socket_sub_session(s,tc);
+
+		if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_peer_input_handler, tc, 1)<0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP peer data input callback\n", __FUNCTION__);
+			close_ioa_socket(s);
+			tc->peer_s = NULL;
+			tc->state = TC_STATE_UNKNOWN;
+			FUNCEND;
+			return;
+		}
+
+		IOA_EVENT_DEL(tc->conn_bind_timeout);
+		tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
+							tcp_conn_bind_timeout_handler, tc, 0,
+							"tcp_conn_bind_timeout_handler");
+
+		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
+		size_t len = ioa_network_buffer_get_size(nbh);
+
+		stun_init_indication_str(STUN_METHOD_CONNECTION_ATTEMPT, ioa_network_buffer_data(nbh), &len);
+		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
+					(const u08bits*)&(tc->id), 4);
+		stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
+
+		ioa_network_buffer_set_size(nbh,len);
+
+		{
+			static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+			static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		/* We add integrity for both long-term and short-term indication messages */
+		/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
+		{
+			adjust_shatype(server,ss);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+			ioa_network_buffer_set_size(nbh,len);
+		}
+
+		if (server->fingerprint || ss->enforce_fingerprints) {
+			size_t len = ioa_network_buffer_get_size(nbh);
+			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
+			ioa_network_buffer_set_size(nbh, len);
+		}
+
+		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+
+		FUNCEND;
 	}
 }
 
@@ -1519,7 +1523,7 @@ static int handle_turn_connect(turn_turnserver *server,
 				*err_code = 403;
 				*reason = (const u08bits *) "Forbidden IP";
 			} else {
-				start_tcp_connection_to_peer(server, ss, tid, a, &peer_addr, err_code, reason);
+				tcp_start_connection_to_peer(server, ss, tid, a, &peer_addr, err_code, reason);
 			}
 		}
 	}
@@ -1620,35 +1624,35 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 	return 0;
 }
 
-int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity)
 {
+	if(!server)
+		return -1;
+
 	FUNCSTART;
 
 	tcp_connection *tc = NULL;
+	ts_ur_super_session *ss = NULL;
+
+	int err_code = 0;
 
 	if(tcid && tid && s) {
 
-		int err_code = 0;
-		ts_ur_super_session *ss = NULL;
-
 		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
-		if(!tc) {
+		if(!tc || (tc->state == TC_STATE_READY) || (tc->client_s)) {
 			err_code = 400;
 		} else {
 			allocation *a = (allocation*)(tc->owner);
-			ss = (ts_ur_super_session*)(a->owner);
-			if(tc->state == TC_STATE_READY) {
-				err_code = 400;
-			} else if(tc->client_s) {
+			if(!a || !(a->owner)) {
 				err_code = 500;
 			} else {
+				ss = (ts_ur_super_session*)(a->owner);
 				tc->state = TC_STATE_READY;
-				IOA_CLOSE_SOCKET(tc->client_s);
 				tc->client_s = s;
 				set_ioa_socket_session(s,ss);
 				set_ioa_socket_sub_session(s,tc);
 				set_ioa_socket_app_type(s,TCP_CLIENT_DATA_SOCKET);
-				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_client_data_input_handler, tc, 1)<0) {
+				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_client_input_handler_rfc6062data, tc, 1)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
 					err_code = 500;
 				} else {
@@ -1702,16 +1706,12 @@ int turnserver_accept_tcp_connection(turn_turnserver *server, tcp_connection_id 
 			} else {
 				send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			}
-			FUNCEND;
-			return -1;
 		}
 	}
 
 	if(s) {
-		set_ioa_socket_session(s,NULL);
-		set_ioa_socket_sub_session(s,NULL);
 		if(tc && (s==tc->client_s)) {
-			IOA_CLOSE_SOCKET(tc->client_s);
+			;
 		} else {
 			close_ioa_socket(s);
 		}

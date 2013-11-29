@@ -89,6 +89,13 @@ typedef struct _tcp_connection_list {
 
 typedef u32bits tcp_connection_id;
 
+#define MAX_UNSENT_BUFFER_SIZE (16)
+
+typedef struct {
+	size_t sz;
+	ioa_network_buffer_handle *bufs;
+} unsent_buffer;
+
 typedef struct
 {
 	tcp_connection_list list;
@@ -102,6 +109,8 @@ typedef struct
 	stun_tid tid;
 	void *owner; //a
 	int done;
+	unsent_buffer ub_to_peer;
+	unsent_buffer ub_to_client;
 } tcp_connection;
 
 ////////////////////////////////
@@ -185,6 +194,11 @@ tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr);
 int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr);
 tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code);
 void delete_tcp_connection(tcp_connection *tc);
+
+void clear_unsent_buffer(unsent_buffer *ub);
+void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh);
+ioa_network_buffer_handle top_unsent_buffer(unsent_buffer *ub);
+void pop_unsent_buffer(unsent_buffer *ub);
 
 ///////////////////////////////////////////
 

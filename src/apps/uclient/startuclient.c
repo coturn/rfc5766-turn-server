@@ -1152,7 +1152,7 @@ int turn_tcp_connect(int verbose, app_ur_conn_info *clnet_info, ioa_addr *peer_a
 	return 0;
 }
 
-static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, app_tcp_conn_info *atc) {
+static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, app_tcp_conn_info *atc, int errorOK) {
 
 	beg_cb:
 
@@ -1180,6 +1180,8 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 				}
 				cb_sent = 1;
 			} else {
+				if(errorOK)
+					return 0;
 				perror("send");
 				exit(1);
 			}
@@ -1241,6 +1243,8 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 					/* Try again ? */
 				}
 			} else {
+				if(errorOK)
+					return 0;
 				perror("recv");
 				exit(-1);
 			}
@@ -1335,7 +1339,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 		}
 	}
 
-	if(turn_tcp_connection_bind(clnet_verbose, &(elem->pinfo), elem->pinfo.tcp_conn[i])<0) {
+	if(turn_tcp_connection_bind(clnet_verbose, &(elem->pinfo), elem->pinfo.tcp_conn[i],0)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"%s: cannot BIND to tcp connection\n", __FUNCTION__);
 	} else {

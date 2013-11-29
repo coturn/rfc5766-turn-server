@@ -300,61 +300,64 @@ static int send_socket_to_relay(turnserver_id id, u32bits connection_id, stun_ti
 
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm)
 {
-	switch (sm->t) {
+	if(rs && sm && sm->m.sm.s) {
 
-	case RMT_SOCKET: {
+		switch (sm->t) {
 
-		if (sm->m.sm.s->defer_nbh) {
-			if (!sm->m.sm.nd.nbh) {
-				sm->m.sm.nd.nbh = sm->m.sm.s->defer_nbh;
-				sm->m.sm.s->defer_nbh = NULL;
-			} else {
-				ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.s->defer_nbh);
-				sm->m.sm.s->defer_nbh = NULL;
+		case RMT_SOCKET: {
+
+			if (sm->m.sm.s->defer_nbh) {
+				if (!sm->m.sm.nd.nbh) {
+					sm->m.sm.nd.nbh = sm->m.sm.s->defer_nbh;
+					sm->m.sm.s->defer_nbh = NULL;
+				} else {
+					ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.s->defer_nbh);
+					sm->m.sm.s->defer_nbh = NULL;
+				}
 			}
-		}
 
-		ioa_socket_handle s = sm->m.sm.s;
+			ioa_socket_handle s = sm->m.sm.s;
 
-		/* Special case: UDP socket */
-		if (get_ioa_socket_type(s) == UDP_SOCKET) {
+			/* Special case: UDP socket */
+			if (get_ioa_socket_type(s) == UDP_SOCKET) {
 
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"%s: UDP socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
-			IOA_CLOSE_SOCKET(s);
+				IOA_CLOSE_SOCKET(s);
 
-		} else if (get_ioa_socket_type(s) == DTLS_SOCKET) {
+			} else if (get_ioa_socket_type(s) == DTLS_SOCKET) {
 
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"%s: DTLS socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
-			IOA_CLOSE_SOCKET(s);
+				IOA_CLOSE_SOCKET(s);
 
-		} else {
+			} else {
 
-			if (s->read_event || s->bev) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				if (s->read_event || s->bev) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 						__FUNCTION__, (long) s->read_event, (long) s->bev);
-				IOA_CLOSE_SOCKET(s);
-			} else {
-				s->e = rs->ioa_eng;
-				open_client_connection_session(rs->server, &(sm->m.sm));
+					IOA_CLOSE_SOCKET(s);
+				} else {
+					s->e = rs->ioa_eng;
+					open_client_connection_session(rs->server, &(sm->m.sm));
+				}
 			}
-		}
 
-		ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
-		sm->m.sm.nd.nbh = NULL;
-	}
-		break;
-	case RMT_CB_SOCKET:
-		turnserver_accept_tcp_connection(rs->server, sm->m.cb_sm.connection_id,
+			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
+			sm->m.sm.nd.nbh = NULL;
+		}
+			break;
+		case RMT_CB_SOCKET:
+			turnserver_accept_tcp_client_data_connection(rs->server, sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
-		break;
-	default: {
-		perror("Weird buffer type\n");
-	}
+			break;
+		default: {
+			perror("Weird buffer type\n");
+		}
+		}
 	}
 
 	return 0;

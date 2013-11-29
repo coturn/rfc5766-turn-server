@@ -415,6 +415,10 @@ void delete_tcp_connection(tcp_connection *tc)
 			return;
 		}
 		tc->done = 1;
+
+		clear_unsent_buffer(&(tc->ub_to_peer));
+		clear_unsent_buffer(&(tc->ub_to_client));
+
 		IOA_EVENT_DEL(tc->peer_conn_timeout);
 		IOA_EVENT_DEL(tc->conn_bind_timeout);
 		allocation *a = (allocation*)(tc->owner);
@@ -489,5 +493,66 @@ int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr)
 	}
 	return 0;
 }
+
+//////////////// Unsent buffers //////////////////////
+
+void clear_unsent_buffer(unsent_buffer *ub)
+{
+	if(ub) {
+		if(ub->bufs) {
+			size_t sz;
+			for(sz = 0; sz<ub->sz; sz++) {
+				ioa_network_buffer_handle nbh = ub->bufs[sz];
+				if(nbh) {
+					ioa_network_buffer_delete(NULL, nbh);
+					ub->bufs[sz] = NULL;
+				}
+			}
+			turn_free(ub->bufs,sizeof(ioa_network_buffer_handle) * ub->sz);
+			ub->bufs = NULL;
+		}
+		ub->sz = 0;
+	}
+}
+
+void add_unsent_buffer(unsent_buffer *ub, ioa_network_buffer_handle nbh)
+{
+	if(!ub || (ub->sz >= MAX_UNSENT_BUFFER_SIZE)) {
+		ioa_network_buffer_delete(NULL, nbh);
+	} else {
+		ub->bufs = (ioa_network_buffer_handle*)turn_realloc(ub->bufs, sizeof(ioa_network_buffer_handle) * ub->sz, sizeof(ioa_network_buffer_handle) * (ub->sz+1));
+		ub->bufs[ub->sz] = nbh;
+		ub->sz +=1;
+	}
+}
+
+ioa_network_buffer_handle top_unsent_buffer(unsent_buffer *ub)
+{
+	ioa_network_buffer_handle ret = NULL;
+	if(ub && ub->bufs && ub->sz) {
+		size_t sz;
+		for(sz=0; sz<ub->sz; ++sz) {
+			if(ub->bufs[sz]) {
+				ret = ub->bufs[sz];
+				break;
+			}
+		}
+	}
+	return ret;
+}
+
+void pop_unsent_buffer(unsent_buffer *ub)
+{
+	if(ub && ub->bufs && ub->sz) {
+		size_t sz;
+		for(sz=0; sz<ub->sz; ++sz) {
+			if(ub->bufs[sz]) {
+				ub->bufs[sz] = NULL;
+				break;
+			}
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////
 
