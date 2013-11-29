@@ -742,7 +742,7 @@ int set_socket_options(ioa_socket_handle s)
 		set_raw_socket_tos_options(s->fd, s->family);
 
 #ifdef SO_BSDCOMPAT
-		//Linux
+		//Linux. Option may be obsolete,
 		{
 			int on = 1;
 			if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
