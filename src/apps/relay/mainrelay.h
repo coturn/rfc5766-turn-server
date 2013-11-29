@@ -210,9 +210,9 @@ extern int new_net_engine;
 
 //////////////// Relay servers //////////////////////////////////
 
-#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(128))
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
 
-#define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP ((u08bits)(0x01FF))
+#define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
 #define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
 
 extern band_limit_t max_bps;
