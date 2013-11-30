@@ -1005,11 +1005,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 			if(mid && smid[0]) {
 
-				printf("%s: 111.111: mid=%lu\n",__FUNCTION__,(unsigned long)mid);
-
 				turnserver_id tsid = ((0xFF00000000000000) & mid)>>56;
-
-				printf("%s: 111.222: tsid=%lu, ctsid=%lu\n",__FUNCTION__,(unsigned long)tsid,(unsigned long)server->id);
 
 				if(tsid != server->id) {
 
@@ -1020,14 +1016,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 							*no_response = 1;
 						} else {
 							*err_code = 500;
-							printf("%s: 111.500.111: st=%d, sat=%d\n",__FUNCTION__,(int)get_ioa_socket_type(ss->client_session.s),(int)get_ioa_socket_app_type(ss->client_session.s));
 							*reason = (const u08bits *)"Cannot create new socket";
 							set_ioa_socket_tobeclosed(ss->client_session.s);
 							return -1;
 						}
 					} else {
 						*err_code = 500;
-						printf("%s: 111.500.222\n",__FUNCTION__);
 						*reason = (const u08bits *)"Server send socket procedure is not set";
 					}
 
@@ -1042,15 +1036,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 						*reason = (const u08bits *)"Invalid allocation";
 					} else if(!(orig_ss->is_mobile)) {
 						*err_code = 500;
-						printf("%s: 111.500.333\n",__FUNCTION__);
 						*reason = (const u08bits *)"Software error: invalid mobile allocation";
 					} else if(orig_ss->client_session.s == ss->client_session.s) {
 						*err_code = 500;
-						printf("%s: 111.500.444\n",__FUNCTION__);
 						*reason = (const u08bits *)"Software error: invalid mobile client socket (orig)";
 					} else if(!(ss->client_session.s)) {
 						*err_code = 500;
-						printf("%s: 111.500.555\n",__FUNCTION__);
 						*reason = (const u08bits *)"Software error: invalid mobile client socket (new)";
 					} else {
 
