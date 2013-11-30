@@ -89,9 +89,6 @@ when necessary:
 
 3) MS TURN, MS STUN extensions.
 
-4) ICE Mobility is implemented in the single-thread mode, extend it 
-to multithreaded model.
-
 ==================================================================
 
 ###   VII. MISC FEATURES   ###
