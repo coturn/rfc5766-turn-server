@@ -200,7 +200,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 		struct evbuffer *output = NULL;
 
 		if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-			dest -= -TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+			dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
 			if(dest >= get_real_udp_relay_servers_number()) {
 					TURN_LOG_FUNC(
 								TURN_LOG_LEVEL_ERROR,
