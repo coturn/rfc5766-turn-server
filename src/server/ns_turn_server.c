@@ -1005,7 +1005,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 			if(mid && smid[0]) {
 
-				turnserver_id tsid = ((0xFF00000000000000) & mid)>>56;
+				turnserver_id tsid = ((0xFF00000000000000LL) & mid)>>56;
 
 				if(tsid != server->id) {
 
