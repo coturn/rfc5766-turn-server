@@ -210,7 +210,7 @@ Flags:
 			from the client with a weaker (SHA1) hash function then the server returns 
 			error code 426.
 			
---mobility		Mobility with ICE (MICE) specs support. Forces -m 1 option.
+--mobility		Mobility with ICE (MICE) specs support.
 
 -h			Help.
     

@@ -215,7 +215,7 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int ttl, int tos);
 #define close_ioa_socket(s) close_ioa_socket_func((s),__FUNCTION__,__FILE__,__LINE__)
 void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *file, int line);
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s);
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach);
 void detach_socket_net_data(ioa_socket_handle s);
 #define IOA_CLOSE_SOCKET(S) do { if(S) { close_ioa_socket_func(S,__FUNCTION__,__FILE__,__LINE__); S = NULL; } } while(0)
 int set_df_on_ioa_socket(ioa_socket_handle s, int value);

@@ -1400,9 +1400,6 @@ int main(int argc, char **argv)
 	  }
 	}
 
-	if(mobility && general_relay_servers_number>1)
-		general_relay_servers_number = 1;
-
 	if(no_udp_relay && no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
 		exit(-1);

@@ -1,7 +1,8 @@
 
 11/29/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.0.2.0 'Practical Frost':
+Version 3.0.2.1 'Practical Frost':
 	- RFC 6062 fixes.
+	- Multithreaded mobile.
 
 11/28/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.1.4 'Practical Frost':

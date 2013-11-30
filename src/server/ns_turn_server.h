@@ -45,17 +45,17 @@ extern int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 typedef u08bits turnserver_id;
 
+enum _MESSAGE_TO_RELAY_TYPE {
+	RMT_UNKNOWN = 0,
+	RMT_SOCKET,
+	RMT_CB_SOCKET,
+	RMT_MOBILE_SOCKET
+};
+typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
+
 struct socket_message {
 	ioa_socket_handle s;
 	ioa_net_data nd;
-};
-
-struct cb_socket_message {
-	turnserver_id id;
-	u32bits connection_id;
-	stun_tid tid;
-	ioa_socket_handle s;
-	int message_integrity;
 };
 
 struct _turn_turnserver;
@@ -71,7 +71,7 @@ typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_passwo
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
-typedef int (*send_socket_to_relay_cb)(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity);
+typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd);
 
 //////////// ALTERNATE-SERVER /////////////
 

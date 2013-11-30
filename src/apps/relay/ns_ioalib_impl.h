@@ -83,12 +83,13 @@ typedef unsigned long band_limit_t;
  * New connection callback
  */
 
-enum _MESSAGE_TO_RELAY_TYPE {
-	RMT_UNKNOWN,
-	RMT_SOCKET,
-	RMT_CB_SOCKET
+struct cb_socket_message {
+	turnserver_id id;
+	tcp_connection_id connection_id;
+	stun_tid tid;
+	ioa_socket_handle s;
+	int message_integrity;
 };
-typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 
 struct message_to_relay {
 	MESSAGE_TO_RELAY_TYPE t;

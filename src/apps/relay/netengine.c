@@ -197,14 +197,31 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 
 		size_t dest = am.id;
 
-		struct evbuffer *output;
+		struct evbuffer *output = NULL;
 
-		if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP)
-			output = bufferevent_get_output(udp_relay_servers[dest-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP]->auth_out_buf);
-		else
-			output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
+		if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+			dest -= -TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+			if(dest >= get_real_udp_relay_servers_number()) {
+					TURN_LOG_FUNC(
+								TURN_LOG_LEVEL_ERROR,
+								"%s: Too large UDP relay number: %d\n",
+									__FUNCTION__,(int)dest);
+			} else {
+				output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
+			}
+		} else {
+			if(dest >= get_real_general_relay_servers_number()) {
+					TURN_LOG_FUNC(
+							TURN_LOG_LEVEL_ERROR,
+							"%s: Too large general relay number: %d\n",
+										__FUNCTION__,(int)dest);
+			} else {
+				output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
+			}
+		}
 
-		evbuffer_add(output,&am,sizeof(struct auth_message));
+		if(output)
+			evbuffer_add(output,&am,sizeof(struct auth_message));
 	}
 }
 
@@ -216,22 +233,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 
 	smptr->t = RMT_SOCKET;
 
-	int direct_message = 0;
-
-	if(general_relay_servers_number == 0)
-		direct_message = 1;
-
-	if(direct_message) {
-
-		handle_relay_message(general_relay_servers[dest],smptr);
-
-		if(smptr->m.sm.nd.nbh) {
-			ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
-			smptr->m.sm.nd.nbh=NULL;
-		}
-
-	} else {
-
+	{
 		struct evbuffer *output = NULL;
 		int success = 0;
 
@@ -267,35 +269,90 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	return 0;
 }
 
-static int send_socket_to_relay(turnserver_id id, u32bits connection_id, stun_tid *tid, ioa_socket_handle s, int message_integrity)
+static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd)
 {
-	if(id >= get_real_general_relay_servers_number())
-		id = get_real_general_relay_servers_number()-1;
+	int ret = 0;
 
 	struct message_to_relay sm;
 	ns_bzero(&sm,sizeof(struct message_to_relay));
+	sm.t = rmt;
 
-	sm.t = RMT_CB_SOCKET;
-	sm.m.cb_sm.id = id;
-	sm.m.cb_sm.connection_id = connection_id;
-	stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
-	sm.m.cb_sm.s = s;
-	sm.m.cb_sm.message_integrity = message_integrity;
-
-	size_t dest = id;
-
-	struct evbuffer *output = bufferevent_get_output(general_relay_servers[dest]->out_buf);
-	if(output) {
-		evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+	struct relay_server *rs = NULL;
+	if(id>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+		size_t dest = id-TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+		if(dest >= get_real_udp_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large UDP relay number: %d, rmt=%d\n",
+					__FUNCTION__,(int)dest,(int)rmt);
+			dest=0;
+		}
+		rs = udp_relay_servers[dest];
 	} else {
-		TURN_LOG_FUNC(
-				TURN_LOG_LEVEL_ERROR,
-				"%s: Empty output buffer\n",
-				__FUNCTION__);
-		IOA_CLOSE_SOCKET(sm.m.cb_sm.s);
+		size_t dest = id;
+		if(dest >= get_real_general_relay_servers_number()) {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Too large general relay number: %d, rmt=%d\n",
+					__FUNCTION__,(int)dest,(int)rmt);
+			dest=0;
+		}
+		rs = general_relay_servers[dest];
 	}
 
-	return 0;
+	switch (rmt) {
+	case(RMT_CB_SOCKET): {
+
+		sm.m.cb_sm.id = id;
+		sm.m.cb_sm.connection_id = (tcp_connection_id)cid;
+		stun_tid_cpy(&(sm.m.cb_sm.tid),tid);
+		sm.m.cb_sm.s = s;
+		sm.m.cb_sm.message_integrity = message_integrity;
+
+		break;
+	}
+	case (RMT_MOBILE_SOCKET): {
+
+		if(nd && nd->nbh) {
+			sm.m.sm.s = s;
+			addr_cpy(&(sm.m.sm.nd.src_addr),&(nd->src_addr));
+			sm.m.sm.nd.recv_tos = nd->recv_tos;
+			sm.m.sm.nd.recv_ttl = nd->recv_ttl;
+			sm.m.sm.nd.nbh = nd->nbh;
+			nd->nbh = NULL;
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty buffer with mobile socket\n",__FUNCTION__);
+			ret = -1;
+		}
+
+		break;
+	}
+	default: {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: UNKNOWN RMT message: %d\n",__FUNCTION__,(int)rmt);
+		ret = -1;
+	}
+	}
+
+	if(ret == 0) {
+		struct evbuffer *output = bufferevent_get_output(rs->out_buf);
+		if(output) {
+			evbuffer_add(output,&sm,sizeof(struct message_to_relay));
+		} else {
+			TURN_LOG_FUNC(
+					TURN_LOG_LEVEL_ERROR,
+					"%s: Empty output buffer\n",
+					__FUNCTION__);
+			ret = -1;
+		}
+	}
+
+	if(ret != 0) {
+		IOA_CLOSE_SOCKET(s);
+		ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nd.nbh);
+		sm.m.sm.nd.nbh = NULL;
+	}
+
+	return ret;
 }
 
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm)
@@ -354,6 +411,24 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 			turnserver_accept_tcp_client_data_connection(rs->server, sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
 			break;
+		case RMT_MOBILE_SOCKET: {
+
+			ioa_socket_handle s = sm->m.sm.s;
+
+			if (s->read_event || s->bev) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+									"%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n",
+									__FUNCTION__, (long) s->read_event, (long) s->bev);
+				IOA_CLOSE_SOCKET(s);
+			} else {
+				s->e = rs->ioa_eng;
+				open_client_connection_session(rs->server, &(sm->m.sm));
+			}
+
+			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
+			sm->m.sm.nd.nbh = NULL;
+			break;
+		}
 		default: {
 			perror("Weird buffer type\n");
 		}

@@ -1004,105 +1004,139 @@ static int handle_turn_refresh(turn_turnserver *server,
 		} else if(!is_allocation_valid(a)) {
 
 			if(mid && smid[0]) {
-				ts_ur_super_session *orig_ss = get_session_from_mobile_map(server, mid);
-				if(!orig_ss) {
-					*err_code = 404;
-					*reason = (const u08bits *)"Allocation not found";
-				} else if(orig_ss == ss) {
-					*err_code = 437;
-					*reason = (const u08bits *)"Invalid allocation";
-				} else if(!(orig_ss->is_mobile)) {
-					*err_code = 500;
-					*reason = (const u08bits *)"Software error: invalid mobile allocation";
-				} else if(orig_ss->client_session.s == ss->client_session.s) {
-					*err_code = 500;
-					*reason = (const u08bits *)"Software error: invalid mobile client socket (orig)";
-				} else if(!(ss->client_session.s)) {
-					*err_code = 500;
-					*reason = (const u08bits *)"Software error: invalid mobile client socket (new)";
+
+				printf("%s: 111.111: mid=%lu\n",__FUNCTION__,(unsigned long)mid);
+
+				turnserver_id tsid = ((0xFF00000000000000) & mid)>>56;
+
+				printf("%s: 111.222: tsid=%lu, ctsid=%lu\n",__FUNCTION__,(unsigned long)tsid,(unsigned long)server->id);
+
+				if(tsid != server->id) {
+
+					if(server->send_socket_to_relay) {
+						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s, 1);
+						if(new_s) {
+							server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, RMT_MOBILE_SOCKET, in_buffer);
+							*no_response = 1;
+						} else {
+							*err_code = 500;
+							printf("%s: 111.500.111: st=%d, sat=%d\n",__FUNCTION__,(int)get_ioa_socket_type(ss->client_session.s),(int)get_ioa_socket_app_type(ss->client_session.s));
+							*reason = (const u08bits *)"Cannot create new socket";
+							set_ioa_socket_tobeclosed(ss->client_session.s);
+							return -1;
+						}
+					} else {
+						*err_code = 500;
+						printf("%s: 111.500.222\n",__FUNCTION__);
+						*reason = (const u08bits *)"Server send socket procedure is not set";
+					}
+
 				} else {
 
-					//Check security:
-					int postpone_reply = 0;
-					check_stun_auth(server, orig_ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
+					ts_ur_super_session *orig_ss = get_session_from_mobile_map(server, mid);
+					if(!orig_ss) {
+						*err_code = 404;
+						*reason = (const u08bits *)"Allocation not found";
+					} else if(orig_ss == ss) {
+						*err_code = 437;
+						*reason = (const u08bits *)"Invalid allocation";
+					} else if(!(orig_ss->is_mobile)) {
+						*err_code = 500;
+						printf("%s: 111.500.333\n",__FUNCTION__);
+						*reason = (const u08bits *)"Software error: invalid mobile allocation";
+					} else if(orig_ss->client_session.s == ss->client_session.s) {
+						*err_code = 500;
+						printf("%s: 111.500.444\n",__FUNCTION__);
+						*reason = (const u08bits *)"Software error: invalid mobile client socket (orig)";
+					} else if(!(ss->client_session.s)) {
+						*err_code = 500;
+						printf("%s: 111.500.555\n",__FUNCTION__);
+						*reason = (const u08bits *)"Software error: invalid mobile client socket (new)";
+					} else {
+
+						//Check security:
+						int postpone_reply = 0;
+						check_stun_auth(server, orig_ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
 								STUN_METHOD_REFRESH, &message_integrity, &postpone_reply, can_resume);
 
-					if(postpone_reply) {
-
-						*no_response = 1;
-
-					} else if(!(*err_code)) {
-
-						//Session transfer:
-
-						if (to_delete)
-							lifetime = 0;
-						else
-							lifetime = stun_adjust_allocate_lifetime(lifetime);
-
-						if (refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
-										err_code) < 0) {
-
-							if (!(*err_code)) {
-								*err_code = 437;
-								*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
-							}
-						} else {
+						if(postpone_reply) {
 
 							*no_response = 1;
 
-							//Transfer socket:
+						} else if(!(*err_code)) {
 
-							ioa_socket_handle s = detach_ioa_socket(ss->client_session.s);
+							//Session transfer:
 
-							attach_socket_to_session(server, s, orig_ss);
+							if (to_delete)
+								lifetime = 0;
+							else
+								lifetime = stun_adjust_allocate_lifetime(lifetime);
 
-							delete_session_from_mobile_map(ss);
-							delete_session_from_mobile_map(orig_ss);
-							put_session_into_mobile_map(orig_ss);
+							if (refresh_relay_connection(server, orig_ss, lifetime, 0, 0, 0,
+										err_code) < 0) {
 
-							//Use new buffer and redefine ss:
-							nbh = ioa_network_buffer_allocate(server->e);
-							ss = orig_ss;
-							size_t len = ioa_network_buffer_get_size(nbh);
+								if (!(*err_code)) {
+									*err_code = 437;
+									*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
+								}
 
-							turn_report_allocation_set(&(ss->alloc), lifetime, 1);
+							} else {
 
-							stun_init_success_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, tid);
-							u32bits lt = nswap32(lifetime);
+								*no_response = 1;
 
-							stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME,
+								//Transfer socket:
+
+								ioa_socket_handle s = detach_ioa_socket(ss->client_session.s, 0);
+
+								attach_socket_to_session(server, s, orig_ss);
+
+								delete_session_from_mobile_map(ss);
+								delete_session_from_mobile_map(orig_ss);
+								put_session_into_mobile_map(orig_ss);
+
+								//Use new buffer and redefine ss:
+								nbh = ioa_network_buffer_allocate(server->e);
+								ss = orig_ss;
+								size_t len = ioa_network_buffer_get_size(nbh);
+
+								turn_report_allocation_set(&(ss->alloc), lifetime, 1);
+
+								stun_init_success_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, tid);
+								u32bits lt = nswap32(lifetime);
+
+								stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME,
 										(const u08bits*) &lt, 4);
-							ioa_network_buffer_set_size(nbh,len);
+								ioa_network_buffer_set_size(nbh,len);
 
-							stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
+								stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
 									STUN_ATTRIBUTE_MOBILITY_TICKET,
 									(u08bits*)ss->s_mobile_id,strlen(ss->s_mobile_id));
-							ioa_network_buffer_set_size(nbh,len);
-
-							{
-								static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
-								static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
-								size_t len = ioa_network_buffer_get_size(nbh);
-								stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
-								ioa_network_buffer_set_size(nbh, len);
-							}
-
-							if(message_integrity) {
-								adjust_shatype(server,ss);
-								stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
 								ioa_network_buffer_set_size(nbh,len);
-							}
 
-							if (server->fingerprint || ss->enforce_fingerprints) {
-								if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
-									ioa_network_buffer_delete(server->e, nbh);
-									return -1;
+								{
+									static const u08bits *field = (const u08bits *) TURN_SOFTWARE;
+									static const size_t fsz = sizeof(TURN_SOFTWARE)-1;
+									size_t len = ioa_network_buffer_get_size(nbh);
+									stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_SOFTWARE, field, fsz);
+									ioa_network_buffer_set_size(nbh, len);
 								}
-								ioa_network_buffer_set_size(nbh, len);
-							}
 
-							return write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+								if(message_integrity) {
+									adjust_shatype(server,ss);
+									stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+									ioa_network_buffer_set_size(nbh,len);
+								}
+
+								if (server->fingerprint || ss->enforce_fingerprints) {
+									if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
+										ioa_network_buffer_delete(server->e, nbh);
+										return -1;
+									}
+									ioa_network_buffer_set_size(nbh, len);
+								}
+
+								return write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
+							}
 						}
 					}
 				}
@@ -1644,8 +1678,8 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				u32bits sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_session.s;
 				if(s) {
-					ioa_socket_handle new_s = detach_ioa_socket(s);
-					server->send_socket_to_relay(sid, id, tid, new_s, message_integrity);
+					ioa_socket_handle new_s = detach_ioa_socket(s, 1);
+					server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL);
 				} else {
 					*err_code = 500;
 				}

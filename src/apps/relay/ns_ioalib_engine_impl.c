@@ -1421,19 +1421,40 @@ void close_ioa_socket_func(ioa_socket_handle s, const char *func, const char *fi
 	}
 }
 
-ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
+ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 {
 	ioa_socket_handle ret = NULL;
 
-	if (s) {
+	if (!s) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Detaching NULL socket\n");
+	} else {
 		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s socket: 0x%lx was closed at %s;%s:%d\n", __FUNCTION__,(long)s, s->func,s->file,s->line);
 			return ret;
 		}
 		if(s->tobeclosed) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s detach on tobeclosed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on tobeclosed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return ret;
+		}
+
+		if(s->parent_s) {
+			if((s->st != UDP_SOCKET) && (s->st != DTLS_SOCKET)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on non-UDP child socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+				return ret;
+			}
+		}
+
+		evutil_socket_t udp_fd = -1;
+
+		if(full_detach && s->parent_s) {
+
+					udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
+					if (udp_fd < 0) {
+						perror("socket");
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
+						return ret;
+					}
 		}
 
 		detach_socket_net_data(s);
@@ -1444,6 +1465,13 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ioa_network_buffer_delete(s->e, s->defer_nbh);
 
 		ret = (ioa_socket*)turn_malloc(sizeof(ioa_socket));
+		if(!ret) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket structure\n",__FUNCTION__);
+			if(udp_fd>=0)
+				close(udp_fd);
+			return ret;
+		}
+
 		ns_bzero(ret,sizeof(ioa_socket));
 
 		ret->magic = SOCKET_MAGIC;
@@ -1466,8 +1494,39 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
-		add_socket_to_parent(parent_s, ret);
-		add_socket_to_map(ret,sockets_container);
+		if(full_detach && parent_s) {
+
+			ret->fd = udp_fd;
+
+			if(sock_bind_to_device(udp_fd, (unsigned char*)(s->e->relay_ifname))<0) {
+			    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
+			}
+
+			if(addr_bind(udp_fd,&(s->local_addr))<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
+				IOA_CLOSE_SOCKET(ret);
+				return ret;
+			}
+
+			int connect_err=0;
+			if(addr_connect(udp_fd, &(s->remote_addr), &connect_err)<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot connect new detached udp server socket to remote addr\n");
+				IOA_CLOSE_SOCKET(ret);
+				return ret;
+			}
+
+			set_socket_options(ret);
+
+		} else {
+			add_socket_to_parent(parent_s, ret);
+			add_socket_to_map(ret,sockets_container);
+		}
+
+		ret->current_ttl = s->current_ttl;
+		ret->default_ttl = s->default_ttl;
+
+		ret->current_tos = s->current_tos;
+		ret->default_tos = s->default_tos;
 
 		s->ssl = NULL;
 		s->fd = -1;
