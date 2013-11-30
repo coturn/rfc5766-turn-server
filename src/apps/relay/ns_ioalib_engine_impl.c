@@ -1378,6 +1378,7 @@ void detach_socket_net_data(ioa_socket_handle s)
 			bufferevent_free(s->bev);
 			s->bev=NULL;
 		}
+		s->tobeclosed = 1;
 	}
 }
 
