@@ -1017,13 +1017,14 @@ static int handle_turn_refresh(turn_turnserver *server,
 						} else {
 							*err_code = 500;
 							*reason = (const u08bits *)"Cannot create new socket";
-							set_ioa_socket_tobeclosed(ss->client_session.s);
 							return -1;
 						}
 					} else {
 						*err_code = 500;
 						*reason = (const u08bits *)"Server send socket procedure is not set";
 					}
+
+					ss->to_be_closed = 1;
 
 				} else {
 
@@ -1079,10 +1080,10 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 								ioa_socket_handle s = detach_ioa_socket(ss->client_session.s, 0);
 
+								ss->to_be_closed = 1;
+
 								if(!s) {
 									*err_code = 500;
-									set_ioa_socket_tobeclosed(ss->client_session.s);
-
 								} else {
 
 									attach_socket_to_session(server, s, orig_ss);
@@ -1681,7 +1682,6 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 						server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL);
 					} else {
 						*err_code = 500;
-						set_ioa_socket_tobeclosed(s);
 					}
 				} else {
 					*err_code = 500;
@@ -1689,6 +1689,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 			} else {
 				*err_code = 500;
 			}
+			ss->to_be_closed = 1;
 		}
 	}
 
@@ -3808,7 +3809,7 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 		set_ioa_socket_tobeclosed(s);
 	} else if (ss->to_be_closed) {
 		if(server->verbose) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"Session to be closed: ss=0x%lx\n", (long)ss);
 		}
 		set_ioa_socket_tobeclosed(s);

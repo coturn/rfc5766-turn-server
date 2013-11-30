@@ -1378,7 +1378,6 @@ void detach_socket_net_data(ioa_socket_handle s)
 			bufferevent_free(s->bev);
 			s->bev=NULL;
 		}
-		s->tobeclosed = 1;
 	}
 }
 
@@ -1439,6 +1438,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 			return ret;
 		}
 
+		s->tobeclosed = 1;
+
 		if(s->parent_s) {
 			if((s->st != UDP_SOCKET) && (s->st != DTLS_SOCKET)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on non-UDP child socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
@@ -1450,12 +1451,12 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		if(full_detach && s->parent_s) {
 
-					udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
-					if (udp_fd < 0) {
-						perror("socket");
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
-						return ret;
-					}
+			udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
+			if (udp_fd < 0) {
+				perror("socket");
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
+				return ret;
+			}
 		}
 
 		detach_socket_net_data(s);
@@ -1531,7 +1532,6 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		s->ssl = NULL;
 		s->fd = -1;
-		s->tobeclosed = 1;
 	}
 
 	return ret;
