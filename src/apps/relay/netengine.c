@@ -47,8 +47,6 @@ struct relay_server {
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
-	struct evbuffer *in_buf_ev;
-	struct evbuffer *out_buf_ev;
 	struct bufferevent *auth_in_buf;
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
@@ -237,7 +235,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 		struct evbuffer *output = NULL;
 		int success = 0;
 
-		output = general_relay_servers[dest]->out_buf_ev;
+		output = bufferevent_get_output(general_relay_servers[dest]->out_buf);
 
 		if(output) {
 
@@ -1144,8 +1142,6 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 	rs->out_buf = pair[1];
 	bufferevent_setcb(rs->in_buf, relay_receive_message, NULL, NULL, rs);
 	bufferevent_enable(rs->in_buf, EV_READ);
-	rs->in_buf_ev = bufferevent_get_input(rs->in_buf);
-	rs->out_buf_ev = bufferevent_get_output(rs->out_buf);
 
 	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->auth_in_buf = pair[0];

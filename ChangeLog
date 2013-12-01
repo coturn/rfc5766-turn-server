@@ -1,6 +1,7 @@
 
 11/29/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.2.1 'Practical Frost':
+	- TCP stability fixes.
 	- RFC 6062 "first packet(s)" bug fixed.
 	- RFC 6062 stability fixes.
 	- Multithreaded Mobile ICE.
