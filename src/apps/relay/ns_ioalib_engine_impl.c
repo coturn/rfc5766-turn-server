@@ -1437,6 +1437,10 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on tobeclosed socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			return ret;
 		}
+		if(!(s->e)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on socket without engine: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+			return ret;
+		}
 
 		s->tobeclosed = 1;
 
