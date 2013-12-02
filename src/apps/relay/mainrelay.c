@@ -440,7 +440,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						will make an attempt to change the current user ID to that user.\n"
 " --proc-group <group-name>			Group ID to run the process. After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
-" --mobility					Mobility with ICE (MICE) specs support. Forces -m 1 option.\n"
+" --mobility					Mobility with ICE (MICE) specs support.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
