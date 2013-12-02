@@ -420,10 +420,13 @@ int main(int argc, char **argv)
 
 		int sslind = 0;
 		for(sslind = 0; sslind<root_tls_ctx_num; sslind++) {
-			if (!SSL_CTX_use_certificate_file(root_tls_ctx[sslind], cert_file,
-							SSL_FILETYPE_PEM)) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
-				exit(-1);
+
+			if(cert_file[0]) {
+				if (!SSL_CTX_use_certificate_file(root_tls_ctx[sslind], cert_file,
+								SSL_FILETYPE_PEM)) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
+					exit(-1);
+				}
 			}
 
 			if (!SSL_CTX_use_PrivateKey_file(root_tls_ctx[sslind], pkey_file,
@@ -432,9 +435,11 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 
-			if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
-				exit(-1);
+			if(cert_file[0]) {
+				if (!SSL_CTX_check_private_key(root_tls_ctx[sslind])) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: invalid private key!\n");
+					exit(-1);
+				}
 			}
 
 			if (ca_cert_file[0]) {
