@@ -170,12 +170,19 @@ void turn_log_func_default(TURN_LOG_LEVEL level, const s08bits* format, ...)
 #if defined(TURN_LOG_FUNC_IMPL)
 		TURN_LOG_FUNC_IMPL(level,format,args);
 #else
+#define MAX_RTPPRINTF_BUFFER_SIZE (1024)
+		char s[MAX_RTPPRINTF_BUFFER_SIZE+1];
+#undef MAX_RTPPRINTF_BUFFER_SIZE
 		if (level == TURN_LOG_LEVEL_ERROR) {
-			printf("%lu: ERROR: ",(unsigned long)log_time());
-			vprintf(format, args);
+			snprintf(s,sizeof(s)-100,"%lu: ERROR: ",(unsigned long)log_time());
+			size_t slen = strlen(s);
+			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
+			fwrite(s,strlen(s),1,stdout);
 		} else if(!no_stdout_log) {
-			printf("%lu: ",(unsigned long)log_time());
-			vprintf(format, args);
+			snprintf(s,sizeof(s)-100,"%lu: ",(unsigned long)log_time());
+			size_t slen = strlen(s);
+			vsnprintf(s+slen,sizeof(s)-slen-1,format, args);
+			fwrite(s,strlen(s),1,stdout);
 		}
 #endif
 		va_end(args);
