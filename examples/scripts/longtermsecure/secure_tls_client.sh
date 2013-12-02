@@ -7,7 +7,7 @@
 #
 # 1) -t is present, it means that TCP networking is used.
 # 2) -S means "SSL/TLS protocol with default cipher".
-# 3) -i sets certificate file for TLS.
+# 3) -i absent.
 # 4) -k sets private key file for TLS.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
 # are sent with interval of 20 milliseconds, to emulate an RTP stream.
@@ -30,5 +30,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -t -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -t -S -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1
 

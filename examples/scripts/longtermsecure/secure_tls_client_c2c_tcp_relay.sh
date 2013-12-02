@@ -10,7 +10,7 @@
 # relay endpoints (RFC 6062.
 # 2) -S means that "secure protocol", that is TLS in the case of TCP, 
 # will be used between the client and the TURN Server.
-# 3) -i sets certificate file for TLS.
+# 3) -i absent.
 # 4) -k sets private key file for TLS.
 # 5) -n 1000 means 1000 messages per single emulated client. Messages
 # are sent with interval of 20 milliseconds, to emulate an RTP stream.
@@ -32,4 +32,4 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/postgres/9.2-pgdg/lib
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -T -S -i turn_client_cert.pem -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -T -S -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1

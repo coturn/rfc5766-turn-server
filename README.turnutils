@@ -110,7 +110,7 @@ Options with required values:
 
 -l      Message length (Default: 100 Bytes).
 
--i      Certificate file (for secure connections only).
+-i      Certificate file (for secure connections only, optional).
 
 -k      Private key file (for secure connections only).
 

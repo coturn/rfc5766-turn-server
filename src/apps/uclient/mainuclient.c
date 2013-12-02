@@ -111,7 +111,7 @@ static char Usage[] =
   "	-M	ICE Mobility engaged.\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
-  "	-i	Certificate file (for secure connections only).\n"
+  "	-i	Certificate file (for secure connections only, optional).\n"
   "	-k	Private key file (for secure connections only).\n"
   "	-E	CA file for server certificate verification, \n"
   "		if the server certificate to be verified.\n"
