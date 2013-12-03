@@ -3,6 +3,7 @@ Version 3.0.2.2 'Practical Frost':
 	- atomic stdout log print.
 	- printed help minor fix.
 	- client program does not require certificate for TLS.
+	- docs fixes.
 
 11/29/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.0.2.1 'Practical Frost':
