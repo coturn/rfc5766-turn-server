@@ -438,21 +438,11 @@ Options with required values:
 
 ==================================
 
-LOAD BALANCE
+LOAD BALANCE AND PERFORMANCE TUNING
 
-To set a load balancing scheme, you have three options:
+This topic is covered in the wiki page:
 
-	a) Set a complex networking load-balancing equipment that redirects 
-	the requests to a member of the TURN servers group. It must take care 
-	about redirecting the requests to the same server from the same client - 
-	because some TURN sessions from the same client must share the information.
-	
-	b) Set a less complex scheme with round-robin DNS. The client must send all 
-	its requests to the same DNS-discovered TURN server.
-	
-	c) Use build-in balancing capability with ALTERNATE-SERVER option 
-	(--alternate-server options). In this case, the client must also send all 
-	requests to the same alternate-server address.
+http://code.google.com/p/rfc5766-turn-server/wiki/turn_performance_and_load_balance
 	 
 ===================================
 
