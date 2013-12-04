@@ -212,6 +212,9 @@ Flags:
 			
 --mobility		Mobility with ICE (MICE) specs support.
 
+--cli			CLI support (through telnet to CLI IP:port endpoint).
+				See options --cli-ip and --cli-port.
+
 -h			Help.
     
 Options with required values:  
@@ -435,6 +438,13 @@ Options with required values:
 	
 --proc-group		Group ID to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
+			
+--cli-ip			Local system IP address to be used for CLI server endpoint. Default value
+					is 127.0.0.1.
+					
+--cli-port			CLI server port. Default is 5766.
+
+--cli-password		CLI access password. Default is empty (no password).
 
 ==================================
 

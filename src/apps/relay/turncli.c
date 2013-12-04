@@ -67,6 +67,38 @@
 
 ///////////////////////////////
 
+struct cli_server cliserver;
 
+int use_cli = 0;
+
+ioa_addr cli_addr;
+int cli_addr_set = 0;
+
+int cli_port = CLI_DEFAULT_PORT;
+
+char cli_password[CLI_PASSWORD_LENGTH] = "";
+
+///////////////////////////////
+
+void setup_cli(void)
+{
+
+}
+
+void cli_server_receive_message(struct bufferevent *bev, void *ptr)
+{
+	UNUSED_ARG(ptr);
+
+	struct cli_message cm;
+	int n = 0;
+	struct evbuffer *input = bufferevent_get_input(bev);
+
+	while ((n = evbuffer_remove(input, &cm, sizeof(struct cli_message))) > 0) {
+		if (n != sizeof(struct cli_message)) {
+			fprintf(stderr,"%s: Weird CLI buffer error: size=%d\n",__FUNCTION__,n);
+			continue;
+		}
+	}
+}
 
 ///////////////////////////////

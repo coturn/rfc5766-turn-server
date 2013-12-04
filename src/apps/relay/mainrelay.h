@@ -71,6 +71,7 @@
 #include "ns_turn_khash.h"
 
 #include "userdb.h"
+#include "turncli.h"
 
 #include "tls_listener.h"
 #include "dtls_listener.h"
@@ -240,7 +241,7 @@ extern turnserver_id udp_relay_servers_number;
 
 extern int mobility;
 
-////////////// Auth server ////////////////////////////////////////////////
+////////////// Auth server ////////////////
 
 struct auth_server {
 	struct event_base* event_base;

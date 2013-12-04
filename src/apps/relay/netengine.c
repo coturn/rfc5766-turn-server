@@ -1278,6 +1278,53 @@ static void setup_auth_server(void)
 	pthread_detach(authserver.thr);
 }
 
+static int run_cli_server_flag = 1;
+
+static void* run_cli_server_thread(void *arg)
+{
+	struct event_base *eb = (struct event_base*)arg;
+
+#if !defined(TURN_NO_THREAD_BARRIERS)
+	if((pthread_barrier_wait(&barrier)<0) && errno)
+		perror("barrier wait");
+#endif
+
+	ignore_sigpipe();
+
+	setup_cli();
+
+	while(run_cli_server_flag) {
+		run_events(eb);
+	}
+
+	return arg;
+}
+
+static void setup_cli_server(void)
+{
+	ns_bzero(&cliserver,sizeof(struct cli_server));
+
+	cliserver.event_base = event_base_new();
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
+
+	struct bufferevent *pair[2];
+	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
+
+	opts |= BEV_OPT_THREADSAFE;
+
+	bufferevent_pair_new(cliserver.event_base, opts, pair);
+	cliserver.in_buf = pair[0];
+	cliserver.out_buf = pair[1];
+	bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);
+	bufferevent_enable(cliserver.in_buf, EV_READ);
+
+	if(pthread_create(&(cliserver.thr), NULL, run_cli_server_thread, cliserver.event_base)<0) {
+		perror("Cannot create cli thread\n");
+		exit(-1);
+	}
+	pthread_detach(cliserver.thr);
+}
+
 void setup_server(void)
 {
 	evthread_use_pthreads();
@@ -1287,6 +1334,9 @@ void setup_server(void)
 	/* relay threads plus auth thread plus main listener thread */
 	/* udp address listener thread(s) will start later */
 	barrier_count = general_relay_servers_number+2;
+
+	if(use_cli)
+		barrier_count += 1;
 
 #endif
 
@@ -1301,6 +1351,8 @@ void setup_server(void)
 
 	setup_tcp_listener_servers();
 	setup_auth_server();
+	if(use_cli)
+		setup_cli_server();
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 	if((pthread_barrier_wait(&barrier)<0) && errno)

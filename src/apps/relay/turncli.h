@@ -28,11 +28,16 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __USERDB__
-#define __USERDB__
+#ifndef __TURNCLI__
+#define __TURNCLI__
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <pthread.h>
+
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
 
 #include "ns_turn_utils.h"
 #include "ns_turn_maps.h"
@@ -46,6 +51,38 @@ extern "C" {
 
 ////////////////////////////////////////////
 
+struct cli_server {
+	struct event_base* event_base;
+	struct bufferevent *in_buf;
+	struct bufferevent *out_buf;
+	pthread_t thr;
+};
+
+struct cli_message {
+	int tmp;
+};
+
+///////////////////////////////////////////
+
+extern struct cli_server cliserver;
+
+extern int use_cli;
+
+#define CLI_DEFAULT_IP (127.0.0.1)
+extern ioa_addr cli_addr;
+extern int cli_addr_set;
+
+#define CLI_DEFAULT_PORT (5766)
+extern int cli_port;
+
+#define CLI_PASSWORD_LENGTH (129)
+extern char cli_password[CLI_PASSWORD_LENGTH];
+
+////////////////////////////////////////////
+
+void setup_cli(void);
+
+void cli_server_receive_message(struct bufferevent *bev, void *ptr);
 
 ////////////////////////////////////////////
 
@@ -54,5 +91,5 @@ extern "C" {
 #endif
 
 #endif
-/// __USERDB__///
+/// __TURNCLI__///
 
