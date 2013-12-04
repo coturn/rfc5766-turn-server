@@ -441,7 +441,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --proc-group <group-name>			Group ID to run the process. After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
-" --cli						CLI support (through telnet to CLI IP:port endpoint).\n"
+" --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
 " --cli-ip=<IP>					Local system IP address to be used for CLI server endpoint. Default value\n"
 "						is 127.0.0.1.\n"
 " --cli-port=<port>				CLI server port. Default is 5766.\n"
@@ -522,7 +522,7 @@ enum EXTRA_OPTS {
 	PROC_USER_OPT,
 	PROC_GROUP_OPT,
 	MOBILITY_OPT,
-	CLI_OPT,
+	NO_CLI_OPT,
 	CLI_IP_OPT,
 	CLI_PORT_OPT,
 	CLI_PASSWORD_OPT
@@ -600,7 +600,7 @@ static struct option long_options[] = {
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
 				{ "mobility", optional_argument, NULL, MOBILITY_OPT },
-				{ "cli", optional_argument, NULL, CLI_OPT },
+				{ "no-cli", optional_argument, NULL, NO_CLI_OPT },
 				{ "cli-ip", required_argument, NULL, CLI_IP_OPT },
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
@@ -661,23 +661,19 @@ static void set_option(int c, char *value)
 	case MOBILITY_OPT:
 		mobility = get_bool_value(value);
 		break;
-	case CLI_OPT:
-		use_cli = get_bool_value(value);
+	case NO_CLI_OPT:
+		use_cli = !get_bool_value(value);
 		break;
 	case CLI_IP_OPT:
 		if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
-		} else {
-			use_cli = 1;
 		}
 		break;
 	case CLI_PORT_OPT:
 		cli_port = atoi(value);
-		use_cli = 1;
 		break;
 	case CLI_PASSWORD_OPT:
 		STRCPY(cli_password,value);
-		use_cli = 1;
 		break;
 	case PROC_USER_OPT: {
 		struct passwd* pwd = getpwnam(value);

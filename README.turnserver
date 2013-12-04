@@ -212,8 +212,8 @@ Flags:
 			
 --mobility		Mobility with ICE (MICE) specs support.
 
---cli			CLI support (through telnet to CLI IP:port endpoint).
-				See options --cli-ip and --cli-port.
+--no-cli			Turn OFF the CLI support. By default it is always ON.
+				See also options --cli-ip and --cli-port.
 
 -h			Help.
     

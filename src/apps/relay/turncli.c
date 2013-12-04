@@ -69,7 +69,7 @@
 
 struct cli_server cliserver;
 
-int use_cli = 0;
+int use_cli = 1;
 
 ioa_addr cli_addr;
 int cli_addr_set = 0;
