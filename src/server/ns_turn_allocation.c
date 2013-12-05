@@ -471,8 +471,11 @@ tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr)
 	return NULL;
 }
 
-int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr)
+int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int server_relay)
 {
+	if(server_relay)
+		return 1;
+
 	if(a && peer_addr) {
 		const turn_permission_map map = a->addr_to_perm;
 		if(map) {

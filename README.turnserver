@@ -199,7 +199,8 @@ Flags:
 
 --no-loopback-peers	Disallow peers on the loopback addresses (127.x.x.x and ::1).
 
---no-multicast-peers	Disallow peers on well-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
+--no-multicast-peers	Disallow peers on well-known broadcast addresses 
+			(224.0.0.0 and above, and FFXX:*).
 
 --sha256		Require SHA256 digest function to be used for the message integrity.
 			By default, the server accepts both SHA1 (as per TURN standard specs) 
@@ -214,6 +215,12 @@ Flags:
 
 --no-cli			Turn OFF the CLI support. By default it is always ON.
 				See also options --cli-ip and --cli-port.
+				
+--server-relay			Server relay. NON-STANDARD AND DANGEROUS OPTION. 
+						Only for those applications when we want to run 
+						server applications on the relay endpoints.
+						This option eliminates the IP permissions check 
+						on the packets incoming to the relay endpoints.
 
 -h			Help.
     

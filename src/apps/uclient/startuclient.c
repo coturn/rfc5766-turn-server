@@ -732,7 +732,11 @@ static int turn_channel_bind(int verbose, uint16_t *chn,
 }
 
 static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
-		ioa_addr *peer_addr) {
+		ioa_addr *peer_addr)
+{
+
+	if(no_permissions)
+		return 0;
 
 	beg_cp:
 

@@ -82,6 +82,8 @@ SHATYPE shatype = SHATYPE_SHA1;
 
 int mobility = 0;
 
+int no_permissions = 0;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -109,6 +111,8 @@ static char Usage[] =
   "	-H	SHA256 digest function for message integrity calculation.\n"
   "		Without this option, by default, SHA1 is used.\n"
   "	-M	ICE Mobility engaged.\n"
+  " -I  Do not set permissions on TURN relay endpoints\n"
+  "     (for testing the non-standard server relay functionality).\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -153,8 +157,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHMR")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHMRI")) != -1) {
 		switch (c){
+		case 'I':
+			no_permissions = 1;
+			break;
 		case 'M':
 			mobility = 1;
 			break;

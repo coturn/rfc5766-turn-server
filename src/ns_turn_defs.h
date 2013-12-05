@@ -31,8 +31,8 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "3.0.3.0"
-#define TURN_SERVER_VERSION_NAME "Practical Frost"
+#define TURN_SERVER_VERSION "3.1.1.0"
+#define TURN_SERVER_VERSION_NAME "Arch Lector"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)

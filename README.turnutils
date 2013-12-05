@@ -106,6 +106,9 @@ Flags:
 		
 -M		Use TURN ICE Mobility.
 
+-I		Do not set permissions on TURN relay endpoints
+		(for testing the non-standard server relay functionality).
+
 Options with required values:  
 
 -l      Message length (Default: 100 Bytes).

@@ -71,6 +71,7 @@ int stale_nonce = 0;
 int stun_only = 0;
 int no_stun = 0;
 int secure_stun = 0;
+int server_relay = 0;
 
 int do_not_use_config_file = 0;
 
@@ -446,6 +447,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						is 127.0.0.1.\n"
 " --cli-port=<port>				CLI server port. Default is 5766.\n"
 " --cli-password=<password>			CLI access password. Default is empty (no password).\n"
+" --server-relay					Server relay. NON-STANDARD AND DANGEROUS OPTION. Only for those applications\n"
+"						when we want to run server applications on the relay endpoints.\n"
+"						This option eliminates the IP permissions check on the packets\n"
+"						incoming to the relay endpoints.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -525,7 +530,8 @@ enum EXTRA_OPTS {
 	NO_CLI_OPT,
 	CLI_IP_OPT,
 	CLI_PORT_OPT,
-	CLI_PASSWORD_OPT
+	CLI_PASSWORD_OPT,
+	SERVER_RELAY_OPT
 };
 
 static struct option long_options[] = {
@@ -604,6 +610,7 @@ static struct option long_options[] = {
 				{ "cli-ip", required_argument, NULL, CLI_IP_OPT },
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
+				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -658,6 +665,9 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case SERVER_RELAY_OPT:
+	  	server_relay = get_bool_value(value);
+		break;
 	case MOBILITY_OPT:
 		mobility = get_bool_value(value);
 		break;
@@ -667,6 +677,8 @@ static void set_option(int c, char *value)
 	case CLI_IP_OPT:
 		if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
+		} else{
+			cli_addr_set = 1;
 		}
 		break;
 	case CLI_PORT_OPT:
@@ -1243,12 +1255,9 @@ static int adminmain(int argc, char **argv)
 
 static void print_features(void)
 {
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "RFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\n");
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "version %s\n",TURN_SOFTWARE);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n==== Show them the instruments, Practical Frost: ====\n\n");
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreading supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show them the instruments, Practical Frost: ====\n\n");
 
 #if defined(TURN_NO_TLS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");
@@ -1261,8 +1270,6 @@ static void print_features(void)
 #else
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS supported\n");
 #endif
-
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Multithreaded relay supported\n");
 
 #if !defined(TURN_NO_HIREDIS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Redis supported\n");
@@ -1283,9 +1290,9 @@ static void print_features(void)
 #endif
 
 #if defined(OPENSSL_THREADS)
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
+	//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading supported\n");
 #else
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL multithreading is not supported\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "OpenSSL multithreading is not supported (?!)\n");
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -1295,11 +1302,10 @@ static void print_features(void)
 #endif
 
 	if(new_net_engine)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.0\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.0\n\n=====================================================\n\n");
 	else
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n\n=====================================================\n\n");
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n=====================================================\n\n");
 }
 
 static void set_network_engine(void)
@@ -1438,6 +1444,10 @@ int main(int argc, char **argv)
 
 	if(no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
+	}
+
+	if(server_relay) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
 	}
 
 	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))

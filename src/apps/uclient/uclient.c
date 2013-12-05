@@ -1098,13 +1098,15 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 
 	if (!addr_any(&(elem->pinfo.peer_addr))) {
 
-		if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
-			stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
-			stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
-			if(add_integrity(clnet_info, &message)<0) return -1;
-			if(use_fingerprints)
+		if(!no_permissions) {
+			if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
+				stun_init_request(STUN_METHOD_CREATE_PERMISSION, &message);
+				stun_attr_add_addr(&message, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, &(elem->pinfo.peer_addr));
+				if(add_integrity(clnet_info, &message)<0) return -1;
+				if(use_fingerprints)
 				    stun_attr_add_fingerprint_str(message.buf, (size_t*) &(message.len));
-			send_buffer(&(elem->pinfo), &message, 0,0);
+				send_buffer(&(elem->pinfo), &message, 0,0);
+			}
 		}
 
 		if (!method || (method == STUN_METHOD_CHANNEL_BIND)) {

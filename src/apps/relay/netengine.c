@@ -1169,7 +1169,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					no_multicast_peers, no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_socket_to_relay,
-					secure_stun, shatype, mobility);
+					secure_stun, shatype, mobility, server_relay);
 
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
@@ -1317,6 +1317,8 @@ static void setup_cli_server(void)
 	cliserver.out_buf = pair[1];
 	bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);
 	bufferevent_enable(cliserver.in_buf, EV_READ);
+
+	cliserver.verbose = verbose;
 
 	if(pthread_create(&(cliserver.thr), NULL, run_cli_server_thread, cliserver.event_base)<0) {
 		perror("Cannot create cli thread\n");

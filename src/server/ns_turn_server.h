@@ -111,7 +111,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    send_socket_to_relay_cb send_socket_to_relay,
 				    int secure_stun,
 				    SHATYPE shatype,
-				    int mobility);
+				    int mobility,
+				    int server_relay);
 
 void delete_turn_server(turn_turnserver* server);
 

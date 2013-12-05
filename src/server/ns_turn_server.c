@@ -102,6 +102,9 @@ struct _turn_turnserver {
 	/* Mobility */
 	int mobility;
 	ur_map *mobile_connections_map;
+
+	/* Server relay */
+	int server_relay;
 };
 
 ///////////////////////////////////////////
@@ -1443,7 +1446,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			return;
 		}
 
-		if(!can_accept_tcp_connection_from_peer(a,peer_addr)) {
+		if(!can_accept_tcp_connection_from_peer(a,peer_addr,server->server_relay)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
 			close_ioa_socket(s);
 			FUNCEND;
@@ -2237,9 +2240,12 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 		} else if (!addr_any(&peer_addr) && len >= 0) {
 
-			turn_permission_info* tinfo = get_from_turn_permission_map(
-					a->addr_to_perm, &peer_addr);
-			if (tinfo) {
+			turn_permission_info* tinfo = NULL;
+
+			if(!(server->server_relay))
+				tinfo = get_from_turn_permission_map(a->addr_to_perm, &peer_addr);
+
+			if (tinfo || server->server_relay) {
 
 				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
@@ -3706,7 +3712,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							&(in_buffer->src_addr));
 			if (tinfo) {
 				chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-			} else {
+			} else if(!(server->server_relay)){
 				return;
 			}
 
@@ -3864,7 +3870,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		int no_multicast_peers, int no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		int secure_stun, SHATYPE shatype, int mobility) {
+		int secure_stun, SHATYPE shatype, int mobility, int server_relay) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -3888,6 +3894,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->secure_stun = secure_stun;
 	server->shatype = shatype;
 	server->mobility = mobility;
+	server->server_relay = server_relay;
 	if(mobility)
 		server->mobile_connections_map = ur_map_create();
 

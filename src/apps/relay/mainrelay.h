@@ -115,6 +115,7 @@ extern int stale_nonce;
 extern int stun_only;
 extern int no_stun;
 extern int secure_stun;
+extern int server_relay;
 
 extern int do_not_use_config_file;
 

@@ -53,6 +53,8 @@ extern "C" {
 
 struct cli_server {
 	struct event_base* event_base;
+	int verbose;
+	struct evconnlistener *l;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
 	pthread_t thr;
@@ -68,7 +70,7 @@ extern struct cli_server cliserver;
 
 extern int use_cli;
 
-#define CLI_DEFAULT_IP (127.0.0.1)
+#define CLI_DEFAULT_IP ("127.0.0.1")
 extern ioa_addr cli_addr;
 extern int cli_addr_set;
 

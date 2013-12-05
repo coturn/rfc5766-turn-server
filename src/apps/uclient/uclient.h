@@ -76,6 +76,7 @@ extern int negative_protocol_test;
 extern int dos;
 extern SHATYPE shatype;
 extern int mobility;
+extern int no_permissions;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 
