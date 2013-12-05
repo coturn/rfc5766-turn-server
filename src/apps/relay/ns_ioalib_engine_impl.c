@@ -712,19 +712,19 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family)
 	return 0;
 }
 
-int set_socket_options(ioa_socket_handle s)
+int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 {
 
-	if(!s || (s->parent_s))
+	if(fd<0)
 		return 0;
 
-	set_sock_buf_size(s->fd,UR_CLIENT_SOCK_BUF_SIZE);
+	set_sock_buf_size(fd,UR_CLIENT_SOCK_BUF_SIZE);
 
-	if ((s->st == TCP_SOCKET) || (s->st == TLS_SOCKET)) {
+	if(tcp) {
 		struct linger so_linger;
 		so_linger.l_onoff = 1;
 		so_linger.l_linger = 0;
-		if(setsockopt(s->fd,
+		if(setsockopt(fd,
 		    SOL_SOCKET,
 		    SO_LINGER,
 		    &so_linger,
@@ -734,55 +734,66 @@ int set_socket_options(ioa_socket_handle s)
 		}
 	}
 
-	socket_set_nonblocking(s->fd);
-	socket_set_reusable(s->fd);
+	socket_set_nonblocking(fd);
+	socket_set_reusable(fd);
 
-	if ((s->st == UDP_SOCKET) || (s->st == DTLS_SOCKET)) {
-		set_raw_socket_ttl_options(s->fd, s->family);
-		set_raw_socket_tos_options(s->fd, s->family);
+	if (!tcp) {
+		set_raw_socket_ttl_options(fd, family);
+		set_raw_socket_tos_options(fd, family);
 
 #ifdef SO_BSDCOMPAT
 		//Linux. Option may be obsolete,
 		{
 			int on = 1;
-			if(setsockopt(s->fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
+			if(setsockopt(fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
 			perror("SO_BSDCOMPAT");
 		}
 #endif
 
 #ifdef IP_RECVERR
-		if (s->family != AF_INET6) {
+		if (family != AF_INET6) {
 			int on = 0;
 #ifdef TURN_IP_RECVERR
 			on = 1;
 #endif
-			if(setsockopt(s->fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
+			if(setsockopt(fd, IPPROTO_IP, IP_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IP_RECVERR");
 		}
 #endif
 
 #ifdef IPV6_RECVERR
-		if (s->family == AF_INET6) {
+		if (family == AF_INET6) {
 			int on = 0;
 #ifdef TURN_IP_RECVERR
 			on = 1;
 #endif
-			if(setsockopt(s->fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
+			if(setsockopt(fd, IPPROTO_IPV6, IPV6_RECVERR, (void *)&on, sizeof(on))<0)
 				perror("IPV6_RECVERR");
 		}
 #endif
 
 	} else {
 		int flag = 1;
-		int result = setsockopt(s->fd, /* socket affected */
+		int result = setsockopt(fd, /* socket affected */
 					IPPROTO_TCP, /* set option at TCP level */
 					TCP_NODELAY, /* name of option */
 					(char*)&flag, /* value */
 					sizeof(int)); /* length of option value */
 		if (result < 0)
 			perror("TCP_NODELAY");
-		socket_tcp_set_keepalive(s->fd);
+
+		socket_tcp_set_keepalive(fd);
 	}
+
+	return 0;
+}
+
+int set_socket_options(ioa_socket_handle s)
+{
+	if(!s || (s->parent_s))
+		return 0;
+
+	set_socket_options_fd(s->fd,((s->st == TCP_SOCKET) || (s->st == TLS_SOCKET) || (s->st == TENTATIVE_TCP_SOCKET)),s->family);
 
 	s->default_ttl = get_raw_socket_ttl(s->fd, s->family);
 	s->current_ttl = s->default_ttl;

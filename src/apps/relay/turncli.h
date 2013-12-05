@@ -52,6 +52,7 @@ extern "C" {
 ////////////////////////////////////////////
 
 struct cli_server {
+	evutil_socket_t listen_fd;
 	struct event_base* event_base;
 	int verbose;
 	struct evconnlistener *l;
@@ -61,6 +62,7 @@ struct cli_server {
 };
 
 struct cli_message {
+	//TODO
 	int tmp;
 };
 
@@ -82,7 +84,7 @@ extern char cli_password[CLI_PASSWORD_LENGTH];
 
 ////////////////////////////////////////////
 
-void setup_cli(void);
+void setup_cli_thread(void);
 
 void cli_server_receive_message(struct bufferevent *bev, void *ptr);
 
