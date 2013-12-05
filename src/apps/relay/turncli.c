@@ -85,14 +85,23 @@ struct cli_session {
 	//TODO
 	evutil_socket_t fd;
 	int auth_completed;
+	size_t cmds;
 	struct bufferevent *bev;
+	ioa_addr addr;
 };
+
+///////////////////////////////
+
+#define CLI_PASSWORD_TRY_NUMBER (5)
 
 ///////////////////////////////
 
 static void close_cli_session(struct cli_session* cs)
 {
 	if(cs) {
+
+		addr_debug_print(cliserver.verbose, &(cs->addr),"CLI session disconnected from");
+
 		if(cs->bev) {
 			bufferevent_disable(cs->bev,EV_READ|EV_WRITE);
 			bufferevent_free(cs->bev);
@@ -126,9 +135,29 @@ static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 			}
 		}
 
-		if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)) {
-			close_cli_session(cs);
-			ret = -1;
+		if(sl) {
+			cs->cmds += 1;
+			if(cli_password[0] && !(cs->auth_completed)) {
+				if(strcmp(cmd,cli_password)) {
+					if(cs->cmds>=CLI_PASSWORD_TRY_NUMBER) {
+						addr_debug_print(1, &(cs->addr),"CLI authentication error");
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"CLI authentication error\n");
+						close_cli_session(cs);
+					} else {
+						const char* ipwd="Enter password: ";
+						if (bufferevent_write(cs->bev,
+								ipwd,strlen(ipwd))< 0) {
+							close_cli_session(cs);
+						}
+					}
+				} else {
+					cs->auth_completed = 1;
+					addr_debug_print(1, &(cs->addr),"CLI authentication success");
+				}
+			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)) {
+				close_cli_session(cs);
+				ret = -1;
+			}
 		}
 	}
 
@@ -194,6 +223,8 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->fd = fd;
 
+	addr_cpy(&(clisession->addr),(ioa_addr*)sa);
+
 	clisession->bev = bufferevent_socket_new(cliserver.event_base,
 					fd,
 					BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
@@ -201,6 +232,14 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 			cli_eventcb_bev, clisession);
 	bufferevent_setwatermark(clisession->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 	bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
+
+	if(cli_password[0]) {
+		const char* ipwd="Enter password: ";
+		if (bufferevent_write(clisession->bev,
+				ipwd,strlen(ipwd))< 0) {
+			close_cli_session(clisession);
+		}
+	}
 }
 
 void setup_cli_thread(void)
