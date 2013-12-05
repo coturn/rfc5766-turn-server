@@ -308,7 +308,8 @@ Disallow peers on the loopback addresses (127.x.x.x and ::1).
 .TP
 .B
 \fB\-\-no\-multicast\-peers\fP
-Disallow peers on well\-known broadcast addresses (224.0.0.0 and above, and FFXX:*).
+Disallow peers on well\-known broadcast addresses 
+(224.0.0.0 and above, and FFXX:*).
 .TP
 .B
 \fB\-\-sha256\fP
@@ -329,6 +330,14 @@ Mobility with ICE (MICE) specs support.
 \fB\-\-no\-cli\fP
 Turn OFF the CLI support. By default it is always ON.
 See also \fIoptions\fP \fB\-\-cli\-ip\fP and \fB\-\-cli\-port\fP.
+.TP
+.B
+\fB\-\-server\-relay\fP
+Server relay. NON\-STANDARD AND DANGEROUS OPTION. 
+Only for those applications when we want to run 
+server applications on the relay endpoints.
+This option eliminates the IP permissions check 
+on the packets incoming to the relay endpoints.
 .TP
 .B
 \fB\-h\fP
