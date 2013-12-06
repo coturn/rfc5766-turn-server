@@ -111,11 +111,11 @@ extern SHATYPE shatype;
 
 extern int verbose;
 extern int turn_daemon;
-extern int stale_nonce;
-extern int stun_only;
-extern int no_stun;
-extern int secure_stun;
-extern int server_relay;
+extern vint stale_nonce;
+extern vint stun_only;
+extern vint no_stun;
+extern vint secure_stun;
+extern vint server_relay;
 
 extern int do_not_use_config_file;
 
@@ -152,8 +152,8 @@ extern int no_dtls;
 #endif
 
 
-extern int no_tcp_relay;
-extern int no_udp_relay;
+extern vint no_tcp_relay;
+extern vint no_udp_relay;
 
 extern char listener_ifname[1025];
 
@@ -222,8 +222,8 @@ extern band_limit_t max_bps;
 extern u16bits min_port;
 extern u16bits max_port;
 
-extern int no_multicast_peers;
-extern int no_loopback_peers;
+extern vint no_multicast_peers;
+extern vint no_loopback_peers;
 
 extern char relay_ifname[1025];
 
@@ -240,7 +240,7 @@ extern int fingerprint;
 extern turnserver_id general_relay_servers_number;
 extern turnserver_id udp_relay_servers_number;
 
-extern int mobility;
+extern vint mobility;
 
 ////////////// Auth server ////////////////
 

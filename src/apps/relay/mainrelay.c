@@ -67,11 +67,11 @@ static char pidfile[1025] = "/var/run/turnserver.pid";
 
 int verbose=TURN_VERBOSE_NONE;
 int turn_daemon = 0;
-int stale_nonce = 0;
-int stun_only = 0;
-int no_stun = 0;
-int secure_stun = 0;
-int server_relay = 0;
+vint stale_nonce = 0;
+vint stun_only = 0;
+vint no_stun = 0;
+vint secure_stun = 0;
+vint server_relay = 0;
 
 int do_not_use_config_file = 0;
 
@@ -100,8 +100,8 @@ int no_dtls = 1;
 int no_dtls = 0;
 #endif
 
-int no_tcp_relay = 0;
-int no_udp_relay = 0;
+vint no_tcp_relay = 0;
+vint no_udp_relay = 0;
 
 char listener_ifname[1025]="";
 
@@ -124,8 +124,8 @@ band_limit_t max_bps = 0;
 u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
 u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
 
-int no_multicast_peers = 0;
-int no_loopback_peers = 0;
+vint no_multicast_peers = 0;
+vint no_loopback_peers = 0;
 
 char relay_ifname[1025]="";
 
@@ -145,7 +145,7 @@ turnserver_id general_relay_servers_number = DEFAULT_GENERAL_RELAY_SERVERS_NUMBE
 
 turnserver_id udp_relay_servers_number = 0;
 
-int mobility = 0;
+vint mobility = 0;
 
 ////////////// Auth server ////////////////////////////////////////////////
 
