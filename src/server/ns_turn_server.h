@@ -82,6 +82,10 @@ struct _turn_server_addrs_list {
 
 typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
 
+typedef volatile int vint;
+
+typedef vint* vintp;
+
 ///////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose,
@@ -95,24 +99,24 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    check_new_allocation_quota_cb chquotacb,
 				    release_allocation_quota_cb raqcb,
 				    ioa_addr *external_addr,
-				    int no_tcp_relay,
-				    int no_udp_relay,
-				    int stale_nonce,
-				    int stun_only,
-				    int no_stun,
+				    vintp no_tcp_relay,
+				    vintp no_udp_relay,
+				    vintp stale_nonce,
+				    vintp stun_only,
+				    vintp no_stun,
 				    turn_server_addrs_list_t *alternate_servers_list,
 				    turn_server_addrs_list_t *tls_alternate_servers_list,
 				    turn_server_addrs_list_t *aux_servers_list,
 				    int self_udp_balance,
-				    int no_multicast_peers,
-				    int no_loopback_peers,
+				    vintp no_multicast_peers,
+				    vintp no_loopback_peers,
 				    ip_range_list_t* ip_whitelist,
 				    ip_range_list_t* ip_blacklist,
 				    send_socket_to_relay_cb send_socket_to_relay,
-				    int secure_stun,
+				    vintp secure_stun,
 				    SHATYPE shatype,
-				    int mobility,
-				    int server_relay);
+				    vintp mobility,
+				    vintp server_relay);
 
 void delete_turn_server(turn_turnserver* server);
 

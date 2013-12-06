@@ -1150,26 +1150,27 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 	bufferevent_enable(rs->auth_in_buf, EV_READ);
 
 	rs->server = create_turn_server(rs->id, verbose,
-					rs->ioa_eng, 0, fingerprint, DONT_FRAGMENT_SUPPORTED,
+					rs->ioa_eng, 0,
+					fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
 					users->realm,
 					start_user_check,
 					check_new_allocation_quota,
 					release_allocation_quota,
 					external_ip,
-					no_tcp_relay,
-					no_udp_relay,
-					stale_nonce,
-					stun_only,
-					no_stun,
+					&no_tcp_relay,
+					&no_udp_relay,
+					&stale_nonce,
+					&stun_only,
+					&no_stun,
 					&alternate_servers_list,
 					&tls_alternate_servers_list,
 					&aux_servers_list,
 					udp_self_balance,
-					no_multicast_peers, no_loopback_peers,
+					&no_multicast_peers, &no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_socket_to_relay,
-					secure_stun, shatype, mobility, server_relay);
+					&secure_stun, shatype, &mobility, &server_relay);
 
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);

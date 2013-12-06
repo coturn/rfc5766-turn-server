@@ -60,10 +60,10 @@ struct _turn_turnserver {
 	int verbose;
 	int fingerprint;
 	int rfc5780;
-	int stale_nonce;
-	int stun_only;
-	int no_stun;
-	int secure_stun;
+	vintp stale_nonce;
+	vintp stun_only;
+	vintp no_stun;
+	vintp secure_stun;
 	SHATYPE shatype;
 	get_alt_addr_cb alt_addr_cb;
 	send_message_cb sm_cb;
@@ -77,12 +77,12 @@ struct _turn_turnserver {
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
 	size_t addrs_number;
-	int no_loopback_peers;
-	int no_multicast_peers;
+	vintp no_loopback_peers;
+	vintp no_multicast_peers;
 
 	/* RFC 6062 ==>> */
-	int no_udp_relay;
-	int no_tcp_relay;
+	vintp no_udp_relay;
+	vintp no_tcp_relay;
 	ur_map *tcp_relay_connections;
 	send_socket_to_relay_cb send_socket_to_relay;
 	/* <<== RFC 6062 */
@@ -100,11 +100,11 @@ struct _turn_turnserver {
 	ip_range_list_t* ip_blacklist;
 
 	/* Mobility */
-	int mobility;
+	vintp mobility;
 	ur_map *mobile_connections_map;
 
 	/* Server relay */
-	int server_relay;
+	vintp server_relay;
 };
 
 ///////////////////////////////////////////
@@ -207,9 +207,9 @@ static int send_turn_message_to(turn_turnserver *server, ioa_network_buffer_hand
 static int good_peer_addr(turn_turnserver *server, ioa_addr *peer_addr)
 {
 	if(server && peer_addr) {
-		if(server->no_multicast_peers && ioa_addr_is_multicast(peer_addr))
+		if(*(server->no_multicast_peers) && ioa_addr_is_multicast(peer_addr))
 			return 0;
-		if(server->no_loopback_peers && ioa_addr_is_loopback(peer_addr))
+		if(*(server->no_loopback_peers) && ioa_addr_is_loopback(peer_addr))
 			return 0;
 
 		{
@@ -376,7 +376,7 @@ static void put_session_into_mobile_map(ts_ur_super_session *ss)
 {
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
-		if(server->mobility && server->mobile_connections_map) {
+		if(*(server->mobility) && server->mobile_connections_map) {
 			if(!(ss->mobile_id)) {
 				ss->mobile_id = get_new_mobile_id(server);
 				mobile_id_to_string(ss->mobile_id, ss->s_mobile_id, sizeof(ss->s_mobile_id));
@@ -436,7 +436,7 @@ static ts_ur_super_session* get_session_from_map(turn_turnserver* server, turnse
 static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server, mobile_id_t mid)
 {
 	ts_ur_super_session *ss = NULL;
-	if(server && server->mobility && server->mobile_connections_map && mid) {
+	if(server && *(server->mobility) && server->mobile_connections_map && mid) {
 		ur_map_value_type value = 0;
 		if(ur_map_get(server->mobile_connections_map, (ur_map_key_type)mid, &value) && value) {
 			ss = (ts_ur_super_session*)value;
@@ -659,7 +659,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET:
-				if(!(server->mobility)) {
+				if(!(*(server->mobility))) {
 					*err_code = 403;
 					*reason = (const u08bits *)"Mobility Forbidden";
 				} else if (stun_attr_get_len(sar) != 0) {
@@ -684,10 +684,10 @@ static int handle_turn_allocate(turn_turnserver *server,
 							*err_code = 442;
 							*reason = (const u08bits *)"Unsupported Transport Protocol";
 						}
-						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && server->no_tcp_relay) {
+						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && *(server->no_tcp_relay)) {
 							*err_code = 403;
 							*reason = (const u08bits *)"TCP Transport is not allowed by the TURN Server configuration";
-						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && server->no_udp_relay) {
+						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && *(server->no_udp_relay)) {
 							*err_code = 403;
 							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
 						} else if(ss->client_session.s) {
@@ -816,7 +816,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 
 		} else {
 
-			if(server->mobility) {
+			if(*(server->mobility)) {
 				if(!(ss->is_mobile)) {
 					delete_session_from_mobile_map(ss);
 				}
@@ -903,7 +903,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 	allocation* a = get_allocation_ss(ss);
 
-	if (!is_allocation_valid(a) && !(server->mobility)) {
+	if (!is_allocation_valid(a) && !(*(server->mobility))) {
 
 		*err_code = 437;
 		*reason = (const u08bits *)"Invalid allocation";
@@ -922,7 +922,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET: {
-				if(!(server->mobility)) {
+				if(!(*(server->mobility))) {
 					*err_code = 403;
 					*reason = (const u08bits *)"Mobility forbidden";
 				} if(is_allocation_valid(a)) {
@@ -1131,7 +1131,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 											ioa_network_buffer_set_size(nbh,len);
 										}
 
-										if (server->fingerprint || ss->enforce_fingerprints) {
+										if ((server->fingerprint) || ss->enforce_fingerprints) {
 											if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
 												ioa_network_buffer_delete(server->e, nbh);
 												return -1;
@@ -1446,7 +1446,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			return;
 		}
 
-		if(!can_accept_tcp_connection_from_peer(a,peer_addr,server->server_relay)) {
+		if(!can_accept_tcp_connection_from_peer(a,peer_addr,*(server->server_relay))) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
 			close_ioa_socket(s);
 			FUNCEND;
@@ -1510,7 +1510,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
-		if (server->fingerprint || ss->enforce_fingerprints) {
+		if ((server->fingerprint) || ss->enforce_fingerprints) {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 			ioa_network_buffer_set_size(nbh, len);
@@ -1780,7 +1780,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
-		if (server->fingerprint || ss->enforce_fingerprints) {
+		if ((server->fingerprint) || ss->enforce_fingerprints) {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 			ioa_network_buffer_set_size(nbh, len);
@@ -2469,7 +2469,7 @@ static int check_stun_auth(turn_turnserver *server,
 		new_nonce = 1;
 	}
 
-	if(server->stale_nonce) {
+	if(*(server->stale_nonce)) {
 		if(turn_time_before(ss->nonce_expiration_time,turn_time())) {
 			int i = 0;
 			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
@@ -2696,7 +2696,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 	if (stun_is_request_str(ioa_network_buffer_data(in_buffer->nbh), 
 				ioa_network_buffer_get_size(in_buffer->nbh))) {
 
-		if((method == STUN_METHOD_BINDING) && (server->no_stun)) {
+		if((method == STUN_METHOD_BINDING) && (*(server->no_stun))) {
 
 			no_response = 1;
 			if(server->verbose) {
@@ -2705,7 +2705,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 									__FUNCTION__, (unsigned int)method);
 			}
 
-		} else if((method != STUN_METHOD_BINDING) && (server->stun_only)) {
+		} else if((method != STUN_METHOD_BINDING) && (*(server->stun_only))) {
 
 				no_response = 1;
 				if(server->verbose) {
@@ -2714,7 +2714,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 										__FUNCTION__, (unsigned int)method);
 				}
 
-		} else if((method != STUN_METHOD_BINDING) || (server->secure_stun)) {
+		} else if((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
 
 			if(method == STUN_METHOD_ALLOCATE) {
 				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
@@ -2730,7 +2730,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 			}
 
 			if(!err_code && !(*resp_constructed) && !no_response) {
-				if(!(server->mobility) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
+				if(!(*(server->mobility)) || (method != STUN_METHOD_REFRESH) || is_allocation_valid(get_allocation_ss(ss))) {
 					int postpone_reply = 0;
 					check_stun_auth(server, ss, &tid, resp_constructed, &err_code, &reason, in_buffer, nbh, method, &message_integrity, &postpone_reply, can_resume);
 					if(postpone_reply)
@@ -3173,7 +3173,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	ts_ur_session* elem = &(ss->client_session);
 
-	if(server->mobility && !force && ss->is_mobile) {
+	if(*(server->mobility) && !force && ss->is_mobile) {
 
 		if(elem->s) {
 			clear_ioa_socket_session_if(elem->s,ss);
@@ -3541,7 +3541,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 
 		if (resp_constructed) {
 
-			if (server->fingerprint || ss->enforce_fingerprints) {
+			if ((server->fingerprint) || ss->enforce_fingerprints) {
 				size_t len = ioa_network_buffer_get_size(nbh);
 				if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
 					FUNCEND	;
@@ -3560,7 +3560,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			return 0;
 		}
 
-	} else if (!(server->no_stun) && old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie)) {
+	} else if (old_stun_is_command_message_str(ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh), &old_stun_cookie) && !(*(server->no_stun))) {
 
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
@@ -3644,7 +3644,7 @@ int open_client_connection_session(turn_turnserver* server,
 	newelem->state = UR_STATE_READY;
 
 	int at = TURN_MAX_ALLOCATE_TIMEOUT;
-	if(server->stun_only)
+	if(*(server->stun_only))
 	  at = TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY;
 
 	IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
@@ -3758,7 +3758,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					ioa_network_buffer_set_size(nbh,len);
 				}
 
-				if (server->fingerprint || ss->enforce_fingerprints) {
+				if ((server->fingerprint) || ss->enforce_fingerprints) {
 					size_t len = ioa_network_buffer_get_size(nbh);
 					stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 					ioa_network_buffer_set_size(nbh, len);
@@ -3858,19 +3858,19 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		check_new_allocation_quota_cb chquotacb,
 		release_allocation_quota_cb raqcb,
 		ioa_addr *external_ip,
-		int no_tcp_relay,
-		int no_udp_relay,
-		int stale_nonce,
-		int stun_only,
-		int no_stun,
+		vintp no_tcp_relay,
+		vintp no_udp_relay,
+		vintp stale_nonce,
+		vintp stun_only,
+		vintp no_stun,
 		turn_server_addrs_list_t *alternate_servers_list,
 		turn_server_addrs_list_t *tls_alternate_servers_list,
 		turn_server_addrs_list_t *aux_servers_list,
 		int self_udp_balance,
-		int no_multicast_peers, int no_loopback_peers,
+		vintp no_multicast_peers, vintp no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		int secure_stun, SHATYPE shatype, int mobility, int server_relay) {
+		vintp secure_stun, SHATYPE shatype, vintp mobility, vintp server_relay) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
