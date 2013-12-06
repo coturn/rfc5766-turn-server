@@ -88,6 +88,7 @@ struct cli_session {
 	size_t cmds;
 	struct bufferevent *bev;
 	ioa_addr addr;
+	telnet_t *ts;
 };
 
 ///////////////////////////////
@@ -105,13 +106,42 @@ TURN_SOFTWARE
 
 static char CLI_CURSOR[] = "> ";
 
+static const telnet_telopt_t cli_telopts[] = {
+    { TELNET_TELOPT_ECHO,      TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_TTYPE,     TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_COMPRESS2, TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_ZMP,       TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_MSSP,      TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_BINARY,    TELNET_WONT, TELNET_DONT },
+    { TELNET_TELOPT_NAWS,      TELNET_WONT, TELNET_DONT },
+    { -1, 0, 0 }
+  };
+
 ///////////////////////////////
+
+static void close_cli_session(struct cli_session* cs);
+
+static int run_cli_output(struct cli_session* cs, const char *buf, unsigned int len)
+{
+	if(cs && buf && len) {
+		if(bufferevent_write(cs->bev, buf, len)< 0) {
+			return -1;
+		}
+		return 0;
+	}
+	return -1;
+}
 
 static void close_cli_session(struct cli_session* cs)
 {
 	if(cs) {
 
 		addr_debug_print(cliserver.verbose, &(cs->addr),"CLI session disconnected from");
+
+		if(cs->ts) {
+			telnet_free(cs->ts);
+			cs->ts = NULL;
+		}
 
 		if(cs->bev) {
 			bufferevent_flush(cs->bev,EV_WRITE,BEV_FLUSH);
@@ -132,23 +162,26 @@ static void close_cli_session(struct cli_session* cs)
 static void type_cli_cursor(struct cli_session* cs)
 {
 	if(cs && (cs->bev)) {
-		if (bufferevent_write(cs->bev, CLI_CURSOR,strlen(CLI_CURSOR))< 0) {
-			close_cli_session(cs);
-		}
+		telnet_send(cs->ts, CLI_CURSOR, strlen(CLI_CURSOR));
 	}
 }
 
-static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
+static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int len)
 {
 	int ret = 0;
 
-	if(cs && buf) {
+	if(cs && buf0 && cs->ts && cs->bev) {
 
-		char *cmd = (char*)(buf->buf);
+		char *buf = strdup(buf0);
+
+		char *cmd = buf;
 
 		while((cmd[0]==' ') || (cmd[0]=='\t')) ++cmd;
 
-		size_t sl = strlen(cmd);
+		size_t sl = len;
+
+		sl = strlen(cmd);
+
 		while(sl) {
 			char c = cmd[sl-1];
 			if((c==10)||(c==13)) {
@@ -169,10 +202,7 @@ static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 						close_cli_session(cs);
 					} else {
 						const char* ipwd="Enter password: ";
-						if (bufferevent_write(cs->bev,
-								ipwd,strlen(ipwd))< 0) {
-							close_cli_session(cs);
-						}
+						telnet_send(cs->ts,ipwd,strlen(ipwd));
 					}
 				} else {
 					cs->auth_completed = 1;
@@ -181,26 +211,28 @@ static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 				}
 			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)) {
 				const char* str="Bye !";
-				bufferevent_write(cs->bev,str,strlen(str));
+				telnet_send(cs->ts,str,strlen(str));
 				close_cli_session(cs);
 				ret = -1;
 			} else if((strcmp(cmd,"halt") == 0)||(strcmp(cmd,"shutdown") == 0)||(strcmp(cmd,"stop") == 0)) {
 				addr_debug_print(1, &(cs->addr),"CLI user sent shutdown command");
 				const char* str="TURN server is shutting down";
-				bufferevent_write(cs->bev,str,strlen(str));
+				telnet_send(cs->ts,str,strlen(str));
 				close_cli_session(cs);
 				exit(0);
 			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
-				bufferevent_write(cs->bev,CLI_HELP_STR,strlen(CLI_HELP_STR));
+				telnet_send(cs->ts,CLI_HELP_STR,strlen(CLI_HELP_STR));
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
-				bufferevent_write(cs->bev,str,strlen(str));
+				telnet_send(cs->ts,str,strlen(str));
 				type_cli_cursor(cs);
 			}
 		} else {
 			type_cli_cursor(cs);
 		}
+
+		free(buf);
 	}
 
 	return ret;
@@ -211,6 +243,9 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void* arg)
 	if (bev && arg) {
 
 		struct cli_session* cs = (struct cli_session*) arg;
+
+		if(!(cs->ts))
+			return;
 
 		stun_buffer buf;
 
@@ -227,8 +262,7 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			buf.len = len;
 			buf.buf[len]=0;
 
-			if(run_cli_input(cs, &buf)<0)
-				return;
+			telnet_recv(cs->ts, (const char *)buf.buf, (unsigned int)(buf.len));
 		}
 	}
 }
@@ -246,6 +280,28 @@ static void cli_eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 			close_cli_session(cs);
 		}
+	}
+}
+
+static void cli_telnet_event_handler(telnet_t *telnet, telnet_event_t *event, void *user_data)
+{
+	if (user_data && telnet) {
+
+		struct cli_session *cs = (struct cli_session *) user_data;
+
+		switch (event->type){
+		case TELNET_EV_DATA:
+			run_cli_input(cs, event->data.buffer, event->data.size);
+			break;
+		case TELNET_EV_SEND:
+			run_cli_output(cs, event->data.buffer, event->data.size);
+			break;
+		case TELNET_EV_ERROR:
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TELNET error: %s", event->error.msg);
+			break;
+		default:
+			;
+		};
 	}
 }
 
@@ -275,17 +331,20 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	bufferevent_setwatermark(clisession->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 	bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
 
-	if (bufferevent_write(clisession->bev,
-		CLI_GREETING_STR,strlen(CLI_GREETING_STR))< 0) {
+	clisession->ts = telnet_init(cli_telopts, cli_telnet_event_handler, 0, clisession);
+
+	if(!(clisession->ts)) {
+		const char *str = "Cannot open telnet session\n";
+		addr_debug_print(cliserver.verbose, (ioa_addr*)sa,str);
 		close_cli_session(clisession);
-	} else if(cli_password[0]) {
-		const char* ipwd="Enter password: ";
-		if (bufferevent_write(clisession->bev,
-				ipwd,strlen(ipwd))< 0) {
-			close_cli_session(clisession);
-		}
 	} else {
-		type_cli_cursor(clisession);
+		telnet_send(clisession->ts, CLI_GREETING_STR, strlen(CLI_GREETING_STR));
+		if(cli_password[0]) {
+			const char* ipwd="Enter password: ";
+			telnet_send(clisession->ts,ipwd,strlen(ipwd));
+		} else {
+			type_cli_cursor(clisession);
+		}
 	}
 }
 
