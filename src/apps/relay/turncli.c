@@ -101,6 +101,8 @@ static char CLI_HELP_STR[] =
 " stop, shutdown, halt - shutdown TURN Server\n";
 
 static char CLI_GREETING_STR[] =
+"TURN Server\n"
+"rfc5766-turn-server\n"
 TURN_SOFTWARE
 "\nType ? for help\n";
 
