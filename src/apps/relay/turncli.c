@@ -94,6 +94,17 @@ struct cli_session {
 
 #define CLI_PASSWORD_TRY_NUMBER (5)
 
+static char CLI_HELP_STR[] =
+" ?,h,help - help text\n"
+" quit, exit, bye - end CLI session\n"
+" stop, shutdown, halt - shutdown TURN Server\n";
+
+static char CLI_GREETING_STR[] =
+TURN_SOFTWARE
+"\nType ? for help\n";
+
+static char CLI_CURSOR[] = "> ";
+
 ///////////////////////////////
 
 static void close_cli_session(struct cli_session* cs)
@@ -103,6 +114,7 @@ static void close_cli_session(struct cli_session* cs)
 		addr_debug_print(cliserver.verbose, &(cs->addr),"CLI session disconnected from");
 
 		if(cs->bev) {
+			bufferevent_flush(cs->bev,EV_WRITE,BEV_FLUSH);
 			bufferevent_disable(cs->bev,EV_READ|EV_WRITE);
 			bufferevent_free(cs->bev);
 			cs->bev=NULL;
@@ -117,6 +129,15 @@ static void close_cli_session(struct cli_session* cs)
 	}
 }
 
+static void type_cli_cursor(struct cli_session* cs)
+{
+	if(cs && (cs->bev)) {
+		if (bufferevent_write(cs->bev, CLI_CURSOR,strlen(CLI_CURSOR))< 0) {
+			close_cli_session(cs);
+		}
+	}
+}
+
 static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 {
 	int ret = 0;
@@ -124,6 +145,9 @@ static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 	if(cs && buf) {
 
 		char *cmd = (char*)(buf->buf);
+
+		while((cmd[0]==' ') || (cmd[0]=='\t')) ++cmd;
+
 		size_t sl = strlen(cmd);
 		while(sl) {
 			char c = cmd[sl-1];
@@ -153,11 +177,29 @@ static int run_cli_input(struct cli_session* cs, stun_buffer *buf)
 				} else {
 					cs->auth_completed = 1;
 					addr_debug_print(1, &(cs->addr),"CLI authentication success");
+					type_cli_cursor(cs);
 				}
 			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)) {
+				const char* str="Bye !";
+				bufferevent_write(cs->bev,str,strlen(str));
 				close_cli_session(cs);
 				ret = -1;
+			} else if((strcmp(cmd,"halt") == 0)||(strcmp(cmd,"shutdown") == 0)||(strcmp(cmd,"stop") == 0)) {
+				addr_debug_print(1, &(cs->addr),"CLI user sent shutdown command");
+				const char* str="TURN server is shutting down";
+				bufferevent_write(cs->bev,str,strlen(str));
+				close_cli_session(cs);
+				exit(0);
+			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
+				bufferevent_write(cs->bev,CLI_HELP_STR,strlen(CLI_HELP_STR));
+				type_cli_cursor(cs);
+			} else {
+				const char* str="Unknown command\n";
+				bufferevent_write(cs->bev,str,strlen(str));
+				type_cli_cursor(cs);
 			}
+		} else {
+			type_cli_cursor(cs);
 		}
 	}
 
@@ -233,12 +275,17 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 	bufferevent_setwatermark(clisession->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
 	bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
 
-	if(cli_password[0]) {
+	if (bufferevent_write(clisession->bev,
+		CLI_GREETING_STR,strlen(CLI_GREETING_STR))< 0) {
+		close_cli_session(clisession);
+	} else if(cli_password[0]) {
 		const char* ipwd="Enter password: ";
 		if (bufferevent_write(clisession->bev,
 				ipwd,strlen(ipwd))< 0) {
 			close_cli_session(clisession);
 		}
+	} else {
+		type_cli_cursor(clisession);
 	}
 }
 
