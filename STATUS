@@ -76,6 +76,8 @@ compatibility.
 30) UDP network engine optimized for the new Linux kernels (3.9+). 
 
 31) ICE Mobility draft implemented (experimental). 
+
+32) CLI implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in TODO file.

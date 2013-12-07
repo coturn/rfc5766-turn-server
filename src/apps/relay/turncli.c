@@ -82,7 +82,6 @@ char cli_password[CLI_PASSWORD_LENGTH] = "";
 ///////////////////////////////
 
 struct cli_session {
-	//TODO
 	evutil_socket_t fd;
 	int auth_completed;
 	size_t cmds;
@@ -95,17 +94,19 @@ struct cli_session {
 
 #define CLI_PASSWORD_TRY_NUMBER (5)
 
-static char CLI_HELP_STR[] =
-"  ?, h, help - print this help text\n"
-"  quit, q, exit, bye - end CLI session\n"
-"  stop, shutdown, halt - shutdown TURN Server\n"
-"  pc - print configuration\n";
+static char CLI_HELP_STR[] = "\n"
+"  ?, h, help - print this text\n\n"
+"  quit, q, exit, bye - end CLI session\n\n"
+"  stop, shutdown, halt - shutdown TURN Server\n\n"
+"  pc - print configuration\n\n"
+"  tc <param-name> - toggle configuration parameter\n"
+"     (see pc command output for 'toggleable' param names)\n\n";
 
 static char CLI_GREETING_STR[] =
 "TURN Server\n"
 "rfc5766-turn-server\n"
 TURN_SOFTWARE
-"\nType ? for help\n";
+"\nType '?' for help\n";
 
 static char CLI_CURSOR[] = "> ";
 
@@ -119,6 +120,25 @@ static const telnet_telopt_t cli_telopts[] = {
     { TELNET_TELOPT_NAWS,      TELNET_WONT, TELNET_DONT },
     { -1, 0, 0 }
   };
+
+struct toggleable_command {
+	const char *cmd;
+	vintp data;
+};
+
+struct toggleable_command tcmds[] = {
+				{"stale-nonce",&stale_nonce},
+				{"stun-only",&stun_only},
+				{"no-stun",&no_stun},
+				{"secure-stun",&secure_stun},
+				{"server-relay",&server_relay},
+				{"no-udp-relay",&no_udp_relay},
+				{"no-tcp-relay",&no_tcp_relay},
+				{"no-multicast-peers",&no_multicast_peers},
+				{"no-loopback-peers",&no_loopback_peers},
+				{"mobility",&mobility},
+				{NULL,NULL}
+};
 
 ///////////////////////////////
 
@@ -216,6 +236,34 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 	}
 }
 
+static void toggle_cli_param(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn) {
+
+		int i=0;
+
+		while(tcmds[i].cmd && tcmds[i].data) {
+			if(strcmp(tcmds[i].cmd,pn) == 0) {
+				*(tcmds[i].data) = !(*(tcmds[i].data));
+				cli_print_flag(cs,*(tcmds[i].data),tcmds[i].cmd,0);
+				return;
+			}
+			++i;
+		}
+
+		telnet_printf(cs->ts, "\n  Error: unknown or constant parameter: %s.\n  You can toggle only the following parameters:\n\n",pn);
+
+		i=0;
+
+		while(tcmds[i].cmd && tcmds[i].data) {
+			cli_print_flag(cs,*(tcmds[i].data),tcmds[i].cmd,0);
+			++i;
+		}
+
+		telnet_printf(cs->ts,"\n");
+	}
+}
+
 static void cli_print_configuration(struct cli_session* cs)
 {
 	if(cs) {
@@ -234,7 +282,7 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,no_dtls,"no-dtls",0);
 		cli_print_flag(cs,no_tls,"no-tls",0);
 		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
-		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
+		cli_print_flag(cs,no_tcp_relay,"no-tcp-relay",1);
 		cli_print_flag(cs,new_net_engine,"new net engine",0);
 		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
 		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
@@ -282,6 +330,10 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,global_realm,"Realm",0);
 
 
+		{
+			const char *str="\n  (Note: params with (*) are 'toggleable')\n";
+			telnet_send(cs->ts,str,strlen(str));
+		}
 	}
 }
 
@@ -391,6 +443,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strcmp(cmd,"pc")==0) {
 				cli_print_configuration(cs);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"tc ") == cmd) {
+				toggle_cli_param(cs,cmd+3);
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
