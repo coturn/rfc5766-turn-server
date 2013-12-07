@@ -1304,7 +1304,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 			tc->state = TC_STATE_PEER_CONNECTED;
 			stun_init_success_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, &(tc->tid));
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
-									(const u08bits*)&(tc->id), 8);
+									(const u08bits*)&(tc->id), 4);
 
 			IOA_EVENT_DEL(tc->conn_bind_timeout);
 			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
@@ -1490,7 +1490,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		stun_init_indication_str(STUN_METHOD_CONNECTION_ATTEMPT, ioa_network_buffer_data(nbh), &len);
 		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
-					(const u08bits*)&(tc->id), 8);
+					(const u08bits*)&(tc->id), 4);
 		stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
 		ioa_network_buffer_set_size(nbh,len);
@@ -1649,7 +1649,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_CONNECTION_ID: {
-				if (stun_attr_get_len(sar) != 8) {
+				if (stun_attr_get_len(sar) != 4) {
 					*err_code = 400;
 					*reason = (const u08bits *)"Wrong Connection ID field format";
 				} else {
@@ -1658,7 +1658,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 						*err_code = 400;
 						*reason = (const u08bits *)"Wrong Connection ID field data";
 					} else {
-						id = *((const u64bits*)value); //AS-IS encoding, no conversion to/from network byte order
+						id = *((const u32bits*)value); //AS-IS encoding, no conversion to/from network byte order
 					}
 				}
 			}
@@ -1682,7 +1682,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 
 		} else {
 			if(server->send_socket_to_relay) {
-				u64bits sid = (id & 0xFF00000000000000)>>56;
+				turnserver_id sid = (id & 0xFF000000)>>24;
 				ioa_socket_handle s = ss->client_session.s;
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s, 1);

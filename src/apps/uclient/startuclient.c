@@ -1164,11 +1164,11 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 		int cb_sent = 0;
 
 		stun_buffer message;
-		u64bits cid = atc->cid;
+		u32bits cid = atc->cid;
 
 		stun_init_request(STUN_METHOD_CONNECTION_BIND, &message);
 
-		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&cid,8);
+		stun_attr_add(&message, STUN_ATTRIBUTE_CONNECTION_ID, (const s08bits*)&cid,4);
 
 		if(add_integrity(clnet_info, &message)<0) return -1;
 
@@ -1258,7 +1258,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 	return 0;
 }
 
-void tcp_data_connect(app_ur_session *elem, u64bits cid)
+void tcp_data_connect(app_ur_session *elem, u32bits cid)
 {
 	int clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
 	if (clnet_fd < 0) {

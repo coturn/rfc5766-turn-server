@@ -541,11 +541,11 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 			if((method == STUN_METHOD_CONNECTION_ATTEMPT)&& is_TCP_relay()) {
 			  stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-			  u64bits cid = 0;
+			  u32bits cid = 0;
 			  while(sar) {
 				  int attr_type = stun_attr_get_type(sar);
 				  if(attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-					  cid = *((const u64bits*)stun_attr_get_value(sar));
+					  cid = *((const u32bits*)stun_attr_get_value(sar));
 					  break;
 				  }
 				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);
@@ -596,11 +596,11 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				stun_attr_ref sar = stun_attr_get_first(&(elem->in_buffer));
-				u64bits cid = 0;
+				u32bits cid = 0;
 				while(sar) {
 				  int attr_type = stun_attr_get_type(sar);
 				  if(attr_type == STUN_ATTRIBUTE_CONNECTION_ID) {
-					  cid = *((const u64bits*)stun_attr_get_value(sar));
+					  cid = *((const u32bits*)stun_attr_get_value(sar));
 					  break;
 				  }
 				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);

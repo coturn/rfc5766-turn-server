@@ -61,7 +61,7 @@ typedef enum _UR_STATE UR_STATE;
 typedef struct
 {
 	/* RFC 6062 */
-	u64bits cid;
+	u32bits cid;
 	ioa_addr tcp_data_local_addr;
 	ioa_socket_raw tcp_data_fd;
 	SSL *tcp_data_ssl;
