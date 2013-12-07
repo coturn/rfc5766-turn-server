@@ -144,13 +144,7 @@ static inline int get_alt_tls_listener_port(void) {
 extern int no_udp;
 extern int no_tcp;
 extern int no_tls;
-
-#if defined(TURN_NO_DTLS)
 extern int no_dtls;
-#else
-extern int no_dtls;
-#endif
-
 
 extern vint no_tcp_relay;
 extern vint no_udp_relay;

@@ -96,9 +96,10 @@ struct cli_session {
 #define CLI_PASSWORD_TRY_NUMBER (5)
 
 static char CLI_HELP_STR[] =
-" ?,h,help - help text\n"
-" quit, exit, bye - end CLI session\n"
-" stop, shutdown, halt - shutdown TURN Server\n";
+"  ?, h, help - print this help text\n"
+"  quit, q, exit, bye - end CLI session\n"
+"  stop, shutdown, halt - shutdown TURN Server\n"
+"  pc - print configuration\n";
 
 static char CLI_GREETING_STR[] =
 "TURN Server\n"
@@ -120,6 +121,169 @@ static const telnet_telopt_t cli_telopts[] = {
   };
 
 ///////////////////////////////
+
+static void cli_print_flag(struct cli_session* cs, int flag, const char* name, int changeable)
+{
+	if(cs && cs->ts && name) {
+		const char* sflag="OFF";
+		if(flag)
+			sflag="ON";
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		telnet_printf(cs->ts,"  %s: %s%s\n",name,sflag,sc);
+	}
+}
+
+static void cli_print_uint(struct cli_session* cs, unsigned long value, const char* name, int changeable)
+{
+	if(cs && cs->ts && name) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		telnet_printf(cs->ts,"  %s: %lu%s\n",name,value,sc);
+	}
+}
+
+static void cli_print_str(struct cli_session* cs, const char *value, const char* name, int changeable)
+{
+	if(cs && cs->ts && name && value) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		telnet_printf(cs->ts,"  %s: %s%s\n",name,value,sc);
+	}
+}
+
+static void cli_print_addr(struct cli_session* cs, ioa_addr *value, int use_port, const char* name, int changeable)
+{
+	if(cs && cs->ts && name && value) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		char s[256];
+		if(!use_port)
+			addr_to_string_no_port(value,(u08bits*)s);
+		else
+			addr_to_string(value,(u08bits*)s);
+		telnet_printf(cs->ts,"  %s: %s%s\n",name,s,sc);
+	}
+}
+
+static void cli_print_addr_list(struct cli_session* cs, turn_server_addrs_list_t *value, int use_port, const char* name, int changeable)
+{
+	if(cs && cs->ts && name && value && value->size && value->addrs) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		char s[256];
+		size_t i;
+		for(i=0;i<value->size;i++) {
+			if(!use_port)
+				addr_to_string_no_port(&(value->addrs[i]),(u08bits*)s);
+			else
+				addr_to_string(&(value->addrs[i]),(u08bits*)s);
+			telnet_printf(cs->ts,"  %s: %s%s\n",name,s,sc);
+		}
+	}
+}
+
+static void cli_print_str_array(struct cli_session* cs, char **value, size_t sz, const char* name, int changeable)
+{
+	if(cs && cs->ts && name && value && sz) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		size_t i;
+		for(i=0;i<sz;i++) {
+			if(value[i])
+				telnet_printf(cs->ts,"  %s: %s%s\n",name,value[i],sc);
+		}
+	}
+}
+
+static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *value, const char* name, int changeable)
+{
+	if(cs && cs->ts && name && value && value->ranges_number && value->ranges) {
+		const char *sc="";
+		if(changeable)
+			sc=" (*)";
+		size_t i;
+		for(i=0;i<value->ranges_number;++i) {
+			if(value->ranges[i])
+				telnet_printf(cs->ts,"  %s: %s%s\n",name,value->ranges[i],sc);
+		}
+	}
+}
+
+static void cli_print_configuration(struct cli_session* cs)
+{
+	if(cs) {
+
+		cli_print_flag(cs,verbose,"verbose",0);
+		cli_print_flag(cs,turn_daemon,"daemon process",0);
+		cli_print_flag(cs,stale_nonce,"stale-nonce",1);
+		cli_print_flag(cs,stun_only,"stun-only",1);
+		cli_print_flag(cs,no_stun,"no-stun",1);
+		cli_print_flag(cs,secure_stun,"secure-stun",1);
+		cli_print_flag(cs,server_relay,"server-relay",1);
+		cli_print_flag(cs,do_not_use_config_file,"do-not-use-config-file",0);
+		cli_print_flag(cs,rfc5780,"RFC5780 support",0);
+		cli_print_flag(cs,no_udp,"no-udp",0);
+		cli_print_flag(cs,no_tcp,"no-tcp",0);
+		cli_print_flag(cs,no_dtls,"no-dtls",0);
+		cli_print_flag(cs,no_tls,"no-tls",0);
+		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
+		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
+		cli_print_flag(cs,new_net_engine,"new net engine",0);
+		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
+		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
+		cli_print_flag(cs,fingerprint,"enforce fingerprints",0);
+		cli_print_flag(cs,mobility,"mobility",1);
+		cli_print_flag(cs,udp_self_balance,"udp-self-balance",0);
+		cli_print_flag(cs,shatype,"enforce SHA256",0);
+
+		cli_print_uint(cs,(unsigned long)listener_port,"listener-port",0);
+		cli_print_uint(cs,(unsigned long)tls_listener_port,"tls-listener-port",0);
+		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);
+		cli_print_uint(cs,(unsigned long)alt_tls_listener_port,"alt-tls-listener-port",0);
+
+		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
+		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
+
+		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
+
+#if !defined(TURN_NO_HIREDIS)
+		if(use_redis_statsdb)
+			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
+#endif
+		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
+		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
+
+		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
+
+		cli_print_addr(cs,external_ip,0,"External public IP",0);
+
+		cli_print_addr_list(cs,&aux_servers_list,1,"Aux server",0);
+		cli_print_addr_list(cs,&alternate_servers_list,1,"Alternate server",0);
+		cli_print_addr_list(cs,&tls_alternate_servers_list,1,"TLS alternate server",0);
+
+		if(userdb[0])
+			cli_print_str(cs,userdb,"DB",0);
+
+		cli_print_flag(cs,use_lt_credentials,"Long-term authorization mechanism",0);
+		cli_print_flag(cs,use_st_credentials,"Short-term authorization mechanism",0);
+		cli_print_flag(cs,anon_credentials,"Anonymous credentials",0);
+		cli_print_flag(cs,use_auth_secret_with_timestamp,"REST API",0);
+		if(use_auth_secret_with_timestamp && rest_api_separator)
+			cli_print_uint(cs,rest_api_separator,"REST API separator ASCII number",0);
+
+		if(global_realm[0])
+			cli_print_str(cs,global_realm,"Realm",0);
+
+
+	}
+}
 
 static void close_cli_session(struct cli_session* cs);
 
@@ -211,7 +375,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 					addr_debug_print(1, &(cs->addr),"CLI authentication success");
 					type_cli_cursor(cs);
 				}
-			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)) {
+			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)||(strcmp(cmd,"q") == 0)) {
 				const char* str="Bye !";
 				telnet_send(cs->ts,str,strlen(str));
 				close_cli_session(cs);
@@ -224,6 +388,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				exit(0);
 			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
 				telnet_send(cs->ts,CLI_HELP_STR,strlen(CLI_HELP_STR));
+				type_cli_cursor(cs);
+			} else if(strcmp(cmd,"pc")==0) {
+				cli_print_configuration(cs);
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
@@ -251,7 +418,7 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 		stun_buffer buf;
 
-		while(cs->bev) {
+		if(cs->bev) {
 
 			int len = (int)bufferevent_read(cs->bev, buf.buf, STUN_BUFFER_SIZE-1);
 			if(len < 0) {
