@@ -392,9 +392,8 @@ static void put_session_into_map(ts_ur_super_session *ss)
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		if(!(ss->id)) {
-			ss->id = (turnsession_id)((turnsession_id)server->id * 10000000000000000LL);
+			ss->id = (turnsession_id)((turnsession_id)server->id * 1000000000000000LL);
 			ss->id += ++(server->session_id_counter);
-			printf("%s: 111.111: %lu\n",__FUNCTION__,ss->id);
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
 		put_session_into_mobile_map(ss);
@@ -1305,7 +1304,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 			tc->state = TC_STATE_PEER_CONNECTED;
 			stun_init_success_response_str(STUN_METHOD_CONNECT, ioa_network_buffer_data(nbh), &len, &(tc->tid));
 			stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
-									(const u08bits*)&(tc->id), 4);
+									(const u08bits*)&(tc->id), 8);
 
 			IOA_EVENT_DEL(tc->conn_bind_timeout);
 			tc->conn_bind_timeout = set_ioa_timer(server->e, TCP_CONN_BIND_TIMEOUT, 0,
@@ -1491,7 +1490,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 
 		stun_init_indication_str(STUN_METHOD_CONNECTION_ATTEMPT, ioa_network_buffer_data(nbh), &len);
 		stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_CONNECTION_ID,
-					(const u08bits*)&(tc->id), 4);
+					(const u08bits*)&(tc->id), 8);
 		stun_attr_add_addr_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_XOR_PEER_ADDRESS, peer_addr);
 
 		ioa_network_buffer_set_size(nbh,len);
@@ -1650,7 +1649,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 			switch (attr_type) {
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_CONNECTION_ID: {
-				if (stun_attr_get_len(sar) != 4) {
+				if (stun_attr_get_len(sar) != 8) {
 					*err_code = 400;
 					*reason = (const u08bits *)"Wrong Connection ID field format";
 				} else {
@@ -1659,7 +1658,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 						*err_code = 400;
 						*reason = (const u08bits *)"Wrong Connection ID field data";
 					} else {
-						id = *((const u32bits*)value); //AS-IS encoding, no conversion to/from network byte order
+						id = *((const u64bits*)value); //AS-IS encoding, no conversion to/from network byte order
 					}
 				}
 			}
@@ -1683,7 +1682,7 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 
 		} else {
 			if(server->send_socket_to_relay) {
-				u32bits sid = (id & 0xFF000000)>>24;
+				u64bits sid = (id & 0xFF00000000000000)>>56;
 				ioa_socket_handle s = ss->client_session.s;
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s, 1);

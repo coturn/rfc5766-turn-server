@@ -332,6 +332,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 	}
 
 	if(ret == 0) {
+
 		struct evbuffer *output = bufferevent_get_output(rs->out_buf);
 		if(output) {
 			evbuffer_add(output,&sm,sizeof(struct message_to_relay));
@@ -355,7 +356,7 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 
 static int handle_relay_message(relay_server_handle rs, struct message_to_relay *sm)
 {
-	if(rs && sm && sm->m.sm.s) {
+	if(rs && sm) {
 
 		switch (sm->t) {
 
@@ -390,7 +391,10 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			} else {
 
-				if (s->read_event || s->bev) {
+				if (!s) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+						"%s: socket EMPTY\n",__FUNCTION__);
+				} else if (s->read_event || s->bev) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 						__FUNCTION__, (long) s->read_event, (long) s->bev);
@@ -406,14 +410,19 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 		}
 			break;
 		case RMT_CB_SOCKET:
+
 			turnserver_accept_tcp_client_data_connection(rs->server, sm->m.cb_sm.connection_id,
 				&(sm->m.cb_sm.tid), sm->m.cb_sm.s, sm->m.cb_sm.message_integrity);
+
 			break;
 		case RMT_MOBILE_SOCKET: {
 
 			ioa_socket_handle s = sm->m.sm.s;
 
-			if (s->read_event || s->bev) {
+			if (!s) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: mobile socket EMPTY\n",__FUNCTION__);
+			} else if (s->read_event || s->bev) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 									"%s: mobile socket wrongly preset: 0x%lx : 0x%lx\n",
 									__FUNCTION__, (long) s->read_event, (long) s->bev);

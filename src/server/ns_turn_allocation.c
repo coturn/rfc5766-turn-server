@@ -365,16 +365,16 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	allocation *a = (allocation*)(tc->owner);
 	ur_map *map = a->tcp_connections;
-	u32bits newid = 0;
-	u32bits sid = server_id;
-	sid = sid<<24;
+	u64bits newid = 0;
+	u64bits sid = server_id;
+	sid = sid<<56;
 	do {
 		while (!newid) {
-			newid = (u32bits)random();
+			newid = (u64bits)random();
 			if(!newid) {
 				continue;
 			}
-			newid = newid & 0x00FFFFFF;
+			newid = newid & 0x00FFFFFFFFFFFFFFLL;
 			if(!newid) {
 				continue;
 			}

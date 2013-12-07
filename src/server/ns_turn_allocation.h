@@ -87,7 +87,7 @@ typedef struct _tcp_connection_list {
   struct _tcp_connection_list *next;
 } tcp_connection_list;
 
-typedef u32bits tcp_connection_id;
+typedef u64bits tcp_connection_id;
 
 #define MAX_UNSENT_BUFFER_SIZE (16)
 
