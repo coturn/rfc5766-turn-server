@@ -1,6 +1,7 @@
 12/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.1.0 'Arch Lector':
 	- Telnet CLI (TODO).
+	- RFC 6062 fix.
 	- Server relay endpoints (a non-standard feature).
 	- atomic stdout log print.
 	- printed help minor fix.
