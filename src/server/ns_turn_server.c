@@ -392,7 +392,9 @@ static void put_session_into_map(ts_ur_super_session *ss)
 	if(ss && ss->server) {
 		turn_turnserver* server = (turn_turnserver*)(ss->server);
 		if(!(ss->id)) {
-			ss->id = ++(server->session_id_counter);
+			ss->id = (turnsession_id)((turnsession_id)server->id * 10000000000000000LL);
+			ss->id += ++(server->session_id_counter);
+			printf("%s: 111.111: %lu\n",__FUNCTION__,ss->id);
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
 		put_session_into_mobile_map(ss);
