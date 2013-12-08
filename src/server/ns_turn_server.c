@@ -72,7 +72,7 @@ struct _turn_turnserver {
 	turn_credential_type ct;
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
 	get_user_key_cb userkeycb;
-	check_new_allocation_quota_cb chquoatacb;
+	check_new_allocation_quota_cb chquotacb;
 	release_allocation_quota_cb raqcb;
 	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
@@ -633,7 +633,9 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		(((turn_turnserver*)ss->server)->raqcb)(ss->username);
+		if(ss->alloc.is_valid) {
+			(((turn_turnserver*)ss->server)->raqcb)(ss->username);
+		}
 		if (ss->client_session.s) {
 			clear_ioa_socket_session_if(ss->client_session.s, ss);
 		}
@@ -985,7 +987,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
-			if((server->chquoatacb)(username)<0) {
+			if((server->chquotacb)(username)<0) {
 
 				*err_code = 486;
 				*reason = (const u08bits *)"Allocation Quota Reached";
@@ -4058,7 +4060,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->ct = ct;
 	STRCPY(server->realm,realm);
 	server->userkeycb = userkeycb;
-	server->chquoatacb = chquotacb;
+	server->chquotacb = chquotacb;
 	server->raqcb = raqcb;
 	server->no_multicast_peers = no_multicast_peers;
 	server->no_loopback_peers = no_loopback_peers;
