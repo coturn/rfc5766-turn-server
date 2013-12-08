@@ -66,9 +66,9 @@ struct auth_message {
 struct _turn_user_db {
 	turn_credential_type ct;
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
-	volatile size_t total_quota;
-	volatile size_t user_quota;
-	volatile size_t total_current_allocs;
+	vint total_quota;
+	vint user_quota;
+	vint total_current_allocs;
 	ur_string_map *static_accounts;
 	ur_string_map *dynamic_accounts;
 	ur_string_map *alloc_counters;

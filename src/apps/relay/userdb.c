@@ -1190,7 +1190,7 @@ int check_new_allocation_quota(u08bits *user)
 				ur_string_map_put(users->alloc_counters, (ur_string_map_key_type) username, value);
 				++(users->total_current_allocs);
 			} else {
-				if ((users->user_quota) && ((size_t) value >= users->user_quota)) {
+				if ((users->user_quota) && ((size_t) value >= (size_t)(users->user_quota))) {
 					ret = -1;
 				} else {
 					value = (ur_string_map_value_type)(((size_t)value) + 1);

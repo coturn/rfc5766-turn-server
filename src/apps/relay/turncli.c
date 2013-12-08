@@ -99,8 +99,10 @@ static char CLI_HELP_STR[] = "\n"
 "  quit, q, exit, bye - end CLI session\n\n"
 "  stop, shutdown, halt - shutdown TURN Server\n\n"
 "  pc - print configuration\n\n"
-"  tc <param-name> - toggle configuration parameter\n"
-"     (see pc command output for 'toggleable' param names)\n\n"
+"  tc <param-name> - toggle a configuration parameter\n"
+"     (see pc command output for togglable param names)\n\n"
+"  cc <param-name> <param-value> - change a configuration parameter\n"
+"     (see pc command output for changeable param names)\n\n"
 "  ps [username] - print sessions\n\n";
 
 static char CLI_GREETING_STR[] =
@@ -141,6 +143,17 @@ struct toggleable_command tcmds[] = {
 				{NULL,NULL}
 };
 
+struct changeable_command {
+	const char *cmd;
+	vintp data;
+};
+
+struct changeable_command ccmds[] = {
+				{"total-quota",NULL},
+				{"user-quota",NULL},
+				{NULL,NULL}
+};
+
 ///////////////////////////////
 
 static const char* get_flag(int val)
@@ -164,8 +177,10 @@ static void cli_print_uint(struct cli_session* cs, unsigned long value, const ch
 {
 	if(cs && cs->ts && name) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		telnet_printf(cs->ts,"  %s: %lu%s\n",name,value,sc);
 	}
 }
@@ -174,8 +189,10 @@ static void cli_print_str(struct cli_session* cs, const char *value, const char*
 {
 	if(cs && cs->ts && name && value) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		telnet_printf(cs->ts,"  %s: %s%s\n",name,value,sc);
 	}
 }
@@ -184,8 +201,10 @@ static void cli_print_addr(struct cli_session* cs, ioa_addr *value, int use_port
 {
 	if(cs && cs->ts && name && value) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		char s[256];
 		if(!use_port)
 			addr_to_string_no_port(value,(u08bits*)s);
@@ -199,8 +218,10 @@ static void cli_print_addr_list(struct cli_session* cs, turn_server_addrs_list_t
 {
 	if(cs && cs->ts && name && value && value->size && value->addrs) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		char s[256];
 		size_t i;
 		for(i=0;i<value->size;i++) {
@@ -217,8 +238,10 @@ static void cli_print_str_array(struct cli_session* cs, char **value, size_t sz,
 {
 	if(cs && cs->ts && name && value && sz) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		size_t i;
 		for(i=0;i<sz;i++) {
 			if(value[i])
@@ -231,8 +254,10 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 {
 	if(cs && cs->ts && name && value && value->ranges_number && value->ranges) {
 		const char *sc="";
-		if(changeable)
+		if(changeable==1)
 			sc=" (*)";
+		else if(changeable==2)
+			sc=" (**)";
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
 			if(value->ranges[i])
@@ -262,6 +287,45 @@ static void toggle_cli_param(struct cli_session* cs, const char* pn)
 
 		while(tcmds[i].cmd && tcmds[i].data) {
 			cli_print_flag(cs,*(tcmds[i].data),tcmds[i].cmd,0);
+			++i;
+		}
+
+		telnet_printf(cs->ts,"\n");
+	}
+}
+
+static void change_cli_param(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn) {
+
+		int i=0;
+
+		while(ccmds[i].cmd) {
+			if(strstr(pn,ccmds[i].cmd) == pn) {
+				pn += strlen(ccmds[i].cmd);
+				while(pn[0]==' ') ++pn;
+				vint pnv = (vint)atoi(pn);
+				if(ccmds[i].data) {
+					*(ccmds[i].data) = (vint)pnv;
+					cli_print_uint(cs,(unsigned long)(*(ccmds[i].data)),ccmds[i].cmd,2);
+				} else if(strcmp(ccmds[i].cmd,"total-quota")==0) {
+					users->total_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(users->total_quota),ccmds[i].cmd,2);
+				} else if(strcmp(ccmds[i].cmd,"user-quota")==0) {
+					users->user_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(users->user_quota),ccmds[i].cmd,2);
+				}
+				return;
+			}
+			++i;
+		}
+
+		telnet_printf(cs->ts, "\n  Error: unknown or constant parameter: %s.\n  You can change only the following parameters:\n\n",pn);
+
+		i=0;
+
+		while(ccmds[i].cmd) {
+			telnet_printf(cs->ts,"  %s\n",ccmds[i].cmd);
 			++i;
 		}
 
@@ -389,8 +453,8 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);
 		cli_print_uint(cs,(unsigned long)alt_tls_listener_port,"alt-tls-listener-port",0);
 
-		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",0);
-		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",0);
+		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",2);
+		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",2);
 		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
 
 		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
@@ -428,7 +492,9 @@ static void cli_print_configuration(struct cli_session* cs)
 
 
 		{
-			const char *str="\n  (Note: params with (*) are 'toggleable')\n";
+			const char *str="\n  (Note 1: params with (*) are togglable)\n";
+			telnet_send(cs->ts,str,strlen(str));
+			str="\n  (Note 2: params with (**) are changeable)\n";
 			telnet_send(cs->ts,str,strlen(str));
 		}
 	}
@@ -546,6 +612,12 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"ps") == cmd) {
 				print_sessions(cs,cmd+2);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"cc ") == cmd) {
+				change_cli_param(cs,cmd+3);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"cc") == cmd) {
+				change_cli_param(cs,cmd+2);
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
