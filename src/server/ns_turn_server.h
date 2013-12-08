@@ -139,7 +139,7 @@ void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_se
 
 int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity);
 
-int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss);
+int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid);
 
 ///////////////////////////////////////////
 

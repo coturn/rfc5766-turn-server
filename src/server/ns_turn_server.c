@@ -410,7 +410,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 	return ret;
 }
 
-int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss)
+int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid)
 {
 	if(server && ss && server->send_turn_session_info) {
 		struct turn_session_info tsi;
@@ -418,6 +418,8 @@ int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss)
 		if(turn_session_info_copy_from(&tsi,ss)<0) {
 			turn_session_info_clean(&tsi);
 		} else {
+			if(force_invalid)
+				tsi.valid = 0;
 			if(server->send_turn_session_info(&tsi)<0) {
 				turn_session_info_clean(&tsi);
 			} else {
@@ -1282,7 +1284,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 							}
 						}
 
-						report_turn_session_info(server,orig_ss);
+						report_turn_session_info(server,orig_ss,0);
 					}
 				}
 			} else {
@@ -3310,8 +3312,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
-	ss->to_be_closed = 1;
-	report_turn_session_info(server,ss);
+	report_turn_session_info(server,ss,1);
 
 	ts_ur_session* elem = &(ss->client_session);
 
@@ -3679,7 +3680,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
 
 		if((method != STUN_METHOD_BINDING) && (method != STUN_METHOD_SEND))
-			report_turn_session_info(server,ss);
+			report_turn_session_info(server,ss,0);
 
 		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
 			FUNCEND;
