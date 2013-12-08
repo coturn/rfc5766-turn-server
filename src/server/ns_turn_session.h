@@ -63,17 +63,48 @@ typedef struct {
   int enforce_fingerprints;
   int is_tcp_relay;
   int to_be_closed;
+  SHATYPE shatype;
   /* Stats */
   u32bits received_packets;
   u32bits sent_packets;
   u32bits received_bytes;
   u32bits sent_bytes;
-  SHATYPE shatype;
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
   char s_mobile_id[33];
 } ts_ur_super_session;
+
+////// Session info for statistics //////
+
+struct turn_session_info {
+	turnsession_id id;
+	int valid;
+	turn_time_t expiration_time;
+	SOCKET_TYPE client_protocol;
+	SOCKET_TYPE peer_protocol;
+	ioa_addr local_addr;
+	ioa_addr remote_addr;
+	ioa_addr relay_addr;
+	ioa_addr *peers;
+	size_t peers_size;
+	u08bits username[STUN_MAX_USERNAME_SIZE+1];
+	int enforce_fingerprints;
+	SHATYPE shatype;
+/* Stats */
+	u32bits received_packets;
+	u32bits sent_packets;
+	u32bits received_bytes;
+	u32bits sent_bytes;
+/* Mobile */
+	int is_mobile;
+};
+
+void turn_session_info_init(struct turn_session_info* tsi);
+void turn_session_info_clean(struct turn_session_info* tsi);
+void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer);
+
+int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_session *ss);
 
 ////////////// ss /////////////////////
 

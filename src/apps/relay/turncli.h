@@ -61,11 +61,6 @@ struct cli_server {
 	pthread_t thr;
 };
 
-struct cli_message {
-	//TODO
-	int tmp;
-};
-
 ///////////////////////////////////////////
 
 extern struct cli_server cliserver;
@@ -87,6 +82,8 @@ extern char cli_password[CLI_PASSWORD_LENGTH];
 void setup_cli_thread(void);
 
 void cli_server_receive_message(struct bufferevent *bev, void *ptr);
+
+int send_turn_session_info(struct turn_session_info* tsi);
 
 ////////////////////////////////////////////
 

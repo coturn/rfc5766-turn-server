@@ -433,7 +433,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				close_cli_session(cs);
 				ret = -1;
 			} else if((strcmp(cmd,"halt") == 0)||(strcmp(cmd,"shutdown") == 0)||(strcmp(cmd,"stop") == 0)) {
-				addr_debug_print(1, &(cs->addr),"CLI user sent shutdown command");
+				addr_debug_print(1, &(cs->addr),"Shutdown command received from CLI user");
 				const char* str="TURN server is shutting down";
 				telnet_send(cs->ts,str,strlen(str));
 				close_cli_session(cs);
@@ -643,16 +643,36 @@ void cli_server_receive_message(struct bufferevent *bev, void *ptr)
 
 	//TODO
 
-	struct cli_message cm;
+	struct turn_session_info tsi;
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 
-	while ((n = evbuffer_remove(input, &cm, sizeof(struct cli_message))) > 0) {
-		if (n != sizeof(struct cli_message)) {
+	while ((n = evbuffer_remove(input, &tsi, sizeof(struct turn_session_info))) > 0) {
+		if (n != sizeof(struct turn_session_info)) {
 			fprintf(stderr,"%s: Weird CLI buffer error: size=%d\n",__FUNCTION__,n);
 			continue;
 		}
+
+		printf("%s: 111.111: %lu: %d\n",__FUNCTION__,(unsigned long)tsi.id, tsi.valid);
+
+		turn_session_info_clean(&tsi);
 	}
+}
+
+int send_turn_session_info(struct turn_session_info* tsi)
+{
+	int ret = -1;
+
+	if(tsi) {
+		struct evbuffer *output = bufferevent_get_output(cliserver.out_buf);
+		if(output) {
+			if(evbuffer_add(output,tsi,sizeof(struct turn_session_info))>=0) {
+				ret = 0;
+			}
+		}
+	}
+
+	return ret;
 }
 
 ///////////////////////////////

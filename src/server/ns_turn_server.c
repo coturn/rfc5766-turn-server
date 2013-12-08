@@ -79,6 +79,7 @@ struct _turn_turnserver {
 	size_t addrs_number;
 	vintp no_loopback_peers;
 	vintp no_multicast_peers;
+	send_turn_session_info_cb send_turn_session_info;
 
 	/* RFC 6062 ==>> */
 	vintp no_udp_relay;
@@ -291,6 +292,141 @@ static inline ts_ur_session *get_relay_session_ss(ts_ur_super_session *ss)
 static inline ioa_socket_handle get_relay_socket_ss(ts_ur_super_session *ss)
 {
 	return ss->alloc.relay_session.s;
+}
+
+/////////// Session info ///////
+
+void turn_session_info_init(struct turn_session_info* tsi) {
+	if(tsi) {
+		ns_bzero(tsi,sizeof(struct turn_session_info));
+	}
+}
+
+void turn_session_info_clean(struct turn_session_info* tsi) {
+	if(tsi) {
+		if(tsi->peers) {
+			turn_free(tsi->peers, sizeof(ioa_addr)*(tsi->peers_size));
+			tsi->peers = NULL;
+		}
+		turn_session_info_init(tsi);
+	}
+}
+
+void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer)
+{
+	if(tsi && peer) {
+		if(tsi->peers) {
+			size_t sz;
+			for(sz=0;sz<tsi->peers_size;++sz) {
+				if(addr_eq(peer, &(tsi->peers[sz]))) {
+					return;
+				}
+			}
+		}
+		tsi->peers = (ioa_addr*)turn_realloc(tsi->peers,tsi->peers_size*sizeof(ioa_addr),(tsi->peers_size+1)*sizeof(ioa_addr));
+		addr_cpy(&(tsi->peers[tsi->peers_size]),peer);
+		tsi->peers_size += 1;
+	}
+}
+
+struct tsi_arg {
+	struct turn_session_info* tsi;
+	ioa_addr *addr;
+};
+
+static int turn_session_info_foreachcb(ur_map_key_type key, ur_map_value_type value, void *arg)
+{
+	UNUSED_ARG(value);
+
+	int port = (int)key;
+	struct tsi_arg *ta = (struct tsi_arg *)arg;
+	if(port && ta && ta->tsi && ta->addr) {
+		ioa_addr a;
+		addr_cpy(&a,ta->addr);
+		addr_set_port(&a,port);
+		turn_session_info_add_peer(ta->tsi,&a);
+	}
+	return 0;
+}
+
+int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_session *ss)
+{
+	int ret = -1;
+
+	if(tsi && ss) {
+		tsi->id = ss->id;
+		tsi->valid = ss->alloc.is_valid;
+		if(tsi->valid) {
+			if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
+				tsi->valid = 0;
+			}
+		}
+		if(tsi->valid) {
+			tsi->expiration_time = ss->alloc.expiration_time;
+			tsi->client_protocol = get_ioa_socket_type(ss->client_session.s);
+			tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
+			addr_cpy(&(tsi->local_addr),get_local_addr_from_ioa_socket(ss->client_session.s));
+			addr_cpy(&(tsi->remote_addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
+			addr_cpy(&(tsi->relay_addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+			STRCPY(tsi->username,ss->username);
+			tsi->enforce_fingerprints = ss->enforce_fingerprints;
+			tsi->shatype = ss->shatype;
+			tsi->received_packets = ss->received_packets;
+			tsi->sent_packets = ss->sent_packets;
+			tsi->received_bytes = ss->received_bytes;
+			tsi->sent_bytes = ss->sent_bytes;
+			tsi->is_mobile = ss->is_mobile;
+
+			int i;
+
+			if(ss->alloc.addr_to_perm) {
+				for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
+					turn_permission_info* list = ss->alloc.addr_to_perm[i];
+					while(list) {
+						turn_session_info_add_peer(tsi,&(list->addr));
+						struct tsi_arg arg = {
+							tsi,
+							&(list->addr)
+						};
+						ur_map_foreach_arg(list->channels, turn_session_info_foreachcb, &arg);
+						list=(turn_permission_info*)(list->list.next);
+					}
+				}
+			}
+
+			{
+				tcp_connection_list *tcl = &(ss->alloc.tcl);
+				while(tcl->next) {
+					tcp_connection *tc = (tcp_connection*)(tcl->next);
+					turn_session_info_add_peer(tsi,&(tc->peer_addr));
+					tcl=tcl->next;
+				}
+			}
+		}
+
+		ret = 0;
+	}
+
+	return ret;
+}
+
+int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss)
+{
+	if(server && ss && server->send_turn_session_info) {
+		struct turn_session_info tsi;
+		turn_session_info_init(&tsi);
+		if(turn_session_info_copy_from(&tsi,ss)<0) {
+			turn_session_info_clean(&tsi);
+		} else {
+			if(server->send_turn_session_info(&tsi)<0) {
+				turn_session_info_clean(&tsi);
+			} else {
+				return 0;
+			}
+		}
+	}
+
+	return -1;
 }
 
 /////////// SS /////////////////
@@ -1145,6 +1281,8 @@ static int handle_turn_refresh(turn_turnserver *server,
 								}
 							}
 						}
+
+						report_turn_session_info(server,orig_ss);
 					}
 				}
 			} else {
@@ -3172,6 +3310,9 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
+	ss->to_be_closed = 1;
+	report_turn_session_info(server,ss);
+
 	ts_ur_session* elem = &(ss->client_session);
 
 	if(*(server->mobility) && !force && ss->is_mobile) {
@@ -3532,7 +3673,13 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 
+		u16bits method = stun_get_method_str(ioa_network_buffer_data(in_buffer->nbh),
+						ioa_network_buffer_get_size(in_buffer->nbh));
+
 		handle_turn_command(server, ss, in_buffer, nbh, &resp_constructed, can_resume);
+
+		if((method != STUN_METHOD_BINDING) && (method != STUN_METHOD_SEND))
+			report_turn_session_info(server,ss);
 
 		if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
 			FUNCEND;
@@ -3871,7 +4018,8 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		vintp no_multicast_peers, vintp no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		vintp secure_stun, SHATYPE shatype, vintp mobility, vintp server_relay) {
+		vintp secure_stun, SHATYPE shatype, vintp mobility, vintp server_relay,
+		send_turn_session_info_cb send_turn_session_info) {
 
 	turn_turnserver* server =
 			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
@@ -3896,6 +4044,7 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->shatype = shatype;
 	server->mobility = mobility;
 	server->server_relay = server_relay;
+	server->send_turn_session_info = send_turn_session_info;
 	if(mobility)
 		server->mobile_connections_map = ur_map_create();
 

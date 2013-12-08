@@ -114,6 +114,8 @@ typedef struct
 
 ////////////////////////////////
 
+#define TURN_PERMISSION_MAP_SIZE (17)
+
 typedef struct _ch_info {
   u16bits chnum;
   u16bits port;

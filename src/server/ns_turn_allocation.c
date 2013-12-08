@@ -30,10 +30,6 @@
 
 #include "ns_turn_allocation.h"
 
-////////// DATA //////////////////////////////////////////////////
-
-#define TURN_PERMISSION_MAP_SIZE (17)
-
 /////////////// ALLOCATION ///////////////////////////////////////
 
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
