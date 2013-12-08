@@ -3032,6 +3032,11 @@ void turn_report_session_usage(void *session)
 					send_message_to_redis(NULL, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #endif
+				ss->t_received_packets += ss->received_packets;
+				ss->t_received_bytes += ss->received_bytes;
+				ss->t_sent_packets += ss->sent_packets;
+				ss->t_sent_bytes += ss->sent_bytes;
+
 				report_turn_session_info(server,ss,0);
 
 				ss->received_packets=0;

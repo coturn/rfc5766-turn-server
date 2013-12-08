@@ -69,6 +69,10 @@ typedef struct {
   u32bits sent_packets;
   u32bits received_bytes;
   u32bits sent_bytes;
+  size_t t_received_packets;
+  size_t t_sent_packets;
+  size_t t_received_bytes;
+  size_t t_sent_bytes;
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
@@ -92,10 +96,10 @@ struct turn_session_info {
 	int enforce_fingerprints;
 	SHATYPE shatype;
 /* Stats */
-	u32bits received_packets;
-	u32bits sent_packets;
-	u32bits received_bytes;
-	u32bits sent_bytes;
+	size_t received_packets;
+	size_t sent_packets;
+	size_t received_bytes;
+	size_t sent_bytes;
 /* Mobile */
 	int is_mobile;
 };

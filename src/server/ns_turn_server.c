@@ -371,10 +371,10 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;
 			tsi->shatype = ss->shatype;
-			tsi->received_packets = ss->received_packets;
-			tsi->sent_packets = ss->sent_packets;
-			tsi->received_bytes = ss->received_bytes;
-			tsi->sent_bytes = ss->sent_bytes;
+			tsi->received_packets = ss->t_received_packets;
+			tsi->sent_packets = ss->t_sent_packets;
+			tsi->received_bytes = ss->t_received_bytes;
+			tsi->sent_bytes = ss->t_sent_bytes;
 			tsi->is_mobile = ss->is_mobile;
 
 			int i;
