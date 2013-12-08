@@ -446,10 +446,13 @@ Options with required values:
 --proc-group		Group ID to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
 			
---cli-ip			Local system IP address to be used for CLI server endpoint. Default value
-					is 127.0.0.1.
+--cli-ip			Local system IP address to be used for CLI management interface.
+					The turnserver process can be accessed for management with telnet,
+					at this IP address and on the CLI port (see the next parameter). 
+					Default value is 127.0.0.1. You can use telnet or putty (in telnet mode)
+					to access the CLI management interface. 
 					
---cli-port			CLI server port. Default is 5766.
+--cli-port			CLI management interface listening port. Default is 5766.
 
 --cli-password		CLI access password. Default is empty (no password).
 

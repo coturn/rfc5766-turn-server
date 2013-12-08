@@ -886,3 +886,18 @@ Read the project wiki pages: http://code.google.com/p/rfc5766-turn-server/w/list
 Also, check the project from page links to the TURN/WebRTC configuration examples.
 It may give you an idea how it can be done.
 
+XVI. Management interface
+
+You have a telnet interface (enabled by default) to access the turnserver process, 
+to view its state, to gather some statistical information, and to make some changes 
+on-the-fly.
+
+You can access that CLI interface with telnet or putty program (in telnet mode). 
+The process by default listens to port 5766 on IP address 127.0.0.1 for the telnet
+connections. 
+
+WARNING: all telnet communications are going unencrypted over the network. For
+security reasons, we advise using the loopback IP addresses for CLI (127.0.0.1 
+or ::1). The CLI may have a password configured, but that password is transferred
+over the network unencrypted, too. So sticking to the local system CLI access
+would be a wise decision.
