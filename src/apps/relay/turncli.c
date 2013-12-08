@@ -110,7 +110,9 @@ static const char *CLI_HELP_STR[] =
    "  cc <param-name> <param-value> - change a configuration parameter",
    "     (see pc command output for changeable param names)",
    "",
-   "  ps [username] - print sessions",
+   "  ps [username] - print sessions, with optional exact user match",
+   "",
+   "  psp usernamestr - print sessions, with partial user string match",
    "",
    NULL};
 
@@ -366,6 +368,7 @@ struct ps_arg {
 	size_t counter;
 	turn_time_t ct;
 	const char* username;
+	int exact_match;
 };
 
 static const char* pname(SOCKET_TYPE st)
@@ -394,8 +397,13 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 		struct cli_session* cs = csarg->cs;
 		struct turn_session_info *tsi = (struct turn_session_info *)value;
 		if(csarg->username[0]) {
-			if(strcmp(csarg->username, (char*)tsi->username))
-				return 0;
+			if(csarg->exact_match) {
+				if(strcmp((char*)tsi->username, csarg->username))
+					return 0;
+			} else {
+				if(!strstr((char*)tsi->username, csarg->username))
+					return 0;
+			}
 		}
 		telnet_printf(cs->ts, "\n");
 		telnet_printf(cs->ts,"    id=%018llu, user <%s>:\n",(unsigned long long)tsi->id, tsi->username);
@@ -433,14 +441,14 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 	return 0;
 }
 
-static void print_sessions(struct cli_session* cs, const char* pn)
+static void print_sessions(struct cli_session* cs, const char* pn, int exact_match)
 {
 	if(cs && cs->ts && pn) {
 
 		while(pn[0] == ' ') ++pn;
 		if(pn[0] == '*') ++pn;
 
-		struct ps_arg arg = {cs,0,0,pn};
+		struct ps_arg arg = {cs,0,0,pn,exact_match};
 
 		arg.ct = turn_time();
 
@@ -676,8 +684,11 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 			} else if(strstr(cmd,"tc ") == cmd) {
 				toggle_cli_param(cs,cmd+3);
 				type_cli_cursor(cs);
+			} else if(strstr(cmd,"psp") == cmd) {
+				print_sessions(cs,cmd+3,0);
+				type_cli_cursor(cs);
 			} else if(strstr(cmd,"ps") == cmd) {
-				print_sessions(cs,cmd+2);
+				print_sessions(cs,cmd+2,1);
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"cc ") == cmd) {
 				change_cli_param(cs,cmd+3);
