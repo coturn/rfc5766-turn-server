@@ -389,6 +389,10 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);
 		cli_print_uint(cs,(unsigned long)alt_tls_listener_port,"alt-tls-listener-port",0);
 
+		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",0);
+		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",0);
+		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
+
 		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
 		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
 

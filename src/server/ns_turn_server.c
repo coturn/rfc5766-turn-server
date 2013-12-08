@@ -357,17 +357,21 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 		tsi->id = ss->id;
 		tsi->valid = ss->alloc.is_valid;
 		if(tsi->valid) {
-			if(ss->to_be_closed || ioa_socket_tobeclosed(ss->client_session.s)) {
+			if(ss->to_be_closed) {
 				tsi->valid = 0;
 			}
 		}
 		if(tsi->valid) {
 			tsi->expiration_time = ss->alloc.expiration_time;
-			tsi->client_protocol = get_ioa_socket_type(ss->client_session.s);
-			tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
-			addr_cpy(&(tsi->local_addr),get_local_addr_from_ioa_socket(ss->client_session.s));
-			addr_cpy(&(tsi->remote_addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
-			addr_cpy(&(tsi->relay_addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+			if(ss->client_session.s) {
+				tsi->client_protocol = get_ioa_socket_type(ss->client_session.s);
+				addr_cpy(&(tsi->local_addr),get_local_addr_from_ioa_socket(ss->client_session.s));
+				addr_cpy(&(tsi->remote_addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
+			}
+			if(ss->alloc.relay_session.s) {
+				tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
+				addr_cpy(&(tsi->relay_addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+			}
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;
 			tsi->shatype = ss->shatype;
