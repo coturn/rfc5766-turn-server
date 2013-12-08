@@ -416,7 +416,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 		}
 		telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 		telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
-		telnet_printf(cs->ts,"      SHA256: %s\n",get_flag(tsi->shatype));
+		telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
 		telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
 		if(tsi->peers_size && tsi->peers) {
 			telnet_printf(cs->ts,"      peers:\n");
@@ -493,10 +493,6 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
 
-#if !defined(TURN_NO_HIREDIS)
-		if(use_redis_statsdb)
-			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
-#endif
 		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
 		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
 
@@ -508,8 +504,44 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_addr_list(cs,&alternate_servers_list,1,"Alternate server",0);
 		cli_print_addr_list(cs,&tls_alternate_servers_list,1,"TLS alternate server",0);
 
-		if(userdb[0])
+		if(userdb[0]) {
+			switch(userdb_type) {
+			case TURN_USERDB_TYPE_FILE:
+				cli_print_str(cs,"file","DB type",0);
+				break;
+#if !defined(TURN_NO_PQ)
+			case TURN_USERDB_TYPE_PQ:
+				cli_print_str(cs,"Postgres","DB type",0);
+				break;
+#endif
+#if !defined(TURN_NO_MYSQL)
+			case TURN_USERDB_TYPE_MYSQL:
+				cli_print_str(cs,"MySQL/MariaDB","DB type",0);
+				break;
+#endif
+#if !defined(TURN_NO_HIREDIS)
+			case TURN_USERDB_TYPE_REDIS:
+				cli_print_str(cs,"redis","DB type",0);
+				break;
+#endif
+			default:
+				cli_print_str(cs,"unknown","DB type",0);
+			};
 			cli_print_str(cs,userdb,"DB",0);
+		} else {
+			cli_print_str(cs,"none","DB type",0);
+			cli_print_str(cs,"none","DB",0);
+		}
+
+#if !defined(TURN_NO_HIREDIS)
+		if(use_redis_statsdb && redis_statsdb[0])
+			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
+#endif
+
+		if(cipher_list[0])
+			cli_print_str(cs,cipher_list,"cipher-list",0);
+		else
+			cli_print_str(cs,"default","cipher-list",0);
 
 		cli_print_flag(cs,use_lt_credentials,"Long-term authorization mechanism",0);
 		cli_print_flag(cs,use_st_credentials,"Short-term authorization mechanism",0);

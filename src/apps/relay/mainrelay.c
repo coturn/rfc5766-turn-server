@@ -35,7 +35,7 @@
 static void openssl_setup(void);
 
 #define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
-static char cipher_list[1025]="";
+char cipher_list[1025]="";
 
 SSL_CTX *tls_ctx_ssl23 = NULL;
 SSL_CTX *tls_ctx_v1_0 = NULL;
@@ -903,7 +903,6 @@ static void set_option(int c, char *value)
 		break;
 	case 'r':
 		STRCPY(global_realm,value);
-		STRCPY(users->realm, value);
 		break;
 	case 'q':
 		users->user_quota = atoi(value);

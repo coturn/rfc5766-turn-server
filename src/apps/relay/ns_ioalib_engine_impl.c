@@ -3020,15 +3020,14 @@ void turn_report_session_usage(void *session)
 		turn_turnserver *server = (turn_turnserver*)ss->server;
 		if(server && (ss->received_packets || ss->sent_packets)) {
 			ioa_engine_handle e = turn_server_get_engine(server);
-			allocation *a = &(ss->alloc);
 			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Session allocation id=0x%lx, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", get_allocation_id(a), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Session allocation id=%llu, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #if !defined(TURN_NO_HIREDIS)
 				if(default_async_context_is_not_empty()) {
 					char key[1024];
-					snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/traffic",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+					snprintf(key,sizeof(key),"turn/user/%s/allocation/%llu/traffic",(char*)ss->username, (unsigned long long)(ss->id));
 					send_message_to_redis(NULL, "publish", key, "rcvp=%lu, rcvb=%lu, sentp=%lu, sentb=%lu",(unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #endif

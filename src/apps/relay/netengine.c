@@ -1162,7 +1162,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					rs->ioa_eng, 0,
 					fingerprint, DONT_FRAGMENT_SUPPORTED,
 					users->ct,
-					users->realm,
+					(u08bits*)global_realm,
 					start_user_check,
 					check_new_allocation_quota,
 					release_allocation_quota,

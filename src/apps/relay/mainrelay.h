@@ -121,6 +121,8 @@ extern int do_not_use_config_file;
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
+extern char cipher_list[1025];
+
 ////////////////  Listener server /////////////////
 
 extern int listener_port;
