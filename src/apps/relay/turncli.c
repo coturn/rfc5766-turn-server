@@ -100,7 +100,8 @@ static char CLI_HELP_STR[] = "\n"
 "  stop, shutdown, halt - shutdown TURN Server\n\n"
 "  pc - print configuration\n\n"
 "  tc <param-name> - toggle configuration parameter\n"
-"     (see pc command output for 'toggleable' param names)\n\n";
+"     (see pc command output for 'toggleable' param names)\n\n"
+"  ps [username] - print sessions\n\n";
 
 static char CLI_GREETING_STR[] =
 "TURN Server\n"
@@ -142,16 +143,20 @@ struct toggleable_command tcmds[] = {
 
 ///////////////////////////////
 
+static const char* get_flag(int val)
+{
+	if(val)
+		return "ON";
+	return "OFF";
+}
+
 static void cli_print_flag(struct cli_session* cs, int flag, const char* name, int changeable)
 {
 	if(cs && cs->ts && name) {
-		const char* sflag="OFF";
-		if(flag)
-			sflag="ON";
 		const char *sc="";
 		if(changeable)
 			sc=" (*)";
-		telnet_printf(cs->ts,"  %s: %s%s\n",name,sflag,sc);
+		telnet_printf(cs->ts,"  %s: %s%s\n",name,get_flag(flag),sc);
 	}
 }
 
@@ -261,6 +266,94 @@ static void toggle_cli_param(struct cli_session* cs, const char* pn)
 		}
 
 		telnet_printf(cs->ts,"\n");
+	}
+}
+
+struct ps_arg {
+	struct cli_session* cs;
+	size_t counter;
+	turn_time_t ct;
+	const char* username;
+};
+
+static const char* pname(SOCKET_TYPE st)
+{
+	switch(st) {
+	case TCP_SOCKET:
+		return "TCP";
+	case UDP_SOCKET:
+		return "UDP";
+	case TLS_SOCKET:
+		return "TLS";
+	case DTLS_SOCKET:
+		return "DTLS";
+	case TENTATIVE_TCP_SOCKET:
+		return "TCP/TLS";
+	default:
+		;
+	};
+	return "UNKNOWN";
+}
+
+static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg)
+{
+	if(key && value && arg) {
+		struct ps_arg *csarg = (struct ps_arg*)arg;
+		struct cli_session* cs = csarg->cs;
+		struct turn_session_info *tsi = (struct turn_session_info *)value;
+		if(csarg->username[0]) {
+			if(strcmp(csarg->username, (char*)tsi->username))
+				return 0;
+		}
+		telnet_printf(cs->ts,"\n    id=%018llu, user <%s>:\n",(unsigned long long)tsi->id, tsi->username);
+		if(turn_time_before(tsi->expiration_time,csarg->ct)) {
+			telnet_printf(cs->ts,"      expired\n");
+		} else {
+			telnet_printf(cs->ts,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
+		}
+		telnet_printf(cs->ts,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
+		{
+			char car[101];
+			char cal[101];
+			char ra[101];
+			addr_to_string(&(tsi->local_addr),(u08bits*)cal);
+			addr_to_string(&(tsi->remote_addr),(u08bits*)car);
+			addr_to_string(&(tsi->relay_addr),(u08bits*)ra);
+			telnet_printf(cs->ts,"      client addr %s, server addr %s, relay addr %s\n",car,cal,ra);
+		}
+		telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
+		telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
+		telnet_printf(cs->ts,"      SHA256: %s\n",get_flag(tsi->shatype));
+		telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
+		if(tsi->peers_size && tsi->peers) {
+			telnet_printf(cs->ts,"      peers:\n");
+			size_t i;
+			char a[101];
+			for(i=0;i<tsi->peers_size;++i) {
+				addr_to_string(&(tsi->peers[i]),(u08bits*)a);
+				telnet_printf(cs->ts,"          %s\n",a);
+			}
+		}
+
+		csarg->counter += 1;
+	}
+	return 0;
+}
+
+static void print_sessions(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn) {
+
+		while(pn[0] == ' ') ++pn;
+		if(pn[0] == '*') ++pn;
+
+		struct ps_arg arg = {cs,0,0,pn};
+
+		arg.ct = turn_time();
+
+		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
+
+		telnet_printf(cs->ts,"\n  Total: %lu\n", (unsigned long)arg.counter);
 	}
 }
 
@@ -446,6 +539,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"tc ") == cmd) {
 				toggle_cli_param(cs,cmd+3);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"ps") == cmd) {
+				print_sessions(cs,cmd+2);
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
@@ -634,6 +730,8 @@ void setup_cli_thread(void)
 	  return;
 	}
 
+	cliserver.sessions = ur_map_create();
+
 	addr_debug_print(cliserver.verbose, &cli_addr,"CLI listener opened on ");
 }
 
@@ -641,21 +739,37 @@ void cli_server_receive_message(struct bufferevent *bev, void *ptr)
 {
 	UNUSED_ARG(ptr);
 
-	//TODO
-
-	struct turn_session_info tsi;
+	struct turn_session_info *tsi = (struct turn_session_info*)turn_malloc(sizeof(struct turn_session_info));
+	turn_session_info_init(tsi);
 	int n = 0;
 	struct evbuffer *input = bufferevent_get_input(bev);
 
-	while ((n = evbuffer_remove(input, &tsi, sizeof(struct turn_session_info))) > 0) {
+	while ((n = evbuffer_remove(input, tsi, sizeof(struct turn_session_info))) > 0) {
 		if (n != sizeof(struct turn_session_info)) {
 			fprintf(stderr,"%s: Weird CLI buffer error: size=%d\n",__FUNCTION__,n);
 			continue;
 		}
 
-		printf("%s: 111.111: %lu: %d\n",__FUNCTION__,(unsigned long)tsi.id, tsi.valid);
+		ur_map_value_type t = 0;
+		if (ur_map_get(cliserver.sessions, (ur_map_key_type)tsi->id, &t) && t) {
+			struct turn_session_info *old = (struct turn_session_info*)t;
+			turn_session_info_clean(old);
+			turn_free(old,sizeof(struct turn_session_info));
+			ur_map_del(cliserver.sessions, (ur_map_key_type)tsi->id, NULL);
+		}
 
-		turn_session_info_clean(&tsi);
+		if(tsi->valid) {
+			ur_map_put(cliserver.sessions, (ur_map_key_type)tsi->id, (ur_map_value_type)tsi);
+			tsi = (struct turn_session_info*)turn_malloc(sizeof(struct turn_session_info));
+			turn_session_info_init(tsi);
+		} else {
+			turn_session_info_clean(tsi);
+		}
+	}
+
+	if(tsi) {
+		turn_session_info_clean(tsi);
+		turn_free(tsi,sizeof(struct turn_session_info));
 	}
 }
 

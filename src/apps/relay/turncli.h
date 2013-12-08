@@ -58,6 +58,7 @@ struct cli_server {
 	struct evconnlistener *l;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
+	ur_map *sessions;
 	pthread_t thr;
 };
 
