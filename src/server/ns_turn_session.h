@@ -81,16 +81,23 @@ typedef struct {
 
 ////// Session info for statistics //////
 
+#define TURN_ADDR_STR_SIZE (101)
+
+typedef struct _addr_data {
+	ioa_addr addr;
+	char saddr[TURN_ADDR_STR_SIZE];
+} addr_data;
+
 struct turn_session_info {
 	turnsession_id id;
 	int valid;
 	turn_time_t expiration_time;
 	SOCKET_TYPE client_protocol;
 	SOCKET_TYPE peer_protocol;
-	ioa_addr local_addr;
-	ioa_addr remote_addr;
-	ioa_addr relay_addr;
-	ioa_addr *peers;
+	addr_data local_addr_data;
+	addr_data remote_addr_data;
+	addr_data relay_addr_data;
+	addr_data *peers_data;
 	size_t peers_size;
 	u08bits username[STUN_MAX_USERNAME_SIZE+1];
 	int enforce_fingerprints;

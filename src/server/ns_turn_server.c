@@ -304,9 +304,9 @@ void turn_session_info_init(struct turn_session_info* tsi) {
 
 void turn_session_info_clean(struct turn_session_info* tsi) {
 	if(tsi) {
-		if(tsi->peers) {
-			turn_free(tsi->peers, sizeof(ioa_addr)*(tsi->peers_size));
-			tsi->peers = NULL;
+		if(tsi->peers_data) {
+			turn_free(tsi->peers_data, sizeof(addr_data)*(tsi->peers_size));
+			tsi->peers_data = NULL;
 		}
 		turn_session_info_init(tsi);
 	}
@@ -315,16 +315,18 @@ void turn_session_info_clean(struct turn_session_info* tsi) {
 void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer)
 {
 	if(tsi && peer) {
-		if(tsi->peers) {
+		if(tsi->peers_data) {
 			size_t sz;
 			for(sz=0;sz<tsi->peers_size;++sz) {
-				if(addr_eq(peer, &(tsi->peers[sz]))) {
+				if(addr_eq(peer, &(tsi->peers_data[sz].addr))) {
 					return;
 				}
 			}
 		}
-		tsi->peers = (ioa_addr*)turn_realloc(tsi->peers,tsi->peers_size*sizeof(ioa_addr),(tsi->peers_size+1)*sizeof(ioa_addr));
-		addr_cpy(&(tsi->peers[tsi->peers_size]),peer);
+		tsi->peers_data = (addr_data*)turn_realloc(tsi->peers_data,tsi->peers_size*sizeof(addr_data),(tsi->peers_size+1)*sizeof(addr_data));
+		addr_cpy(&(tsi->peers_data[tsi->peers_size].addr),peer);
+		addr_to_string(&(tsi->peers_data[tsi->peers_size].addr),
+			       (u08bits*)tsi->peers_data[tsi->peers_size].saddr);
 		tsi->peers_size += 1;
 	}
 }
@@ -365,12 +367,15 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			tsi->expiration_time = ss->alloc.expiration_time;
 			if(ss->client_session.s) {
 				tsi->client_protocol = get_ioa_socket_type(ss->client_session.s);
-				addr_cpy(&(tsi->local_addr),get_local_addr_from_ioa_socket(ss->client_session.s));
-				addr_cpy(&(tsi->remote_addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
+				addr_cpy(&(tsi->local_addr_data.addr),get_local_addr_from_ioa_socket(ss->client_session.s));
+				addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
+				addr_cpy(&(tsi->remote_addr_data.addr),get_remote_addr_from_ioa_socket(ss->client_session.s));
+				addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
 			}
 			if(ss->alloc.relay_session.s) {
 				tsi->peer_protocol = get_ioa_socket_type(ss->alloc.relay_session.s);
-				addr_cpy(&(tsi->relay_addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+				addr_cpy(&(tsi->relay_addr_data.addr),get_local_addr_from_ioa_socket(ss->alloc.relay_session.s));
+				addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
 			}
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;

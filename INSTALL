@@ -898,6 +898,7 @@ connections.
 
 WARNING: all telnet communications are going unencrypted over the network. For
 security reasons, we advise using the loopback IP addresses for CLI (127.0.0.1 
-or ::1). The CLI may have a password configured, but that password is transferred
-over the network unencrypted, too. So sticking to the local system CLI access
-would be a wise decision.
+or ::1). The CLI may have a password configured, but that password is
+transferred over the network unencrypted, too. So sticking to the local system
+CLI access, and accessing the turnserver system terminal with ssh only, would 
+be a wise decision.

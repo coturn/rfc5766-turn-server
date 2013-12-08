@@ -412,25 +412,28 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 		}
 		telnet_printf(cs->ts,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
 		{
-			char car[101];
-			char cal[101];
-			char ra[101];
-			addr_to_string(&(tsi->local_addr),(u08bits*)cal);
-			addr_to_string(&(tsi->remote_addr),(u08bits*)car);
-			addr_to_string(&(tsi->relay_addr),(u08bits*)ra);
-			telnet_printf(cs->ts,"      client addr %s, server addr %s, relay addr %s\n",car,cal,ra);
+		  if(!tsi->local_addr_data.saddr[0])
+		    addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
+		  if(!tsi->remote_addr_data.saddr[0])
+		    addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
+		  if(!tsi->relay_addr_data.saddr[0])
+		    addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+		  telnet_printf(cs->ts,"      client addr %s, server addr %s, relay addr %s\n",
+				tsi->remote_addr_data.saddr,
+				tsi->local_addr_data.saddr,
+				tsi->relay_addr_data.saddr);
 		}
 		telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 		telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
 		telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
 		telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
-		if(tsi->peers_size && tsi->peers) {
+		if(tsi->peers_size && tsi->peers_data) {
 			telnet_printf(cs->ts,"      peers:\n");
 			size_t i;
-			char a[101];
 			for(i=0;i<tsi->peers_size;++i) {
-				addr_to_string(&(tsi->peers[i]),(u08bits*)a);
-				telnet_printf(cs->ts,"          %s\n",a);
+			  if(!tsi->peers_data[i].saddr[0])
+			    addr_to_string(&(tsi->peers_data[i].addr),(u08bits*)tsi->peers_data[i].saddr);
+			  telnet_printf(cs->ts,"          %s\n",tsi->peers_data[i].saddr);
 			}
 		}
 
