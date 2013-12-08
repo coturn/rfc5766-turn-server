@@ -94,22 +94,33 @@ struct cli_session {
 
 #define CLI_PASSWORD_TRY_NUMBER (5)
 
-static char CLI_HELP_STR[] = "\n"
-"  ?, h, help - print this text\n\n"
-"  quit, q, exit, bye - end CLI session\n\n"
-"  stop, shutdown, halt - shutdown TURN Server\n\n"
-"  pc - print configuration\n\n"
-"  tc <param-name> - toggle a configuration parameter\n"
-"     (see pc command output for togglable param names)\n\n"
-"  cc <param-name> <param-value> - change a configuration parameter\n"
-"     (see pc command output for changeable param names)\n\n"
-"  ps [username] - print sessions\n\n";
+static const char *CLI_HELP_STR[] = 
+  {"",
+   "  ?, h, help - print this text",
+   "",
+   "  quit, q, exit, bye - end CLI session",
+   "",
+   "  stop, shutdown, halt - shutdown TURN Server",
+   "",
+   "  pc - print configuration",
+   "",
+   "  tc <param-name> - toggle a configuration parameter",
+   "     (see pc command output for togglable param names)",
+   "",
+   "  cc <param-name> <param-value> - change a configuration parameter",
+   "     (see pc command output for changeable param names)",
+   "",
+   "  ps [username] - print sessions",
+   "",
+   NULL};
 
-static char CLI_GREETING_STR[] =
-"TURN Server\n"
-"rfc5766-turn-server\n"
-TURN_SOFTWARE
-"\nType '?' for help\n";
+static const char *CLI_GREETING_STR[] = {
+  "TURN Server",
+  "rfc5766-turn-server",
+  TURN_SOFTWARE,
+  "",
+  "Type '?' for help",
+  NULL};
 
 static char CLI_CURSOR[] = "> ";
 
@@ -155,6 +166,17 @@ struct changeable_command ccmds[] = {
 };
 
 ///////////////////////////////
+
+static void print_str_array(struct cli_session* cs, const char** sa)
+{
+  if(cs && sa) {
+    int i=0;
+    while(sa[i]) {
+      telnet_printf(cs->ts,"%s\n",sa[i]);
+      i++;
+    }
+  }
+}
 
 static const char* get_flag(int val)
 {
@@ -281,7 +303,10 @@ static void toggle_cli_param(struct cli_session* cs, const char* pn)
 			++i;
 		}
 
-		telnet_printf(cs->ts, "\n  Error: unknown or constant parameter: %s.\n  You can toggle only the following parameters:\n\n",pn);
+		telnet_printf(cs->ts, "\n");
+		telnet_printf(cs->ts, "  Error: unknown or constant parameter: %s.\n",pn);
+		telnet_printf(cs->ts, "  You can toggle only the following parameters:\n");
+		telnet_printf(cs->ts, "\n");
 
 		i=0;
 
@@ -320,7 +345,10 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 			++i;
 		}
 
-		telnet_printf(cs->ts, "\n  Error: unknown or constant parameter: %s.\n  You can change only the following parameters:\n\n",pn);
+		telnet_printf(cs->ts, "\n");
+		telnet_printf(cs->ts, "  Error: unknown or constant parameter: %s.\n",pn);
+		telnet_printf(cs->ts, "  You can change only the following parameters:\n");
+		telnet_printf(cs->ts, "\n");
 
 		i=0;
 
@@ -369,7 +397,8 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			if(strcmp(csarg->username, (char*)tsi->username))
 				return 0;
 		}
-		telnet_printf(cs->ts,"\n    id=%018llu, user <%s>:\n",(unsigned long long)tsi->id, tsi->username);
+		telnet_printf(cs->ts, "\n");
+		telnet_printf(cs->ts,"    id=%018llu, user <%s>:\n",(unsigned long long)tsi->id, tsi->username);
 		if(turn_time_before(tsi->expiration_time,csarg->ct)) {
 			telnet_printf(cs->ts,"      expired\n");
 		} else {
@@ -417,7 +446,9 @@ static void print_sessions(struct cli_session* cs, const char* pn)
 
 		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
 
-		telnet_printf(cs->ts,"\n  Total: %lu\n\n", (unsigned long)arg.counter);
+		telnet_printf(cs->ts,"\n");
+		telnet_printf(cs->ts,"  Total: %lu\n", (unsigned long)arg.counter);
+		telnet_printf(cs->ts,"\n");
 	}
 }
 
@@ -492,10 +523,13 @@ static void cli_print_configuration(struct cli_session* cs)
 
 
 		{
-			const char *str="\n  (Note 1: params with (*) are togglable)\n";
-			telnet_send(cs->ts,str,strlen(str));
-			str="\n  (Note 2: params with (**) are changeable)\n";
-			telnet_send(cs->ts,str,strlen(str));
+		  telnet_printf(cs->ts,"\n");
+		  const char *str="  (Note 1: params with (*) are togglable)";
+		  telnet_printf(cs->ts,"%s\n",str);
+		  telnet_printf(cs->ts,"\n");
+		  str="  (Note 2: params with (**) are changeable)";
+		  telnet_printf(cs->ts,"%s\n",str);
+		  telnet_printf(cs->ts,"\n");
 		}
 	}
 }
@@ -543,7 +577,7 @@ static void close_cli_session(struct cli_session* cs)
 static void type_cli_cursor(struct cli_session* cs)
 {
 	if(cs && (cs->bev)) {
-		telnet_send(cs->ts, CLI_CURSOR, strlen(CLI_CURSOR));
+	  telnet_printf(cs->ts, "%s", CLI_CURSOR);
 	}
 }
 
@@ -583,7 +617,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 						close_cli_session(cs);
 					} else {
 						const char* ipwd="Enter password: ";
-						telnet_send(cs->ts,ipwd,strlen(ipwd));
+						telnet_printf(cs->ts,"%s\n",ipwd);
 					}
 				} else {
 					cs->auth_completed = 1;
@@ -592,18 +626,18 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				}
 			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)||(strcmp(cmd,"q") == 0)) {
 				const char* str="Bye !";
-				telnet_send(cs->ts,str,strlen(str));
+				telnet_printf(cs->ts,"%s\n",str);
 				close_cli_session(cs);
 				ret = -1;
 			} else if((strcmp(cmd,"halt") == 0)||(strcmp(cmd,"shutdown") == 0)||(strcmp(cmd,"stop") == 0)) {
 				addr_debug_print(1, &(cs->addr),"Shutdown command received from CLI user");
 				const char* str="TURN server is shutting down";
-				telnet_send(cs->ts,str,strlen(str));
+				telnet_printf(cs->ts,"%s\n",str);
 				close_cli_session(cs);
 				exit(0);
 			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
-				telnet_send(cs->ts,CLI_HELP_STR,strlen(CLI_HELP_STR));
-				type_cli_cursor(cs);
+			  print_str_array(cs,CLI_HELP_STR);
+			  type_cli_cursor(cs);
 			} else if(strcmp(cmd,"pc")==0) {
 				cli_print_configuration(cs);
 				type_cli_cursor(cs);
@@ -621,7 +655,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
-				telnet_send(cs->ts,str,strlen(str));
+				telnet_printf(cs->ts,"%s\n",str);
 				type_cli_cursor(cs);
 			}
 		} else {
@@ -734,13 +768,13 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 		addr_debug_print(cliserver.verbose, (ioa_addr*)sa,str);
 		close_cli_session(clisession);
 	} else {
-		telnet_send(clisession->ts, CLI_GREETING_STR, strlen(CLI_GREETING_STR));
-		if(cli_password[0]) {
-			const char* ipwd="Enter password: ";
-			telnet_send(clisession->ts,ipwd,strlen(ipwd));
-		} else {
-			type_cli_cursor(clisession);
-		}
+	  print_str_array(clisession, CLI_GREETING_STR);
+	  if(cli_password[0]) {
+	    const char* ipwd="Enter password: ";
+	    telnet_printf(clisession->ts,"%s\n",ipwd);
+	  } else {
+	    type_cli_cursor(clisession);
+	  }
 	}
 }
 
