@@ -57,10 +57,8 @@ extern "C" {
 /* printf type checking feature in GCC and some other compilers */
 #if __GNUC__
 # define TELNET_GNU_PRINTF(f,a) __attribute__((format(printf, f, a))) /*!< internal helper */
-# define TELNET_GNU_SENTINEL __attribute__((sentinel)) /*!< internal helper */
 #else
 # define TELNET_GNU_PRINTF(f,a) /*!< internal helper */
-# define TELNET_GNU_SENTINEL /*!< internal helper */
 #endif
 
 /*! Telnet state tracker object type. */
@@ -636,7 +634,7 @@ extern void telnet_send_zmp(telnet_t *telnet, size_t argc, const char **argv);
  *
  * \param telnet Telnet state tracker object.
  */
-extern void telnet_send_zmpv(telnet_t *telnet, ...) TELNET_GNU_SENTINEL;
+extern void telnet_send_zmpv(telnet_t *telnet, ...);
 
 /*!
  * \brief Send a ZMP command.
