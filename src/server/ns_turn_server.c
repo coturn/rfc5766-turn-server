@@ -3335,8 +3335,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (!ss)
 		return -1;
 
-	report_turn_session_info(server,ss,1);
-
 	ts_ur_session* elem = &(ss->client_session);
 
 	if(*(server->mobility) && !force && ss->is_mobile) {
@@ -3354,6 +3352,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 		return 0;
 	}
+
+	report_turn_session_info(server,ss,1);
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
