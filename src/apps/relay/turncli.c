@@ -353,7 +353,7 @@ static void print_sessions(struct cli_session* cs, const char* pn)
 
 		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
 
-		telnet_printf(cs->ts,"\n  Total: %lu\n", (unsigned long)arg.counter);
+		telnet_printf(cs->ts,"\n  Total: %lu\n\n", (unsigned long)arg.counter);
 	}
 }
 
