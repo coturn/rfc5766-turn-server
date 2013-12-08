@@ -120,8 +120,6 @@ static const char *CLI_GREETING_STR[] = {
   "TURN Server",
   "rfc5766-turn-server",
   TURN_SOFTWARE,
-  "",
-  "Type '?' for help",
   NULL};
 
 static char CLI_CURSOR[] = "> ";
@@ -676,8 +674,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				close_cli_session(cs);
 				exit(0);
 			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
-			  print_str_array(cs,CLI_HELP_STR);
-			  type_cli_cursor(cs);
+				print_str_array(cs, CLI_GREETING_STR);
+				print_str_array(cs, CLI_HELP_STR);
+				type_cli_cursor(cs);
 			} else if(strcmp(cmd,"pc")==0) {
 				cli_print_configuration(cs);
 				type_cli_cursor(cs);
@@ -812,6 +811,8 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 		close_cli_session(clisession);
 	} else {
 	  print_str_array(clisession, CLI_GREETING_STR);
+	  telnet_printf(clisession->ts,"\n");
+	  telnet_printf(clisession->ts,"Type '?' for help\n");
 	  if(cli_password[0]) {
 	    const char* ipwd="Enter password: ";
 	    telnet_printf(clisession->ts,"%s\n",ipwd);
