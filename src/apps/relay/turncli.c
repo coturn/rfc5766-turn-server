@@ -490,49 +490,60 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,stun_only,"stun-only",1);
 		cli_print_flag(cs,no_stun,"no-stun",1);
 		cli_print_flag(cs,secure_stun,"secure-stun",1);
-		cli_print_flag(cs,server_relay,"server-relay",1);
 		cli_print_flag(cs,do_not_use_config_file,"do-not-use-config-file",0);
 		cli_print_flag(cs,rfc5780,"RFC5780 support",0);
-		cli_print_flag(cs,no_udp,"no-udp",0);
-		cli_print_flag(cs,no_tcp,"no-tcp",0);
-		cli_print_flag(cs,no_dtls,"no-dtls",0);
-		cli_print_flag(cs,no_tls,"no-tls",0);
-		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
-		cli_print_flag(cs,no_tcp_relay,"no-tcp-relay",1);
 		cli_print_flag(cs,new_net_engine,"new net engine",0);
-		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
-		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
 		cli_print_flag(cs,fingerprint,"enforce fingerprints",0);
 		cli_print_flag(cs,mobility,"mobility",1);
 		cli_print_flag(cs,udp_self_balance,"udp-self-balance",0);
 		cli_print_flag(cs,shatype,"enforce SHA256",0);
+
+		if(cipher_list[0])
+			cli_print_str(cs,cipher_list,"cipher-list",0);
+		else
+			cli_print_str(cs,"default","cipher-list",0);
+
+		telnet_printf(cs->ts,"\n");
+
+		cli_print_str_array(cs,listener.addrs,listener.addrs_number,"Listener addr",0);
+
+		cli_print_flag(cs,no_udp,"no-udp",0);
+		cli_print_flag(cs,no_tcp,"no-tcp",0);
+		cli_print_flag(cs,no_dtls,"no-dtls",0);
+		cli_print_flag(cs,no_tls,"no-tls",0);
 
 		cli_print_uint(cs,(unsigned long)listener_port,"listener-port",0);
 		cli_print_uint(cs,(unsigned long)tls_listener_port,"tls-listener-port",0);
 		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);
 		cli_print_uint(cs,(unsigned long)alt_tls_listener_port,"alt-tls-listener-port",0);
 
-		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
-
-		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
-		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
-
-		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
-
-		cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
-
-		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
-		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
-
-		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
-
 		cli_print_addr(cs,external_ip,0,"External public IP",0);
+
+		telnet_printf(cs->ts,"\n");
 
 		cli_print_addr_list(cs,&aux_servers_list,1,"Aux server",0);
 		cli_print_addr_list(cs,&alternate_servers_list,1,"Alternate server",0);
 		cli_print_addr_list(cs,&tls_alternate_servers_list,1,"TLS alternate server",0);
+
+		telnet_printf(cs->ts,"\n");
+
+		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
+
+		cli_print_flag(cs,server_relay,"server-relay",1);
+
+		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
+		cli_print_flag(cs,no_tcp_relay,"no-tcp-relay",1);
+
+		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
+		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
+
+		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
+		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
+
+		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
+		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
+
+		telnet_printf(cs->ts,"\n");
 
 		if(userdb[0]) {
 			switch(userdb_type) {
@@ -568,10 +579,7 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
 #endif
 
-		if(cipher_list[0])
-			cli_print_str(cs,cipher_list,"cipher-list",0);
-		else
-			cli_print_str(cs,"default","cipher-list",0);
+		telnet_printf(cs->ts,"\n");
 
 		cli_print_flag(cs,use_lt_credentials,"Long-term authorization mechanism",0);
 		cli_print_flag(cs,use_st_credentials,"Short-term authorization mechanism",0);
@@ -583,6 +591,16 @@ static void cli_print_configuration(struct cli_session* cs)
 		if(global_realm[0])
 			cli_print_str(cs,global_realm,"Realm",0);
 
+		telnet_printf(cs->ts,"\n");
+
+		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",2);
+		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",2);
+		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
+		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
+
+		telnet_printf(cs->ts,"\n");
+
+		cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
 
 		{
 		  telnet_printf(cs->ts,"\n");
