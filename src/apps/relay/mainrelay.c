@@ -55,15 +55,15 @@ SSL_CTX *dtls_ctx = NULL;
  * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
  *
 */
-static char ca_cert_file[1025]="";
-static char cert_file[1025]="turn_server_cert.pem";
-static char pkey_file[1025]="turn_server_pkey.pem";
+char ca_cert_file[1025]="";
+char cert_file[1025]="turn_server_cert.pem";
+char pkey_file[1025]="turn_server_pkey.pem";
 
 SHATYPE shatype = SHATYPE_SHA1;
 
 //////////////// Common params ////////////////////
 
-static char pidfile[1025] = "/var/run/turnserver.pid";
+char pidfile[1025] = "/var/run/turnserver.pid";
 
 int verbose=TURN_VERBOSE_NONE;
 int turn_daemon = 0;

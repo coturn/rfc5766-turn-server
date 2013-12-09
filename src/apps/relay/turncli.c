@@ -483,6 +483,7 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 static void cli_print_configuration(struct cli_session* cs)
 {
 	if(cs) {
+		telnet_printf(cs->ts,"\n");
 
 		cli_print_flag(cs,verbose,"verbose",0);
 		cli_print_flag(cs,turn_daemon,"daemon process",0);
@@ -496,16 +497,39 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,fingerprint,"enforce fingerprints",0);
 		cli_print_flag(cs,mobility,"mobility",1);
 		cli_print_flag(cs,udp_self_balance,"udp-self-balance",0);
-		cli_print_flag(cs,shatype,"enforce SHA256",0);
+		cli_print_str(cs,pidfile,"pidfile",0);
+		cli_print_uint(cs,(unsigned long)getuid(),"process user ID",0);
+		cli_print_uint(cs,(unsigned long)getgid(),"process group ID",0);
+
+		{
+			char wd[1025];
+			if(getcwd(wd,sizeof(wd)-1)) {
+				cli_print_str(cs,wd,"process dir",0);
+			}
+		}
+
+		telnet_printf(cs->ts,"\n");
 
 		if(cipher_list[0])
 			cli_print_str(cs,cipher_list,"cipher-list",0);
 		else
 			cli_print_str(cs,"default","cipher-list",0);
 
+		if(ca_cert_file[0])
+			cli_print_str(cs,ca_cert_file,"CA-cert-file",0);
+		if(cert_file[0])
+			cli_print_str(cs,cert_file,"cert-file",0);
+		if(pkey_file[0])
+			cli_print_str(cs,pkey_file,"pkey-file",0);
+
+		cli_print_flag(cs,shatype,"enforce SHA256",0);
+
 		telnet_printf(cs->ts,"\n");
 
 		cli_print_str_array(cs,listener.addrs,listener.addrs_number,"Listener addr",0);
+
+		if(listener_ifname[0])
+			cli_print_str(cs,listener_ifname,"listener-ifname",0);
 
 		cli_print_flag(cs,no_udp,"no-udp",0);
 		cli_print_flag(cs,no_tcp,"no-tcp",0);
@@ -528,6 +552,9 @@ static void cli_print_configuration(struct cli_session* cs)
 		telnet_printf(cs->ts,"\n");
 
 		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
+
+		if(relay_ifname[0])
+			cli_print_str(cs,listener_ifname,"relay-ifname",0);
 
 		cli_print_flag(cs,server_relay,"server-relay",1);
 

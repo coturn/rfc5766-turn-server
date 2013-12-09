@@ -119,9 +119,15 @@ extern vint server_relay;
 
 extern int do_not_use_config_file;
 
+char pidfile[1025];
+
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
 extern char cipher_list[1025];
+
+extern char ca_cert_file[1025];
+extern char cert_file[1025];
+extern char pkey_file[1025];
 
 ////////////////  Listener server /////////////////
 
