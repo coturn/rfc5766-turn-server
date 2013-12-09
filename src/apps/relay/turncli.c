@@ -79,6 +79,8 @@ int cli_port = CLI_DEFAULT_PORT;
 
 char cli_password[CLI_PASSWORD_LENGTH] = "";
 
+int cli_max_output_sessions = 256;
+
 ///////////////////////////////
 
 struct cli_session {
@@ -162,6 +164,7 @@ struct changeable_command {
 struct changeable_command ccmds[] = {
 				{"total-quota",NULL},
 				{"user-quota",NULL},
+				{"cli-max-output-sessions",(vintp)&cli_max_output_sessions},
 				{NULL,NULL}
 };
 
@@ -403,40 +406,43 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					return 0;
 			}
 		}
-		telnet_printf(cs->ts, "\n");
-		telnet_printf(cs->ts,"    %lu) id=%018llu, user <%s>:\n",
+		if((unsigned long)csarg->counter<(unsigned long)cli_max_output_sessions) {
+			telnet_printf(cs->ts, "\n");
+			telnet_printf(cs->ts,"    %lu) id=%018llu, user <%s>:\n",
 			      (unsigned long)(csarg->counter+1), 
 			      (unsigned long long)tsi->id, 
 			      tsi->username);
-		if(turn_time_before(tsi->expiration_time,csarg->ct)) {
-			telnet_printf(cs->ts,"      expired\n");
-		} else {
-			telnet_printf(cs->ts,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
-		}
-		telnet_printf(cs->ts,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
-		{
-		  if(!tsi->local_addr_data.saddr[0])
-		    addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
-		  if(!tsi->remote_addr_data.saddr[0])
-		    addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
-		  if(!tsi->relay_addr_data.saddr[0])
-		    addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
-		  telnet_printf(cs->ts,"      client addr %s, server addr %s, relay addr %s\n",
-				tsi->remote_addr_data.saddr,
-				tsi->local_addr_data.saddr,
-				tsi->relay_addr_data.saddr);
-		}
-		telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
-		telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
-		telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
-		telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
-		if(tsi->peers_size && tsi->peers_data) {
-			telnet_printf(cs->ts,"      peers:\n");
-			size_t i;
-			for(i=0;i<tsi->peers_size;++i) {
-			  if(!tsi->peers_data[i].saddr[0])
-			    addr_to_string(&(tsi->peers_data[i].addr),(u08bits*)tsi->peers_data[i].saddr);
-			  telnet_printf(cs->ts,"          %s\n",tsi->peers_data[i].saddr);
+			if(turn_time_before(tsi->expiration_time,csarg->ct)) {
+				telnet_printf(cs->ts,"      expired\n");
+			} else {
+				telnet_printf(cs->ts,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
+			}
+			telnet_printf(cs->ts,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
+			{
+				if(!tsi->local_addr_data.saddr[0])
+					addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
+				if(!tsi->remote_addr_data.saddr[0])
+					addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
+				if(!tsi->relay_addr_data.saddr[0])
+					addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
+				telnet_printf(cs->ts,"      client addr %s, server addr %s\n",
+							tsi->remote_addr_data.saddr,
+							tsi->local_addr_data.saddr);
+				telnet_printf(cs->ts,"      relay addr %s\n",
+							tsi->relay_addr_data.saddr);
+			}
+			telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
+			telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
+			telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
+			telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
+			if(tsi->peers_size && tsi->peers_data) {
+				telnet_printf(cs->ts,"      peers:\n");
+				size_t i;
+				for(i=0;i<tsi->peers_size;++i) {
+					if(!tsi->peers_data[i].saddr[0])
+						addr_to_string(&(tsi->peers_data[i].addr),(u08bits*)tsi->peers_data[i].saddr);
+					telnet_printf(cs->ts,"          %s\n",tsi->peers_data[i].saddr);
+				}
 			}
 		}
 
@@ -459,8 +465,18 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
 
 		telnet_printf(cs->ts,"\n");
+		if((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
+			telnet_printf(cs->ts,"...\n");
+			telnet_printf(cs->ts,"\n");
+		}
 		telnet_printf(cs->ts,"  Total: %lu\n", (unsigned long)arg.counter);
 		telnet_printf(cs->ts,"\n");
+		if((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
+			telnet_printf(cs->ts,"  Warning: too many output sessions, more than the\n");
+			telnet_printf(cs->ts,"  current value of cli-max-output-sessions CLI parameter.\n");
+			telnet_printf(cs->ts,"  Refine your request or increase cli-max-output-sessions value.\n");
+			telnet_printf(cs->ts,"\n");
+		}
 	}
 }
 
@@ -504,6 +520,8 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
 
 		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
+
+		cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
 
 		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
 		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
