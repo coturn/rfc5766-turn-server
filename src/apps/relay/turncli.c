@@ -404,7 +404,10 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			}
 		}
 		telnet_printf(cs->ts, "\n");
-		telnet_printf(cs->ts,"    id=%018llu, user <%s>:\n",(unsigned long long)tsi->id, tsi->username);
+		telnet_printf(cs->ts,"    %lu) id=%018llu, user <%s>:\n",
+			      (unsigned long)(csarg->counter+1), 
+			      (unsigned long long)tsi->id, 
+			      tsi->username);
 		if(turn_time_before(tsi->expiration_time,csarg->ct)) {
 			telnet_printf(cs->ts,"      expired\n");
 		} else {
