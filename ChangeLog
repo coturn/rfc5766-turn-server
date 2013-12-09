@@ -1,4 +1,8 @@
-12/XX/2013 Oleg Moskalenko <mom040267@gmail.com>
+12/09/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.1.1 'Arch Lector':
+	- More CLI parameters.
+
+12/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.1.0 'Arch Lector':
 	- Telnet CLI.
 	- RFC 6062 internal messaging fixed.
