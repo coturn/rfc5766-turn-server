@@ -1826,6 +1826,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 	}
 
+#if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
 	{//Elliptic curve algorithms:
 
 		EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -1836,6 +1837,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 			EC_KEY_free(ecdh);
 		}
 	}
+#endif
 
 	{//DH algorithms:
 
