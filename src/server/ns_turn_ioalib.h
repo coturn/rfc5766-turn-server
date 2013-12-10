@@ -202,6 +202,8 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
 int get_ioa_socket_address_family(ioa_socket_handle s);
 SOCKET_TYPE get_ioa_socket_type(ioa_socket_handle s);
 SOCKET_APP_TYPE get_ioa_socket_app_type(ioa_socket_handle s);
+const char* get_ioa_socket_tls_method(ioa_socket_handle s);
+const char* get_ioa_socket_tls_cipher(ioa_socket_handle s);
 void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat);
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s);
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);

@@ -78,6 +78,9 @@ extern int cli_port;
 #define CLI_PASSWORD_LENGTH (129)
 extern char cli_password[CLI_PASSWORD_LENGTH];
 
+#define DEFAULT_CLI_MAX_OUTPUT_SESSIONS (256)
+extern int cli_max_output_sessions;
+
 ////////////////////////////////////////////
 
 void setup_cli_thread(void);

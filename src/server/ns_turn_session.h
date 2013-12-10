@@ -94,6 +94,8 @@ struct turn_session_info {
 	turn_time_t expiration_time;
 	SOCKET_TYPE client_protocol;
 	SOCKET_TYPE peer_protocol;
+	char tls_method[17];
+	char tls_cipher[65];
 	addr_data local_addr_data;
 	addr_data remote_addr_data;
 	addr_data relay_addr_data;

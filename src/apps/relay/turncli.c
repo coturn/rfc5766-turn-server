@@ -79,7 +79,7 @@ int cli_port = CLI_DEFAULT_PORT;
 
 char cli_password[CLI_PASSWORD_LENGTH] = "";
 
-int cli_max_output_sessions = 256;
+int cli_max_output_sessions = DEFAULT_CLI_MAX_OUTPUT_SESSIONS;
 
 ///////////////////////////////
 
@@ -434,6 +434,10 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 			telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 			telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
 			telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
+			if(tsi->tls_method[0]) {
+				telnet_printf(cs->ts,"      TLS method: %s\n",tsi->tls_method);
+				telnet_printf(cs->ts,"      TLS cipher: %s\n",tsi->tls_cipher);
+			}
 			telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
 			if(tsi->peers_size && tsi->peers_data) {
 				telnet_printf(cs->ts,"      peers:\n");

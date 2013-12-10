@@ -451,6 +451,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						when we want to run server applications on the relay endpoints.\n"
 "						This option eliminates the IP permissions check on the packets\n"
 "						incoming to the relay endpoints.\n"
+" --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
+"						This value can be changed on-the-fly in CLI. The default value is 256.\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -531,7 +533,8 @@ enum EXTRA_OPTS {
 	CLI_IP_OPT,
 	CLI_PORT_OPT,
 	CLI_PASSWORD_OPT,
-	SERVER_RELAY_OPT
+	SERVER_RELAY_OPT,
+	CLI_MAX_SESSIONS_OPT
 };
 
 static struct option long_options[] = {
@@ -611,6 +614,7 @@ static struct option long_options[] = {
 				{ "cli-port", required_argument, NULL, CLI_PORT_OPT },
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
+				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -665,40 +669,43 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case CLI_MAX_SESSIONS_OPT:
+	  cli_max_output_sessions = atoi(value);
+	  break;
   case SERVER_RELAY_OPT:
-	  	server_relay = get_bool_value(value);
-		break;
-	case MOBILITY_OPT:
-		mobility = get_bool_value(value);
-		break;
-	case NO_CLI_OPT:
-		use_cli = !get_bool_value(value);
-		break;
-	case CLI_IP_OPT:
-		if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
-		} else{
-			cli_addr_set = 1;
-		}
-		break;
-	case CLI_PORT_OPT:
-		cli_port = atoi(value);
-		break;
-	case CLI_PASSWORD_OPT:
-		STRCPY(cli_password,value);
-		break;
-	case PROC_USER_OPT: {
-		struct passwd* pwd = getpwnam(value);
-		if(!pwd) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n",value);
-			exit(-1);
-		} else {
-			procuserid = pwd->pw_uid;
-			procuserid_set = 1;
-			STRCPY(procusername,value);
-		}
-	}
-	break;
+	  server_relay = get_bool_value(value);
+	  break;
+  case MOBILITY_OPT:
+	  mobility = get_bool_value(value);
+	  break;
+  case NO_CLI_OPT:
+	  use_cli = !get_bool_value(value);
+	  break;
+  case CLI_IP_OPT:
+	  if(make_ioa_addr((const u08bits*)value,0,&cli_addr)<0) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot set cli address: %s\n",value);
+	  } else{
+		  cli_addr_set = 1;
+	  }
+	  break;
+  case CLI_PORT_OPT:
+	  cli_port = atoi(value);
+	  break;
+  case CLI_PASSWORD_OPT:
+	  STRCPY(cli_password,value);
+	  break;
+  case PROC_USER_OPT: {
+	  struct passwd* pwd = getpwnam(value);
+	  if(!pwd) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unknown user name: %s\n",value);
+		  exit(-1);
+	  } else {
+		  procuserid = pwd->pw_uid;
+		  procuserid_set = 1;
+		  STRCPY(procusername,value);
+	  }
+  }
+  break;
 	case PROC_GROUP_OPT: {
 		struct group* gr = getgrnam(value);
 		if(!gr) {

@@ -1,11 +1,11 @@
 12/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.2.1 'Arch Lector':
+	- DH cipher suites basic implementation.
+	- Elliptic Curve cipher suites basic implementation.
 	- RFC 6062 crash fixed.
 	- More CLI parameters added.
 	- Redis allocation statistics fixed.
-	- DH cipher suites basic implementation.
-	- Elliptic Curve cipher suites basic implementation.
-	- TODO: cli lines configurable.
+	- Number of cli max session lines configurable.
 	- uclient cipher suite configurable.
 
 12/08/2013 Oleg Moskalenko <mom040267@gmail.com>

@@ -213,14 +213,14 @@ Flags:
 			
 --mobility		Mobility with ICE (MICE) specs support.
 
---no-cli			Turn OFF the CLI support. By default it is always ON.
-				See also options --cli-ip and --cli-port.
+--no-cli		Turn OFF the CLI support. By default it is always ON.
+			See also options --cli-ip and --cli-port.
 				
---server-relay			Server relay. NON-STANDARD AND DANGEROUS OPTION. 
-						Only for those applications when we want to run 
-						server applications on the relay endpoints.
-						This option eliminates the IP permissions check 
-						on the packets incoming to the relay endpoints.
+--server-relay		Server relay. NON-STANDARD AND DANGEROUS OPTION. 
+			Only for those applications when we want to run 
+			server applications on the relay endpoints.
+			This option eliminates the IP permissions check 
+			on the packets incoming to the relay endpoints.
 
 -h			Help.
     
@@ -446,15 +446,18 @@ Options with required values:
 --proc-group		Group ID to run the process. After the initialization, the turnserver process
 			will make an attempt to change the current group ID to that group.
 			
---cli-ip			Local system IP address to be used for CLI management interface.
-					The turnserver process can be accessed for management with telnet,
-					at this IP address and on the CLI port (see the next parameter). 
-					Default value is 127.0.0.1. You can use telnet or putty (in telnet mode)
-					to access the CLI management interface. 
+--cli-ip		Local system IP address to be used for CLI management interface.
+			The turnserver process can be accessed for management with telnet,
+			at this IP address and on the CLI port (see the next parameter). 
+			Default value is 127.0.0.1. You can use telnet or putty (in telnet mode)
+			to access the CLI management interface. 
 					
---cli-port			CLI management interface listening port. Default is 5766.
+--cli-port		CLI management interface listening port. Default is 5766.
 
 --cli-password		CLI access password. Default is empty (no password).
+
+--cli-max-output-sessions	Maximum number of output sessions in ps CLI command.
+			This value can be changed on-the-fly in CLI. The default value is 256.
 
 ==================================
 
