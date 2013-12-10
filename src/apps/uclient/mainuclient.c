@@ -387,7 +387,9 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		const char *csuite = "DH";
+		//const char *csuite = "AES256-SHA";
+		const char *csuite = "DEFAULT";
+		//const char *csuite = "DH";
 		if(use_null_cipher)
 		  csuite = "eNULL";
 
