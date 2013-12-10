@@ -13,6 +13,8 @@
 
 3) Google Compute Engine
 
+4) DragonFly BSD
+
 ==================================================================
 
 ###   II. DOCS   ###
@@ -72,7 +74,7 @@
 
 1) RADIUS integration ?
 
-2) Watch new TURN security draft. 
+2) Watch new TURN security draft. oAuth integration.
 
 ==================================================================
 
@@ -111,8 +113,6 @@ when necessary:
 	and statistics) GUI has to be implemented. Currently, all 
 	these features are available through the shell command 
 	line and through Redis command line.
-
-	Also, Redis status data to be extended.
 
 3) Traffic recording (for selected allocations).
 

@@ -78,6 +78,8 @@ compatibility.
 31) ICE Mobility draft implemented (experimental). 
 
 32) CLI implemented.
+
+33) DH and EC TLS ciphers added.
  
 Things to be implemented in future (the development roadmap) 
-are described in TODO file.
+are described in the TODO file.
