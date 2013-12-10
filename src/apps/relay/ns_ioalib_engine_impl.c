@@ -3050,14 +3050,14 @@ void turn_report_session_usage(void *session)
 /////////////// SSL ///////////////////
 
 
-const char* get_ioa_socket_tls_method(ioa_socket_handle s)
+const char* get_ioa_socket_tls_cipher(ioa_socket_handle s)
 {
 	if(s && (s->ssl))
 		return SSL_get_cipher(s->ssl);
 	return "";
 }
 
-const char* get_ioa_socket_tls_cipher(ioa_socket_handle s)
+const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 {
 	if(s && (s->ssl))
 		return turn_get_ssl_method(s->ssl);

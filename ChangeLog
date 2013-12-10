@@ -1,3 +1,7 @@
+12/10/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.2.2 'Arch Lector':
+	- ps output typo fixed (TLS params).
+	
 12/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.2.1 'Arch Lector':
 	- DH cipher suites basic implementation.
