@@ -4,6 +4,7 @@ Version 3.1.1.1 'Arch Lector':
 	- Redis allocation statistics fixed.
 	- TODO: cli lines configurable.
 	- TODO: uclient cipher suite configurable.
+	- DH cipher suites draft implementation.
 
 12/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.1.0 'Arch Lector':
