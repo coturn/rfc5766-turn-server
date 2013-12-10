@@ -117,6 +117,9 @@ Options with required values:
 
 -k      Private key file (for secure connections only).
 
+-E		CA file for server certificate verification,
+		if the server certificate to be verified.
+
 -p      TURN Server port (Defaults: 3478 unsecure, 5349 secure).
 
 -n      Number of messages to send (Default: 5).
@@ -143,9 +146,6 @@ Options with required values:
 		TURN REST API. The default value is :.
 
 -F		Cipher suite for TLS/DTLS. Default value is DEFAULT.
-
--E		CA file for server certificate verification,
-		if the server certificate to be verified.
 
 See the examples in the "examples/scripts" directory.
 
