@@ -65,6 +65,7 @@ st_password_t g_upwd;
 int use_fingerprints = 1;
 
 static char ca_cert_file[1025]="";
+static char cipher_suite[1025]="";
 char cert_file[1025]="";
 char pkey_file[1025]="";
 SSL_CTX *root_tls_ctx[32];
@@ -119,6 +120,7 @@ static char Usage[] =
   "	-k	Private key file (for secure connections only).\n"
   "	-E	CA file for server certificate verification, \n"
   "		if the server certificate to be verified.\n"
+  "	-F	Cipher suite for TLS/DTLS. Default value is DEFAULT.\n"
   "	-p	TURN server port (Default: 3478 unsecure, 5349 secure).\n"
   "	-n	Number of messages to send (Default: 5).\n"
   "	-d	Local interface device (optional).\n"
@@ -157,8 +159,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:vsyhcxgtTSAPDNOUHMRI")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:vsyhcxgtTSAPDNOUHMRI")) != -1) {
 		switch (c){
+		case 'F':
+			STRCPY(cipher_suite,optarg);
+			break;
 		case 'I':
 			no_permissions = 1;
 			break;
@@ -387,11 +392,11 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		//const char *csuite = "AES256-SHA";
-		const char *csuite = "DEFAULT";
-		//const char *csuite = "DH";
+		const char *csuite = "DEFAULT"; //"AES256-SHA" "DH"
 		if(use_null_cipher)
-		  csuite = "eNULL";
+			csuite = "eNULL";
+		else if(cipher_suite[0])
+			csuite=cipher_suite;
 
 		if(use_tcp) {
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());

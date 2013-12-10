@@ -119,7 +119,7 @@ extern vint server_relay;
 
 extern int do_not_use_config_file;
 
-char pidfile[1025];
+extern char pidfile[1025];
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 

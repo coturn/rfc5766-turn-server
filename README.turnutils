@@ -139,7 +139,13 @@ Options with required values:
 
 -W      TURN REST API authentication secret. Is not compatible with -A flag.
 
--C		This is the username/timestamp separator symbol (character) in TURN REST API. The default value is :.
+-C		This is the username/timestamp separator symbol (character) in 
+		TURN REST API. The default value is :.
+
+-F		Cipher suite for TLS/DTLS. Default value is DEFAULT.
+
+-E		CA file for server certificate verification,
+		if the server certificate to be verified.
 
 See the examples in the "examples/scripts" directory.
 
