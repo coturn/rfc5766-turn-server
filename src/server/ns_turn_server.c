@@ -1949,7 +1949,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
-		if ((server->fingerprint) || ss->enforce_fingerprints) {
+		if ((server->fingerprint) || (ss &&(ss->enforce_fingerprints))) {
 			size_t len = ioa_network_buffer_get_size(nbh);
 			stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len);
 			ioa_network_buffer_set_size(nbh, len);

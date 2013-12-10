@@ -2973,7 +2973,7 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%llu/status",(char*)ss->username, (unsigned long long)ss->id);
 				send_message_to_redis(NULL, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				send_message_to_redis(NULL, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 			}
@@ -2997,7 +2997,7 @@ void turn_report_allocation_delete(void *a)
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%lx/status",(char*)ss->username, (unsigned long)get_allocation_id((allocation*)a));
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%llu/status",(char*)ss->username, (unsigned long long)ss->id);
 				send_message_to_redis(NULL, "del", key, "");
 				send_message_to_redis(NULL, "publish", key, "deleted");
 			}

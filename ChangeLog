@@ -1,6 +1,8 @@
 12/09/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.1.1 'Arch Lector':
-	- More CLI parameters.
+	- More CLI parameters added.
+	- Redis allocation statistics fixed.
+	- TODO: cli lines configurable.
 
 12/08/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.1.0 'Arch Lector':

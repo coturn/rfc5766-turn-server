@@ -1747,6 +1747,12 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	SSL_CTX_set_cipher_list(ctx, cipher_list);
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
+	/*
+	EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+	EC_KEY_free(ecdh);
+	*/
+
 	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
 	} else {
