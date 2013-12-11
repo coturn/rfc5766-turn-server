@@ -517,7 +517,10 @@ static void cli_print_configuration(struct cli_session* cs)
 		if(cipher_list[0])
 			cli_print_str(cs,cipher_list,"cipher-list",0);
 		else
-			cli_print_str(cs,"default","cipher-list",0);
+			cli_print_str(cs,DEFAULT_CIPHER_LIST,"cipher-list",0);
+
+		cli_print_str(cs,ec_curve_name,"ec-curve-name",0);
+		cli_print_uint(cs,(unsigned long)dh_key_length,"DH-key-length",0);
 
 		if(ca_cert_file[0])
 			cli_print_str(cs,ca_cert_file,"CA-cert-file",0);
@@ -526,7 +529,10 @@ static void cli_print_configuration(struct cli_session* cs)
 		if(pkey_file[0])
 			cli_print_str(cs,pkey_file,"pkey-file",0);
 
-		cli_print_flag(cs,shatype,"enforce SHA256",0);
+		if(shatype == SHATYPE_SHA1)
+			cli_print_str(cs,"SHA1 and SHA256","SHA type",0);
+		else if(shatype == SHATYPE_SHA256)
+					cli_print_str(cs,"SHA256 only","SHA type",0);
 
 		telnet_printf(cs->ts,"\n");
 

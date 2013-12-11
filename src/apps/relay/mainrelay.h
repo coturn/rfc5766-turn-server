@@ -123,7 +123,11 @@ extern char pidfile[1025];
 
 #define DEFAULT_CONFIG_FILE "turnserver.conf"
 
+#define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
 extern char cipher_list[1025];
+#define DEFAULT_EC_CURVE_NAME "prime256v1"
+extern char ec_curve_name[33];
+extern unsigned int dh_key_length;
 
 extern char ca_cert_file[1025];
 extern char cert_file[1025];

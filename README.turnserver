@@ -375,6 +375,9 @@ Options with required values:
 --CA-file		CA file in OpenSSL format. 
 			Forces TURN server to verify the client SSL certificates.
 			By default, no CA is set and no client certificate check is performed.
+			
+--ec-curve-name		Curve name for EC ciphers, if supported by OpenSSL library (TLS and DTLS).
+			The default value is prime256v1.
 				
 -l, --log-file		Option to set the full path name of the log file.
 			By default, the turnserver tries to open a log file in 

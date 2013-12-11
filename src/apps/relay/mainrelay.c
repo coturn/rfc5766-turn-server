@@ -34,9 +34,9 @@
 
 static void openssl_setup(void);
 
-#define DEFAULT_CIPHER_LIST "ALL:eNULL:aNULL:NULL"
 char cipher_list[1025]="";
-
+char ec_curve_name[33] = DEFAULT_EC_CURVE_NAME;
+unsigned int dh_key_length = 1066;
 SSL_CTX *tls_ctx_ssl23 = NULL;
 SSL_CTX *tls_ctx_v1_0 = NULL;
 
@@ -390,6 +390,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
 "						Forces TURN server to verify the client SSL certificates.\n"
 "						By default, no CA is set and no client certificate check is performed.\n"
+" --ec-curve-name				Curve name for EC ciphers, if supported by OpenSSL library (TLS and DTLS).\n"
+"						The default value is prime256v1.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -534,7 +536,8 @@ enum EXTRA_OPTS {
 	CLI_PORT_OPT,
 	CLI_PASSWORD_OPT,
 	SERVER_RELAY_OPT,
-	CLI_MAX_SESSIONS_OPT
+	CLI_MAX_SESSIONS_OPT,
+	EC_CURVE_NAME_OPT
 };
 
 static struct option long_options[] = {
@@ -615,6 +618,7 @@ static struct option long_options[] = {
 				{ "cli-password", required_argument, NULL, CLI_PASSWORD_OPT },
 				{ "server-relay", optional_argument, NULL, SERVER_RELAY_OPT },
 				{ "cli-max-output-sessions", required_argument, NULL, CLI_MAX_SESSIONS_OPT },
+				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -669,6 +673,9 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case EC_CURVE_NAME_OPT:
+	  STRCPY(ec_curve_name,value);
+	  break;
   case CLI_MAX_SESSIONS_OPT:
 	  cli_max_output_sessions = atoi(value);
 	  break;
@@ -1827,11 +1834,21 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	}
 
 #if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
-	{//Elliptic curve algorithms:
+	{ //Elliptic curve algorithms:
+		int nid = NID_X9_62_prime256v1;
 
-		EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-		if(!ecdh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: allocate EC suite\n");
+		if (ec_curve_name[0]) {
+			nid = OBJ_sn2nid(ec_curve_name);
+			if (nid == 0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",ec_curve_name);
+				nid = NID_X9_62_prime256v1;
+			}
+		}
+
+		EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
+		if (!ecdh) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: ERROR: allocate EC suite\n");
 		} else {
 			SSL_CTX_set_tmp_ecdh(ctx, ecdh);
 			EC_KEY_free(ecdh);
