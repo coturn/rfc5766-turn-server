@@ -551,6 +551,11 @@ Forces TURN server to verify the client SSL certificates.
 By default, no CA is set and no client certificate check is performed.
 .TP
 .B
+\fB\-\-ec\-curve\-name\fP
+Curve name for EC ciphers, if supported by OpenSSL library (TLS and DTLS).
+The default value is prime256v1.
+.TP
+.B
 \fB\-l\fP, \fB\-\-log\-file\fP
 Option to set the full path name of the log file.
 By default, the \fIturnserver\fP tries to open a log file in 
