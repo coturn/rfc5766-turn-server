@@ -1,3 +1,7 @@
+12/11/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.2.3 'Arch Lector':
+	- CentOS 6 package fixed.
+	
 12/10/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.2.2 'Arch Lector':
 	- ps output typo fixed (TLS params).

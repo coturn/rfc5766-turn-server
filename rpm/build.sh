@@ -61,7 +61,10 @@ fi
 
 cat <<EOF >>turnserver-${TURNVERSION}/install.sh
 
+sudo yum -y install openssl
+  
 for i in *.rpm ; do
+
   sudo yum -y install \${i}
   ER=\$?
   if ! [ \${ER} -eq 0 ] ; then
