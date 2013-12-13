@@ -3397,7 +3397,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	}
 
 	if (server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN full connection closed, user <%s>\n",(char*)ss->username);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN complete connection closed, user <%s>\n",(char*)ss->username);
 	}
 
 	turn_server_remove_all_from_ur_map_ss(ss);
