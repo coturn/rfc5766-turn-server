@@ -357,6 +357,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 
 	if(tsi && ss) {
 		tsi->id = ss->id;
+		tsi->start_time = ss->start_time;
 		tsi->valid = ss->alloc.is_valid;
 		if(tsi->valid) {
 			if(ss->to_be_closed) {
@@ -560,6 +561,7 @@ static void put_session_into_map(ts_ur_super_session *ss)
 		if(!(ss->id)) {
 			ss->id = (turnsession_id)((turnsession_id)server->id * 1000000000000000LL);
 			ss->id += ++(server->session_id_counter);
+			ss->start_time = turn_time();
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
 		put_session_into_mobile_map(ss);

@@ -51,6 +51,7 @@ typedef u64bits mobile_id_t;
 typedef struct {
   void* server; 
   turnsession_id id;
+  turn_time_t start_time;
   ts_ur_session client_session;
   ioa_addr default_peer_addr;
   allocation alloc;
@@ -91,6 +92,7 @@ typedef struct _addr_data {
 struct turn_session_info {
 	turnsession_id id;
 	int valid;
+	turn_time_t start_time;
 	turn_time_t expiration_time;
 	SOCKET_TYPE client_protocol;
 	SOCKET_TYPE peer_protocol;

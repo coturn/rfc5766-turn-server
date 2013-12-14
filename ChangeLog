@@ -1,3 +1,9 @@
+12/13/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.2.4 'Arch Lector':
+	- Delete allocation debug message fixed.
+	- Allocation id debug in message fixed.
+	- Start time ps command info.
+
 12/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.2.3 'Arch Lector':
 	- CentOS 6 package fixed.

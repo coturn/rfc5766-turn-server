@@ -31,7 +31,7 @@
 #ifndef __IOADEFS__
 #define __IOADEFS__
 
-#define TURN_SERVER_VERSION "3.1.2.3"
+#define TURN_SERVER_VERSION "3.1.2.4"
 #define TURN_SERVER_VERSION_NAME "Arch Lector"
 #define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
 

@@ -436,6 +436,11 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 								(unsigned long)(csarg->counter+1),
 								(unsigned long long)tsi->id,
 								tsi->username);
+				if(turn_time_before(csarg->ct, tsi->start_time)) {
+					telnet_printf(cs->ts,"      started: undefined time\n");
+				} else {
+					telnet_printf(cs->ts,"      started %lu secs ago\n",(unsigned long)(csarg->ct - tsi->start_time));
+				}
 				if(turn_time_before(tsi->expiration_time,csarg->ct)) {
 					telnet_printf(cs->ts,"      expired\n");
 				} else {

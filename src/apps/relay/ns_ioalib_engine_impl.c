@@ -2946,11 +2946,6 @@ void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nb
 
 /////////// REPORTING STATUS /////////////////////
 
-static inline u32bits get_allocation_id(allocation *a)
-{
-	return (u32bits)(kh_int64_hash_func((u64bits)((unsigned long)a)));
-}
-
 void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 {
 	if(a) {
@@ -2964,16 +2959,16 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=%llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
 					} else {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=0x%lx, username=<%s>, lifetime=%lu\n", status, get_allocation_id((allocation*)a), (char*)ss->username, (unsigned long)lifetime);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=%llu, username=<%s>, lifetime=%lu\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime);
 					}
 				}
 			}
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%llu/status",(char*)ss->username, (unsigned long long)ss->id);
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/%llu/status",(char*)ss->username, (unsigned long long)ss->id);
 				send_message_to_redis(NULL, "set", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 				send_message_to_redis(NULL, "publish", key, "%s lifetime=%lu", status, (unsigned long)lifetime);
 			}
@@ -2991,13 +2986,13 @@ void turn_report_allocation_delete(void *a)
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=0x%lx, username=<%s>\n", get_allocation_id((allocation*)a), (char*)ss->username);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=%llu, username=<%s>\n", (unsigned long long)ss->id, (char*)ss->username);
 				}
 			}
 #if !defined(TURN_NO_HIREDIS)
 			if(default_async_context_is_not_empty()) {
 				char key[1024];
-				snprintf(key,sizeof(key),"turn/user/%s/allocation/0x%llu/status",(char*)ss->username, (unsigned long long)ss->id);
+				snprintf(key,sizeof(key),"turn/user/%s/allocation/%llu/status",(char*)ss->username, (unsigned long long)ss->id);
 				send_message_to_redis(NULL, "del", key, "");
 				send_message_to_redis(NULL, "publish", key, "deleted");
 			}
