@@ -1391,7 +1391,7 @@ static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, t
 			if(!nbh)
 				break;
 
-			size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+			u32bits bytes = (u32bits)ioa_network_buffer_get_size(nbh);
 
 			int ret = send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			if (ret < 0) {
@@ -1429,7 +1429,7 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
-	size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+	u32bits bytes = (u32bits)ioa_network_buffer_get_size(nbh);
 
 	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 	if (ret < 0) {
@@ -1464,7 +1464,7 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
-	size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+	u32bits bytes = (u32bits)ioa_network_buffer_get_size(nbh);
 	++(ss->received_packets);
 	ss->received_bytes += bytes;
 

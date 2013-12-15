@@ -116,7 +116,7 @@ static const char *CLI_HELP_STR[] =
    "",
    "  psp usernamestr - print sessions, with partial user string match",
    "",
-   "  pu - print current users",
+   "  pu [udp|tcp|dtls|tls]- print current users",
    "",
    NULL};
 
@@ -370,7 +370,8 @@ struct ps_arg {
 	struct cli_session* cs;
 	size_t counter;
 	turn_time_t ct;
-	const char* username;
+	const char *username;
+	const char *pname;
 	int exact_match;
 	ur_string_map* users;
 	size_t *user_counters;
@@ -407,6 +408,24 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 		if(csarg->users) {
 			ur_string_map_value_type value;
 			if(!ur_string_map_get(csarg->users, (ur_string_map_key_type)(char*)tsi->username, &value)) {
+				const char *pn=csarg->pname;
+				if(pn[0]) {
+					if(!strcmp(pn,"TLS") || !strcmp(pn,"tls") || !strcmp(pn,"Tls")) {
+						if(tsi->client_protocol != TLS_SOCKET)
+							return 0;
+					} else if(!strcmp(pn,"DTLS") || !strcmp(pn,"dtls") || !strcmp(pn,"Dtls")) {
+						if(tsi->client_protocol != DTLS_SOCKET)
+							return 0;
+					} else if(!strcmp(pn,"TCP") || !strcmp(pn,"tcp") || !strcmp(pn,"Tcp")) {
+						if(tsi->client_protocol != TCP_SOCKET)
+							return 0;
+					} else if(!strcmp(pn,"UDP") || !strcmp(pn,"udp") || !strcmp(pn,"Udp")) {
+						if(tsi->client_protocol != UDP_SOCKET)
+							return 0;
+					} else {
+						return 0;
+					}
+				}
 				value = (ur_string_map_value_type)csarg->users_number;
 				csarg->users_number += 1;
 				csarg->user_counters = (size_t*)turn_realloc(csarg->user_counters,
@@ -493,7 +512,13 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 		while(pn[0] == ' ') ++pn;
 		if(pn[0] == '*') ++pn;
 
-		struct ps_arg arg = {cs,0,0,pn,exact_match,NULL,NULL,NULL,0};
+		const char *uname="";
+		if(!print_users) {
+			uname = pn;
+			pn = "";
+		}
+
+		struct ps_arg arg = {cs,0,0,uname,pn,exact_match,NULL,NULL,NULL,0};
 
 		arg.ct = turn_time();
 
@@ -829,6 +854,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"psp") == cmd) {
 				print_sessions(cs,cmd+3,0,0);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"pu ") == cmd) {
+				print_sessions(cs,cmd+3,0,1);
 				type_cli_cursor(cs);
 			} else if(!strcmp(cmd,"pu")) {
 				print_sessions(cs,cmd+2,0,1);

@@ -70,11 +70,11 @@ typedef struct {
   u32bits sent_packets;
   u32bits received_bytes;
   u32bits sent_bytes;
-  size_t t_received_packets;
-  size_t t_sent_packets;
-  size_t t_received_bytes;
-  size_t t_sent_bytes;
-  size_t received_rate;
+  u64bits t_received_packets;
+  u64bits t_sent_packets;
+  u64bits t_received_bytes;
+  u64bits t_sent_bytes;
+  u64bits received_rate;
   size_t sent_rate;
   size_t total_rate;
   /* Mobile */
@@ -110,13 +110,13 @@ struct turn_session_info {
 	int enforce_fingerprints;
 	SHATYPE shatype;
 /* Stats */
-	size_t received_packets;
-	size_t sent_packets;
-	size_t received_bytes;
-	size_t sent_bytes;
-	size_t received_rate;
-	size_t sent_rate;
-	size_t total_rate;
+	u64bits received_packets;
+	u64bits sent_packets;
+	u64bits received_bytes;
+	u64bits sent_bytes;
+	u32bits received_rate;
+	u32bits sent_rate;
+        u32bits total_rate;
 /* Mobile */
 	int is_mobile;
 };

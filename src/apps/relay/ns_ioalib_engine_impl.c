@@ -2959,9 +2959,9 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=%llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
 					} else {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s Allocation: id=%llu, username=<%s>, lifetime=%lu\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime);
 					}
 				}
 			}
@@ -2986,7 +2986,7 @@ void turn_report_allocation_delete(void *a)
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Delete Allocation: id=%llu, username=<%s>\n", (unsigned long long)ss->id, (char*)ss->username);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"delete: session id=%018llu, username=<%s>\n", (unsigned long long)ss->id, (char*)ss->username);
 				}
 			}
 #if !defined(TURN_NO_HIREDIS)
@@ -3017,7 +3017,7 @@ void turn_report_session_usage(void *session)
 			ioa_engine_handle e = turn_server_get_engine(server);
 			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Session allocation id=%llu, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"usage: session id=%018llu, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #if !defined(TURN_NO_HIREDIS)
 				if(default_async_context_is_not_empty()) {
@@ -3035,8 +3035,8 @@ void turn_report_session_usage(void *session)
 					turn_time_t ct = turn_time();
 					if(ct != ss->start_time) {
 						ct = ct - ss->start_time;
-						ss->received_rate = (size_t)(ss->t_received_bytes / ct);
-						ss->sent_rate = (size_t)(ss->t_sent_bytes / ct);
+						ss->received_rate = (u32bits)(ss->t_received_bytes / ct);
+						ss->sent_rate = (u32bits)(ss->t_sent_bytes / ct);
 						ss->total_rate = ss->received_rate + ss->sent_rate;
 					}
 				}
