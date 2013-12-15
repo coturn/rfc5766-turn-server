@@ -3,6 +3,7 @@ Version 3.1.2.4 'Arch Lector':
 	- "Delete allocation" debug message fixed.
 	- "Allocation id" debug info message fixed.
 	- "Start time" ps command info.
+	- RFC6062 usage statistics fixed.
 
 12/11/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.2.3 'Arch Lector':

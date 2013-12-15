@@ -404,6 +404,12 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			else
 				tsi->sent_bytes = ss->sent_bytes;
 
+			{
+				tsi->received_rate = ss->received_rate;
+				tsi->sent_rate = ss->sent_rate;
+				tsi->total_rate = tsi->received_rate + tsi->sent_rate;
+			}
+
 			tsi->is_mobile = ss->is_mobile;
 
 			int i;
@@ -1376,17 +1382,24 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 /* RFC 6062 ==>> */
 
-static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s)
+static void tcp_deliver_delayed_buffer(unsent_buffer *ub, ioa_socket_handle s, ts_ur_super_session *ss)
 {
-	if(ub && s && ub->bufs && ub->sz) {
+	if(ub && s && ub->bufs && ub->sz && ss) {
 		size_t i = 0;
 		do {
 			ioa_network_buffer_handle nbh = top_unsent_buffer(ub);
 			if(!nbh)
 				break;
+
+			size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+
 			int ret = send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 			if (ret < 0) {
 				set_ioa_socket_tobeclosed(s);
+			} else {
+				++(ss->sent_packets);
+				ss->sent_bytes += bytes;
+				turn_report_session_usage(ss);
 			}
 			pop_unsent_buffer(ub);
 		} while(!ioa_socket_tobeclosed(s) && ((i++)<MAX_UNSENT_BUFFER_SIZE));
@@ -1401,6 +1414,11 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	UNUSED_ARG(s);
 
 	tcp_connection *tc = (tcp_connection*)arg;
+	ts_ur_super_session *ss=NULL;
+	allocation *a=(allocation*)tc->owner;
+	if(a) {
+		ss=(ts_ur_super_session*)a->owner;
+	}
 
 	if((tc->state != TC_STATE_READY) || !(tc->client_s)) {
 		add_unsent_buffer(&(tc->ub_to_client), in_buffer->nbh);
@@ -1411,9 +1429,15 @@ static void tcp_peer_input_handler(ioa_socket_handle s, int event_type, ioa_net_
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
+	size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+
 	int ret = send_data_from_ioa_socket_nbh(tc->client_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
+	} else if(ss) {
+		++(ss->sent_packets);
+		ss->sent_bytes += bytes;
+		turn_report_session_usage(ss);
 	}
 }
 
@@ -1425,6 +1449,11 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 	UNUSED_ARG(s);
 
 	tcp_connection *tc = (tcp_connection*)arg;
+	ts_ur_super_session *ss=NULL;
+	allocation *a=(allocation*)tc->owner;
+	if(a) {
+		ss=(ts_ur_super_session*)a->owner;
+	}
 
 	if(tc->state != TC_STATE_READY)
 		return;
@@ -1435,10 +1464,16 @@ static void tcp_client_input_handler_rfc6062data(ioa_socket_handle s, int event_
 	ioa_network_buffer_handle nbh = in_buffer->nbh;
 	in_buffer->nbh = NULL;
 
+	size_t bytes = (u32bits)ioa_network_buffer_get_size(nbh);
+	++(ss->received_packets);
+	ss->received_bytes += bytes;
+
 	int ret = send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
 	if (ret < 0) {
 		set_ioa_socket_tobeclosed(s);
 	}
+
+	turn_report_session_usage(ss);
 }
 
 static void tcp_conn_bind_timeout_handler(ioa_engine_handle e, void *arg)
@@ -1961,7 +1996,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 		if(ss && !err_code) {
 			send_data_from_ioa_socket_nbh(s, NULL, nbh, TTL_IGNORE, TOS_IGNORE);
-			tcp_deliver_delayed_buffer(&(tc->ub_to_client),s);
+			tcp_deliver_delayed_buffer(&(tc->ub_to_client),s,ss);
 			FUNCEND;
 			return 0;
 		} else {

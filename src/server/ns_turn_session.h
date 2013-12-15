@@ -74,6 +74,9 @@ typedef struct {
   size_t t_sent_packets;
   size_t t_received_bytes;
   size_t t_sent_bytes;
+  size_t received_rate;
+  size_t sent_rate;
+  size_t total_rate;
   /* Mobile */
   int is_mobile;
   mobile_id_t mobile_id;
@@ -111,6 +114,9 @@ struct turn_session_info {
 	size_t sent_packets;
 	size_t received_bytes;
 	size_t sent_bytes;
+	size_t received_rate;
+	size_t sent_rate;
+	size_t total_rate;
 /* Mobile */
 	int is_mobile;
 };

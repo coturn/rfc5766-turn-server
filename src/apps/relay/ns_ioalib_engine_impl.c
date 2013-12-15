@@ -3031,6 +3031,16 @@ void turn_report_session_usage(void *session)
 				ss->t_sent_packets += ss->sent_packets;
 				ss->t_sent_bytes += ss->sent_bytes;
 
+				{
+					turn_time_t ct = turn_time();
+					if(ct != ss->start_time) {
+						ct = ct - ss->start_time;
+						ss->received_rate = (size_t)(ss->t_received_bytes / ct);
+						ss->sent_rate = (size_t)(ss->t_sent_bytes / ct);
+						ss->total_rate = ss->received_rate + ss->sent_rate;
+					}
+				}
+
 				report_turn_session_info(server,ss,0);
 
 				ss->received_packets=0;

@@ -468,6 +468,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 					telnet_printf(cs->ts,"      TLS cipher: %s\n",tsi->tls_cipher);
 				}
 				telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
+				telnet_printf(cs->ts,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
 				if(tsi->peers_size && tsi->peers_data) {
 					telnet_printf(cs->ts,"      peers:\n");
 					size_t i;

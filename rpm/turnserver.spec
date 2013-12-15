@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.1.2.3
+Version:	3.1.2.4
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -281,6 +281,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Dec 14 2013 Oleg Moskalenko <mom040267@gmail.com>
+  - OpenSSL installation fixed 3.1.2.4
 * Wed Dec 11 2013 Oleg Moskalenko <mom040267@gmail.com>
   - OpenSSL installation fixed 3.1.2.3
 * Tue Dec 10 2013 Oleg Moskalenko <mom040267@gmail.com>
