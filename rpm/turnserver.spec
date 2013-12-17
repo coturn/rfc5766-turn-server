@@ -281,8 +281,10 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Tue Dec 17 2013 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 3.1.3.2
 * Sat Dec 14 2013 Oleg Moskalenko <mom040267@gmail.com>
-  - OpenSSL installation fixed 3.1.3.1
+  - Sync to 3.1.3.1
 * Wed Dec 11 2013 Oleg Moskalenko <mom040267@gmail.com>
   - OpenSSL installation fixed 3.1.2.3
 * Tue Dec 10 2013 Oleg Moskalenko <mom040267@gmail.com>

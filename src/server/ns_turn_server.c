@@ -56,6 +56,8 @@ struct _turn_turnserver {
 	turnsession_id session_id_counter;
 	ur_map *sessions_map;
 
+	turn_time_t ctime;
+
 	ioa_engine_handle e;
 	int verbose;
 	int fingerprint;
@@ -140,6 +142,17 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				  int can_resume, int count_usage);
 
 static int need_stun_authentication(turn_turnserver *server);
+
+/////////////////// timer //////////////////////////
+
+static void timer_timeout_handler(ioa_engine_handle e, void *arg)
+{
+	UNUSED_ARG(e);
+	if(arg) {
+		turn_turnserver *server=(turn_turnserver*)arg;
+		server->ctime = turn_time();
+	}
+}
 
 /////////////////// Security ///////////////////////
 
@@ -567,7 +580,7 @@ static void put_session_into_map(ts_ur_super_session *ss)
 		if(!(ss->id)) {
 			ss->id = (turnsession_id)((turnsession_id)server->id * 1000000000000000LL);
 			ss->id += ++(server->session_id_counter);
-			ss->start_time = turn_time();
+			ss->start_time = server->ctime;
 		}
 		ur_map_put(server->sessions_map, (ur_map_key_type)(ss->id), (ur_map_value_type)ss);
 		put_session_into_mobile_map(ss);
@@ -704,7 +717,7 @@ static int update_turn_permission_lifetime(ts_ur_super_session *ss, turn_permiss
 		if (server) {
 
 			if(!time_delta) time_delta = STUN_PERMISSION_LIFETIME;
-			tinfo->expiration_time = turn_time() + time_delta;
+			tinfo->expiration_time = server->ctime + time_delta;
 
 			IOA_EVENT_DEL(tinfo->lifetime_ev);
 			tinfo->lifetime_ev = set_ioa_timer(server->e, time_delta, 0,
@@ -733,7 +746,7 @@ static int update_channel_lifetime(ts_ur_super_session *ss, ch_info* chn)
 				if (update_turn_permission_lifetime(ss, tinfo, STUN_CHANNEL_LIFETIME) < 0)
 					return -1;
 
-				chn->expiration_time = turn_time() + STUN_CHANNEL_LIFETIME;
+				chn->expiration_time = server->ctime + STUN_CHANNEL_LIFETIME;
 
 				IOA_EVENT_DEL(chn->lifetime_ev);
 				chn->lifetime_ev = set_ioa_timer(server->e, STUN_CHANNEL_LIFETIME, 0,
@@ -793,7 +806,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 							tid,
 							&xor_relayed_addr,
 							get_remote_addr_from_ioa_socket(elem->s),
-							(a->expiration_time - turn_time()), 0, NULL, 0,
+							(a->expiration_time - server->ctime), 0, NULL, 0,
 							ss->s_mobile_id);
 				ioa_network_buffer_set_size(nbh,len);
 				*resp_constructed = 1;
@@ -2673,19 +2686,19 @@ static int check_stun_auth(turn_turnserver *server,
 			u32bits rand=(u32bits)random();
 			snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 		}
-		ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
+		ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
 		new_nonce = 1;
 	}
 
 	if(*(server->stale_nonce)) {
-		if(turn_time_before(ss->nonce_expiration_time,turn_time())) {
+		if(turn_time_before(ss->nonce_expiration_time,server->ctime)) {
 			int i = 0;
 			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
 				u08bits *s = ss->nonce + 4*i;
 				u32bits rand=(u32bits)random();
 				snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
 			}
-			ss->nonce_expiration_time = turn_time() + STUN_NONCE_EXPIRATION_TIME;
+			ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
 		}
 	}
 
@@ -3631,7 +3644,7 @@ static int create_relay_connection(turn_turnserver* server,
 		ioa_timer_handle ev = set_ioa_timer(server->e, lifetime, 0,
 				client_ss_allocation_timeout_handler, ss, 0,
 				"client_ss_allocation_timeout_handler");
-		set_allocation_lifetime_ev(a, lifetime, ev);
+		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev);
 
 		set_ioa_socket_session(newelem->s, ss);
 	}
@@ -3662,7 +3675,7 @@ static int refresh_relay_connection(turn_turnserver* server,
 				client_ss_allocation_timeout_handler, ss, 0,
 				"refresh_client_ss_allocation_timeout_handler");
 
-		set_allocation_lifetime_ev(a, lifetime, ev);
+		set_allocation_lifetime_ev(a, server->ctime + lifetime, ev);
 
 		return 0;
 
@@ -4046,24 +4059,6 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 	}
 }
 
-///////////////////////////////////////////////////////
-
-static int init_server(turn_turnserver* server) {
-
-	if (!server)
-		return -1;
-
-	return 0;
-}
-
-static int clean_server(turn_turnserver* server) {
-
-	if (!server)
-		return -1;
- 
-	return 0;
-}
-
 ///////////////////////////////////////////////////////////
 
 turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_handle e,
@@ -4097,7 +4092,9 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
+	server->e = e;
 	server->id = id;
+	server->ctime = turn_time();
 	server->session_id_counter = 0;
 	server->sessions_map = ur_map_create();
 	server->tcp_relay_connections = ur_map_create();
@@ -4138,26 +4135,14 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->verbose = verbose;
 
-	server->e = e;
-
 	server->ip_whitelist = ip_whitelist;
 	server->ip_blacklist = ip_blacklist;
 
 	server->send_socket_to_relay = send_socket_to_relay;
 
-	if (init_server(server) < 0) {
-	  turn_free(server,sizeof(turn_turnserver));
-	  return NULL;
-	}
+	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
 
 	return server;
-}
-
-void delete_turn_server(turn_turnserver* server) {
-	if (server) {
-		clean_server(server);
-		turn_free(server,sizeof(turn_turnserver));
-	}
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

@@ -120,8 +120,6 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    vintp server_relay,
 				    send_turn_session_info_cb send_turn_session_info);
 
-void delete_turn_server(turn_turnserver* server);
-
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
 ////////// RFC 5780 ///////////////////////
