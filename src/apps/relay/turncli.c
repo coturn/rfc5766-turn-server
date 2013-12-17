@@ -118,6 +118,11 @@ static const char *CLI_HELP_STR[] =
    "",
    "  pu [udp|tcp|dtls|tls]- print current users",
    "",
+   "  aas ip[:port} - add an alternate server reference",
+   "  das ip[:port] - delete an alternate server reference",
+   "  atas ip[:port] - add a TLS alternate server reference",
+   "  dtas ip[:port] - delete a TLS alternate server reference",
+   "",
    NULL};
 
 static const char *CLI_GREETING_STR[] = {
@@ -788,6 +793,34 @@ static void type_cli_cursor(struct cli_session* cs)
 	}
 }
 
+static void cli_add_alternate_server(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn && *pn) {
+		add_alternate_server(pn);
+	}
+}
+
+static void cli_add_tls_alternate_server(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn && *pn) {
+		add_tls_alternate_server(pn);
+	}
+}
+
+static void cli_del_alternate_server(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn && *pn) {
+		del_alternate_server(pn);
+	}
+}
+
+static void cli_del_tls_alternate_server(struct cli_session* cs, const char* pn)
+{
+	if(cs && cs->ts && pn && *pn) {
+		del_tls_alternate_server(pn);
+	}
+}
+
 static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int len)
 {
 	int ret = 0;
@@ -869,6 +902,18 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"cc") == cmd) {
 				change_cli_param(cs,cmd+2);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"aas ") == cmd) {
+				cli_add_alternate_server(cs,cmd+4);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"atas ") == cmd) {
+				cli_add_tls_alternate_server(cs,cmd+5);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"das ") == cmd) {
+				cli_del_alternate_server(cs,cmd+4);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"dtas ") == cmd) {
+				cli_del_tls_alternate_server(cs,cmd+5);
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";

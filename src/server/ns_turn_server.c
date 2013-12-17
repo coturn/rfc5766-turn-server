@@ -154,6 +154,17 @@ static void timer_timeout_handler(ioa_engine_handle e, void *arg)
 	}
 }
 
+/////////////////// server lists ///////////////////
+
+void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
+{
+	if(l) {
+		l->addrs = NULL;
+		l->size = 0;
+		turn_mutex_init(&(l->m));
+	}
+}
+
 /////////////////// Security ///////////////////////
 
 static inline void upgrade_shatype(ts_ur_super_session *ss, SHATYPE new_sht)
@@ -2947,7 +2958,11 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 					asl = server->tls_alternate_servers_list;
 				}
 
-				set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+				if(asl && asl->size) {
+					turn_mutex_lock(&(asl->m));
+					set_alternate_server(asl,get_local_addr_from_ioa_socket(ss->client_session.s),&(server->as_counter),method,&tid,resp_constructed,&err_code,&reason,nbh);
+					turn_mutex_unlock(&(asl->m));
+				}
 			}
 
 			if(!err_code && !(*resp_constructed) && !no_response) {

@@ -272,7 +272,9 @@ extern turn_server_addrs_list_t alternate_servers_list;
 extern turn_server_addrs_list_t tls_alternate_servers_list;
 
 void add_alternate_server(const char *saddr);
+void del_alternate_server(const char *saddr);
 void add_tls_alternate_server(const char *saddr);
+void del_tls_alternate_server(const char *saddr);
 
 ////////// Addrs ////////////////////
 

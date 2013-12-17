@@ -17,7 +17,7 @@
 # 10) -u gorst means that if the server challenges the client with 
 # authentication challenge, then we use account "gorst".
 # 11) -w hero sets the password for the account as "hero".
-# 12) ::1 (the last parameter) is the TURN Server IP address. We use IPv6 here
+# 12) 127.0.0.1 (the last parameter) is the TURN Server IP address. We use IPv4 here
 # to illustrate how the TURN Server convert the traffic from IPv6 to IPv4 and back.
 #
 
@@ -27,5 +27,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -T -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -T -n 1000 -m 10 -l 170 -y -g -u gorst -w hero $@ 127.0.0.1
 

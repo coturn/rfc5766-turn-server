@@ -157,13 +157,13 @@ static void read_config_file(int argc, char **argv, int pass);
 
 /////////////// AUX SERVERS ////////////////
 
-turn_server_addrs_list_t aux_servers_list = {NULL,0};
+turn_server_addrs_list_t aux_servers_list = {NULL,0,{0,NULL}};
 int udp_self_balance = 0;
 
 /////////////// ALTERNATE SERVERS ////////////////
 
-turn_server_addrs_list_t alternate_servers_list = {NULL,0};
-turn_server_addrs_list_t tls_alternate_servers_list = {NULL,0};
+turn_server_addrs_list_t alternate_servers_list = {NULL,0,{0,NULL}};
+turn_server_addrs_list_t tls_alternate_servers_list = {NULL,0,{0,NULL}};
 
 //////////////////////////////////////////////////
 
@@ -1369,6 +1369,10 @@ int main(int argc, char **argv)
 	IS_TURN_SERVER = 1;
 
 	set_execdir();
+
+	init_turn_server_addrs_list(&alternate_servers_list);
+	init_turn_server_addrs_list(&tls_alternate_servers_list);
+	init_turn_server_addrs_list(&aux_servers_list);
 
 	set_network_engine();
 

@@ -94,14 +94,58 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 	if(saddr && list) {
 		ioa_addr addr;
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong full address format: %s\n",saddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
 			list->addrs = (ioa_addr*)realloc(list->addrs,sizeof(ioa_addr)*(list->size+1));
 			addr_cpy(&(list->addrs[(list->size)++]),&addr);
 			{
 				u08bits s[1025];
 				addr_to_string(&addr, s);
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server: %s\n",s);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server added: %s\n",s);
+			}
+		}
+	}
+}
+
+static void del_alt_server(const char *saddr, int default_port, turn_server_addrs_list_t *list)
+{
+	if(saddr && list && list->size && list->addrs) {
+		ioa_addr addr;
+		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
+		} else {
+
+			size_t i;
+			int found = 0;
+			for(i=0;i<list->size;++i) {
+				if(addr_eq(&(list->addrs[i]),&addr)) {
+					found = 1;
+					break;
+				}
+			}
+
+			if(found) {
+
+				size_t j;
+				ioa_addr *new_addrs = (ioa_addr*)malloc(sizeof(ioa_addr)*(list->size-1));
+				for(j=0;j<i;++j) {
+					addr_cpy(&(new_addrs[j]),&(list->addrs[j]));
+				}
+				for(j=i;j<list->size-1;++j) {
+					addr_cpy(&(new_addrs[j]),&(list->addrs[j+1]));
+				}
+
+				free(list->addrs);
+				list->addrs = new_addrs;
+				list->size -= 1;
+
+				{
+					u08bits s[1025];
+					addr_to_string(&addr, s);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server removed: %s\n",s);
+				}
+
+				del_alt_server(saddr, default_port, list);
 			}
 		}
 	}
@@ -112,9 +156,19 @@ void add_alternate_server(const char *saddr)
 	add_alt_server(saddr,DEFAULT_STUN_PORT,&alternate_servers_list);
 }
 
+void del_alternate_server(const char *saddr)
+{
+	del_alt_server(saddr,DEFAULT_STUN_PORT,&alternate_servers_list);
+}
+
 void add_tls_alternate_server(const char *saddr)
 {
 	add_alt_server(saddr,DEFAULT_STUN_TLS_PORT,&tls_alternate_servers_list);
+}
+
+void del_tls_alternate_server(const char *saddr)
+{
+	del_alt_server(saddr,DEFAULT_STUN_TLS_PORT,&tls_alternate_servers_list);
 }
 
 //////////////////////////////////////////////////

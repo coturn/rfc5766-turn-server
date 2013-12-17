@@ -79,9 +79,12 @@ typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 struct _turn_server_addrs_list {
 	ioa_addr *addrs;
 	size_t size;
+	turn_mutex m;
 };
 
 typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
+
+void init_turn_server_addrs_list(turn_server_addrs_list_t *l);
 
 typedef volatile int vint;
 
