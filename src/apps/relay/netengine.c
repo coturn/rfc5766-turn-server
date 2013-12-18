@@ -93,6 +93,9 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 {
 	if(saddr && list) {
 		ioa_addr addr;
+
+		turn_mutex_lock(&(list->m));
+
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
@@ -104,13 +107,19 @@ static void add_alt_server(const char *saddr, int default_port, turn_server_addr
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Alternate server added: %s\n",s);
 			}
 		}
+
+		turn_mutex_unlock(&(list->m));
 	}
 }
 
 static void del_alt_server(const char *saddr, int default_port, turn_server_addrs_list_t *list)
 {
 	if(saddr && list && list->size && list->addrs) {
+
 		ioa_addr addr;
+
+		turn_mutex_lock(&(list->m));
+
 		if(make_ioa_addr_from_full_string((const u08bits*)saddr, default_port, &addr)!=0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong IP address format: %s\n",saddr);
 		} else {
@@ -148,6 +157,8 @@ static void del_alt_server(const char *saddr, int default_port, turn_server_addr
 				del_alt_server(saddr, default_port, list);
 			}
 		}
+
+		turn_mutex_unlock(&(list->m));
 	}
 }
 

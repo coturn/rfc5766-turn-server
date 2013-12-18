@@ -436,8 +436,7 @@ int main(int argc, char **argv)
 		for(sslind = 0; sslind<root_tls_ctx_num; sslind++) {
 
 			if(cert_file[0]) {
-				if (!SSL_CTX_use_certificate_file(root_tls_ctx[sslind], cert_file,
-								SSL_FILETYPE_PEM)) {
+				if (!SSL_CTX_use_certificate_chain_file(root_tls_ctx[sslind], cert_file)) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nERROR: no certificate found!\n");
 					exit(-1);
 				}

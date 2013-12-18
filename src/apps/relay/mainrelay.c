@@ -1799,7 +1799,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	SSL_CTX_set_cipher_list(ctx, cipher_list);
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-	if (!SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM)) {
+	if (!SSL_CTX_use_certificate_chain_file(ctx, cert_file)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
 	} else {
 		print_abs_file_name(protocol, ": Certificate", cert_file);
