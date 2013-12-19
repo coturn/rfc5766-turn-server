@@ -58,6 +58,7 @@ SSL_CTX *dtls_ctx = NULL;
 char ca_cert_file[1025]="";
 char cert_file[1025]="turn_server_cert.pem";
 char pkey_file[1025]="turn_server_pkey.pem";
+char tls_password[513]="";
 
 SHATYPE shatype = SHATYPE_SHA1;
 
@@ -384,7 +385,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --pkey			<filename>		Private key file, PEM format. Same file search rules\n"
 "						applied as for the configuration file.\n"
 "						If both --no-tls and --no-dtls options\n"
-"						are specified, then this parameter is not needed.\n"
+" --pkey-pwd		<password>		If the private key file is encrypted, then this password to be used.\n"
 " --cipher-list	<\"cipher-string\">		Allowed OpenSSL cipher list for TLS/DTLS connections.\n"
 "						Default value is \"ALL:eNULL:aNULL:NULL\".\n"
 " --CA-file		<filename>		CA file in OpenSSL format.\n"
@@ -504,6 +505,7 @@ enum EXTRA_OPTS {
 	ALT_TLS_PORT_OPT,
 	CERT_FILE_OPT,
 	PKEY_FILE_OPT,
+	PKEY_PWD_OPT,
 	MIN_PORT_OPT,
 	MAX_PORT_OPT,
 	STALE_NONCE_OPT,
@@ -591,6 +593,7 @@ static struct option long_options[] = {
 				{ "no-stun", optional_argument, NULL, NO_STUN_OPT },
 				{ "cert", required_argument, NULL, CERT_FILE_OPT },
 				{ "pkey", required_argument, NULL, PKEY_FILE_OPT },
+				{ "pkey-pwd", required_argument, NULL, PKEY_PWD_OPT },
 				{ "log-file", required_argument, NULL, 'l' },
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
@@ -962,6 +965,9 @@ static void set_option(int c, char *value)
 		break;
 	case PKEY_FILE_OPT:
 		STRCPY(pkey_file,value);
+		break;
+	case PKEY_PWD_OPT:
+		STRCPY(tls_password,value);
 		break;
 	case ALTERNATE_SERVER_OPT:
 		add_alternate_server(value);
@@ -1791,8 +1797,21 @@ static DH *get_dh1066(void) {
 	return (dh);
 }
 
+static int pem_password_func(char *buf, int size, int rwflag, void *password)
+{
+	UNUSED_ARG(rwflag);
+
+	strncpy(buf, (char * )(password), size);
+	buf[size - 1] = 0;
+	return (strlen(buf));
+}
+
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
+	SSL_CTX_set_default_passwd_cb_userdata(ctx, tls_password);
+
+	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
+
 	if(!(cipher_list[0]))
 		STRCPY(cipher_list,DEFAULT_CIPHER_LIST);
 
@@ -1807,7 +1826,7 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
 		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no private key found\n", protocol);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
 		} else {
 			print_abs_file_name(protocol, ": Private RSA key", pkey_file);
 		}

@@ -600,7 +600,7 @@ char* find_config_file(const char *config_file, int print_file_name)
 	char *full_path_to_config_file = NULL;
 
 	if (config_file && config_file[0]) {
-		if (config_file[0] == '/') {
+		if ((config_file[0] == '/')||(config_file[0] == '~')) {
 			FILE *f = fopen(config_file, "r");
 			if (f) {
 				fclose(f);

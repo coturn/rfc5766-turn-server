@@ -80,6 +80,8 @@ compatibility.
 32) CLI implemented.
 
 33) DH and EC TLS ciphers added.
+
+34) GCE "keep alive" HTTP request supported.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

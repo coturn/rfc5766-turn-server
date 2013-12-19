@@ -3699,9 +3699,24 @@ static int refresh_relay_connection(turn_turnserver* server,
 	}
 }
 
+static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
+{
+	if(server && ss && ss->client_session.s && !(ss->to_be_closed)) {
+		ioa_network_buffer_handle nbh_http = ioa_network_buffer_allocate(server->e);
+		size_t len_http = ioa_network_buffer_get_size(nbh_http);
+		u08bits *data = ioa_network_buffer_data(nbh_http);
+		char data_http[1025];
+		snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n",TURN_SOFTWARE);
+		len_http = strlen(data_http);
+		ns_bcopy(data_http,data,len_http);
+		ioa_network_buffer_set_size(nbh_http,len_http);
+		send_data_from_ioa_socket_nbh(ss->client_session.s, NULL, nbh_http, TTL_IGNORE, TOS_IGNORE);
+	}
+}
+
 static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
-				  ts_ur_super_session *ss, ioa_net_data *in_buffer,
-				  int can_resume, int count_usage) {
+				  	  	  	  	  ts_ur_super_session *ss, ioa_net_data *in_buffer,
+				  	  	  	  	  int can_resume, int count_usage) {
 
 	FUNCSTART;
 
@@ -3755,6 +3770,17 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		ioa_network_buffer_set_size(in_buffer->nbh,blen);
 
 		int rc = write_to_peerchannel(ss, chnum, in_buffer);
+
+		if(rc == 0) {
+			if (!is_allocation_valid(get_allocation_ss(ss))) {
+				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+				if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
+					char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
+					if(strstr(s,"GET")==s)
+						write_http_echo(server,ss);
+				}
+			}
+		}
 
 		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote to peer %d bytes\n",
@@ -3822,6 +3848,13 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			return 0;
 		}
 
+	} else {
+		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
+		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
+			char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
+			if(strstr(s,"GET")==s)
+				write_http_echo(server,ss);
+		}
 	}
 
 	//Unrecognised message received, ignore it

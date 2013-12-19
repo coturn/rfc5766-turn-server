@@ -531,6 +531,12 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 				}
 			}
 		}
+
+		{
+			if(strstr((char*)buf,"GET") == (char*)buf) {
+				return (int)blen;
+			}
+		}
 	}
 
 	return -1;

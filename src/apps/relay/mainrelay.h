@@ -132,6 +132,7 @@ extern unsigned int dh_key_length;
 extern char ca_cert_file[1025];
 extern char cert_file[1025];
 extern char pkey_file[1025];
+extern char tls_password[513];
 
 ////////////////  Listener server /////////////////
 

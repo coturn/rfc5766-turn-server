@@ -368,6 +368,8 @@ Options with required values:
 			file. If both --no-tls and --no-dtls options 
 			are specified, then this parameter is not needed.
 			Default value is turn_server_pkey.pem.
+			
+--pkey-pwd	If the private key file is encrypted, then this password to be used.
 
 --cipher-list		Allowed OpenSSL cipher list for TLS/DTLS connections.
 			Default value is "ALL:eNULL:aNULL:NULL".
