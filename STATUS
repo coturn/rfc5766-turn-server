@@ -81,7 +81,7 @@ compatibility.
 
 33) DH and EC TLS ciphers added.
 
-34) GCE "keep alive" HTTP request supported.
+34) HTTP "keep alive" request supported.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

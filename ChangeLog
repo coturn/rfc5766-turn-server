@@ -1,7 +1,8 @@
 12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.1.5.0 'Arch Lector':
+Version 3.1.5.1 'Arch Lector':
 	- Private key password allowed for encrypted keys.
-	- Google Compute Engine "keep-alive" HTTP supported.
+	- HTTP "keep-alive" supported.
+	- "psd" CLI command added (ps dump to file).
 
 12/18/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.4.2 'Arch Lector':

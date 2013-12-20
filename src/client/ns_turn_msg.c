@@ -492,6 +492,10 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
+int is_http_get(char *s) {
+	return ((strstr(s,"GET ") == (char*)s) && (strstr(s,"HTTP")));
+}
+
 int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
 	if (buf && blen) {
 		/* STUN request/response ? */
@@ -532,11 +536,9 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 			}
 		}
 
-		{
-			if(strstr((char*)buf,"GET") == (char*)buf) {
-				return (int)blen;
-			}
-		}
+		if(is_http_get((char*)buf))
+			return (int)blen;
+
 	}
 
 	return -1;

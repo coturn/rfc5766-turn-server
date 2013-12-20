@@ -3776,7 +3776,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
 				if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
 					char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
-					if(strstr(s,"GET")==s)
+					if(is_http_get(s))
 						write_http_echo(server,ss);
 				}
 			}
@@ -3852,7 +3852,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
 			char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
-			if(strstr(s,"GET")==s)
+			if(is_http_get(s))
 				write_http_echo(server,ss);
 		}
 	}

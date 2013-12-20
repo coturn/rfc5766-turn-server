@@ -90,6 +90,7 @@ struct cli_session {
 	struct bufferevent *bev;
 	ioa_addr addr;
 	telnet_t *ts;
+	FILE* f;
 };
 
 ///////////////////////////////
@@ -115,6 +116,8 @@ static const char *CLI_HELP_STR[] =
    "  ps [username] - print sessions, with optional exact user match",
    "",
    "  psp usernamestr - print sessions, with partial user string match",
+   "",
+   "  psd <file-name> - dump ps command output into file on the TURN server system",
    "",
    "  pu [udp|tcp|dtls|tls]- print current users",
    "",
@@ -177,12 +180,26 @@ struct changeable_command ccmds[] = {
 
 ///////////////////////////////
 
+static void myprintf(struct cli_session *cs, const char *format, ...)
+{
+	if(cs && format) {
+		va_list args;
+		va_start (args, format);
+		if(cs->f) {
+			vfprintf(cs->f, format, args);
+		} else {
+			telnet_vprintf(cs->ts, format, args);
+		}
+		va_end (args);
+	}
+}
+
 static void print_str_array(struct cli_session* cs, const char** sa)
 {
   if(cs && sa) {
     int i=0;
     while(sa[i]) {
-      telnet_printf(cs->ts,"%s\n",sa[i]);
+      myprintf(cs,"%s\n",sa[i]);
       i++;
     }
   }
@@ -201,7 +218,7 @@ static void cli_print_flag(struct cli_session* cs, int flag, const char* name, i
 		const char *sc="";
 		if(changeable)
 			sc=" (*)";
-		telnet_printf(cs->ts,"  %s: %s%s\n",name,get_flag(flag),sc);
+		myprintf(cs,"  %s: %s%s\n",name,get_flag(flag),sc);
 	}
 }
 
@@ -213,7 +230,7 @@ static void cli_print_uint(struct cli_session* cs, unsigned long value, const ch
 			sc=" (*)";
 		else if(changeable==2)
 			sc=" (**)";
-		telnet_printf(cs->ts,"  %s: %lu%s\n",name,value,sc);
+		myprintf(cs,"  %s: %lu%s\n",name,value,sc);
 	}
 }
 
@@ -225,7 +242,7 @@ static void cli_print_str(struct cli_session* cs, const char *value, const char*
 			sc=" (*)";
 		else if(changeable==2)
 			sc=" (**)";
-		telnet_printf(cs->ts,"  %s: %s%s\n",name,value,sc);
+		myprintf(cs,"  %s: %s%s\n",name,value,sc);
 	}
 }
 
@@ -242,7 +259,7 @@ static void cli_print_addr(struct cli_session* cs, ioa_addr *value, int use_port
 			addr_to_string_no_port(value,(u08bits*)s);
 		else
 			addr_to_string(value,(u08bits*)s);
-		telnet_printf(cs->ts,"  %s: %s%s\n",name,s,sc);
+		myprintf(cs,"  %s: %s%s\n",name,s,sc);
 	}
 }
 
@@ -261,7 +278,7 @@ static void cli_print_addr_list(struct cli_session* cs, turn_server_addrs_list_t
 				addr_to_string_no_port(&(value->addrs[i]),(u08bits*)s);
 			else
 				addr_to_string(&(value->addrs[i]),(u08bits*)s);
-			telnet_printf(cs->ts,"  %s: %s%s\n",name,s,sc);
+			myprintf(cs,"  %s: %s%s\n",name,s,sc);
 		}
 	}
 }
@@ -277,7 +294,7 @@ static void cli_print_str_array(struct cli_session* cs, char **value, size_t sz,
 		size_t i;
 		for(i=0;i<sz;i++) {
 			if(value[i])
-				telnet_printf(cs->ts,"  %s: %s%s\n",name,value[i],sc);
+				myprintf(cs,"  %s: %s%s\n",name,value[i],sc);
 		}
 	}
 }
@@ -293,7 +310,7 @@ static void cli_print_ip_range_list(struct cli_session* cs, ip_range_list_t *val
 		size_t i;
 		for(i=0;i<value->ranges_number;++i) {
 			if(value->ranges[i])
-				telnet_printf(cs->ts,"  %s: %s%s\n",name,value->ranges[i],sc);
+				myprintf(cs,"  %s: %s%s\n",name,value->ranges[i],sc);
 		}
 	}
 }
@@ -313,10 +330,10 @@ static void toggle_cli_param(struct cli_session* cs, const char* pn)
 			++i;
 		}
 
-		telnet_printf(cs->ts, "\n");
-		telnet_printf(cs->ts, "  Error: unknown or constant parameter: %s.\n",pn);
-		telnet_printf(cs->ts, "  You can toggle only the following parameters:\n");
-		telnet_printf(cs->ts, "\n");
+		myprintf(cs, "\n");
+		myprintf(cs, "  Error: unknown or constant parameter: %s.\n",pn);
+		myprintf(cs, "  You can toggle only the following parameters:\n");
+		myprintf(cs, "\n");
 
 		i=0;
 
@@ -325,7 +342,7 @@ static void toggle_cli_param(struct cli_session* cs, const char* pn)
 			++i;
 		}
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 	}
 }
 
@@ -355,19 +372,19 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 			++i;
 		}
 
-		telnet_printf(cs->ts, "\n");
-		telnet_printf(cs->ts, "  Error: unknown or constant parameter: %s.\n",pn);
-		telnet_printf(cs->ts, "  You can change only the following parameters:\n");
-		telnet_printf(cs->ts, "\n");
+		myprintf(cs, "\n");
+		myprintf(cs, "  Error: unknown or constant parameter: %s.\n",pn);
+		myprintf(cs, "  You can change only the following parameters:\n");
+		myprintf(cs, "\n");
 
 		i=0;
 
 		while(ccmds[i].cmd) {
-			telnet_printf(cs->ts,"  %s\n",ccmds[i].cmd);
+			myprintf(cs,"  %s\n",ccmds[i].cmd);
 			++i;
 		}
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 	}
 }
 
@@ -454,23 +471,23 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 						return 0;
 				}
 			}
-			if((unsigned long)csarg->counter<(unsigned long)cli_max_output_sessions) {
-				telnet_printf(cs->ts, "\n");
-				telnet_printf(cs->ts,"    %lu) id=%018llu, user <%s>:\n",
+			if(cs->f || (unsigned long)csarg->counter<(unsigned long)cli_max_output_sessions) {
+				myprintf(cs, "\n");
+				myprintf(cs,"    %lu) id=%018llu, user <%s>:\n",
 								(unsigned long)(csarg->counter+1),
 								(unsigned long long)tsi->id,
 								tsi->username);
 				if(turn_time_before(csarg->ct, tsi->start_time)) {
-					telnet_printf(cs->ts,"      started: undefined time\n");
+					myprintf(cs,"      started: undefined time\n");
 				} else {
-					telnet_printf(cs->ts,"      started %lu secs ago\n",(unsigned long)(csarg->ct - tsi->start_time));
+					myprintf(cs,"      started %lu secs ago\n",(unsigned long)(csarg->ct - tsi->start_time));
 				}
 				if(turn_time_before(tsi->expiration_time,csarg->ct)) {
-					telnet_printf(cs->ts,"      expired\n");
+					myprintf(cs,"      expired\n");
 				} else {
-					telnet_printf(cs->ts,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
+					myprintf(cs,"      expiring in %lu secs\n",(unsigned long)(tsi->expiration_time - csarg->ct));
 				}
-				telnet_printf(cs->ts,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
+				myprintf(cs,"      client protocol %s, relay protocol %s\n",pname(tsi->client_protocol),pname(tsi->peer_protocol));
 				{
 					if(!tsi->local_addr_data.saddr[0])
 						addr_to_string(&(tsi->local_addr_data.addr),(u08bits*)tsi->local_addr_data.saddr);
@@ -478,28 +495,28 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 						addr_to_string(&(tsi->remote_addr_data.addr),(u08bits*)tsi->remote_addr_data.saddr);
 					if(!tsi->relay_addr_data.saddr[0])
 						addr_to_string(&(tsi->relay_addr_data.addr),(u08bits*)tsi->relay_addr_data.saddr);
-					telnet_printf(cs->ts,"      client addr %s, server addr %s\n",
+					myprintf(cs,"      client addr %s, server addr %s\n",
 									tsi->remote_addr_data.saddr,
 									tsi->local_addr_data.saddr);
-					telnet_printf(cs->ts,"      relay addr %s\n",
+					myprintf(cs,"      relay addr %s\n",
 									tsi->relay_addr_data.saddr);
 				}
-				telnet_printf(cs->ts,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
-				telnet_printf(cs->ts,"      mobile: %s\n",get_flag(tsi->is_mobile));
-				telnet_printf(cs->ts,"      SHA256 only: %s\n",get_flag(tsi->shatype));
+				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
+				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
+				myprintf(cs,"      SHA256 only: %s\n",get_flag(tsi->shatype));
 				if(tsi->tls_method[0]) {
-					telnet_printf(cs->ts,"      TLS method: %s\n",tsi->tls_method);
-					telnet_printf(cs->ts,"      TLS cipher: %s\n",tsi->tls_cipher);
+					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
+					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
 				}
-				telnet_printf(cs->ts,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
-				telnet_printf(cs->ts,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
+				myprintf(cs,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
+				myprintf(cs,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
 				if(tsi->peers_size && tsi->peers_data) {
-					telnet_printf(cs->ts,"      peers:\n");
+					myprintf(cs,"      peers:\n");
 					size_t i;
 					for(i=0;i<tsi->peers_size;++i) {
 						if(!tsi->peers_data[i].saddr[0])
 							addr_to_string(&(tsi->peers_data[i].addr),(u08bits*)tsi->peers_data[i].saddr);
-						telnet_printf(cs->ts,"          %s\n",tsi->peers_data[i].saddr);
+						myprintf(cs,"          %s\n",tsi->peers_data[i].saddr);
 					}
 				}
 			}
@@ -533,34 +550,34 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 
 		ur_map_foreach_arg(cliserver.sessions, (foreachcb_arg_type)print_session, &arg);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
-		if(!print_users) {
+		if(!print_users && !(cs->f)) {
 			if((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
-				telnet_printf(cs->ts,"...\n");
-				telnet_printf(cs->ts,"\n");
+				myprintf(cs,"...\n");
+				myprintf(cs,"\n");
 			}
 		} else if(arg.user_counters && arg.user_names) {
 			size_t i;
 			for(i=0;i<arg.users_number;++i) {
 				if(arg.user_names[i]) {
-					telnet_printf(cs->ts,"    user: <%s>, %lu sessions\n",
+					myprintf(cs,"    user: <%s>, %lu sessions\n",
 						arg.user_names[i],
 						(unsigned long)arg.user_counters[i]);
 				}
 			}
-			telnet_printf(cs->ts,"\n");
+			myprintf(cs,"\n");
 		}
 
-		telnet_printf(cs->ts,"  Total sessions: %lu\n", (unsigned long)arg.counter);
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"  Total sessions: %lu\n", (unsigned long)arg.counter);
+		myprintf(cs,"\n");
 
-		if(!print_users) {
+		if(!print_users && !(cs->f)) {
 			if((unsigned long)arg.counter > (unsigned long)cli_max_output_sessions) {
-				telnet_printf(cs->ts,"  Warning: too many output sessions, more than the\n");
-				telnet_printf(cs->ts,"  current value of cli-max-output-sessions CLI parameter.\n");
-				telnet_printf(cs->ts,"  Refine your request or increase cli-max-output-sessions value.\n");
-				telnet_printf(cs->ts,"\n");
+				myprintf(cs,"  Warning: too many output sessions, more than the\n");
+				myprintf(cs,"  current value of cli-max-output-sessions CLI parameter.\n");
+				myprintf(cs,"  Refine your request or increase cli-max-output-sessions value.\n");
+				myprintf(cs,"\n");
 			}
 		}
 
@@ -582,7 +599,7 @@ static void print_sessions(struct cli_session* cs, const char* pn, int exact_mat
 static void cli_print_configuration(struct cli_session* cs)
 {
 	if(cs) {
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_flag(cs,verbose,"verbose",0);
 		cli_print_flag(cs,turn_daemon,"daemon process",0);
@@ -607,7 +624,7 @@ static void cli_print_configuration(struct cli_session* cs)
 			}
 		}
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		if(cipher_list[0])
 			cli_print_str(cs,cipher_list,"cipher-list",0);
@@ -629,7 +646,7 @@ static void cli_print_configuration(struct cli_session* cs)
 		else if(shatype == SHATYPE_SHA256)
 					cli_print_str(cs,"SHA256 only","SHA type",0);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_str_array(cs,listener.addrs,listener.addrs_number,"Listener addr",0);
 
@@ -648,13 +665,13 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		cli_print_addr(cs,external_ip,0,"External public IP",0);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_addr_list(cs,&aux_servers_list,1,"Aux server",0);
 		cli_print_addr_list(cs,&alternate_servers_list,1,"Alternate server",0);
 		cli_print_addr_list(cs,&tls_alternate_servers_list,1,"TLS alternate server",0);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
 
@@ -675,7 +692,7 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
 		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		if(userdb[0]) {
 			switch(userdb_type) {
@@ -711,7 +728,7 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
 #endif
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_flag(cs,use_lt_credentials,"Long-term authorization mechanism",0);
 		cli_print_flag(cs,use_st_credentials,"Short-term authorization mechanism",0);
@@ -723,25 +740,25 @@ static void cli_print_configuration(struct cli_session* cs)
 		if(global_realm[0])
 			cli_print_str(cs,global_realm,"Realm",0);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",2);
 		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",2);
 		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
 		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
 
-		telnet_printf(cs->ts,"\n");
+		myprintf(cs,"\n");
 
 		cli_print_uint(cs,(unsigned long)cli_max_output_sessions,"cli-max-output-sessions",2);
 
 		{
-		  telnet_printf(cs->ts,"\n");
+		  myprintf(cs,"\n");
 		  const char *str="  (Note 1: params with (*) are togglable)";
-		  telnet_printf(cs->ts,"%s\n",str);
-		  telnet_printf(cs->ts,"\n");
+		  myprintf(cs,"%s\n",str);
+		  myprintf(cs,"\n");
 		  str="  (Note 2: params with (**) are changeable)";
-		  telnet_printf(cs->ts,"%s\n",str);
-		  telnet_printf(cs->ts,"\n");
+		  myprintf(cs,"%s\n",str);
+		  myprintf(cs,"\n");
 		}
 	}
 }
@@ -789,7 +806,7 @@ static void close_cli_session(struct cli_session* cs)
 static void type_cli_cursor(struct cli_session* cs)
 {
 	if(cs && (cs->bev)) {
-	  telnet_printf(cs->ts, "%s", CLI_CURSOR);
+	  myprintf(cs, "%s", CLI_CURSOR);
 	}
 }
 
@@ -857,7 +874,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 						close_cli_session(cs);
 					} else {
 						const char* ipwd="Enter password: ";
-						telnet_printf(cs->ts,"%s\n",ipwd);
+						myprintf(cs,"%s\n",ipwd);
 					}
 				} else {
 					cs->auth_completed = 1;
@@ -866,13 +883,13 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				}
 			} else if((strcmp(cmd,"bye") == 0)||(strcmp(cmd,"quit") == 0)||(strcmp(cmd,"exit") == 0)||(strcmp(cmd,"q") == 0)) {
 				const char* str="Bye !";
-				telnet_printf(cs->ts,"%s\n",str);
+				myprintf(cs,"%s\n",str);
 				close_cli_session(cs);
 				ret = -1;
 			} else if((strcmp(cmd,"halt") == 0)||(strcmp(cmd,"shutdown") == 0)||(strcmp(cmd,"stop") == 0)) {
 				addr_debug_print(1, &(cs->addr),"Shutdown command received from CLI user");
 				const char* str="TURN server is shutting down";
-				telnet_printf(cs->ts,"%s\n",str);
+				myprintf(cs,"%s\n",str);
 				close_cli_session(cs);
 				exit(0);
 			} else if((strcmp(cmd,"?") == 0)||(strcmp(cmd,"h") == 0)||(strcmp(cmd,"help") == 0)) {
@@ -887,6 +904,24 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"psp") == cmd) {
 				print_sessions(cs,cmd+3,0,0);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"psd") == cmd) {
+				cmd += 3;
+				while(cmd[0]==' ') ++cmd;
+				if(!(cmd[0])) {
+					const char* str="You have to provide file name for ps dump\n";
+					myprintf(cs,"%s\n",str);
+				} else {
+					cs->f = fopen(cmd,"w");
+					if(!(cs->f)) {
+						const char* str="Cannot open file for writing\n";
+						myprintf(cs,"%s\n",str);
+					} else {
+						print_sessions(cs,"",1,0);
+						fclose(cs->f);
+						cs->f = NULL;
+					}
+				}
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"pu ") == cmd) {
 				print_sessions(cs,cmd+3,0,1);
@@ -917,7 +952,7 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else {
 				const char* str="Unknown command\n";
-				telnet_printf(cs->ts,"%s\n",str);
+				myprintf(cs,"%s\n",str);
 				type_cli_cursor(cs);
 			}
 		} else {

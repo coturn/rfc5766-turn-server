@@ -196,6 +196,9 @@ int stun_attr_add_response_port_str(u08bits *buf, size_t *len, u16bits port);
 int stun_attr_get_padding_len_str(stun_attr_ref attr);
 int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
+/* HTTP */
+int is_http_get(char *s);
+
 ///////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
