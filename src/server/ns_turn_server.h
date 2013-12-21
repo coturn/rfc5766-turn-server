@@ -142,6 +142,8 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid);
 
+turn_time_t get_turn_server_time(turn_turnserver *server);
+
 ///////////////////////////////////////////
 
 #ifdef __cplusplus

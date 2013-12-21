@@ -77,7 +77,6 @@ typedef struct _stun_buffer_list {
 } stun_buffer_list;
 
 typedef unsigned long band_limit_t;
-#define SECS_PER_JIFFIE (1)
 
 /*
  * New connection callback

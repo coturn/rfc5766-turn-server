@@ -432,14 +432,20 @@ Options with required values:
 				
 --denied-peer-ip=<IPaddr[-IPaddr]>
 
---allowed-peer-ip=<IPaddr[-IPaddr]> Options to ban or allow specific ip addresses or ranges of ip addresses. 
-			If an ip address is specified as both allowed and denied, then the ip address is 
-			considered to be allowed. This is useful when you wish to ban a range of ip 
-			addresses, except for a few specific ips within that range.
+--allowed-peer-ip=<IPaddr[-IPaddr]> Options to ban or allow specific ip addresses or ranges 
+			of ip addresses. If an ip address is specified as both allowed and denied, then 
+			the ip address is considered to be allowed. This is useful when you wish to ban
+			a range of ip addresses, except for a few specific ips within that range.
 			This can be used when you do not want users of the turn server to be able to access
 			machines reachable by the turn server, but would otherwise be unreachable from the 
 			internet (e.g. when the turn server is sitting behind a NAT). The 'white" and "black" peer 
-			IP ranges can also be dynamically changed in the database.
+			IP ranges can also be dynamically changed in the database. 
+			The allowed/denied addresses (white/black lists) functionality is very simple:
+			1) If there is no rule for an address, then it is allowed; 
+			2) If there is an explicit allowed rule that fit an address then it is allowed - no matter what;
+			3) If there is no explicit allowed rule for an address, and if there is a denied rule that 
+			fits the address, then it is denied.
+			
 				
 --pidfile 		File name to store the pid of the process.
 			Default is /var/run/turnserver.pid (if superuser account is used) or
@@ -728,6 +734,16 @@ If all efforts failed (due to the system permission settings) then all
 log messages are sent only to the standard output of the process.
 
 This behavior can be controlled by --log-file, --syslog and --no-stdout-log options.
+
+=================================
+
+TELNET CLI
+
+The turnserver process provides a telnet CLI access as statistics and basic management
+interface. By default, the turnserver starts a telnet CLI listener on IP 127.0.0.1 and
+port 5766. That can be changed by the command-cline options of the turnserver process
+(see --cli-ip and --cli-port options). The full list of telnet CLI commands is provided
+in "help" command output in the telnet CLI.
 
 =================================
 

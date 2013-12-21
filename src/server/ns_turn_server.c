@@ -154,6 +154,14 @@ static void timer_timeout_handler(ioa_engine_handle e, void *arg)
 	}
 }
 
+turn_time_t get_turn_server_time(turn_turnserver *server)
+{
+	if(server) {
+		return server->ctime;
+	}
+	return turn_time();
+}
+
 /////////////////// server lists ///////////////////
 
 void init_turn_server_addrs_list(turn_server_addrs_list_t *l)

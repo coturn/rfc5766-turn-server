@@ -281,7 +281,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 
 		ns_bzero(e,sizeof(ioa_engine));
 
-		e->max_bpj = max_bps * SECS_PER_JIFFIE;
+		e->max_bpj = max_bps;
 		e->verbose = verbose;
 		e->tp = tp;
 		if (eb) {
@@ -306,7 +306,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		}
 		e->relay_addr_counter = (size_t) random() % relays_number;
 		timer_handler(e,e);
-		e->timer_ev = set_ioa_timer(e, SECS_PER_JIFFIE, 0, timer_handler, e, 1, "timer_handler");
+		e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
 		return e;
 	}
 }
@@ -3032,7 +3032,7 @@ void turn_report_session_usage(void *session)
 				ss->t_sent_bytes += ss->sent_bytes;
 
 				{
-					turn_time_t ct = turn_time();
+					turn_time_t ct = get_turn_server_time(server);
 					if(ct != ss->start_time) {
 						ct = ct - ss->start_time;
 						ss->received_rate = (u32bits)(ss->t_received_bytes / ct);
