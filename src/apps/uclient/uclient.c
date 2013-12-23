@@ -298,26 +298,27 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 	return ret;
 }
 
-int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, app_tcp_conn_info *atc) {
+int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync,
+		app_tcp_conn_info *atc) {
 
 	int rc = 0;
 
 	ioa_socket_raw fd = clnet_info->fd;
-	if(atc)
+	if (atc)
 		fd = atc->tcp_data_fd;
 
 	SSL* ssl = clnet_info->ssl;
-	if(atc)
-		ssl=atc->tcp_data_ssl;
+	if (atc)
+		ssl = atc->tcp_data_ssl;
 
-	if(!use_secure && !use_tcp && fd>=0) {
+	if (!use_secure && !use_tcp && fd >= 0) {
 
 		/* Plain UDP */
 
 		do {
 			rc = recv(fd, message->buf, sizeof(message->buf) - 1, 0);
-			if(rc<0 && errno==EAGAIN && sync)
-				errno=EINTR;
+			if (rc < 0 && errno == EAGAIN && sync)
+				errno = EINTR;
 		} while (rc < 0 && (errno == EINTR));
 
 		if (rc < 0) {
@@ -326,32 +327,29 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 
 		message->len = rc;
 
-	} else if(use_secure && ssl && !(clnet_info->broken)) {
+	} else if (use_secure && ssl && !(clnet_info->broken)) {
 
 		/* TLS/DTLS */
 
 		int message_received = 0;
 		int cycle = 0;
-		while (!message_received && cycle++<100) {
+		while (!message_received && cycle++ < 100) {
 
 			if (SSL_get_shutdown(ssl))
 				return -1;
 
 			rc = 0;
 			do {
-				rc = SSL_read(ssl, message->buf,
-								sizeof(message->buf) - 1);
-				if(rc<0 && errno==EAGAIN && sync)
+				rc = SSL_read(ssl, message->buf, sizeof(message->buf) - 1);
+				if (rc < 0 && errno == EAGAIN && sync)
 					continue;
 			} while (rc < 0 && (errno == EINTR));
 
 			if (rc > 0) {
 
 				if (clnet_verbose) {
-					TURN_LOG_FUNC(
-									TURN_LOG_LEVEL_INFO,
-									"response received: size=%d\n",
-									rc);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"response received: size=%d\n", rc);
 				}
 				message->len = rc;
 				message_received = 1;
@@ -360,7 +358,7 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 
 				int sslerr = SSL_get_error(ssl, rc);
 
-				switch (sslerr){
+				switch (sslerr) {
 				case SSL_ERROR_NONE:
 					/* Try again ? */
 					break;
@@ -375,96 +373,92 @@ int recv_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int sync, ap
 					break;
 				case SSL_ERROR_SYSCALL:
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"Socket read error 111.999: \n");
+							"Socket read error 111.999: \n");
 					if (handle_socket_error())
 						break;
-				case SSL_ERROR_SSL:
-				{
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"SSL write error: \n");
+				case SSL_ERROR_SSL: {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "SSL write error: \n");
 					char buf[1024];
-					TURN_LOG_FUNC(
-									TURN_LOG_LEVEL_INFO,
-									"%s (%d)\n",
-									ERR_error_string(
-													ERR_get_error(),
-													buf),
-									SSL_get_error(
-													ssl,
-													rc));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s (%d)\n",
+							ERR_error_string(ERR_get_error(), buf),
+							SSL_get_error(ssl, rc));
 				}
 				default:
 					clnet_info->broken = 1;
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"Unexpected error while reading: rc=%d, sslerr=%d\n",rc,sslerr);
+							"Unexpected error while reading: rc=%d, sslerr=%d\n",
+							rc, sslerr);
 					return -1;
 				}
 
-				if(!sync)
-				  break;
+				if (!sync)
+					break;
 			}
 		}
 
-	} else if(!use_secure && use_tcp && fd>=0){
+	} else if (!use_secure && use_tcp && fd >= 0) {
 
-	  /* Plain TCP */
+		/* Plain TCP */
 
-	  do {
-	    rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
-	    if((rc<0) && (errno==EAGAIN) && sync) {
-	      errno=EINTR;
-	    }
-	  } while (rc < 0 && (errno == EINTR));
-	    
-	  if(rc>0) {
-	    int mlen = rc;
-	    size_t app_msg_len = (size_t)rc;
-	    if(!atc) {
-	      mlen = stun_get_message_len_str(message->buf, rc, 1, &app_msg_len);
-	    } else {
-	      if(!sync)
-		mlen = clmessage_length;
-
-	      if(mlen>clmessage_length)
-		mlen = clmessage_length;
-
-	      app_msg_len = (size_t)mlen;
-	    }
-	      
-	    if(mlen>0) {
-
-	      int rcr = 0;
-	      int rsf = 0;
-	      int cycle = 0;
-	      while(rsf<mlen && cycle++<128) {
 		do {
-		  rcr = recv(fd, message->buf+rsf, (size_t)mlen-(size_t)rsf, 0);
-		  if(rcr<0 && errno==EAGAIN && sync)
-		    errno=EINTR;
-		} while (rcr < 0 && (errno == EINTR));
-	      
-		if (rcr > 0)
-		  rsf+= rcr;
-	      
-	      }
+			rc = recv(fd, message->buf, sizeof(message->buf) - 1, MSG_PEEK);
+			if ((rc < 0) && (errno == EAGAIN) && sync) {
+				errno = EINTR;
+			}
+		} while (rc < 0 && (errno == EINTR));
 
-	      if(rsf<1)
-		return -1;
+		if (rc > 0) {
+			int mlen = rc;
+			size_t app_msg_len = (size_t) rc;
+			if (!atc) {
+				mlen = stun_get_message_len_str(message->buf, rc, 1,
+						&app_msg_len);
+			} else {
+				if (!sync)
+					mlen = clmessage_length;
 
-	      if(rsf<(int)app_msg_len) {
-		      if((size_t)(app_msg_len/(size_t)rsf)*((size_t)(rsf)) != app_msg_len) {
-			      return -1;
-		      }
-	      }
+				if (mlen > clmessage_length)
+					mlen = clmessage_length;
 
-	      message->len = app_msg_len;
+				app_msg_len = (size_t) mlen;
+			}
 
-	      rc = app_msg_len;
+			if (mlen > 0) {
 
-	    } else {
-	      rc = 0;
-	    }
-	  }
+				int rcr = 0;
+				int rsf = 0;
+				int cycle = 0;
+				while (rsf < mlen && cycle++ < 128) {
+					do {
+						rcr = recv(fd, message->buf + rsf,
+								(size_t) mlen - (size_t) rsf, 0);
+						if (rcr < 0 && errno == EAGAIN && sync)
+							errno = EINTR;
+					} while (rcr < 0 && (errno == EINTR));
+
+					if (rcr > 0)
+						rsf += rcr;
+
+				}
+
+				if (rsf < 1)
+					return -1;
+
+				if (rsf < (int) app_msg_len) {
+					if ((size_t) (app_msg_len / (size_t) rsf) * ((size_t) (rsf))
+							!= app_msg_len) {
+						return -1;
+					}
+				}
+
+				message->len = app_msg_len;
+
+				rc = app_msg_len;
+
+			} else {
+				rc = 0;
+			}
+		}
 	}
 
 	return rc;

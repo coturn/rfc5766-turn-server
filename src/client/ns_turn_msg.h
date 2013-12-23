@@ -197,7 +197,7 @@ int stun_attr_get_padding_len_str(stun_attr_ref attr);
 int stun_attr_add_padding_str(u08bits *buf, size_t *len, u16bits padding_len);
 
 /* HTTP */
-int is_http_get(char *s);
+int is_http_get(char *s, size_t blen);
 
 ///////////////////////////////////////////////////////////////
 

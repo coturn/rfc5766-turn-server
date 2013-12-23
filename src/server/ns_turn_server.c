@@ -3761,6 +3761,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 	u32bits old_stun_cookie = 0;
 
 	size_t blen = ioa_network_buffer_get_size(in_buffer->nbh);
+	size_t orig_blen = blen;
 	SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
 	int is_padding_mandatory = ((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET));
 
@@ -3775,16 +3776,19 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			return -1;
 		}
 
-		ioa_network_buffer_set_size(in_buffer->nbh,blen);
+		int rc = 0;
 
-		int rc = write_to_peerchannel(ss, chnum, in_buffer);
+		if(blen<=orig_blen) {
+			ioa_network_buffer_set_size(in_buffer->nbh,blen);
+			rc = write_to_peerchannel(ss, chnum, in_buffer);
+		}
 
 		if(rc == 0) {
+			ioa_network_buffer_set_size(in_buffer->nbh,orig_blen);
 			if (!is_allocation_valid(get_allocation_ss(ss))) {
 				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
 				if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
-					char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
-					if(is_http_get(s))
+					if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh)))
 						write_http_echo(server,ss);
 				}
 			}
@@ -3859,8 +3863,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 	} else {
 		SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
 		if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
-			char *s = (char*)ioa_network_buffer_data(in_buffer->nbh);
-			if(is_http_get(s))
+			if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh)))
 				write_http_echo(server,ss);
 		}
 	}

@@ -492,10 +492,46 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
-int is_http_get(char *s) {
-	if((strstr(s,"GET ") == (char*)s) || (strstr(s,"get ") == (char*)s) || (strstr(s,"Get ") == (char*)s)) {
-		if(strstr(s,"HTTP") || strstr(s,"http") || strstr(s,"Http")) {
-			return 1;
+static inline int sheadof(char *head, size_t nlen, char* full)
+{
+	while(nlen>0) {
+		if(*head != *full)
+			return 0;
+		++head;++full;--nlen;
+	}
+	return 1;
+}
+
+static inline char* findstr(char *hay, size_t slen, char *needle)
+{
+	char *ret = NULL;
+
+	if(hay && slen && needle) {
+		size_t nlen=strlen(needle);
+		if(nlen<=slen) {
+			size_t smax = slen-nlen+1;
+			size_t i;
+			char *sp = hay;
+			for(i=0;i<smax;++i) {
+				if(sheadof(needle,nlen,sp+i)) {
+					ret = sp+i;
+					break;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+int is_http_get(char *s, size_t blen) {
+	if(s && blen>12) {
+		if((s[0]=='G')&&(s[1]=='E')&&(s[2]=='T')&&(s[3]==' ')) {
+			char *sp=findstr(s+4,blen-4,"\r\n\r\n");
+			if(sp) {
+				return (int)(sp-s+4);
+			}
+
 		}
 	}
 	return 0;
@@ -541,8 +577,13 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 			}
 		}
 
-		if(is_http_get((char*)buf))
-			return (int)blen;
+		{
+			int http_len = is_http_get(((char*)buf), blen);
+			if(http_len>0) {
+				*app_len = (size_t)http_len;
+				return http_len;
+			}
+		}
 
 	}
 

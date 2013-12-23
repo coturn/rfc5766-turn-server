@@ -1,4 +1,8 @@
 12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.5.2 'Arch Lector':
+	- HTTP "keep-alive" support improved.
+	
+12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.5.1 'Arch Lector':
 	- Private key password allowed for encrypted keys.
 	- HTTP "keep-alive" supported.
