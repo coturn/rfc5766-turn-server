@@ -1,6 +1,7 @@
 12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.1.5.2 'Arch Lector':
+Version 3.1.5.3 'Arch Lector':
 	- HTTP "keep-alive" support improved.
+	- TCP channel "fortification".
 	
 12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.5.1 'Arch Lector':

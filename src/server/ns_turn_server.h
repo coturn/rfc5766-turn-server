@@ -78,7 +78,7 @@ typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 
 struct _turn_server_addrs_list {
 	ioa_addr *addrs;
-	size_t size;
+	volatile size_t size;
 	turn_mutex m;
 };
 

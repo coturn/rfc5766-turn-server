@@ -464,6 +464,9 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 	datalen_header = ((const u16bits*)buf)[1];
 	datalen_header = nswap16(datalen_header);
 
+	if (datalen_header > datalen_actual)
+		return 0;
+
 	if (datalen_header != datalen_actual) {
 
 		/* maybe there are padding bytes for 32-bit alignment. Mandatory for TCP. Optional for UDP */
@@ -492,7 +495,7 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
-static inline int sheadof(char *head, size_t nlen, char* full)
+static inline int sheadof(const char *head, size_t nlen, const char* full)
 {
 	while(nlen>0) {
 		if(*head != *full)
@@ -502,16 +505,16 @@ static inline int sheadof(char *head, size_t nlen, char* full)
 	return 1;
 }
 
-static inline char* findstr(char *hay, size_t slen, char *needle)
+static inline const char* findstr(const char *hay, size_t slen, const char *needle)
 {
-	char *ret = NULL;
+	const char *ret = NULL;
 
 	if(hay && slen && needle) {
 		size_t nlen=strlen(needle);
 		if(nlen<=slen) {
 			size_t smax = slen-nlen+1;
 			size_t i;
-			char *sp = hay;
+			const char *sp = hay;
 			for(i=0;i<smax;++i) {
 				if(sheadof(needle,nlen,sp+i)) {
 					ret = sp+i;
@@ -524,17 +527,28 @@ static inline char* findstr(char *hay, size_t slen, char *needle)
 	return ret;
 }
 
-int is_http_get(char *s, size_t blen) {
-	if(s && blen>12) {
+static inline int is_http_get_inline(const char *s, size_t blen) {
+	if(s && blen>=12) {
 		if((s[0]=='G')&&(s[1]=='E')&&(s[2]=='T')&&(s[3]==' ')) {
-			char *sp=findstr(s+4,blen-4,"\r\n\r\n");
+			const char *sp=findstr(s+4,blen-4,"HTTP");
 			if(sp) {
-				return (int)(sp-s+4);
+				sp += 4;
+				size_t diff_blen = sp-s;
+				if(diff_blen+4 <= blen) {
+					sp=findstr(sp,blen-diff_blen,"\r\n\r\n");
+					if(sp) {
+						return (int)(sp-s+4);
+					}
+				}
 			}
 
 		}
 	}
 	return 0;
+}
+
+int is_http_get(const char *s, size_t blen) {
+	return is_http_get_inline(s, blen);
 }
 
 int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app_len) {
@@ -558,6 +572,16 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 				return -1;
 			}
 		}
+
+		//HTTP request ?
+		{
+			int http_len = is_http_get_inline(((char*)buf), blen);
+			if((http_len>0) && ((size_t)http_len<=blen)) {
+				*app_len = (size_t)http_len;
+				return http_len;
+			}
+		}
+
 		/* STUN channel ? */
 		if(blen>=4) {
 			u16bits chn=nswap16(((const u16bits*)(buf))[0]);
@@ -574,14 +598,6 @@ int stun_get_message_len_str(u08bits *buf, size_t blen, int padding, size_t *app
 				if(bret<=blen) {
 					return bret;
 				}
-			}
-		}
-
-		{
-			int http_len = is_http_get(((char*)buf), blen);
-			if(http_len>0) {
-				*app_len = (size_t)http_len;
-				return http_len;
 			}
 		}
 

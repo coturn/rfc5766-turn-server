@@ -753,10 +753,10 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		{
 		  myprintf(cs,"\n");
-		  const char *str="  (Note 1: params with (*) are togglable)";
+		  const char *str="  (Note 1: parameters with (*) are toggleable)";
 		  myprintf(cs,"%s\n",str);
 		  myprintf(cs,"\n");
-		  str="  (Note 2: params with (**) are changeable)";
+		  str="  (Note 2: parameters with (**) are changeable)";
 		  myprintf(cs,"%s\n",str);
 		  myprintf(cs,"\n");
 		}
