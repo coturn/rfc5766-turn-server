@@ -3783,17 +3783,6 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 			rc = write_to_peerchannel(ss, chnum, in_buffer);
 		}
 
-		if(rc == 0) {
-			ioa_network_buffer_set_size(in_buffer->nbh,orig_blen);
-			if (!is_allocation_valid(get_allocation_ss(ss))) {
-				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
-				if((st == TCP_SOCKET)||(st==TLS_SOCKET)||(st==TENTATIVE_TCP_SOCKET)) {
-					if(is_http_get((char*)ioa_network_buffer_data(in_buffer->nbh), ioa_network_buffer_get_size(in_buffer->nbh)))
-						write_http_echo(server,ss);
-				}
-			}
-		}
-
 		if (eve(server->verbose)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: wrote to peer %d bytes\n",
 					__FUNCTION__, (int) rc);

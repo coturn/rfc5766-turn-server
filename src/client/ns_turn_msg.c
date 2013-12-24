@@ -495,12 +495,12 @@ int stun_is_channel_message_str(const u08bits *buf, size_t *blen, u16bits* chnum
 
 ////////// STUN message ///////////////////////////////
 
-static inline int sheadof(const char *head, size_t nlen, const char* full)
+static inline int sheadof(const char *head, const char* full)
 {
-	while(nlen>0) {
+	while(*head) {
 		if(*head != *full)
 			return 0;
-		++head;++full;--nlen;
+		++head;++full;
 	}
 	return 1;
 }
@@ -516,7 +516,7 @@ static inline const char* findstr(const char *hay, size_t slen, const char *need
 			size_t i;
 			const char *sp = hay;
 			for(i=0;i<smax;++i) {
-				if(sheadof(needle,nlen,sp+i)) {
+				if(sheadof(needle,sp+i)) {
 					ret = sp+i;
 					break;
 				}
