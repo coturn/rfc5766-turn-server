@@ -503,7 +503,7 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				}
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
-				myprintf(cs,"      SHA256 only: %s\n",get_flag(tsi->shatype));
+				myprintf(cs,"      SHA256: %s\n",get_flag(tsi->shatype));
 				if(tsi->tls_method[0]) {
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
 					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
