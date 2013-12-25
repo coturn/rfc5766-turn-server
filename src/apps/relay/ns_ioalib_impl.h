@@ -131,6 +131,8 @@ struct _ioa_engine
   band_limit_t max_bpj;
   ioa_timer_handle timer_ev;
   s08bits cmsg[TURN_CMSG_SZ+1];
+  struct timeval **predefined_timers;
+  int predefined_timers_num;
 };
 
 #define SOCKET_MAGIC (0xABACADEF)

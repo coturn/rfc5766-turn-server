@@ -1,4 +1,9 @@
-12/19/2013 Oleg Moskalenko <mom040267@gmail.com>
+12/25/2013 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.1.6.0 'Arch Lector':
+	- Timers optimization: linked list timers structure 
+		for often-used intervals.
+
+12/23/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.5.3 'Arch Lector':
 	- HTTP "keep-alive" support improved.
 	- TCP channel "fortification".

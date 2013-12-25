@@ -3857,7 +3857,7 @@ static int read_client_connection(turn_turnserver *server, ts_ur_session *elem,
 		}
 	}
 
-	//Unrecognised message received, ignore it
+	//Unrecognized message received, ignore it
 
 	FUNCEND;
 	return -1;

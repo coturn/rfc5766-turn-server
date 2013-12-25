@@ -1551,8 +1551,9 @@ int main(int argc, char **argv)
 		if(!local_listeners && listener.addrs_number && listener.addrs) {
 			size_t la = 0;
 			for(la=0;la<listener.addrs_number;la++) {
-				if(listener.addrs[la])
+				if(listener.addrs[la]) {
 					add_relay_addr(listener.addrs[la]);
+				}
 			}
 		}
 		if (!relays_number)

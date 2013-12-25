@@ -80,6 +80,8 @@ struct turn_sock_extended_err {
 
 #define TRIAL_EFFORTS_TO_SEND (2)
 
+static int predefined_timer_intervals[] = {60,120,300,600,900,1800,3600,0};
+
 /************** Forward function declarations ******/
 
 static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr);
@@ -292,6 +294,28 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (engine own thread): %s\n",event_base_get_method(e->event_base));
 			e->deallocate_eb = 1;
 		}
+
+		{
+			int t=0;
+			while(predefined_timer_intervals[t]) {
+				struct timeval duration;
+				duration.tv_sec = predefined_timer_intervals[t];
+				duration.tv_usec = 0;
+				const struct timeval *ptv = event_base_init_common_timeout(e->event_base, &duration);
+				if(!ptv) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot create preferable timeval for %d secs (%d number)\n",predefined_timer_intervals[t],t);
+					break;
+				} else {
+					e->predefined_timers = (struct timeval **)realloc(e->predefined_timers,sizeof(struct timeval *)*(t+1));
+					e->predefined_timers[t] = (struct timeval *)malloc(sizeof(struct timeval));
+					ns_bcopy(ptv,e->predefined_timers[t],sizeof(struct timeval));
+					e->predefined_timers_num = t;
+					++t;
+				}
+			}
+		}
+
+
 		if (relay_ifname)
 			STRCPY(e->relay_ifname, relay_ifname);
 		if (relay_addrs) {
@@ -409,7 +433,6 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		struct timeval tv;
 
 		tv.tv_sec = secs;
-		tv.tv_usec = ms * 1000;
 
 		te->ctx = ctx;
 		te->e = e;
@@ -417,7 +440,27 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		te->cb = cb;
 		te->txt = strdup(txt);
 
-		evtimer_add(ev,&tv);
+		if(!ms) {
+			tv.tv_usec = 0;
+			int found = 0;
+			if(e->predefined_timers && e->predefined_timers_num) {
+				int t=0;
+				while(predefined_timer_intervals[t] && (t<e->predefined_timers_num)) {
+					if(predefined_timer_intervals[t] == secs) {
+						evtimer_add(ev,e->predefined_timers[t]);
+						found = 1;
+						break;
+					}
+					++t;
+				}
+			}
+			if(!found) {
+				evtimer_add(ev,&tv);
+			}
+		} else {
+			tv.tv_usec = ms * 1000;
+			evtimer_add(ev,&tv);
+		}
 
 		ret = te;
 	}
