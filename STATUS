@@ -82,6 +82,8 @@ compatibility.
 33) DH and EC TLS ciphers added.
 
 34) HTTP "keep alive" request supported.
+
+35) Optimized (for multiple sessions) timers implementation.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
