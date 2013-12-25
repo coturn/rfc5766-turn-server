@@ -642,9 +642,9 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,pkey_file,"pkey-file",0);
 
 		if(shatype == SHATYPE_SHA1)
-			cli_print_str(cs,"SHA1 and SHA256","SHA type",0);
+			cli_print_str(cs,"SHA1 and SHA256","SHA type allowed",0);
 		else if(shatype == SHATYPE_SHA256)
-					cli_print_str(cs,"SHA256 only","SHA type",0);
+					cli_print_str(cs,"SHA256 only","SHA type allowed",0);
 
 		myprintf(cs,"\n");
 
