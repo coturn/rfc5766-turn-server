@@ -848,15 +848,15 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 
 	if(cs && buf0 && cs->ts && cs->bev) {
 
-		char *buf = strdup(buf0);
+		char *buf = (char*)malloc(len+1);
+		ns_bcopy(buf0,buf,len);
+		buf[len]=0;
 
 		char *cmd = buf;
 
 		while((cmd[0]==' ') || (cmd[0]=='\t')) ++cmd;
 
-		size_t sl = len;
-
-		sl = strlen(cmd);
+		size_t sl = strlen(cmd);
 
 		while(sl) {
 			char c = cmd[sl-1];
@@ -905,6 +905,9 @@ static int run_cli_input(struct cli_session* cs, const char *buf0, unsigned int 
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"tc ") == cmd) {
 				toggle_cli_param(cs,cmd+3);
+				type_cli_cursor(cs);
+			} else if(strstr(cmd,"tc") == cmd) {
+				toggle_cli_param(cs,cmd+2);
 				type_cli_cursor(cs);
 			} else if(strstr(cmd,"psp") == cmd) {
 				print_sessions(cs,cmd+3,0,0);
