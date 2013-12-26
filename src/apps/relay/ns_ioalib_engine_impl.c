@@ -80,7 +80,7 @@ struct turn_sock_extended_err {
 
 #define TRIAL_EFFORTS_TO_SEND (2)
 
-static int predefined_timer_intervals[] = {60,120,300,600,900,1800,3600,0};
+static const int predefined_timer_intervals[] = {30,60,90,120,240,300,360,540,600,700,800,900,1800,3600,0};
 
 /************** Forward function declarations ******/
 

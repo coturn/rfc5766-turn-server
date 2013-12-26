@@ -3715,7 +3715,7 @@ static void write_http_echo(turn_turnserver *server, ts_ur_super_session *ss)
 		u08bits *data = ioa_network_buffer_data(nbh_http);
 		char data_http[1025];
 		char content_http[1025];
-		snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html><html><head><title>%s</title></head><body>%s<br><a href=\"http://www.firstlawcomic.com/page/1/\">First Law Trilogy</a></body></html>",TURN_SOFTWARE,TURN_SOFTWARE);
+		snprintf(content_http,sizeof(content_http)-1,"<!DOCTYPE html>\r\n<html>\r\n  <head>\r\n    <title>%s</title>\r\n  </head>\r\n  <body>\r\n    <a href=\"%s\">%s</a>\r\n  </body>\r\n</html>\r\n",TURN_SOFTWARE,"http://code.google.com/p/rfc5766-turn-server/",TURN_SOFTWARE);
 		snprintf(data_http,sizeof(data_http)-1,"HTTP/1.1 200 OK\r\nServer: %s\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: %d\r\n\r\n%s",TURN_SOFTWARE,(int)strlen(content_http),content_http);
 		len_http = strlen(data_http);
 		ns_bcopy(data_http,data,len_http);
