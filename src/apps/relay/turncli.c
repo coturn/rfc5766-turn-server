@@ -504,6 +504,10 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
 				myprintf(cs,"      SHA256: %s\n",get_flag(tsi->shatype));
+				if(shatype == SHATYPE_SHA1)
+					myprintf(cs,"      SHA type: SHA1\n");
+				else if(shatype == SHATYPE_SHA256)
+					myprintf(cs,"      SHA type: SHA256\n");
 				if(tsi->tls_method[0]) {
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
 					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
@@ -642,9 +646,9 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,pkey_file,"pkey-file",0);
 
 		if(shatype == SHATYPE_SHA1)
-			cli_print_str(cs,"SHA1 and SHA256","SHA type allowed",0);
+			cli_print_str(cs,"SHA1 and SHA256","allowed SHA types",0);
 		else if(shatype == SHATYPE_SHA256)
-					cli_print_str(cs,"SHA256 only","SHA type allowed",0);
+					cli_print_str(cs,"SHA256 only","allowed SHA types",0);
 
 		myprintf(cs,"\n");
 
