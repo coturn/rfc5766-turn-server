@@ -285,8 +285,6 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 		rdest = general_relay_servers[dest];
 	}
 
-	printf("%s: 111.111: id=%d\n",__FUNCTION__,(int)rdest->id);
-
 	struct message_to_relay *smptr = sm;
 
 	smptr->t = RMT_SOCKET;
