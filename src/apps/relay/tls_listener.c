@@ -51,6 +51,7 @@ struct tls_listener_relay_server_info
 	struct evconnlistener *l;
 	struct message_to_relay sm;
 	ioa_engine_new_connection_event_handler connect_cb;
+	struct relay_server *relay_server;
 };
 
 /////////////// io handlers ///////////////////
@@ -102,6 +103,7 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 		server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 		server->sm.m.sm.nd.nbh = NULL;
 		server->sm.m.sm.s = ioas;
+		server->sm.relay_server = server->relay_server;
 
 		int rc = server->connect_cb(server->e, &(server->sm));
 
@@ -186,11 +188,13 @@ static int init_server(tls_listener_relay_server_type* server,
 		       int port, 
 		       int verbose,
 		       ioa_engine_handle e,
-		       ioa_engine_new_connection_event_handler send_socket) {
+		       ioa_engine_new_connection_event_handler send_socket,
+		       struct relay_server *relay_server) {
 
   if(!server) return -1;
 
   server->connect_cb = send_socket;
+  server->relay_server = relay_server;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -212,17 +216,19 @@ static int init_server(tls_listener_relay_server_type* server,
 tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 				const char *local_address, int port, int verbose,
 				ioa_engine_handle e,
-				ioa_engine_new_connection_event_handler send_socket)
+				ioa_engine_new_connection_event_handler send_socket,
+				struct relay_server *relay_server)
 {
 
-  tls_listener_relay_server_type* server = (tls_listener_relay_server_type*)
-    turn_malloc(sizeof(tls_listener_relay_server_type));
+	tls_listener_relay_server_type* server =
+			(tls_listener_relay_server_type*) turn_malloc(sizeof(tls_listener_relay_server_type));
 
 	ns_bzero(server, sizeof(tls_listener_relay_server_type));
 
-	if (init_server(server, ifname, local_address, port, verbose, e, send_socket) < 0) {
-		turn_free(server,sizeof(tls_listener_relay_server_type));
-		return NULL;
+	if (init_server(server, ifname, local_address, port, verbose, e,
+			send_socket, relay_server) < 0) {
+		turn_free(server, sizeof(tls_listener_relay_server_type));
+		return NULL ;
 	} else {
 		return server;
 	}

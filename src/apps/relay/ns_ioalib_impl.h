@@ -90,8 +90,21 @@ struct cb_socket_message {
 	int message_integrity;
 };
 
+struct relay_server {
+	turnserver_id id;
+	struct event_base* event_base;
+	struct bufferevent *in_buf;
+	struct bufferevent *out_buf;
+	struct bufferevent *auth_in_buf;
+	struct bufferevent *auth_out_buf;
+	ioa_engine_handle ioa_eng;
+	turn_turnserver *server;
+	pthread_t thr;
+};
+
 struct message_to_relay {
 	MESSAGE_TO_RELAY_TYPE t;
+	struct relay_server *relay_server;
 	union {
 		struct socket_message sm;
 		struct cb_socket_message cb_sm;

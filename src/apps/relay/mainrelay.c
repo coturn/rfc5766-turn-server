@@ -1321,7 +1321,7 @@ static void print_features(void)
 #endif
 
 	if(new_net_engine)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.0\n\n=====================================================\n\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.2\n\n=====================================================\n\n");
 	else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n\n=====================================================\n\n");
 

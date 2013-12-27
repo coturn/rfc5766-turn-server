@@ -202,9 +202,6 @@ struct listener_server {
 	dtls_listener_relay_server_type ***udp_services;
 	dtls_listener_relay_server_type ***dtls_services;
 	dtls_listener_relay_server_type ***aux_udp_services;
-	tls_listener_relay_server_type **tcp_services;
-	tls_listener_relay_server_type **tls_services;
-	tls_listener_relay_server_type **aux_tcp_services;
 #if !defined(TURN_NO_HIREDIS)
 	redis_context_handle rch;
 #endif
