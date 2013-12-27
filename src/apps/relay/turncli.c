@@ -237,6 +237,8 @@ static void cli_print_uint(struct cli_session* cs, unsigned long value, const ch
 static void cli_print_str(struct cli_session* cs, const char *value, const char* name, int changeable)
 {
 	if(cs && cs->ts && name && value) {
+		if(value[0] == 0)
+			value="empty";
 		const char *sc="";
 		if(changeable==1)
 			sc=" (*)";
@@ -638,12 +640,9 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_str(cs,ec_curve_name,"ec-curve-name",0);
 		cli_print_uint(cs,(unsigned long)dh_key_length,"DH-key-length",0);
 
-		if(ca_cert_file[0])
-			cli_print_str(cs,ca_cert_file,"CA-cert-file",0);
-		if(cert_file[0])
-			cli_print_str(cs,cert_file,"cert-file",0);
-		if(pkey_file[0])
-			cli_print_str(cs,pkey_file,"pkey-file",0);
+		cli_print_str(cs,ca_cert_file,"Certificate Authority file",0);
+		cli_print_str(cs,cert_file,"Certificate file",0);
+		cli_print_str(cs,pkey_file,"Private Key file",0);
 
 		if(shatype == SHATYPE_SHA1)
 			cli_print_str(cs,"SHA1 and SHA256","allowed SHA types",0);

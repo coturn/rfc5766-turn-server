@@ -1,6 +1,9 @@
 12/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.0 'Marshal West':
 	- Optimized TCP network engine for Linux 3.9+.
+	- Security fix: DH and ECDH temporary keys are now
+		regenerated for each TLS or DTLS session.
+	- Fix for systems with multiple CPU cores (more than 128).
 
 12/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.6.0 'Arch Lector':

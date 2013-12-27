@@ -1418,12 +1418,16 @@ int main(int argc, char **argv)
 
 #if defined(_SC_NPROCESSORS_ONLN)
 
-	general_relay_servers_number = sysconf(_SC_NPROCESSORS_CONF);
+	{
+		 long cpus = (long)sysconf(_SC_NPROCESSORS_CONF);
 
-	if(general_relay_servers_number<1)
-		general_relay_servers_number = 1;
-	else if(general_relay_servers_number>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
-		general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+		 if(cpus<1)
+			 cpus = 1;
+		 else if(cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
+			 cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+
+		 general_relay_servers_number = (turnserver_id)cpus;
+	}
 
 #endif
 
@@ -1892,6 +1896,8 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 			DH_free (dh);
 		}
 	}
+
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE);
 }
 
 static void openssl_setup(void)
