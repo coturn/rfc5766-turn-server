@@ -739,6 +739,11 @@ static void setup_listener(void)
 	} else {
 		listener.services_number = listener.services_number * 2;
 	}
+
+	listener.udp_services = (dtls_listener_relay_server_type***)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type**)*listener.services_number);
+	listener.dtls_services = (dtls_listener_relay_server_type***)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type**)*listener.services_number);
+
+	listener.aux_udp_services = (dtls_listener_relay_server_type***)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type**)*aux_servers_list.size+1);
 }
 
 static void setup_barriers(void)
@@ -784,11 +789,6 @@ static void setup_barriers(void)
 static void setup_udp_listener_servers(void)
 {
 	size_t i = 0;
-
-	listener.udp_services = (dtls_listener_relay_server_type***)realloc(listener.udp_services, sizeof(dtls_listener_relay_server_type**)*listener.services_number);
-	listener.dtls_services = (dtls_listener_relay_server_type***)realloc(listener.dtls_services, sizeof(dtls_listener_relay_server_type**)*listener.services_number);
-
-	listener.aux_udp_services = (dtls_listener_relay_server_type***)realloc(listener.aux_udp_services, sizeof(dtls_listener_relay_server_type**)*aux_servers_list.size+1);
 
 	/* Adjust udp relay number */
 
@@ -1243,6 +1243,10 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 	if(to_set_rfc5780) {
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
+
+	if(new_net_engine) {
+		setup_tcp_listener_servers(rs->ioa_eng, rs);
+	}
 }
 
 static void *run_general_relay_thread(void *arg)
@@ -1403,12 +1407,7 @@ void setup_server(void)
 	else
 		setup_udp_listener_servers();
 
-	if(new_net_engine) {
-		size_t i;
-		for(i=0;i<get_real_general_relay_servers_number();i++) {
-			setup_tcp_listener_servers(general_relay_servers[i]->ioa_eng, general_relay_servers[i]);
-		}
-	} else {
+	if(!new_net_engine) {
 		setup_tcp_listener_servers(listener.ioa_eng, NULL);
 	}
 
