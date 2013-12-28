@@ -64,6 +64,8 @@
 
 4) Memory fragmentation solution.
 
+5) Structures optimization for better CPU cache performance.
+
 ==================================================================
 
 ###   V. SECURITY   ###
