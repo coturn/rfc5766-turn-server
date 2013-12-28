@@ -83,7 +83,7 @@
 1) Follow the draft ICE endpoint mobility standard and add changes 
 when necessary:
 
-   http://tools.ietf.org/id/draft-wing-mmusic-ice-mobility-05.html
+   https://ietf.org/doc/draft-wing-mmusic-ice-mobility/
 
 2) For extra difficult NAT/FWs, consider implementing Websockets.
 

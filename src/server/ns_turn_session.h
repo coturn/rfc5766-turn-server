@@ -116,7 +116,7 @@ struct turn_session_info {
 	u64bits sent_bytes;
 	u32bits received_rate;
 	u32bits sent_rate;
-        u32bits total_rate;
+    u32bits total_rate;
 /* Mobile */
 	int is_mobile;
 };
