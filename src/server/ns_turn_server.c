@@ -76,9 +76,7 @@ struct _turn_turnserver {
 	get_user_key_cb userkeycb;
 	check_new_allocation_quota_cb chquotacb;
 	release_allocation_quota_cb raqcb;
-	ioa_addr **encaddrs;
 	ioa_addr *external_ip;
-	size_t addrs_number;
 	vintp no_loopback_peers;
 	vintp no_multicast_peers;
 	send_turn_session_info_cb send_turn_session_info;
