@@ -638,7 +638,14 @@ static void cli_print_configuration(struct cli_session* cs)
 			cli_print_str(cs,DEFAULT_CIPHER_LIST,"cipher-list",0);
 
 		cli_print_str(cs,ec_curve_name,"ec-curve-name",0);
-		cli_print_uint(cs,(unsigned long)dh_key_length,"DH-key-length",0);
+		{
+			unsigned int dh_key_length = 1066;
+			if(dh_key_size == DH_566)
+				dh_key_length = 566;
+			else if(dh_key_size == DH_2066)
+				dh_key_length = 2066;
+			cli_print_uint(cs,(unsigned long)dh_key_length,"DH-key-length",0);
+		}
 
 		cli_print_str(cs,ca_cert_file,"Certificate Authority file",0);
 		cli_print_str(cs,cert_file,"Certificate file",0);

@@ -164,6 +164,10 @@ Flags:
 			or can be found in the turn_secret table in the database.
 			This option can be used with long-term credentials mechanisms only -
 			it does not make much sense with the short-term mechanism.
+			
+--dh566		Use 566 bits DH TLS key. Default size of the key is 1066.
+
+--dh2066	Use 2066 bits DH TLS key. Default size of the key is 1066.
 
 --no-udp		Do not start UDP client listeners.
 

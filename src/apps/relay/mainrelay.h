@@ -107,6 +107,16 @@ extern SSL_CTX *dtls_ctx;
 
 extern SHATYPE shatype;
 
+enum _DH_KEY_SIZE {
+	DH_566,
+	DH_1066,
+	DH_2066
+};
+
+typedef enum _DH_KEY_SIZE DH_KEY_SIZE;
+
+extern DH_KEY_SIZE dh_key_size;
+
 //////////////// Common params ////////////////////
 
 extern int verbose;
@@ -127,7 +137,6 @@ extern char pidfile[1025];
 extern char cipher_list[1025];
 #define DEFAULT_EC_CURVE_NAME "prime256v1"
 extern char ec_curve_name[33];
-extern unsigned int dh_key_length;
 
 extern char ca_cert_file[1025];
 extern char cert_file[1025];
