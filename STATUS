@@ -71,9 +71,9 @@ compatibility.
 
 28) A number of TLS/DTLS improvements added: multiple protocols support, certificate check option.
 
-29) SHA256 support added.
+29) SHA256 support added (experimental).
 
-30) UDP network engine optimized for the new Linux kernels (3.9+). 
+30) UDP network engine optimized for the new Linux kernels (3.9+).
 
 31) ICE Mobility draft implemented (experimental). 
 
@@ -83,7 +83,9 @@ compatibility.
 
 34) HTTP "keep alive" request supported.
 
-35) Optimized (for multiple sessions) timers implementation.
+35) Optimized (for thousands and more sessions) timers implementation.
+
+36) TCP network engine optimized for the new Linux kernels (3.9+). 
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
