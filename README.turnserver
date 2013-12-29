@@ -221,6 +221,7 @@ Flags:
 			server applications on the relay endpoints.
 			This option eliminates the IP permissions check 
 			on the packets incoming to the relay endpoints.
+			See http://tools.ietf.org/search/rfc5766#section-17.2.3 .
 
 -h			Help.
     
@@ -232,7 +233,7 @@ Options with required values:
 			process without root privileges, then just do not use this setting.
 
 -L, --listening-ip	Listener IP address of relay server. 
-			Multiple listeners can be specified:
+			Multiple listeners can be specified, for example:
 			-L ip1 -L ip2 -L ip3
 			If no IP(s) specified, then all IPv4 and 
 			IPv6 system IPs will be used for listening.
