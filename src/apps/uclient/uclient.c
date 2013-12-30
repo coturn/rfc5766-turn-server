@@ -58,10 +58,9 @@ static u64bits current_mstime = 0;
 
 static char buffer_to_send[65536]="\0";
 
-#define MAX_CLIENTS (1024)
 static int total_clients = 0;
 
-static app_ur_session* elems[MAX_CLIENTS];
+static app_ur_session** elems = NULL;
 
 #define SLEEP_INTERVAL (2345)
 
@@ -1208,6 +1207,8 @@ void start_mclient(const char *remote_address, int port,
 	      ++mclient;
 	}
 
+	elems = (app_ur_session**)malloc(sizeof(app_ur_session)*((mclient*2)+1)+sizeof(void*));
+
 	__turn_getMSTime();
 	u32bits stime = current_time;
 
@@ -1387,6 +1388,8 @@ void start_mclient(const char *remote_address, int port,
 				((double)total_jitter/(double)tot_recv_messages),
 				(unsigned long)min_jitter,
 				(unsigned long)max_jitter);
+
+	free(elems);
 }
 
 ///////////////////////////////////////////
