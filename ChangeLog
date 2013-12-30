@@ -5,6 +5,7 @@ Version 3.2.1.0 'Marshal West':
 		regenerated for each TLS or DTLS session.
 	- Fix for systems with multiple CPU cores (more than 128).
 	- DH TLS key now can be configured as 566, 1066 (default) or 2066 bits.
+	- DH TLS key can be taken from a PEM file.
 
 12/25/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.1.6.0 'Arch Lector':

@@ -110,7 +110,8 @@ extern SHATYPE shatype;
 enum _DH_KEY_SIZE {
 	DH_566,
 	DH_1066,
-	DH_2066
+	DH_2066,
+	DH_CUSTOM
 };
 
 typedef enum _DH_KEY_SIZE DH_KEY_SIZE;
@@ -142,6 +143,7 @@ extern char ca_cert_file[1025];
 extern char cert_file[1025];
 extern char pkey_file[1025];
 extern char tls_password[513];
+extern char dh_file[1025];
 
 ////////////////  Listener server /////////////////
 

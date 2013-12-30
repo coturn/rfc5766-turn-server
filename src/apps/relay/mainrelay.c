@@ -62,6 +62,7 @@ char tls_password[513]="";
 SHATYPE shatype = SHATYPE_SHA1;
 
 DH_KEY_SIZE dh_key_size = DH_1066;
+char dh_file[1025]="";
 
 //////////////// Common params ////////////////////
 
@@ -394,8 +395,10 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						By default, no CA is set and no client certificate check is performed.\n"
 " --ec-curve-name	<curve-name>		Curve name for EC ciphers, if supported by OpenSSL library\n"
 "						(TLS and DTLS). The default value is prime256v1.\n"
-" --dh566					Use 566 bits DH TLS key. Default size of the key is 1066.\n"
-" --dh2066					Use 2066 bits DH TLS key. Default size of the key is 1066.\n"
+" --dh566					Use 566 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
+" --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
+" --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
+"						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -443,9 +446,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						support SHA256 hash function if this option is used. If the server obtains\n"
 "						a message from the client with a weaker (SHA1) hash function then the server\n"
 "						returns error code 426.\n"
-" --proc-user <user-name>			User ID to run the process. After the initialization, the turnserver process\n"
+" --proc-user <user-name>			User name to run the turnserver process.\n"
+"						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current user ID to that user.\n"
-" --proc-group <group-name>			Group ID to run the process. After the initialization, the turnserver process\n"
+" --proc-group <group-name>			Group name to run the turnserver process.\n"
+"						After the initialization, the turnserver process\n"
 "						will make an attempt to change the current group ID to that group.\n"
 " --mobility					Mobility with ICE (MICE) specs support.\n"
 " --no-cli					Turn OFF the CLI support. By default it is always ON.\n"
@@ -531,6 +536,7 @@ enum EXTRA_OPTS {
 	PIDFILE_OPT,
 	SECURE_STUN_OPT,
 	CA_FILE_OPT,
+	DH_FILE_OPT,
 	SHA256_OPT,
 	NO_STUN_OPT,
 	PROC_USER_OPT,
@@ -616,6 +622,7 @@ static struct option long_options[] = {
 				{ "pidfile", required_argument, NULL, PIDFILE_OPT },
 				{ "secure-stun", optional_argument, NULL, SECURE_STUN_OPT },
 				{ "CA-file", required_argument, NULL, CA_FILE_OPT },
+				{ "dh-file", required_argument, NULL, DH_FILE_OPT },
 				{ "sha256", optional_argument, NULL, SHA256_OPT },
 				{ "proc-user", required_argument, NULL, PROC_USER_OPT },
 				{ "proc-group", required_argument, NULL, PROC_GROUP_OPT },
@@ -975,6 +982,9 @@ static void set_option(int c, char *value)
 		break;
 	case CA_FILE_OPT:
 		STRCPY(ca_cert_file,value);
+		break;
+	case DH_FILE_OPT:
+		STRCPY(dh_file,value);
 		break;
 	case PKEY_FILE_OPT:
 		STRCPY(pkey_file,value);
@@ -1733,7 +1743,7 @@ int THREAD_cleanup(void) {
   return 1;
 }
 
-static void adjust_key_file_name(char *fn, const char* file_title)
+static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 {
 	char *full_path_to_file = NULL;
 
@@ -1764,21 +1774,25 @@ static void adjust_key_file_name(char *fn, const char* file_title)
 
 	keyerr:
 	{
-	  no_tls = 1;
-	  no_dtls = 1;
-	  if(full_path_to_file)
-	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
-	  return;
+		if(critical) {
+			no_tls = 1;
+			no_dtls = 1;
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
+		}
+		if(full_path_to_file)
+			turn_free(full_path_to_file,strlen(full_path_to_file)+1);
+		return;
 	}
 }
 
 static void adjust_key_file_names(void)
 {
 	if(ca_cert_file[0])
-		adjust_key_file_name(ca_cert_file,"CA");
-	adjust_key_file_name(cert_file,"certificate");
-	adjust_key_file_name(pkey_file,"private key");
+		adjust_key_file_name(ca_cert_file,"CA",1);
+	adjust_key_file_name(cert_file,"certificate",1);
+	adjust_key_file_name(pkey_file,"private key",1);
+	if(dh_file[0])
+		adjust_key_file_name(dh_file,"DH key",0);
 }
 
 static DH *get_dh566(void) {
@@ -1974,14 +1988,30 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{//DH algorithms:
 
 		DH *dh = NULL;
-		if(dh_key_size == DH_566)
-			dh = get_dh566();
-		else if(dh_key_size == DH_2066)
-			dh = get_dh2066();
-		else
-			dh = get_dh1066();
+		if(dh_file[0]) {
+			FILE *paramfile = fopen(dh_file, "r");
+			 if (!paramfile) {
+				 perror("Cannot open DH file");
+			 } else {
+			   dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
+			   fclose(paramfile);
+			   if(dh) {
+				   dh_key_size = DH_CUSTOM;
+			   }
+			 }
+		}
+
 		if(!dh) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: allocate DH suite\n");
+			if(dh_key_size == DH_566)
+				dh = get_dh566();
+			else if(dh_key_size == DH_2066)
+				dh = get_dh2066();
+			else
+				dh = get_dh1066();
+		}
+
+		if(!dh) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot allocate DH suite\n");
 		} else {
 			if (1 != SSL_CTX_set_tmp_dh (ctx, dh)) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: cannot set DH\n");
