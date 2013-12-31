@@ -30,6 +30,11 @@
 
 #include "mainrelay.h"
 
+//////////// Extern definition ////////////////////
+
+NET_ENG_VERSION net_engine_version = NEV_UNKNOWN;
+const char* net_engine_version_txt[] = { "Unknown", "UDP socket per session", "UDP socket per network endpoint", "UDP socket per thread and network endpoint" };
+
 //////////// Barrier for the threads //////////////
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
@@ -589,7 +594,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 
 		size_t relay_thread_index = 0;
 
-		if(new_net_engine) {
+		if(net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
 			size_t ri;
 			for(ri=0;ri<get_real_general_relay_servers_number();ri++) {
 				if(general_relay_servers[ri]->thr == pthread_self()) {
@@ -752,7 +757,7 @@ static void setup_barriers(void)
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
-	if(!new_net_engine && general_relay_servers_number>1) {
+	if((net_engine_version != NEV_UDP_SOCKET_PER_THREAD) && general_relay_servers_number>1) {
 
 		/* UDP: */
 		if(!no_udp) {
@@ -1244,7 +1249,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		set_rfc5780(rs->server, get_alt_addr, send_message_from_listener_to_client);
 	}
 
-	if(new_net_engine) {
+	if(net_engine_version == NEV_UDP_SOCKET_PER_THREAD) {
 		setup_tcp_listener_servers(rs->ioa_eng, rs);
 	}
 }
@@ -1254,7 +1259,7 @@ static void *run_general_relay_thread(void *arg)
   static int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
   
-  int udp_reuses_the_same_relay_server = (general_relay_servers_number<=1) || new_net_engine;
+  int udp_reuses_the_same_relay_server = (general_relay_servers_number<=1) || (net_engine_version == NEV_UDP_SOCKET_PER_THREAD);
 
   int we_need_rfc5780 = udp_reuses_the_same_relay_server && rfc5780;
 
@@ -1288,7 +1293,7 @@ static void setup_general_relay_servers(void)
 		general_relay_servers[i]->id = (turnserver_id)i;
 
 		if(general_relay_servers_number == 0) {
-			setup_relay_server(general_relay_servers[i], listener.ioa_eng, new_net_engine && rfc5780);
+			setup_relay_server(general_relay_servers[i], listener.ioa_eng, (net_engine_version == NEV_UDP_SOCKET_PER_THREAD) && rfc5780);
 			general_relay_servers[i]->thr = pthread_self();
 		} else {
 			if(pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])<0) {
@@ -1402,12 +1407,12 @@ void setup_server(void)
 	setup_barriers();
 	setup_general_relay_servers();
 
-	if(new_net_engine)
+	if(net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
 		setup_new_udp_listener_servers();
 	else
 		setup_udp_listener_servers();
 
-	if(!new_net_engine) {
+	if(net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
 		setup_tcp_listener_servers(listener.ioa_eng, NULL);
 	}
 

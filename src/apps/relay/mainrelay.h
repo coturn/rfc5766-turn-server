@@ -223,7 +223,18 @@ extern struct listener_server listener;
 extern ip_range_list_t ip_whitelist;
 extern ip_range_list_t ip_blacklist;
 
-extern int new_net_engine;
+enum _NET_ENG_VERSION {
+	NEV_UNKNOWN=0,
+	NEV_UDP_SOCKET_PER_SESSION=1,
+	NEV_UDP_SOCKET_PER_ENDPOINT=2,
+	NEV_UDP_SOCKET_PER_THREAD=3,
+	NEV_MAX=NEV_UDP_SOCKET_PER_THREAD
+};
+
+typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
+
+extern NET_ENG_VERSION net_engine_version;
+extern const char* net_engine_version_txt[];
 
 //////////////// Relay servers //////////////////////////////////
 

@@ -118,8 +118,6 @@ struct listener_server listener;
 ip_range_list_t ip_whitelist = {NULL, NULL, 0};
 ip_range_list_t ip_blacklist = {NULL, NULL, 0};
 
-int new_net_engine = 0;
-
 //////////////// Relay servers //////////////////////////////////
 
 band_limit_t max_bps = 0;
@@ -1343,20 +1341,19 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
 #endif
 
-	if(new_net_engine)
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 3.2\n\n=====================================================\n\n");
-	else
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: 2.5\n\n=====================================================\n\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: %d (%s)\n\n=====================================================\n\n", (int)net_engine_version, net_engine_version_txt[(int)net_engine_version]);
 
 }
 
 static void set_network_engine(void)
 {
-	new_net_engine = 0;
+	if(net_engine_version != NEV_UNKNOWN)
+		return;
+	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
 #if !defined(TURN_OLD_NET_ENGINE)
-	new_net_engine = 1;
+	net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
 #endif
 #endif
 #endif

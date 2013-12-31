@@ -615,7 +615,8 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,secure_stun,"secure-stun",1);
 		cli_print_flag(cs,do_not_use_config_file,"do-not-use-config-file",0);
 		cli_print_flag(cs,rfc5780,"RFC5780 support",0);
-		cli_print_flag(cs,new_net_engine,"new net engine",0);
+		cli_print_uint(cs,(unsigned int)net_engine_version,"net engine version",0);
+		cli_print_str(cs,net_engine_version_txt[(int)net_engine_version],"net engine",0);
 		cli_print_flag(cs,fingerprint,"enforce fingerprints",0);
 		cli_print_flag(cs,mobility,"mobility",1);
 		cli_print_flag(cs,udp_self_balance,"udp-self-balance",0);
