@@ -60,6 +60,7 @@ static char buffer_to_send[65536]="\0";
 
 static int total_clients = 0;
 
+/* Patch for unlimited number of clients provided by ucudbm@gmail.com */
 static app_ur_session** elems = NULL;
 
 #define SLEEP_INTERVAL (2345)
