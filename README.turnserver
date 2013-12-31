@@ -231,7 +231,8 @@ Flags:
     
 Options with required values:  
 
--d, --listening-device	Listener interface device (optional functionality, Linux only). 
+-d, --listening-device	Listener interface device.
+			(NOT RECOMMENDED. Optional functionality, Linux only). 
 			The turnserver process must have root privileges to bind the 
 			listening endpoint to a device. If turnserver must run as a 
 			process without root privileges, then just do not use this setting.
@@ -286,7 +287,7 @@ Options with required values:
 			functionality.
 
 -i, --relay-device	Relay interface device for relay sockets 
-			(optional, Linux only).
+			(NOT RECOMMENDED. Optional, Linux only).
 
 -E, --relay-ip		Relay address (the local IP address that 
 			will be used to relay the packets to the 
