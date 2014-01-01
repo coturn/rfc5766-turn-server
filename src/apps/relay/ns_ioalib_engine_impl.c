@@ -2468,7 +2468,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int verbose)
 {
 
-	if (!s || !(s->ssl) || !buffer)
+	if (!s || !(s->ssl) || !buffer || (s->fd<0))
 		return -1;
 
 	SSL *ssl = s->ssl;
@@ -2488,6 +2488,14 @@ static int ssl_send(ioa_socket_handle s, const s08bits* buffer, int len, int ver
 			if(fd != sfd) {
 				BIO_set_fd(wbio,sfd,BIO_NOCLOSE);
 			}
+		}
+	} else {
+		BIO *wbio = SSL_get_wbio(ssl);
+		if(!wbio)
+			return -1;
+		int fd = BIO_get_fd(wbio,0);
+		if(fd != s->fd) {
+			BIO_set_fd(wbio,s->fd,BIO_NOCLOSE);
 		}
 	}
 

@@ -319,9 +319,7 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 			ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
 			smptr->m.sm.nd.nbh=NULL;
 
-			if(get_ioa_socket_type(smptr->m.sm.s) != UDP_SOCKET) {
-				IOA_CLOSE_SOCKET(smptr->m.sm.s);
-			}
+			IOA_CLOSE_SOCKET(smptr->m.sm.s);
 
 			return -1;
 		}
@@ -437,35 +435,17 @@ static int handle_relay_message(relay_server_handle rs, struct message_to_relay 
 
 			ioa_socket_handle s = sm->m.sm.s;
 
-			/* Special case: UDP socket */
-			if (get_ioa_socket_type(s) == UDP_SOCKET) {
-
+			if (!s) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: UDP socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
+					"%s: socket EMPTY\n",__FUNCTION__);
+			} else if (s->read_event || s->bev) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
 					__FUNCTION__, (long) s->read_event, (long) s->bev);
 				IOA_CLOSE_SOCKET(s);
-
-			} else if (get_ioa_socket_type(s) == DTLS_SOCKET) {
-
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"%s: DTLS socket wrongly sent over relay messaging channel: 0x%lx : 0x%lx\n",
-					__FUNCTION__, (long) s->read_event, (long) s->bev);
-				IOA_CLOSE_SOCKET(s);
-
 			} else {
-
-				if (!s) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-						"%s: socket EMPTY\n",__FUNCTION__);
-				} else if (s->read_event || s->bev) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-						"%s: socket wrongly preset: 0x%lx : 0x%lx\n",
-						__FUNCTION__, (long) s->read_event, (long) s->bev);
-					IOA_CLOSE_SOCKET(s);
-				} else {
-					s->e = rs->ioa_eng;
-					open_client_connection_session(rs->server, &(sm->m.sm));
-				}
+				s->e = rs->ioa_eng;
+				open_client_connection_session(rs->server, &(sm->m.sm));
 			}
 
 			ioa_network_buffer_delete(rs->ioa_eng, sm->m.sm.nd.nbh);
