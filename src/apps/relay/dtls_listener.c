@@ -63,6 +63,7 @@ struct dtls_listener_relay_server_info {
   ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
+  ioa_engine_new_connection_event_handler send_socket;
 };
 
 ///////////// forward declarations ////////
@@ -712,13 +713,15 @@ static int init_server(dtls_listener_relay_server_type* server,
 		       int verbose,
 		       ioa_engine_handle e,
 		       turn_turnserver *ts,
-		       int report_creation) {
+		       int report_creation,
+		       ioa_engine_new_connection_event_handler send_socket) {
 
   if(!server) return -1;
 
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
   server->children_ss = ur_addr_map_create(65535);
+  server->send_socket = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 
@@ -768,7 +771,8 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     int verbose,
 							     ioa_engine_handle e,
 							     turn_turnserver *ts,
-							     int report_creation) {
+							     int report_creation,
+							     ioa_engine_new_connection_event_handler send_socket) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
     turn_malloc(sizeof(dtls_listener_relay_server_type));
@@ -778,7 +782,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   if(init_server(server,
 		 ifname, local_address, port,
 		 verbose,
-		 e, ts, report_creation)<0) {
+		 e, ts, report_creation, send_socket)<0) {
     turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {
