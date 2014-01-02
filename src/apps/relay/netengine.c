@@ -33,7 +33,7 @@
 //////////// Extern definition ////////////////////
 
 NET_ENG_VERSION net_engine_version = NEV_UNKNOWN;
-const char* net_engine_version_txt[] = { "Unknown", "UDP listening socket per session", "UDP listening socket per network endpoint", "UDP listening socket per CPU core (or per thread)" };
+const char* net_engine_version_txt[] = { "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" };
 
 //////////// Barrier for the threads //////////////
 
