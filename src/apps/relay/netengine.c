@@ -33,7 +33,7 @@
 //////////// Extern definition ////////////////////
 
 NET_ENG_VERSION net_engine_version = NEV_UNKNOWN;
-const char* net_engine_version_txt[] = { "Unknown", "UDP socket per session", "UDP socket per network endpoint", "UDP socket per thread and network endpoint" };
+const char* net_engine_version_txt[] = { "Unknown", "UDP listening socket per session", "UDP listening socket per network endpoint", "UDP listening socket per CPU core (or per thread)" };
 
 //////////// Barrier for the threads //////////////
 
@@ -737,7 +737,7 @@ static void setup_barriers(void)
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
 
-	if((net_engine_version != NEV_UDP_SOCKET_PER_THREAD) && general_relay_servers_number>1) {
+	if((net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT) && general_relay_servers_number>1) {
 
 		/* UDP: */
 		if(!no_udp) {
@@ -1239,7 +1239,7 @@ static void *run_general_relay_thread(void *arg)
   static int always_true = 1;
   struct relay_server *rs = (struct relay_server *)arg;
   
-  int udp_reuses_the_same_relay_server = (general_relay_servers_number<=1) || (net_engine_version == NEV_UDP_SOCKET_PER_THREAD);
+  int udp_reuses_the_same_relay_server = (general_relay_servers_number<=1) || (net_engine_version == NEV_UDP_SOCKET_PER_THREAD) || (net_engine_version == NEV_UDP_SOCKET_PER_SESSION);
 
   int we_need_rfc5780 = udp_reuses_the_same_relay_server && rfc5780;
 
@@ -1273,7 +1273,7 @@ static void setup_general_relay_servers(void)
 		general_relay_servers[i]->id = (turnserver_id)i;
 
 		if(general_relay_servers_number == 0) {
-			setup_relay_server(general_relay_servers[i], listener.ioa_eng, (net_engine_version == NEV_UDP_SOCKET_PER_THREAD) && rfc5780);
+			setup_relay_server(general_relay_servers[i], listener.ioa_eng, ((net_engine_version == NEV_UDP_SOCKET_PER_THREAD) || (net_engine_version == NEV_UDP_SOCKET_PER_SESSION)) && rfc5780);
 			general_relay_servers[i]->thr = pthread_self();
 		} else {
 			if(pthread_create(&(general_relay_servers[i]->thr), NULL, run_general_relay_thread, general_relay_servers[i])<0) {
