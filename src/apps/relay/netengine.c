@@ -771,7 +771,7 @@ static void setup_barriers(void)
 #endif
 }
 
-static void setup_udp_listener_servers(void)
+static void setup_socket_per_endpoint_udp_listener_servers(void)
 {
 	size_t i = 0;
 
@@ -848,7 +848,7 @@ static void setup_udp_listener_servers(void)
 			int port = (int)addr_get_port(&addr);
 			addr_to_string_no_port(&addr,(u08bits*)saddr);
 
-			listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**));
+			listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
 			listener.aux_udp_services[index][0] = create_dtls_listener_server(listener_ifname, saddr, port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 			if(general_relay_servers_number>1) {
@@ -871,7 +871,7 @@ static void setup_udp_listener_servers(void)
 		/* UDP: */
 		if(!no_udp) {
 
-			listener.udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**));
+			listener.udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
 			listener.udp_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 			if(general_relay_servers_number>1) {
@@ -886,7 +886,7 @@ static void setup_udp_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.udp_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**));
+				listener.udp_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
 				listener.udp_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 				if(general_relay_servers_number>1) {
@@ -906,7 +906,7 @@ static void setup_udp_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-			listener.dtls_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**));
+			listener.dtls_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
 			listener.dtls_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 			if(general_relay_servers_number>1) {
@@ -921,7 +921,7 @@ static void setup_udp_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.dtls_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**));
+				listener.dtls_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
 				listener.dtls_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose, udp_relay_servers[udp_relay_server_index]->ioa_eng, udp_relay_servers[udp_relay_server_index]->server, 1);
 
 				if(general_relay_servers_number>1) {
@@ -942,7 +942,7 @@ static void setup_udp_listener_servers(void)
 	}
 }
 
-static void setup_new_udp_listener_servers(void)
+static void setup_socket_per_thread_udp_listener_servers(void)
 {
 	size_t i = 0;
 	size_t relayindex = 0;
@@ -967,7 +967,7 @@ static void setup_new_udp_listener_servers(void)
 			int port = (int)addr_get_port(&addr);
 			addr_to_string_no_port(&addr,(u08bits*)saddr);
 
-			listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**) * get_real_general_relay_servers_number());
+			listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
 			for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 				listener.aux_udp_services[index][relayindex] = create_dtls_listener_server(listener_ifname, saddr, port, verbose,
@@ -984,7 +984,7 @@ static void setup_new_udp_listener_servers(void)
 		/* UDP: */
 		if(!no_udp) {
 
-			listener.udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**) * get_real_general_relay_servers_number());
+			listener.udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
 			for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 				listener.udp_services[index][relayindex] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose,
@@ -993,7 +993,7 @@ static void setup_new_udp_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.udp_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**) * get_real_general_relay_servers_number());
+				listener.udp_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
 				for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 					listener.udp_services[index+1][relayindex] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose,
@@ -1007,7 +1007,7 @@ static void setup_new_udp_listener_servers(void)
 		}
 		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
 
-			listener.dtls_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**) * get_real_general_relay_servers_number());
+			listener.dtls_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
 			for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 				listener.dtls_services[index][relayindex] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose,
@@ -1016,12 +1016,83 @@ static void setup_new_udp_listener_servers(void)
 
 			if(rfc5780) {
 
-				listener.dtls_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type**) * get_real_general_relay_servers_number());
+				listener.dtls_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*) * get_real_general_relay_servers_number());
 
 				for(relayindex=0;relayindex<get_real_general_relay_servers_number();relayindex++) {
 					listener.dtls_services[index+1][relayindex] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose,
 							general_relay_servers[relayindex]->ioa_eng, general_relay_servers[relayindex]->server, !relayindex);
 				}
+			}
+		} else {
+			listener.dtls_services[index] = NULL;
+			if(rfc5780)
+				listener.dtls_services[index+1] = NULL;
+		}
+	}
+}
+
+static void setup_socket_per_session_udp_listener_servers(void)
+{
+	size_t i = 0;
+
+	/* Aux UDP servers */
+	for(i=0; i<aux_servers_list.size; i++) {
+
+		int index = i;
+
+		if(!no_udp || !no_dtls) {
+
+			ioa_addr addr;
+			char saddr[129];
+			addr_cpy(&addr,&aux_servers_list.addrs[i]);
+			int port = (int)addr_get_port(&addr);
+			addr_to_string_no_port(&addr,(u08bits*)saddr);
+
+			listener.aux_udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
+
+			listener.aux_udp_services[index][0] = create_dtls_listener_server(listener_ifname, saddr, port, verbose,
+						listener.ioa_eng, NULL, 1);
+		}
+	}
+
+	/* Main servers */
+	for(i=0; i<listener.addrs_number; i++) {
+
+		int index = rfc5780 ? i*2 : i;
+
+		/* UDP: */
+		if(!no_udp) {
+
+			listener.udp_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
+
+			listener.udp_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], listener_port, verbose,
+						listener.ioa_eng, NULL, 1);
+
+			if(rfc5780) {
+
+				listener.udp_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
+
+				listener.udp_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_listener_port(), verbose,
+							listener.ioa_eng, NULL, 1);
+			}
+		} else {
+			listener.udp_services[index] = NULL;
+			if(rfc5780)
+				listener.udp_services[index+1] = NULL;
+		}
+		if(!no_dtls && (no_udp || (listener_port != tls_listener_port))) {
+
+			listener.dtls_services[index] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
+
+			listener.dtls_services[index][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], tls_listener_port, verbose,
+						listener.ioa_eng, NULL, 1);
+
+			if(rfc5780) {
+
+				listener.dtls_services[index+1] = (dtls_listener_relay_server_type**)malloc(sizeof(dtls_listener_relay_server_type*));
+
+				listener.dtls_services[index+1][0] = create_dtls_listener_server(listener_ifname, listener.addrs[i], get_alt_tls_listener_port(), verbose,
+							listener.ioa_eng, NULL, 1);
 			}
 		} else {
 			listener.dtls_services[index] = NULL;
@@ -1388,9 +1459,11 @@ void setup_server(void)
 	setup_general_relay_servers();
 
 	if(net_engine_version == NEV_UDP_SOCKET_PER_THREAD)
-		setup_new_udp_listener_servers();
-	else
-		setup_udp_listener_servers();
+		setup_socket_per_thread_udp_listener_servers();
+	else if(net_engine_version == NEV_UDP_SOCKET_PER_ENDPOINT)
+		setup_socket_per_endpoint_udp_listener_servers();
+	else if(net_engine_version == NEV_UDP_SOCKET_PER_SESSION)
+		setup_socket_per_session_udp_listener_servers();
 
 	if(net_engine_version != NEV_UDP_SOCKET_PER_THREAD) {
 		setup_tcp_listener_servers(listener.ioa_eng, NULL);
