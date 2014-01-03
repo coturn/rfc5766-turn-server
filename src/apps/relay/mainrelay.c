@@ -1353,7 +1353,7 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
 #endif
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TURN Network Engine version: %d (%s)\n\n=====================================================\n\n", (int)net_engine_version, net_engine_version_txt[(int)net_engine_version]);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)net_engine_version, net_engine_version_txt[(int)net_engine_version]);
 
 }
 
