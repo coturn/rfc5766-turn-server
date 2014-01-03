@@ -63,7 +63,7 @@ struct dtls_listener_relay_server_info {
   ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
-  ioa_engine_new_connection_event_handler send_socket;
+  ioa_engine_new_connection_event_handler connect_cb;
 };
 
 ///////////// forward declarations ////////
@@ -437,12 +437,142 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 					__FUNCTION__, (char*) saddr,(char*) rsaddr);
 			}
 			s->e = ioa_eng;
+			s->listener_server = server;
 			add_socket_to_map(s, amap);
 			open_client_connection_session(ts, &(sm->m.sm));
 		}
 	}
 
 	return 0;
+}
+
+static int create_new_connected_udp_socket(
+		dtls_listener_relay_server_type* server, ioa_socket_handle s)
+{
+
+	evutil_socket_t udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
+	if (udp_fd < 0) {
+		perror("socket");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n",
+				__FUNCTION__);
+		return -1;
+	}
+
+	if (sock_bind_to_device(udp_fd, (unsigned char*) (s->e->relay_ifname))
+			< 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Cannot bind udp server socket to device %s\n",
+				(char*) (s->e->relay_ifname));
+	}
+
+	ioa_socket_handle ret = (ioa_socket*) turn_malloc(sizeof(ioa_socket));
+	if (!ret) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"%s: Cannot allocate new socket structure\n", __FUNCTION__);
+		close(udp_fd);
+		return -1;
+	}
+
+	ns_bzero(ret, sizeof(ioa_socket));
+
+	ret->magic = SOCKET_MAGIC;
+
+	ret->fd = udp_fd;
+
+	ret->family = s->family;
+	ret->st = s->st;
+	ret->sat = CLIENT_SOCKET;
+	ret->local_addr_known = 1;
+	addr_cpy(&(ret->local_addr), &(s->local_addr));
+
+	if (addr_bind(udp_fd,&(s->local_addr)) < 0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+				"Cannot bind new detached udp server socket to local addr\n");
+		IOA_CLOSE_SOCKET(ret);
+		return -1;
+	}
+	ret->bound = 1;
+
+	{
+		int connect_err = 0;
+		if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+					"Cannot connect new detached udp server socket to remote addr\n");
+			IOA_CLOSE_SOCKET(ret);
+			return -1;
+		}
+	}
+	ret->connected = 1;
+	addr_cpy(&(ret->remote_addr), &(server->sm.m.sm.nd.src_addr));
+
+	set_socket_options(ret);
+
+	ret->current_ttl = s->current_ttl;
+	ret->default_ttl = s->default_ttl;
+
+	ret->current_tos = s->current_tos;
+	ret->default_tos = s->default_tos;
+
+#if !defined(TURN_NO_DTLS)
+	if (!no_dtls
+			&& is_dtls_handshake_message(
+					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
+					(int) ioa_network_buffer_get_size(
+							server->sm.m.sm.nd.nbh))) {
+
+		u08bits *s = ioa_network_buffer_data(server->sm.m.sm.nd.nbh);
+		int len = (int) ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh);
+
+		SSL* connecting_ssl = NULL;
+
+		BIO *wbio = NULL;
+		struct timeval timeout;
+
+		/* Create BIO */
+		wbio = BIO_new_dgram(ret->fd, BIO_NOCLOSE);
+		(void) BIO_dgram_set_peer(wbio, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr));
+
+		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &(server->sm.m.sm.nd.src_addr));
+
+		/* Set and activate timeouts */
+		timeout.tv_sec = DTLS_MAX_RECV_TIMEOUT;
+		timeout.tv_usec = 0;
+		BIO_ctrl(wbio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+
+		connecting_ssl = SSL_new(server->dtls_ctx);
+
+		SSL_set_accept_state(connecting_ssl);
+
+		SSL_set_bio(connecting_ssl, NULL, wbio);
+
+		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
+		SSL_set_max_cert_list(connecting_ssl, 655350);
+		int rc = ssl_read(ret->fd, connecting_ssl, (s08bits*) s,
+				(int)ioa_network_buffer_get_capacity(), server->verbose, &len);
+
+		if (rc < 0) {
+			if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
+				SSL_set_shutdown(connecting_ssl, SSL_RECEIVED_SHUTDOWN);
+				SSL_shutdown(connecting_ssl);
+			}
+			SSL_free(connecting_ssl);
+			IOA_CLOSE_SOCKET(ret);
+			return -1;
+		}
+
+		addr_debug_print(server->verbose, &(server->sm.m.sm.nd.src_addr),
+				"Accepted DTLS connection from");
+
+		ret->ssl = connecting_ssl;
+		ret->listener_server = server;
+
+		ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
+		server->sm.m.sm.nd.nbh = NULL;
+	}
+#endif
+
+	server->sm.m.sm.s = ret;
+	return server->connect_cb(server->e, &(server->sm));
 }
 
 static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
@@ -537,10 +667,17 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 
 	if (bsize > 0) {
 
+		int rc = 0;
 		ioa_network_buffer_set_size(elem, (size_t)bsize);
-		server->sm.m.sm.s = s;
 
-		int rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
+		if(server->connect_cb) {
+
+			rc = create_new_connected_udp_socket(server, s);
+
+		} else {
+			server->sm.m.sm.s = s;
+			rc = handle_udp_packet(server, &(server->sm), server->e, server->ts);
+		}
 
 		if(rc < 0) {
 			if(eve(server->e->verbose)) {
@@ -721,7 +858,7 @@ static int init_server(dtls_listener_relay_server_type* server,
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
   server->children_ss = ur_addr_map_create(65535);
-  server->send_socket = send_socket;
+  server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
 

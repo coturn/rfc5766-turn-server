@@ -462,6 +462,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						incoming to the relay endpoints.\n"
 " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
+" --ne=[1|2|3]			Set network engine type for the process (for internal purposes).\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
@@ -548,7 +549,8 @@ enum EXTRA_OPTS {
 	CLI_MAX_SESSIONS_OPT,
 	EC_CURVE_NAME_OPT,
 	DH566_OPT,
-	DH2066_OPT
+	DH2066_OPT,
+	NE_TYPE_OPT
 };
 
 static struct option long_options[] = {
@@ -634,6 +636,7 @@ static struct option long_options[] = {
 				{ "ec-curve-name", required_argument, NULL, EC_CURVE_NAME_OPT },
 				{ "dh566", optional_argument, NULL, DH566_OPT },
 				{ "dh2066", optional_argument, NULL, DH2066_OPT },
+				{ "ne", required_argument, NULL, NE_TYPE_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -688,6 +691,15 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case NE_TYPE_OPT:
+  {
+	  int ne = atoi(value);
+	  if((ne<(int)NEV_MIN)||(ne>(int)NEV_MAX)) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n",ne);
+	  }
+	  net_engine_version = (NET_ENG_VERSION)ne;
+  }
+	  break;
   case DH566_OPT:
 	  dh_key_size = DH_566;
 	  break;
@@ -1355,6 +1367,8 @@ static void set_network_engine(void)
 #if !defined(TURN_OLD_NET_ENGINE)
 	net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
 #endif
+#else /* BSD ? */
+	net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
 #endif
 #endif
 }
