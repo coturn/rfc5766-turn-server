@@ -1375,7 +1375,8 @@ static void set_network_engine(void)
 #else /* defined(SO_REUSEPORT) */
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
-	net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
+	//net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
+	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #else
 	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #endif /* Linux version */
