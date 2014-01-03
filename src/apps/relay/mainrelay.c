@@ -2043,11 +2043,23 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		}
 	}
 
-#if !defined(OPENSSL_NO_EC) && defined(OPENSSL_EC_NAMED_CURVE)
-	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE);
-#else
-	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE);
+	{
+		int op = 0;
+
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+		op |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 #endif
+
+#if defined(SSL_OP_SINGLE_DH_USE)
+		op |= SSL_OP_SINGLE_DH_USE;
+#endif
+
+#if defined(SSL_OP_SINGLE_ECDH_USE)
+		op |= SSL_OP_SINGLE_ECDH_USE;
+#endif
+
+		SSL_CTX_set_options(ctx, op);
+	}
 }
 
 static void openssl_setup(void)
