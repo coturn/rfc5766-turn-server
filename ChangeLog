@@ -1,3 +1,7 @@
+01/03/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.1.1 'Marshal West':
+	- MInor TLS fix.
+	
 12/26/2013 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.0 'Marshal West':
 	- Optimized TCP network engine for Linux 3.9+.
