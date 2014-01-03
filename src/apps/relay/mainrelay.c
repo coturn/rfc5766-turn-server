@@ -1357,6 +1357,10 @@ static void print_features(void)
 
 }
 
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#include <linux/version.h>
+#endif
+
 static void set_network_engine(void)
 {
 	if(net_engine_version != NEV_UNKNOWN)
@@ -1364,13 +1368,20 @@ static void set_network_engine(void)
 	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-#if !defined(TURN_OLD_NET_ENGINE)
 	net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
-#endif
 #else /* BSD ? */
 	net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
-#endif
-#endif
+#endif /* Linux */
+#else /* defined(SO_REUSEPORT) */
+#if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+	net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
+#else
+	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
+#endif /* Linux version */
+#endif /* Linux */
+#endif /* defined(SO_REUSEPORT) */
+
 }
 
 static void drop_privileges(void)
