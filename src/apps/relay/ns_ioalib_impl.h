@@ -52,6 +52,8 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#include <pthread.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
