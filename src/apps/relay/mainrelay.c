@@ -1309,7 +1309,7 @@ static void print_features(void)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show them the instruments, Practical Frost: ====\n\n");
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
 #if defined(TURN_NO_TLS)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS is not supported\n");

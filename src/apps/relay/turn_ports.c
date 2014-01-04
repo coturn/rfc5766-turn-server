@@ -71,14 +71,17 @@ static int turnports_is_available(turnports* tp, u16bits port);
 /////////////// UTILS //////////////////////////////////////
 
 static int is_taken(u64bits status) {
-  switch(status) {
-  case TPS_TAKEN_SINGLE:
-  case TPS_TAKEN_EVEN:
-  case TPS_TAKEN_ODD:
-    return 1;
-  default:
-    return 0;
-  };
+	int ret = -1;
+	switch (status) {
+	case TPS_TAKEN_SINGLE :
+	case TPS_TAKEN_EVEN :
+	case TPS_TAKEN_ODD :
+		ret = 1;
+		break;
+	default:
+		ret = 0;
+	};
+	return ret;
 }
 
 static void turnports_randomize(turnports* tp) {
@@ -91,14 +94,14 @@ static void turnports_randomize(turnports* tp) {
       u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
       u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
       if(port1!=port2) {
-	int pos1=tp->status[port1];
-	int pos2=tp->status[port2];
-	int tmp=tp->status[port1];
-	tp->status[port1]=tp->status[port2];
-	tp->status[port2]=tmp;
-	tmp=tp->ports[pos1];
-	tp->ports[pos1]=tp->ports[pos2];
-	tp->ports[pos2]=tmp;
+    	  int pos1=tp->status[port1];
+    	  int pos2=tp->status[port2];
+    	  int tmp=tp->status[port1];
+    	  tp->status[port1]=tp->status[port2];
+    	  tp->status[port2]=tmp;
+    	  tmp=tp->ports[pos1];
+    	  tp->ports[pos1]=tp->ports[pos2];
+    	  tp->ports[pos2]=tmp;
       }
     }
   }
