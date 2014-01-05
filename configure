@@ -457,7 +457,7 @@ fi
 
 OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS}"
-for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/
+for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/ /usr/lib/thread/
 do
     if [ -d ${ilib} ] ; then
 		OSLIBS="${OSLIBS} -L${ilib}"

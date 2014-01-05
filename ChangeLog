@@ -1,3 +1,7 @@
+01/05/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.1.2 'Marshal West':
+	- Config file adjusted for DragonFly.
+
 01/03/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.1 'Marshal West':
 	- Minor TLS fix.
