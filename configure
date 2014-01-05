@@ -130,6 +130,17 @@ testlib() {
 
 pthread_testlib() {
 
+    SYSTEM=`uname`
+
+    if [ "${SYSTEM}" = "DragonFly" ] ; then
+	OSLIBS="${OSLIBS} -pthread"
+    fi
+
+    ISBSD=`uname | grep -i bsd`
+    if ! [ -z "${ISBSD}" ] ; then
+	OSLIBS="${OSLIBS} -pthread"
+    fi
+
     if [ -z "${PTHREAD_LIBS}" ] ; then
     	${CC} ${TH_TMPCPROGC} -o ${TH_TMPCPROGB} ${OSCFLAGS} ${OSLIBS} 2>>/dev/null
     	ER=$?
@@ -457,15 +468,15 @@ fi
 
 OSCFLAGS="-I${INCLUDEDIR} -I${PREFIX}/include/ -I/usr/local/include ${CFLAGS}"
 OSLIBS="${LDFLAGS}"
-for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/ /usr/lib/thread/
+for ilib in ${PREFIX}/lib/event2/ ${PREFIX}/lib/ /usr/local/lib/event2/ /usr/local/lib/ ${PREFIX}/lib64/event2/ ${PREFIX}/lib64/ /usr/local/lib64/event2/ /usr/local/lib64/ 
 do
     if [ -d ${ilib} ] ; then
 		OSLIBS="${OSLIBS} -L${ilib}"
 		TURN_RPATH="${TURN_RPATH} -Wl,-rpath,${ilib}"
     fi
 done
-SYSTEM=`uname`
 
+SYSTEM=`uname`
 if [ "${SYSTEM}" = "NetBSD" ] ; then
 	OSCFLAGS="${OSCFLAGS} -I/usr/pkg/include"
 	OSLIBS="-L/usr/pkg/lib ${OSLIBS}"
