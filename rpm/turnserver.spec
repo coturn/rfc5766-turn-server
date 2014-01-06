@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.2.1.2
+Version:	3.2.1.3
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
