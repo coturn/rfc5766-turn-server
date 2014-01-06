@@ -62,6 +62,7 @@ fi
 cat <<EOF >>turnserver-${TURNVERSION}/install.sh
 
 sudo yum -y install openssl
+sudo yum -y install telnet
   
 for i in *.rpm ; do
 

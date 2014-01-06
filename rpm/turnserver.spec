@@ -13,6 +13,7 @@ BuildRequires:	openssl-devel, libevent-devel >= 2.0.0, postgresql-devel
 BuildRequires:	hiredis-devel
 Requires:	openssl, libevent >= 2.0.0, mysql-libs, postgresql-libs
 Requires:	hiredis, perl-DBI, perl-libwww-perl
+Requires:	telnet
 %if 0%{?el6}
 BuildRequires:	epel-release, mysql-devel
 Requires:	epel-release, mysql-libs
@@ -281,6 +282,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Mon Jan 06 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Telnet client installation added to 3.2.1.3
 * Sun Jan 05 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.1.2
 * Fri Jan 03 2014 Oleg Moskalenko <mom040267@gmail.com>
