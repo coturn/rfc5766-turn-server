@@ -471,7 +471,8 @@ int main(int argc, char **argv)
 				SSL_CTX_set_verify(root_tls_ctx[sslind], SSL_VERIFY_NONE, NULL );
 			}
 
-			SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
+			if(!use_tcp)
+				SSL_CTX_set_read_ahead(root_tls_ctx[sslind], 1);
 		}
 	}
 

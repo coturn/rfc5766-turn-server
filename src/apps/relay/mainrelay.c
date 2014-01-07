@@ -2116,6 +2116,7 @@ static void openssl_setup(void)
 		}
 		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
 		set_ctx(dtls_ctx,"DTLS");
+		SSL_CTX_set_read_ahead(dtls_ctx, 1);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",cipher_list);
 #endif
 	}
