@@ -1215,7 +1215,7 @@ void start_mclient(const char *remote_address, int port,
 
 	memset(buffer_to_send, 7, clmessage_length);
 
-	client_event_base = event_base_new();
+	client_event_base = turn_event_base_new();
 
 	int i = 0;
 	int tot_clients = 0;

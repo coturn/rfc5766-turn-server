@@ -1,4 +1,8 @@
 01/06/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.1.4 'Marshal West':
+	- Linux epoll performance improvements.
+	
+01/06/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.3 'Marshal West':
 	- Telnet client added to installation when necessary.
 	

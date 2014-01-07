@@ -33,6 +33,8 @@
 
 #include "apputils.h"
 
+#include <event2/event.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -868,6 +870,17 @@ const char* turn_get_ssl_method(SSL *ssl)
 		else
 			return turn_get_method(method);
 	}
+}
+
+//////////// EVENT BASE ///////////////
+
+struct event_base *turn_event_base_new(void)
+{
+	struct event_config *cfg = event_config_new();
+
+	event_config_set_flag(cfg,EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST);
+
+	return event_base_new_with_config(cfg);
 }
 
 //////////////////////////////////////////////////////////////

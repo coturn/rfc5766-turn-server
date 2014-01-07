@@ -150,6 +150,10 @@ unsigned char *base64_decode(const char *data,
 
 const char* turn_get_ssl_method(SSL *ssl);
 
+//////////// Event Base /////////////////////
+
+struct event_base *turn_event_base_new(void);
+
 ///////////////////////////////////////////////////////
 
 #ifdef __cplusplus

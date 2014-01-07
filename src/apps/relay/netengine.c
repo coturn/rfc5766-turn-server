@@ -634,7 +634,7 @@ static void listener_receive_message(struct bufferevent *bev, void *ptr)
 
 static ioa_engine_handle create_new_listener_engine(void)
 {
-	struct event_base *eb = event_base_new();
+	struct event_base *eb = turn_event_base_new();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (udp listener/relay thread): %s\n",event_base_get_method(eb));
 	ioa_engine_handle e = create_ioa_engine(eb, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
 	set_ssl_ctx(e, tls_ctx_ssl23, tls_ctx_v1_0,
@@ -675,7 +675,7 @@ static void setup_listener(void)
 {
 	listener.tp = turnipports_create(min_port, max_port);
 
-	listener.event_base = event_base_new();
+	listener.event_base = turn_event_base_new();
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (main listener thread): %s\n",event_base_get_method(listener.event_base));
 
@@ -1244,7 +1244,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		rs->event_base = e->event_base;
 		rs->ioa_eng = e;
 	} else {
-		rs->event_base = event_base_new();
+		rs->event_base = turn_event_base_new();
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (general relay thread): %s\n",event_base_get_method(rs->event_base));
 		rs->ioa_eng = create_ioa_engine(rs->event_base, listener.tp, relay_ifname, relays_number, relay_addrs, verbose, max_bps);
 		set_ssl_ctx(rs->ioa_eng, tls_ctx_ssl23, tls_ctx_v1_0,
@@ -1386,7 +1386,7 @@ static void setup_auth_server(void)
 {
 	ns_bzero(&authserver,sizeof(struct auth_server));
 
-	authserver.event_base = event_base_new();
+	authserver.event_base = turn_event_base_new();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(authserver.event_base));
 
 	struct bufferevent *pair[2];

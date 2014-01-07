@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.2.1.3
+Version:	3.2.1.4
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -282,6 +282,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Mon Jan 06 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Linux epoll performance improvements, added to 3.2.1.3
 * Mon Jan 06 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Telnet client installation added to 3.2.1.3
 * Sun Jan 05 2014 Oleg Moskalenko <mom040267@gmail.com>

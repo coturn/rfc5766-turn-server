@@ -1097,7 +1097,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 void setup_cli_thread(void)
 {
-	cliserver.event_base = event_base_new();
+	cliserver.event_base = turn_event_base_new();
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (cli thread): %s\n",event_base_get_method(cliserver.event_base));
 
 	struct bufferevent *pair[2];

@@ -110,7 +110,7 @@ static server_type* init_server(int verbose, const char* ifname, char **local_ad
 
   server->verbose=verbose;
 
-  server->event_base = event_base_new();
+  server->event_base = turn_event_base_new();
 
   while(las) {
     udp_create_server_socket(server, ifname, local_addresses[--las], port);
