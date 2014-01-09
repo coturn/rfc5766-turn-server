@@ -462,7 +462,7 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						incoming to the relay endpoints.\n"
 " --cli-max-output-sessions			Maximum number of output sessions in ps CLI command.\n"
 "						This value can be changed on-the-fly in CLI. The default value is 256.\n"
-" --ne=[1|2|3]			Set network engine type for the process (for internal purposes).\n"
+" --ne=[1|2|3]					Set network engine type for the process (for internal purposes).\n"
 " -h						Help\n";
 
 static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
