@@ -368,7 +368,7 @@ or on Solaris:
 
   $ crle -u -l <libdirname>
 
-On Mac OS X, you have three different choices for dynamic libraries handling::
+On Mac OS X, you have three different choices for dynamic libraries handling:
 
 1) Use DYLD_LIBRARY_PATH environment variable in runtime; OR
 
