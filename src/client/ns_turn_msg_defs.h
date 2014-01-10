@@ -32,6 +32,8 @@
 #define __LIB_TURN_MSG_DEFS__
 
 ///////////////////////////////////////////
+// http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml
+///////////////////////////////////////////
 
 #define STUN_HEADER_LENGTH (20)
 #define STUN_CHANNEL_HEADER_LENGTH (4)
