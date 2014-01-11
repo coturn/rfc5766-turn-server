@@ -446,18 +446,20 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			{
 				size_t i;
 				for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
-					turn_permission_info* list = ss->alloc.addr_to_perm.table[i].info;
+					turn_permission_slot* list = ss->alloc.addr_to_perm.table[i].slots;
 					if(list) {
 						size_t sz = ss->alloc.addr_to_perm.table[i].sz;
 						size_t j;
 						for(j=0;j<sz;++j) {
-							turn_session_info_add_peer(tsi,&(list[j].addr));
-							if(list[j].channels) {
-								struct tsi_arg arg = {
+							if(list[j].allocated) {
+								turn_session_info_add_peer(tsi,&(list[j].info.addr));
+								if(list[j].info.channels) {
+									struct tsi_arg arg = {
 											tsi,
-											&(list[j].addr)
-								};
-								ur_map_foreach_arg(list[j].channels, turn_session_info_foreachcb, &arg);
+											&(list[j].info.addr)
+									};
+									ur_map_foreach_arg(list[j].info.channels, turn_session_info_foreachcb, &arg);
+								}
 							}
 						}
 					}

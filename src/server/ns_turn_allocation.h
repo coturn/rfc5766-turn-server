@@ -133,9 +133,14 @@ typedef struct _turn_permission_info {
   void* owner; //a
 } turn_permission_info;
 
+typedef struct _turn_permission_slot {
+	int allocated;
+	turn_permission_info info;
+} turn_permission_slot;
+
 typedef struct _turn_permission_array {
 	size_t sz;
-	turn_permission_info *info;
+	turn_permission_slot *slots;
 } turn_permission_array;
 
 typedef struct _turn_permission_hashtable {

@@ -134,13 +134,14 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 	if(map) {
 		size_t i;
 		for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
-			if(map->table[i].info) {
+			if(map->table[i].slots) {
 				size_t j;
 				for(j=0;j<map->table[i].sz;++j) {
-					turn_permission_clean(map->table[i].info + j);
+					if(map->table[i].slots[j].allocated)
+						turn_permission_clean(&(map->table[i].slots[j].info));
 				}
-				turn_free(map->table[i].info, map->table[i].sz * sizeof(turn_permission_info));
-				map->table[i].info = NULL;
+				turn_free(map->table[i].slots, map->table[i].sz * sizeof(turn_permission_slot));
+				map->table[i].slots = NULL;
 			}
 			map->table[i].sz = 0;
 		}
@@ -155,34 +156,38 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 	u32bits index = addr_hash_no_port(addr) & TURN_PERMISSION_HASHTABLE_SIZE;
 	turn_permission_array *parray = &(map->table[index]);
 
-	turn_permission_info* ret = parray->info;
+	if(!(parray->slots))
+		return NULL;
 
-	if(ret) {
-
-		int found = 0;
-		size_t i;
-		size_t sz = parray->sz;
-		for (i = 0; i < sz; ++i) {
-			if (addr_eq_no_port(&(ret->addr), addr)) {
-				found = 1;
-				break;
-			} else {
-				ret += 1;
-			}
+	size_t i;
+	size_t sz = parray->sz;
+	for (i = 0; i < sz; ++i) {
+		if (parray->slots[i].allocated && addr_eq_no_port(&(parray->slots[i].info.addr), addr)) {
+			return &(parray->slots[i].info);
 		}
-
-		if (!found)
-			ret = NULL;
 	}
 
-	return ret;
+	return NULL;
 }
 
 static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr* addr)
 {
-	turn_permission_info* info = get_from_turn_permission_hashtable(map, addr);
-	if(info) {
-		turn_permission_clean(info);
+	if (!addr || !map)
+		return;
+
+	u32bits index = addr_hash_no_port(addr) & TURN_PERMISSION_HASHTABLE_SIZE;
+	turn_permission_array *parray = &(map->table[index]);
+
+	if(!(parray->slots))
+		return;
+
+	size_t i;
+	size_t sz = parray->sz;
+	for (i = 0; i < sz; ++i) {
+		if (parray->slots[i].allocated && addr_eq_no_port(&(parray->slots[i].info.addr), addr)) {
+			turn_permission_clean(&(parray->slots[i].info));
+			parray->slots[i].allocated = 0;
+		}
 	}
 }
 
@@ -313,18 +318,20 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 		u32bits hash = addr_hash_no_port(addr);
 		size_t fds = (size_t) (hash & TURN_PERMISSION_HASHTABLE_SIZE);
 
-		size_t old_sz = map->table[fds].sz * sizeof(turn_permission_info);
-		map->table[fds].info = (turn_permission_info *) turn_realloc(map->table[fds].info,
-						old_sz, old_sz + sizeof(turn_permission_info));
+		size_t old_sz = map->table[fds].sz * sizeof(turn_permission_slot);
+		map->table[fds].slots = (turn_permission_slot *) turn_realloc(map->table[fds].slots,
+						old_sz, old_sz + sizeof(turn_permission_slot));
 
-		turn_permission_info *elem = map->table[fds].info + map->table[fds].sz;
-		map->table[fds].sz += 1;
+		turn_permission_info *elem = &(map->table[fds].slots[old_sz].info);
+		map->table[fds].sz = old_sz + 1;
 
 		ns_bzero(elem,sizeof(turn_permission_info));
 		elem->channels = ur_map_create();
 		addr_cpy(&elem->addr, addr);
 
 		elem->owner = a;
+
+		map->table[fds].slots[old_sz].allocated = 1;
 
 		return elem;
 	} else {
