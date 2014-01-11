@@ -30,7 +30,14 @@
 
 #include "ns_turn_allocation.h"
 
-/////////////// ALLOCATION ///////////////////////////////////////
+/////////////// Permission forward declarations /////////////////
+
+static void init_turn_permission_hashtable(turn_permission_hashtable *map);
+static void free_turn_permission_hashtable(turn_permission_hashtable *map);
+static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr);
+static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr);
+
+/////////////// ALLOCATION //////////////////////////////////////
 
 void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
@@ -38,7 +45,7 @@ void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
     a->owner = owner;
     a->channel_to_ch_info=ur_map_create();
     a->tcp_connections = tcp_connections;
-    init_turn_permission_map(&(a->addr_to_perm));
+    init_turn_permission_hashtable(&(a->addr_to_perm));
   }
 }
 
@@ -60,7 +67,7 @@ void clear_allocation(allocation *a)
 		IOA_EVENT_DEL(a->lifetime_ev);
 
 		/* The order is important here: */
-		free_turn_permission_map(&(a->addr_to_perm));
+		free_turn_permission_hashtable(&(a->addr_to_perm));
 		ur_map_free(&(a->channel_to_ch_info));
 
 		a->is_valid=0;
@@ -95,119 +102,88 @@ void set_allocation_valid(allocation* a, int value) {
   if(a) a->is_valid=value;
 }
 
-turn_permission_info* allocation_get_permission(const allocation* a, const ioa_addr *addr) {
-  if(a && a->addr_to_perm) {
-    return get_from_turn_permission_map(a->addr_to_perm, addr);
+turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *addr) {
+  if(a) {
+    return get_from_turn_permission_hashtable(&(a->addr_to_perm), addr);
   }
   return NULL;
 }
 
 ///////////////////////////// TURN_PERMISSION /////////////////////////////////
 
-static void set_cilist_head(turn_permission_info *cdi) {
-  if(cdi) {
-    cdi->list.next=NULL;
-  }
+static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
+
+static void turn_permission_clean(turn_permission_info* tinfo)
+{
+	if (tinfo) {
+		ur_map_foreach(tinfo->channels, (foreachcb_type) delete_channel_info_from_allocation_map);
+		ur_map_free(&(tinfo->channels));
+		IOA_EVENT_DEL(tinfo->lifetime_ev);
+		ns_bzero(tinfo,sizeof(turn_permission_info));
+	}
 }
 
-static void free_cilist_elem(turn_permission_info *cdi) {
-  if(cdi) {
-    turn_permission_clean(cdi);
-    turn_free(cdi,sizeof(turn_permission_info));
-  }
+static void init_turn_permission_hashtable(turn_permission_hashtable *map)
+{
+	if (map)
+		ns_bzero(map,sizeof(turn_permission_hashtable));
 }
 
-static void free_cilist(turn_permission_info *cdi) {
-  if(cdi) {
-    free_cilist((turn_permission_info *)cdi->list.next);
-    free_cilist_elem(cdi);
-  }
+static void free_turn_permission_hashtable(turn_permission_hashtable *map)
+{
+	if(map) {
+		size_t i;
+		for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
+			if(map->table[i].info) {
+				size_t j;
+				for(j=0;j<map->table[i].sz;++j) {
+					turn_permission_clean(map->table[i].info + j);
+				}
+				turn_free(map->table[i].info, map->table[i].sz * sizeof(turn_permission_info));
+				map->table[i].info = NULL;
+			}
+			map->table[i].sz = 0;
+		}
+	}
 }
 
-static turn_permission_info* push_back_cilist(turn_permission_info *cdi, turn_permission_info *elem) {
-  if(!elem) return cdi;
-  if(!cdi) {
-    set_cilist_head(elem);
-    return elem;
-  } else {
-    cdi->list.next=(perm_list *)push_back_cilist((turn_permission_info*)cdi->list.next,elem);
-    return cdi;
-  }
+static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr)
+{
+	if (!addr || !map)
+		return NULL;
+
+	u32bits index = addr_hash_no_port(addr) & TURN_PERMISSION_HASHTABLE_SIZE;
+	turn_permission_array *parray = &(map->table[index]);
+
+	turn_permission_info* ret = parray->info;
+
+	if(ret) {
+
+		int found = 0;
+		size_t i;
+		size_t sz = parray->sz;
+		for (i = 0; i < sz; ++i) {
+			if (addr_eq_no_port(&(ret->addr), addr)) {
+				found = 1;
+				break;
+			} else {
+				ret += 1;
+			}
+		}
+
+		if (!found)
+			ret = NULL;
+	}
+
+	return ret;
 }
 
-static turn_permission_info* remove_from_cilist(const ioa_addr *addr,turn_permission_info *cdi) {
-  if(!cdi || !addr) return cdi;
-  if(addr_eq_no_port(addr,&(cdi->addr))) {
-    turn_permission_info* ret=(turn_permission_info*)cdi->list.next;
-    free_cilist_elem(cdi);
-    return ret;
-  }
-  cdi->list.next=(perm_list*)remove_from_cilist(addr,(turn_permission_info*)cdi->list.next);
-  return cdi;
-}
-
-static int cilist_size(turn_permission_info* cdi) {
-  if(!cdi) return 0;
-  return 1+cilist_size((turn_permission_info*)(cdi->list.next));
-}
-
-void init_turn_permission_map(turn_permission_map *map) {
-  int i=0;
-  (*map)=(turn_permission_map)turn_malloc(sizeof(turn_permission_info*)*TURN_PERMISSION_MAP_SIZE);
-  for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
-    (*map)[i]=NULL;
-  }
-}
-
-void free_turn_permission_map(turn_permission_map *map) {
-  int i=0;
-  for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
-    if((*map)[i]) {
-      free_cilist((*map)[i]);
-      (*map)[i]=NULL;
-    }
-  }
-  turn_free(*map,sizeof(turn_permission_info*)*TURN_PERMISSION_MAP_SIZE);
-  *map=NULL;
-}
-
-int turn_permission_map_size(turn_permission_map map) {
-  int sz=0;
-  if(map) {
-    int i=0;
-    for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
-      sz+=cilist_size(map[i]);
-    }
-  }
-  return sz;
-}
-
-turn_permission_info* get_from_turn_permission_map(const turn_permission_map map, const ioa_addr *addr) {
-  if(!addr) return NULL;
-  u32bits hash=addr_hash_no_port(addr);
-  turn_permission_info* ret=map[hash%TURN_PERMISSION_MAP_SIZE];
-  int found = 0;
-  while(ret) {
-    if(addr_eq_no_port(&ret->addr,addr)) {
-      found=1;
-      break;
-    } else {
-      ret=(turn_permission_info*)(ret->list.next);
-    }
-  }
-
-  if(!found)
-    ret = NULL;
-
-  return ret;
-}
-
-void remove_from_turn_permission_map(turn_permission_map map, const ioa_addr* addr) {
-  if(map && addr) {
-    u32bits hash=addr_hash_no_port(addr);
-    int fds=(int)(hash%TURN_PERMISSION_MAP_SIZE);
-    map[fds]=remove_from_cilist(addr,map[fds]);
-  }
+static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr* addr)
+{
+	turn_permission_info* info = get_from_turn_permission_hashtable(map, addr);
+	if(info) {
+		turn_permission_clean(info);
+	}
 }
 
 static void ch_info_clean(ur_map_value_type value) {
@@ -248,27 +224,17 @@ void turn_channel_delete(ch_info* chn)
 	}
 }
 
-void turn_permission_clean(ur_map_value_type value) {
-  if(value) {
-    turn_permission_info* tinfo = (turn_permission_info*)value;
-    ur_map_foreach(tinfo->channels, (foreachcb_type)delete_channel_info_from_allocation_map);
-    ur_map_free(&(tinfo->channels));
-    IOA_EVENT_DEL(tinfo->lifetime_ev);
-    ns_bzero(tinfo,sizeof(turn_permission_info));
-  }
-}
-
 void allocation_remove_turn_permission(allocation* a, turn_permission_info* tinfo)
 {
 	if (a && tinfo) {
-		remove_from_turn_permission_map(a->addr_to_perm, &(tinfo->addr));
+		remove_from_turn_permission_hashtable(&(a->addr_to_perm), &(tinfo->addr));
 	}
 }
 
 ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer_addr)
 {
 
-	turn_permission_info* tinfo = get_from_turn_permission_map(a->addr_to_perm, peer_addr);
+	turn_permission_info* tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
 
 	if (!tinfo)
 		tinfo = allocation_add_permission(a, peer_addr);
@@ -297,7 +263,7 @@ ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
 }
 
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr) {
-	turn_permission_info* tinfo = get_from_turn_permission_map(a->addr_to_perm, peer_addr);
+	turn_permission_info* tinfo = get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr);
 	if(tinfo) {
 		return get_turn_channel(tinfo,peer_addr);
 	}
@@ -334,26 +300,36 @@ ch_info *get_turn_channel(turn_permission_info* tinfo, ioa_addr *addr)
 	return NULL;
 }
 
-turn_permission_map allocation_get_turn_permission_map(const allocation *a) {
-  return a->addr_to_perm;
+turn_permission_hashtable *allocation_get_turn_permission_hashtable(allocation *a)
+{
+  return &(a->addr_to_perm);
 }
 
-turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr) {
-  if(a && addr) {
-    turn_permission_map map = a->addr_to_perm;
-    turn_permission_info *elem=(turn_permission_info *)turn_malloc(sizeof(turn_permission_info));
-    ns_bzero(elem,sizeof(turn_permission_info));
-    elem->channels = ur_map_create();
-    addr_cpy(&elem->addr,addr);
-    u32bits hash=addr_hash_no_port(addr);
-    int fds=(int)(hash%TURN_PERMISSION_MAP_SIZE);
-    elem->list.next=NULL;
-    map[fds]=push_back_cilist(map[fds],elem);
-    elem->owner = a;
-    return elem;
-  } else {
-    return NULL;
-  }
+turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr)
+{
+	if (a && addr) {
+
+		turn_permission_hashtable *map = &(a->addr_to_perm);
+		u32bits hash = addr_hash_no_port(addr);
+		size_t fds = (size_t) (hash & TURN_PERMISSION_HASHTABLE_SIZE);
+
+		size_t old_sz = map->table[fds].sz * sizeof(turn_permission_info);
+		map->table[fds].info = (turn_permission_info *) turn_realloc(map->table[fds].info,
+						old_sz, old_sz + sizeof(turn_permission_info));
+
+		turn_permission_info *elem = map->table[fds].info + map->table[fds].sz;
+		map->table[fds].sz += 1;
+
+		ns_bzero(elem,sizeof(turn_permission_info));
+		elem->channels = ur_map_create();
+		addr_cpy(&elem->addr, addr);
+
+		elem->owner = a;
+
+		return elem;
+	} else {
+		return NULL;
+	}
 }
 
 ////////////////// TCP connections ///////////////////////////////
@@ -473,22 +449,9 @@ int can_accept_tcp_connection_from_peer(allocation *a, ioa_addr *peer_addr, int 
 		return 1;
 
 	if(a && peer_addr) {
-		const turn_permission_map map = a->addr_to_perm;
-		if(map) {
-			u32bits hash=addr_hash_no_port(peer_addr);
-			turn_permission_info* ret=map[hash%TURN_PERMISSION_MAP_SIZE];
-			int found = 0;
-			while(ret) {
-				if(addr_eq_no_port(&ret->addr,peer_addr)) {
-					found=1;
-					break;
-				} else {
-					ret=(turn_permission_info*)(ret->list.next);
-				}
-			}
-			return found;
-		  }
+		return (get_from_turn_permission_hashtable(&(a->addr_to_perm), peer_addr) != NULL);
 	}
+
 	return 0;
 }
 

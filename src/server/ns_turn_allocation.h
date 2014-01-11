@@ -114,7 +114,7 @@ typedef struct
 
 ////////////////////////////////
 
-#define TURN_PERMISSION_MAP_SIZE (17)
+#define TURN_PERMISSION_HASHTABLE_SIZE ((0x10) - 1)
 
 typedef struct _ch_info {
   u16bits chnum;
@@ -125,12 +125,7 @@ typedef struct _ch_info {
   void *owner; //perm
 } ch_info;
 
-typedef struct _perm_list {
-  struct _perm_list *next;
-} perm_list;
-
 typedef struct _turn_permission_info {
-  perm_list list;
   ur_map *channels;
   ioa_addr addr;
   turn_time_t expiration_time;
@@ -138,7 +133,14 @@ typedef struct _turn_permission_info {
   void* owner; //a
 } turn_permission_info;
 
-typedef turn_permission_info** turn_permission_map;
+typedef struct _turn_permission_array {
+	size_t sz;
+	turn_permission_info *info;
+} turn_permission_array;
+
+typedef struct _turn_permission_hashtable {
+	turn_permission_array table[TURN_PERMISSION_HASHTABLE_SIZE];
+} turn_permission_hashtable;
 
 //////////////// ALLOCATION //////////////////////
 
@@ -147,7 +149,7 @@ typedef struct _allocation {
   stun_tid tid;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
-  turn_permission_map addr_to_perm;
+  turn_permission_hashtable addr_to_perm;
   ts_ur_session relay_session;
   ur_map *channel_to_ch_info;
   void *owner; //ss
@@ -155,15 +157,7 @@ typedef struct _allocation {
   tcp_connection_list tcl; //local reference
 } allocation;
 
-//////////// PERMISSION AND CHANNELS ////////////////////
-
-void init_turn_permission_map(turn_permission_map *map);
-void free_turn_permission_map(turn_permission_map *map);
-turn_permission_info* get_from_turn_permission_map(const turn_permission_map map, const ioa_addr *addr);
-void remove_from_turn_permission_map(turn_permission_map map, const ioa_addr *addr);
-int turn_permission_map_size(const turn_permission_map map);
-
-void turn_permission_clean(ur_map_value_type value);
+//////////// CHANNELS ////////////////////
 
 u16bits get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr);
 ch_info *get_turn_channel(turn_permission_info* tinfo, ioa_addr *addr);
@@ -178,8 +172,8 @@ void clear_allocation(allocation *a);
 void set_allocation_lifetime_ev(allocation *a, turn_time_t exp_time, ioa_timer_handle ev);
 int is_allocation_valid(const allocation* a);
 void set_allocation_valid(allocation* a, int value);
-turn_permission_info* allocation_get_permission(const allocation* a, const ioa_addr *addr);
-turn_permission_map allocation_get_turn_permission_map(const allocation *a);
+turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *addr);
+turn_permission_hashtable* allocation_get_turn_permission_hashtable(allocation *a);
 turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* addr);
 void allocation_remove_turn_permission(allocation* a, turn_permission_info* tinfo);
 

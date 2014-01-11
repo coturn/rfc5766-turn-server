@@ -443,19 +443,23 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 
 			tsi->is_mobile = ss->is_mobile;
 
-			int i;
-
-			if(ss->alloc.addr_to_perm) {
-				for(i=0;i<TURN_PERMISSION_MAP_SIZE;i++) {
-					turn_permission_info* list = ss->alloc.addr_to_perm[i];
-					while(list) {
-						turn_session_info_add_peer(tsi,&(list->addr));
-						struct tsi_arg arg = {
-							tsi,
-							&(list->addr)
-						};
-						ur_map_foreach_arg(list->channels, turn_session_info_foreachcb, &arg);
-						list=(turn_permission_info*)(list->list.next);
+			{
+				size_t i;
+				for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
+					turn_permission_info* list = ss->alloc.addr_to_perm.table[i].info;
+					if(list) {
+						size_t sz = ss->alloc.addr_to_perm.table[i].sz;
+						size_t j;
+						for(j=0;j<sz;++j) {
+							turn_session_info_add_peer(tsi,&(list[j].addr));
+							if(list[j].channels) {
+								struct tsi_arg arg = {
+											tsi,
+											&(list[j].addr)
+								};
+								ur_map_foreach_arg(list[j].channels, turn_session_info_foreachcb, &arg);
+							}
+						}
 					}
 				}
 			}
@@ -2482,7 +2486,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 			turn_permission_info* tinfo = NULL;
 
 			if(!(server->server_relay))
-				tinfo = get_from_turn_permission_map(a->addr_to_perm, &peer_addr);
+				tinfo = allocation_get_permission(a, &peer_addr);
 
 			if (tinfo || server->server_relay) {
 
@@ -2513,8 +2517,7 @@ static int update_permission(ts_ur_super_session *ss, ioa_addr *peer_addr) {
 
 	allocation* a = get_allocation_ss(ss);
 
-	turn_permission_info* tinfo = get_from_turn_permission_map(a->addr_to_perm,
-			peer_addr);
+	turn_permission_info* tinfo = allocation_get_permission(a, peer_addr);
 
 	if (!tinfo)
 		tinfo = allocation_add_permission(a, peer_addr);
