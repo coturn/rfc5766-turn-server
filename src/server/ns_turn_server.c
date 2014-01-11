@@ -76,7 +76,8 @@ struct _turn_turnserver {
 	get_user_key_cb userkeycb;
 	check_new_allocation_quota_cb chquotacb;
 	release_allocation_quota_cb raqcb;
-	ioa_addr *external_ip;
+	int external_ip_set;
+	ioa_addr external_ip;
 	vintp no_loopback_peers;
 	vintp no_multicast_peers;
 	send_turn_session_info_cb send_turn_session_info;
@@ -813,8 +814,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 			ioa_addr xor_relayed_addr;
 			ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
 			if(relayed_addr) {
-				if(server->external_ip) {
-					addr_cpy(&xor_relayed_addr, server->external_ip);
+				if(server->external_ip_set) {
+					addr_cpy(&xor_relayed_addr, &(server->external_ip));
 					addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
 				} else {
 					addr_cpy(&xor_relayed_addr, relayed_addr);
@@ -1065,8 +1066,8 @@ static int handle_turn_allocate(turn_turnserver *server,
 				ioa_addr xor_relayed_addr;
 				ioa_addr *relayed_addr = get_local_addr_from_ioa_socket(get_relay_socket_ss(ss));
 				if(relayed_addr) {
-					if(server->external_ip) {
-						addr_cpy(&xor_relayed_addr, server->external_ip);
+					if(server->external_ip_set) {
+						addr_cpy(&xor_relayed_addr, &(server->external_ip));
 						addr_set_port(&xor_relayed_addr,addr_get_port(relayed_addr));
 					} else {
 						addr_cpy(&xor_relayed_addr, relayed_addr);
@@ -4178,7 +4179,10 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 
 	server->dont_fragment = dont_fragment;
 	server->fingerprint = fingerprint;
-	server->external_ip = external_ip;
+	if(external_ip) {
+		addr_cpy(&(server->external_ip), external_ip);
+		server->external_ip_set = 1;
+	}
 	if (stun_port < 1)
 		stun_port = DEFAULT_STUN_PORT;
 
