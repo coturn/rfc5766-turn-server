@@ -11,7 +11,7 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-export SLEEP_TIME=10
+export SLEEP_TIME=19
 
 while [ 0 ] ; do 
 

@@ -43,6 +43,7 @@
 
 #define MAX_CONNECT_EFFORTS (77)
 #define DTLS_MAX_CONNECT_TIMEOUT (30)
+#define EXTRA_CREATE_PERMS (25)
 
 static uint64_t current_reservation_token = 0;
 static int allocate_rtcp = 0;
@@ -927,7 +928,7 @@ int start_connection(uint16_t clnet_remote_port0,
 				ioa_addr arbaddr;
 				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 				int i;
-				int maxi = (unsigned short)random() % 100;
+				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
 					addr_set_port(&arbaddr, (unsigned short)random());
 					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
@@ -961,7 +962,7 @@ int start_connection(uint16_t clnet_remote_port0,
 				ioa_addr arbaddr;
 				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 				int i;
-				int maxi = (unsigned short)random() % 100;
+				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
 					addr_set_port(&arbaddr, (unsigned short)random());
 					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
@@ -1132,7 +1133,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			ioa_addr arbaddr;
 			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 			int i;
-			int maxi = (unsigned short)random() % 100;
+			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
 				addr_set_port(&arbaddr, (unsigned short)random());
 				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
@@ -1173,7 +1174,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			ioa_addr arbaddr;
 			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 			int i;
-			int maxi = (unsigned short)random() % 100;
+			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
 				addr_set_port(&arbaddr, (unsigned short)random());
 				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
