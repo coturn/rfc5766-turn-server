@@ -35,7 +35,6 @@
 static void init_turn_permission_hashtable(turn_permission_hashtable *map);
 static void free_turn_permission_hashtable(turn_permission_hashtable *map);
 static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr);
-static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr *addr);
 
 /////////////// ALLOCATION //////////////////////////////////////
 
@@ -113,12 +112,12 @@ turn_permission_info* allocation_get_permission(allocation* a, const ioa_addr *a
 
 static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_value_type value);
 
-static void turn_permission_clean(turn_permission_info* tinfo)
+void turn_permission_clean(turn_permission_info* tinfo)
 {
-	if (tinfo) {
+	if (tinfo && tinfo->allocated) {
+		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		ur_map_foreach(tinfo->channels, (foreachcb_type) delete_channel_info_from_allocation_map);
 		ur_map_free(&(tinfo->channels));
-		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		ns_bzero(tinfo,sizeof(turn_permission_info));
 	}
 }
@@ -142,9 +141,8 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 				size_t j;
 				for(j=0;j<TURN_PERMISSION_ARRAY_SIZE;++j) {
 					turn_permission_slot *slot = &(parray->main_slots[j]);
-					if(slot->allocated) {
+					if(slot->info.allocated) {
 						turn_permission_clean(&(slot->info));
-						slot->allocated = 0;
 					}
 				}
 			}
@@ -154,9 +152,8 @@ static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 				for(j=0;j<parray->extra_sz;++j) {
 					turn_permission_slot *slot = parray->extra_slots[j];
 					if(slot) {
-						if(slot->allocated) {
+						if(slot->info.allocated) {
 							turn_permission_clean(&(slot->info));
-							slot->allocated = 0;
 						}
 						turn_free(slot,sizeof(turn_permission_slot));
 					}
@@ -181,7 +178,7 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 		size_t i;
 		for (i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
 			turn_permission_slot *slot = &(parray->main_slots[i]);
-			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+			if (slot->info.allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
 				return &(slot->info);
 			}
 		}
@@ -193,48 +190,13 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 		size_t sz = parray->extra_sz;
 		for (i = 0; i < sz; ++i) {
 			turn_permission_slot *slot = parray->extra_slots[i];
-			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+			if (slot->info.allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
 				return &(slot->info);
 			}
 		}
 	}
 
 	return NULL;
-}
-
-static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map, const ioa_addr* addr)
-{
-	if (!addr || !map)
-		return;
-
-	u32bits index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
-	turn_permission_array *parray = &(map->table[index]);
-
-	{
-		size_t i;
-		for (i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
-			turn_permission_slot *slot = &(parray->main_slots[i]);
-			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
-				turn_permission_clean(&(slot->info));
-				slot->allocated = 0;
-				return;
-			}
-		}
-	}
-
-	if(parray->extra_slots) {
-
-		size_t i;
-		size_t sz = parray->extra_sz;
-		for (i = 0; i < sz; ++i) {
-			turn_permission_slot *slot = parray->extra_slots[i];
-			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
-				turn_permission_clean(&(slot->info));
-				slot->allocated = 0;
-				return;
-			}
-		}
-	}
 }
 
 static void ch_info_clean(ur_map_value_type value) {
@@ -272,13 +234,6 @@ void turn_channel_delete(ch_info* chn)
 			ur_map_del(tinfo->channels, (ur_map_key_type)addr_get_port(&(chn->peer_addr)),NULL);
 			delete_channel_info_from_allocation_map((ur_map_key_type)addr_get_port(&(chn->peer_addr)),(ur_map_value_type)chn);
 		}
-	}
-}
-
-void allocation_remove_turn_permission(allocation* a, turn_permission_info* tinfo)
-{
-	if (a && tinfo) {
-		remove_from_turn_permission_hashtable(&(a->addr_to_perm), &(tinfo->addr));
 	}
 }
 
@@ -372,7 +327,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 			size_t i;
 			for(i=0;i<TURN_PERMISSION_ARRAY_SIZE;++i) {
 				slot = &(parray->main_slots[i]);
-				if(!(slot->allocated)) {
+				if(!(slot->info.allocated)) {
 					break;
 				} else {
 					slot=NULL;
@@ -390,7 +345,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 				size_t i;
 				for(i=0;i<old_sz;++i) {
 					slot = slots[i];
-					if(!(slot->allocated)) {
+					if(!(slot->info.allocated)) {
 						break;
 					} else {
 						slot=NULL;
@@ -410,7 +365,7 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 		}
 
 		ns_bzero(slot,sizeof(turn_permission_slot));
-		slot->allocated = 1;
+		slot->info.allocated = 1;
 		turn_permission_info *elem = &(slot->info);
 		elem->channels = ur_map_create();
 		addr_cpy(&(elem->addr), addr);

@@ -453,7 +453,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 						size_t j;
 						for(j=0;j<TURN_PERMISSION_ARRAY_SIZE;++j) {
 							turn_permission_slot* slot = &(parray->main_slots[j]);
-							if(slot->allocated) {
+							if(slot->info.allocated) {
 								turn_session_info_add_peer(tsi,&(slot->info.addr));
 								if(slot->info.channels) {
 									struct tsi_arg arg = {
@@ -473,7 +473,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 							size_t j;
 							for(j=0;j<sz;++j) {
 								turn_permission_slot* slot = slots[j];
-								if(slot && slot->allocated) {
+								if(slot && slot->info.allocated) {
 									turn_session_info_add_peer(tsi,&(slot->info.addr));
 									if(slot->info.channels) {
 										struct tsi_arg arg = {
@@ -745,12 +745,7 @@ static void client_ss_perm_timeout_handler(ioa_engine_handle e, void* arg) {
 
 	turn_permission_info* tinfo = (turn_permission_info*) arg;
 
-	allocation* a = (allocation*) (tinfo->owner);
-
-	if (!a)
-		return;
-
-	allocation_remove_turn_permission(a, tinfo);
+	turn_permission_clean(tinfo);
 }
 
 ///////////////////////////////////////////////////////////////////
