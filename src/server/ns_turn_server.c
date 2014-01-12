@@ -446,19 +446,42 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			{
 				size_t i;
 				for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
-					turn_permission_slot* list = ss->alloc.addr_to_perm.table[i].slots;
-					if(list) {
-						size_t sz = ss->alloc.addr_to_perm.table[i].sz;
+
+					turn_permission_array *parray = &(ss->alloc.addr_to_perm.table[i]);
+
+					{
 						size_t j;
-						for(j=0;j<sz;++j) {
-							if(list[j].allocated) {
-								turn_session_info_add_peer(tsi,&(list[j].info.addr));
-								if(list[j].info.channels) {
+						for(j=0;j<TURN_PERMISSION_ARRAY_SIZE;++j) {
+							turn_permission_slot* slot = &(parray->main_slots[j]);
+							if(slot->allocated) {
+								turn_session_info_add_peer(tsi,&(slot->info.addr));
+								if(slot->info.channels) {
 									struct tsi_arg arg = {
-											tsi,
-											&(list[j].info.addr)
+										tsi,
+										&(slot->info.addr)
 									};
-									ur_map_foreach_arg(list[j].info.channels, turn_session_info_foreachcb, &arg);
+									ur_map_foreach_arg(slot->info.channels, turn_session_info_foreachcb, &arg);
+								}
+							}
+						}
+					}
+
+					{
+						turn_permission_slot **slots = parray->extra_slots;
+						if(slots) {
+							size_t sz = parray->extra_sz;
+							size_t j;
+							for(j=0;j<sz;++j) {
+								turn_permission_slot* slot = slots[j];
+								if(slot && slot->allocated) {
+									turn_session_info_add_peer(tsi,&(slot->info.addr));
+									if(slot->info.channels) {
+										struct tsi_arg arg = {
+											tsi,
+											&(slot->info.addr)
+										};
+										ur_map_foreach_arg(slot->info.channels, turn_session_info_foreachcb, &arg);
+									}
 								}
 							}
 						}
@@ -2521,8 +2544,9 @@ static int update_permission(ts_ur_super_session *ss, ioa_addr *peer_addr) {
 
 	turn_permission_info* tinfo = allocation_get_permission(a, peer_addr);
 
-	if (!tinfo)
+	if (!tinfo) {
 		tinfo = allocation_add_permission(a, peer_addr);
+	}
 
 	if (!tinfo)
 		return -1;

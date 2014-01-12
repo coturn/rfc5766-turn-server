@@ -132,18 +132,39 @@ static void init_turn_permission_hashtable(turn_permission_hashtable *map)
 static void free_turn_permission_hashtable(turn_permission_hashtable *map)
 {
 	if(map) {
+
 		size_t i;
 		for(i=0;i<TURN_PERMISSION_HASHTABLE_SIZE;++i) {
-			if(map->table[i].slots) {
+
+			turn_permission_array *parray = &(map->table[i]);
+
+			{
 				size_t j;
-				for(j=0;j<map->table[i].sz;++j) {
-					if(map->table[i].slots[j].allocated)
-						turn_permission_clean(&(map->table[i].slots[j].info));
+				for(j=0;j<TURN_PERMISSION_ARRAY_SIZE;++j) {
+					turn_permission_slot *slot = &(parray->main_slots[j]);
+					if(slot->allocated) {
+						turn_permission_clean(&(slot->info));
+						slot->allocated = 0;
+					}
 				}
-				turn_free(map->table[i].slots, map->table[i].sz * sizeof(turn_permission_slot));
-				map->table[i].slots = NULL;
 			}
-			map->table[i].sz = 0;
+
+			if(parray->extra_slots) {
+				size_t j;
+				for(j=0;j<parray->extra_sz;++j) {
+					turn_permission_slot *slot = parray->extra_slots[j];
+					if(slot) {
+						if(slot->allocated) {
+							turn_permission_clean(&(slot->info));
+							slot->allocated = 0;
+						}
+						turn_free(slot,sizeof(turn_permission_slot));
+					}
+				}
+				turn_free(parray->extra_slots, parray->extra_sz * sizeof(turn_permission_slot*));
+				parray->extra_slots = NULL;
+			}
+			parray->extra_sz = 0;
 		}
 	}
 }
@@ -153,17 +174,28 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 	if (!addr || !map)
 		return NULL;
 
-	u32bits index = addr_hash_no_port(addr) & TURN_PERMISSION_HASHTABLE_SIZE;
+	u32bits index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
 	turn_permission_array *parray = &(map->table[index]);
 
-	if(!(parray->slots))
-		return NULL;
+	{
+		size_t i;
+		for (i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
+			turn_permission_slot *slot = &(parray->main_slots[i]);
+			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+				return &(slot->info);
+			}
+		}
+	}
 
-	size_t i;
-	size_t sz = parray->sz;
-	for (i = 0; i < sz; ++i) {
-		if (parray->slots[i].allocated && addr_eq_no_port(&(parray->slots[i].info.addr), addr)) {
-			return &(parray->slots[i].info);
+	if(parray->extra_slots) {
+
+		size_t i;
+		size_t sz = parray->extra_sz;
+		for (i = 0; i < sz; ++i) {
+			turn_permission_slot *slot = parray->extra_slots[i];
+			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+				return &(slot->info);
+			}
 		}
 	}
 
@@ -175,18 +207,32 @@ static void remove_from_turn_permission_hashtable(turn_permission_hashtable *map
 	if (!addr || !map)
 		return;
 
-	u32bits index = addr_hash_no_port(addr) & TURN_PERMISSION_HASHTABLE_SIZE;
+	u32bits index = addr_hash_no_port(addr) & (TURN_PERMISSION_HASHTABLE_SIZE-1);
 	turn_permission_array *parray = &(map->table[index]);
 
-	if(!(parray->slots))
-		return;
+	{
+		size_t i;
+		for (i = 0; i < TURN_PERMISSION_ARRAY_SIZE; ++i) {
+			turn_permission_slot *slot = &(parray->main_slots[i]);
+			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+				turn_permission_clean(&(slot->info));
+				slot->allocated = 0;
+				return;
+			}
+		}
+	}
 
-	size_t i;
-	size_t sz = parray->sz;
-	for (i = 0; i < sz; ++i) {
-		if (parray->slots[i].allocated && addr_eq_no_port(&(parray->slots[i].info.addr), addr)) {
-			turn_permission_clean(&(parray->slots[i].info));
-			parray->slots[i].allocated = 0;
+	if(parray->extra_slots) {
+
+		size_t i;
+		size_t sz = parray->extra_sz;
+		for (i = 0; i < sz; ++i) {
+			turn_permission_slot *slot = parray->extra_slots[i];
+			if (slot->allocated && addr_eq_no_port(&(slot->info.addr), addr)) {
+				turn_permission_clean(&(slot->info));
+				slot->allocated = 0;
+				return;
+			}
 		}
 	}
 }
@@ -316,22 +362,59 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 
 		turn_permission_hashtable *map = &(a->addr_to_perm);
 		u32bits hash = addr_hash_no_port(addr);
-		size_t fds = (size_t) (hash & TURN_PERMISSION_HASHTABLE_SIZE);
+		size_t fds = (size_t) (hash & (TURN_PERMISSION_HASHTABLE_SIZE-1));
 
-		size_t old_sz = map->table[fds].sz * sizeof(turn_permission_slot);
-		map->table[fds].slots = (turn_permission_slot *) turn_realloc(map->table[fds].slots,
-						old_sz, old_sz + sizeof(turn_permission_slot));
+		turn_permission_array *parray = &(map->table[fds]);
 
-		turn_permission_info *elem = &(map->table[fds].slots[old_sz].info);
-		map->table[fds].sz = old_sz + 1;
+		turn_permission_slot *slot = NULL;
 
-		ns_bzero(elem,sizeof(turn_permission_info));
+		{
+			size_t i;
+			for(i=0;i<TURN_PERMISSION_ARRAY_SIZE;++i) {
+				slot = &(parray->main_slots[i]);
+				if(!(slot->allocated)) {
+					break;
+				} else {
+					slot=NULL;
+				}
+			}
+		}
+
+		if(!slot) {
+
+			size_t old_sz = parray->extra_sz;
+
+			turn_permission_slot **slots = parray->extra_slots;
+
+			if(slots) {
+				size_t i;
+				for(i=0;i<old_sz;++i) {
+					slot = slots[i];
+					if(!(slot->allocated)) {
+						break;
+					} else {
+						slot=NULL;
+					}
+				}
+			}
+
+			if(!slot) {
+				size_t old_sz_mem = old_sz * sizeof(turn_permission_slot*);
+				parray->extra_slots = (turn_permission_slot **) turn_realloc(parray->extra_slots,
+						old_sz_mem, old_sz_mem + sizeof(turn_permission_slot*));
+				slots = parray->extra_slots;
+				parray->extra_sz = old_sz + 1;
+				slots[old_sz] = (turn_permission_slot *)turn_malloc(sizeof(turn_permission_slot));
+				slot = slots[old_sz];
+			}
+		}
+
+		ns_bzero(slot,sizeof(turn_permission_slot));
+		slot->allocated = 1;
+		turn_permission_info *elem = &(slot->info);
 		elem->channels = ur_map_create();
-		addr_cpy(&elem->addr, addr);
-
+		addr_cpy(&(elem->addr), addr);
 		elem->owner = a;
-
-		map->table[fds].slots[old_sz].allocated = 1;
 
 		return elem;
 	} else {

@@ -908,6 +908,7 @@ int start_connection(uint16_t clnet_remote_port0,
 			if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 				exit(-1);
 			}
+
 			if(rare_event()) return 0;
 			if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr) < 0) {
 				exit(-1);
@@ -920,16 +921,72 @@ int start_connection(uint16_t clnet_remote_port0,
 				}
 			}
 			if(rare_event()) return 0;
+
+			{
+				const char *sarbaddr = "64.56.78.90";
+				ioa_addr arbaddr;
+				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+				int i;
+				int maxi = (unsigned short)random() % 100;
+				for(i=0;i<maxi;i++) {
+					addr_set_port(&arbaddr, (unsigned short)random());
+					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+					//char sss[128];
+					//addr_to_string(&arbaddr,(u08bits*)sss);
+					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+					if (turn_create_permission(verbose, clnet_info, &arbaddr) < 0) {
+						exit(-1);
+					}
+				}
+			}
 		} else {
-			if (turn_create_permission(verbose, clnet_info, &peer_addr) < 0) {
-				exit(-1);
+
+			int before=(random()%2 == 0);
+
+			if(before) {
+				if (turn_create_permission(verbose, clnet_info, &peer_addr) < 0) {
+					exit(-1);
+				}
+				if(rare_event()) return 0;
+				if (turn_create_permission(verbose, clnet_info, &peer_addr_rtcp)
+						< 0) {
+					exit(-1);
+				}
+				if(rare_event()) return 0;
 			}
-			if(rare_event()) return 0;
-			if (turn_create_permission(verbose, clnet_info, &peer_addr_rtcp)
+
+			{
+				const char *sarbaddr = "64.56.78.90";
+				ioa_addr arbaddr;
+				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+				int i;
+				int maxi = (unsigned short)random() % 100;
+				for(i=0;i<maxi;i++) {
+					addr_set_port(&arbaddr, (unsigned short)random());
+					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+					//char sss[128];
+					//addr_to_string(&arbaddr,(u08bits*)sss);
+					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+					if (turn_create_permission(verbose, clnet_info, &arbaddr) < 0) {
+						exit(-1);
+					}
+				}
+			}
+
+			if(!before) {
+				if (turn_create_permission(verbose, clnet_info, &peer_addr) < 0) {
+					exit(-1);
+				}
+				if(rare_event()) return 0;
+				if (turn_create_permission(verbose, clnet_info, &peer_addr_rtcp)
 					< 0) {
-				exit(-1);
+					exit(-1);
+				}
+				if(rare_event()) return 0;
 			}
-			if(rare_event()) return 0;
+
 			if (!no_rtcp) {
 				if (turn_create_permission(verbose, clnet_info_rtcp,
 						&peer_addr_rtcp) < 0) {
@@ -1069,6 +1126,26 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			exit(-1);
 		}
 		if(rare_event()) return 0;
+
+		{
+			const char *sarbaddr = "64.56.78.90";
+			ioa_addr arbaddr;
+			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+			int i;
+			int maxi = (unsigned short)random() % 100;
+			for(i=0;i<maxi;i++) {
+				addr_set_port(&arbaddr, (unsigned short)random());
+				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+				//char sss[128];
+				//addr_to_string(&arbaddr,(u08bits*)sss);
+				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+				if (turn_create_permission(verbose, clnet_info1, &arbaddr) < 0) {
+					exit(-1);
+				}
+			}
+		}
+
 		if(!no_rtcp)
 		  if (turn_channel_bind(verbose, chn1_rtcp, clnet_info1_rtcp,
 					&relay_addr2_rtcp) < 0) {
@@ -1090,6 +1167,26 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 		if (turn_create_permission(verbose, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
+
+		{
+			const char *sarbaddr = "64.56.78.90";
+			ioa_addr arbaddr;
+			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+			int i;
+			int maxi = (unsigned short)random() % 100;
+			for(i=0;i<maxi;i++) {
+				addr_set_port(&arbaddr, (unsigned short)random());
+				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+				//char sss[128];
+				//addr_to_string(&arbaddr,(u08bits*)sss);
+				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+				if (turn_create_permission(verbose, clnet_info1, &arbaddr) < 0) {
+					exit(-1);
+				}
+			}
+		}
+
 		if(rare_event()) return 0;
 		if (!no_rtcp)
 			if (turn_create_permission(verbose, clnet_info1_rtcp, &relay_addr2_rtcp) < 0) {

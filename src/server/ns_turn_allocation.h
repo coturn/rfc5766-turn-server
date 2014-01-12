@@ -114,7 +114,10 @@ typedef struct
 
 ////////////////////////////////
 
-#define TURN_PERMISSION_HASHTABLE_SIZE ((0x10) - 1)
+#define TURN_PERMISSION_HASHTABLE_SIZE (0x10)
+#define TURN_PERMISSION_ARRAY_SIZE (5)
+
+struct _allocation;
 
 typedef struct _ch_info {
   u16bits chnum;
@@ -139,8 +142,9 @@ typedef struct _turn_permission_slot {
 } turn_permission_slot;
 
 typedef struct _turn_permission_array {
-	size_t sz;
-	turn_permission_slot *slots;
+	turn_permission_slot main_slots[TURN_PERMISSION_ARRAY_SIZE];
+	size_t extra_sz;
+	turn_permission_slot **extra_slots;
 } turn_permission_array;
 
 typedef struct _turn_permission_hashtable {
