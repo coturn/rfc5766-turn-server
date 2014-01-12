@@ -115,6 +115,15 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 void turn_permission_clean(turn_permission_info* tinfo)
 {
 	if (tinfo && tinfo->allocated) {
+
+		if(!(tinfo->lifetime_ev)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n",__FUNCTION__);
+		}
+
+		if(!(tinfo->owner)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) permission to be cleaned\n",__FUNCTION__);
+		}
+
 		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		ur_map_foreach(tinfo->channels, (foreachcb_type) delete_channel_info_from_allocation_map);
 		ur_map_free(&(tinfo->channels));
@@ -428,7 +437,7 @@ void delete_tcp_connection(tcp_connection *tc)
 {
 	if(tc) {
 		if(tc->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed tcp data connection: 0x%lx\n",__FUNCTION__);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: check on already closed tcp data connection: 0x%lx\n",__FUNCTION__,(unsigned long)tc);
 			return;
 		}
 		tc->done = 1;

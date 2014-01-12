@@ -740,10 +740,25 @@ static void client_ss_perm_timeout_handler(ioa_engine_handle e, void* arg) {
 
 	UNUSED_ARG(e);
 
-	if (!arg)
+	if (!arg) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: empty permission to be cleaned\n",__FUNCTION__);
 		return;
+	}
 
 	turn_permission_info* tinfo = (turn_permission_info*) arg;
+
+	if(!(tinfo->allocated)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: unallocated permission to be cleaned\n",__FUNCTION__);
+		return;
+	}
+
+	if(!(tinfo->lifetime_ev)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n",__FUNCTION__);
+	}
+
+	if(!(tinfo->owner)) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) permission to be cleaned\n",__FUNCTION__);
+	}
 
 	turn_permission_clean(tinfo);
 }
