@@ -114,8 +114,8 @@ typedef struct
 
 ////////////////////////////////
 
-#define TURN_PERMISSION_HASHTABLE_SIZE (0x10)
-#define TURN_PERMISSION_ARRAY_SIZE (5)
+#define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
+#define TURN_PERMISSION_ARRAY_SIZE (3)
 
 struct _allocation;
 
