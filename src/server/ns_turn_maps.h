@@ -39,10 +39,13 @@ extern "C" {
 
 //////////////// UR MAP //////////////////
 
-typedef u64bits ur_map_key_type;
-typedef unsigned long ur_map_value_type;
 struct _ur_map;
 typedef struct _ur_map ur_map;
+
+//////////////// Common Definitions //////
+
+typedef u64bits ur_map_key_type;
+typedef unsigned long ur_map_value_type;
 
 typedef void (*ur_map_del_func)(ur_map_value_type);
 
@@ -50,6 +53,8 @@ typedef int (*foreachcb_type)(ur_map_key_type key, ur_map_value_type value);
 typedef int (*foreachcb_arg_type)(ur_map_key_type key, 
 				  ur_map_value_type value, 
 				  void *arg);
+
+///////////// non-local map /////////////////////
 
 ur_map* ur_map_create(void);
 
@@ -93,6 +98,63 @@ int ur_map_foreach_arg(ur_map* map, foreachcb_arg_type func, void* arg);
 
 int ur_map_lock(const ur_map* map);
 int ur_map_unlock(const ur_map* map);
+
+///////////// "local" map /////////////////////
+
+#define LM_MAP_HASH_SIZE (7)
+#define LM_MAP_ARRAY_SIZE (3)
+
+typedef struct _lm_map_array {
+	ur_map_key_type main_keys[LM_MAP_ARRAY_SIZE];
+	ur_map_value_type main_values[LM_MAP_ARRAY_SIZE];
+	size_t extra_sz;
+	ur_map_key_type **extra_keys;
+	ur_map_value_type **extra_values;
+} lm_map_array;
+
+typedef struct _lm_map {
+	lm_map_array table[LM_MAP_HASH_SIZE];
+} lm_map;
+
+void lm_map_init(lm_map *map);
+
+/**
+ * @ret:
+ * 0 - success
+ * -1 - error
+ */
+
+int lm_map_put(lm_map* map, ur_map_key_type key, ur_map_value_type value);
+
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+
+int lm_map_get(const lm_map* map, ur_map_key_type key, ur_map_value_type *value);
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+
+int lm_map_del(lm_map* map, ur_map_key_type key,ur_map_del_func delfunc);
+/**
+ * @ret:
+ * 1 - success
+ * 0 - not found
+ */
+
+int lm_map_exist(const lm_map* map, ur_map_key_type key);
+
+void lm_map_clean(lm_map* map);
+
+size_t lm_map_size(const lm_map* map);
+
+int lm_map_foreach(lm_map* map, foreachcb_type func);
+
+int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg);
 
 //////////////// UR ADDR MAP //////////////////
 
