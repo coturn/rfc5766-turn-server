@@ -120,10 +120,6 @@ void turn_permission_clean(turn_permission_info* tinfo)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) permission to be cleaned\n",__FUNCTION__);
 		}
 
-		if(!(tinfo->owner)) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) permission to be cleaned\n",__FUNCTION__);
-		}
-
 		IOA_EVENT_DEL(tinfo->lifetime_ev);
 		ur_map_foreach(tinfo->channels, (foreachcb_type) delete_channel_info_from_allocation_map);
 		ur_map_free(&(tinfo->channels));
@@ -262,7 +258,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	chn->port = addr_get_port(peer_addr);
 	addr_cpy(&(chn->peer_addr), peer_addr);
 	chn->owner = tinfo;
-	ur_map_put(a->channel_to_ch_info, chnum, chn);
+	ur_map_put(a->channel_to_ch_info, chnum, (ur_map_value_type)chn);
 
 	ur_map_put(tinfo->channels, (ur_map_key_type) addr_get_port(peer_addr), (ur_map_value_type) chn);
 
@@ -270,7 +266,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 }
 
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
-	void* vchn = NULL;
+	ur_map_value_type vchn = 0;
 	if (ur_map_get(a->channel_to_ch_info, chnum, &vchn) && vchn) {
 		return (ch_info*) vchn;
 	}

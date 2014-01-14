@@ -40,7 +40,7 @@ extern "C" {
 //////////////// UR MAP //////////////////
 
 typedef u64bits ur_map_key_type;
-typedef void* ur_map_value_type;
+typedef unsigned long ur_map_value_type;
 struct _ur_map;
 typedef struct _ur_map ur_map;
 
