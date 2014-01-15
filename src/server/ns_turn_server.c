@@ -455,13 +455,11 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 							turn_permission_slot* slot = &(parray->main_slots[j]);
 							if(slot->info.allocated) {
 								turn_session_info_add_peer(tsi,&(slot->info.addr));
-								if(slot->info.channels) {
-									struct tsi_arg arg = {
-										tsi,
-										&(slot->info.addr)
-									};
-									ur_map_foreach_arg(slot->info.channels, turn_session_info_foreachcb, &arg);
-								}
+								struct tsi_arg arg = {
+									tsi,
+									&(slot->info.addr)
+								};
+								lm_map_foreach_arg(&(slot->info.chns), turn_session_info_foreachcb, &arg);
 							}
 						}
 					}
@@ -475,13 +473,11 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 								turn_permission_slot* slot = slots[j];
 								if(slot && slot->info.allocated) {
 									turn_session_info_add_peer(tsi,&(slot->info.addr));
-									if(slot->info.channels) {
-										struct tsi_arg arg = {
-											tsi,
-											&(slot->info.addr)
-										};
-										ur_map_foreach_arg(slot->info.channels, turn_session_info_foreachcb, &arg);
-									}
+									struct tsi_arg arg = {
+										tsi,
+										&(slot->info.addr)
+									};
+									lm_map_foreach_arg(&(slot->info.chns), turn_session_info_foreachcb, &arg);
 								}
 							}
 						}

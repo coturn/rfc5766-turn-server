@@ -301,20 +301,22 @@ int lm_map_put(lm_map* map, ur_map_key_type key, ur_map_value_type value)
 					return 0;
 				}
 			}
-
-			size_t old_sz = esz * sizeof(ur_map_key_type*);
-			a->extra_keys = (ur_map_key_type**)turn_realloc(a->extra_keys,old_sz,old_sz + sizeof(ur_map_key_type*));
-			a->extra_keys[old_sz] = (ur_map_key_type*)turn_malloc(sizeof(ur_map_key_type));
-			*(a->extra_keys[old_sz]) = key;
-
-			old_sz = esz * sizeof(ur_map_value_type*);
-			a->extra_values = (ur_map_value_type**)turn_realloc(a->extra_values,old_sz,old_sz + sizeof(ur_map_value_type*));
-			a->extra_values[old_sz] = (ur_map_value_type*)turn_malloc(sizeof(ur_map_value_type));
-			*(a->extra_values[old_sz]) = value;
-
-			return 0;
 		}
 
+		size_t old_sz = esz;
+		size_t old_sz_mem = esz * sizeof(ur_map_key_type*);
+		a->extra_keys = (ur_map_key_type**)turn_realloc(a->extra_keys,old_sz_mem,old_sz_mem + sizeof(ur_map_key_type*));
+		a->extra_keys[old_sz] = (ur_map_key_type*)turn_malloc(sizeof(ur_map_key_type));
+		*(a->extra_keys[old_sz]) = key;
+
+		old_sz_mem = esz * sizeof(ur_map_value_type*);
+		a->extra_values = (ur_map_value_type**)turn_realloc(a->extra_values,old_sz_mem,old_sz_mem + sizeof(ur_map_value_type*));
+		a->extra_values[old_sz] = (ur_map_value_type*)turn_malloc(sizeof(ur_map_value_type));
+		*(a->extra_values[old_sz]) = value;
+
+		a->extra_sz += 1;
+
+		return 0;
 	}
 	return ret;
 }
@@ -372,6 +374,7 @@ int lm_map_get(const lm_map* map, ur_map_key_type key, ur_map_value_type *value)
 int lm_map_del(lm_map* map, ur_map_key_type key,ur_map_del_func delfunc)
 {
 	int ret = 0;
+
 	if(map && key) {
 		size_t index = (size_t)(key & (LM_MAP_HASH_SIZE - 1));
 		lm_map_array *a = &(map->table[index]);
@@ -381,6 +384,7 @@ int lm_map_del(lm_map* map, ur_map_key_type key,ur_map_del_func delfunc)
 		for(i=0;i<LM_MAP_ARRAY_SIZE;++i) {
 
 			ur_map_key_type key0 = a->main_keys[i];
+
 			if((key0 == key) && a->main_values[i]) {
 				if(delfunc) {
 					delfunc(a->main_values[i]);
@@ -441,6 +445,7 @@ void lm_map_clean(lm_map* map)
 					}
 				}
 				turn_free(a->extra_keys,esz * sizeof(ur_map_key_type));
+				a->extra_keys = NULL;
 			}
 			if(a->extra_values) {
 				for(i=0;i<esz;++i) {
@@ -451,6 +456,7 @@ void lm_map_clean(lm_map* map)
 					}
 				}
 				turn_free(a->extra_values,esz * sizeof(ur_map_value_type));
+				a->extra_values = NULL;
 			}
 		}
 	}
@@ -458,11 +464,121 @@ void lm_map_clean(lm_map* map)
 	lm_map_init(map);
 }
 
-size_t lm_map_size(const lm_map* map);
+size_t lm_map_size(const lm_map* map)
+{
+	size_t ret = 0;
 
-int lm_map_foreach(lm_map* map, foreachcb_type func);
+	if(map) {
 
-int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg);
+		size_t i;
+
+		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
+
+			const lm_map_array *a = &(map->table[i]);
+
+			size_t j;
+
+			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
+				if(a->main_keys[j] && a->main_values[j]) {
+					++ret;
+				}
+			}
+
+			size_t esz = a->extra_sz;
+			if(esz && a->extra_values && a->extra_keys) {
+				for(j=0;j<esz;++j) {
+					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
+						++ret;
+					}
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+int lm_map_foreach(lm_map* map, foreachcb_type func)
+{
+	size_t ret = 0;
+
+	if(map) {
+
+		size_t i;
+
+		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
+
+			lm_map_array *a = &(map->table[i]);
+
+			size_t j;
+
+			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
+				if(a->main_keys[j] && a->main_values[j]) {
+					if(func((ur_map_key_type)a->main_keys[j],
+						(ur_map_value_type)a->main_values[j])) {
+						return 1;
+					}
+				}
+			}
+
+			size_t esz = a->extra_sz;
+			if(esz && a->extra_values && a->extra_keys) {
+				for(j=0;j<esz;++j) {
+					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
+						if(func((ur_map_key_type)*(a->extra_keys[j]),
+							(ur_map_value_type)*(a->extra_values[j]))) {
+							return 1;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg)
+{
+	size_t ret = 0;
+
+	if(map) {
+
+		size_t i;
+
+		for(i=0;i<LM_MAP_HASH_SIZE;++i) {
+
+			lm_map_array *a = &(map->table[i]);
+
+			size_t j;
+
+			for(j=0;j<LM_MAP_ARRAY_SIZE;++j) {
+				if(a->main_keys[j] && a->main_values[j]) {
+					if(func((ur_map_key_type)a->main_keys[j],
+						(ur_map_value_type)a->main_values[j],
+						arg)) {
+						return 1;
+					}
+				}
+			}
+
+			size_t esz = a->extra_sz;
+			if(esz && a->extra_values && a->extra_keys) {
+				for(j=0;j<esz;++j) {
+					if(*(a->extra_keys[j]) && *(a->extra_values[j])) {
+						if(func((ur_map_key_type)*(a->extra_keys[j]),
+							(ur_map_value_type)*(a->extra_values[j]),
+							arg)) {
+							return 1;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ret;
+}
 
 ////////////////////  ADDR LISTS ///////////////////////////////////
 

@@ -42,7 +42,7 @@ void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
     ns_bzero(a,sizeof(allocation));
     a->owner = owner;
-    a->channel_to_ch_info=ur_map_create();
+    lm_map_init(&(a->chn_to_ch_info));
     a->tcp_connections = tcp_connections;
     init_turn_permission_hashtable(&(a->addr_to_perm));
   }
@@ -67,7 +67,7 @@ void clear_allocation(allocation *a)
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
-		ur_map_free(&(a->channel_to_ch_info));
+		lm_map_clean(&(a->chn_to_ch_info));
 
 		a->is_valid=0;
 	}
@@ -121,8 +121,8 @@ void turn_permission_clean(turn_permission_info* tinfo)
 		}
 
 		IOA_EVENT_DEL(tinfo->lifetime_ev);
-		ur_map_foreach(tinfo->channels, (foreachcb_type) delete_channel_info_from_allocation_map);
-		ur_map_free(&(tinfo->channels));
+		lm_map_foreach(&(tinfo->chns), (foreachcb_type) delete_channel_info_from_allocation_map);
+		lm_map_clean(&(tinfo->chns));
 		ns_bzero(tinfo,sizeof(turn_permission_info));
 	}
 }
@@ -217,14 +217,27 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 	UNUSED_ARG(key);
 
 	if(value) {
+		int found = 0;
 		ch_info* chn = (ch_info*)value;
 		turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
 		if(tinfo) {
 			allocation* a = (allocation*)tinfo->owner;
 			if(a) {
-				ur_map_del(a->channel_to_ch_info, chn->chnum, ch_info_clean);
+				found = lm_map_del(&(a->chn_to_ch_info), chn->chnum, ch_info_clean);
+				if(!found) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: not found\n",__FUNCTION__);
+				}
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) channel to be cleaned: allocation is empty\n",__FUNCTION__);
 			}
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (3) channel to be cleaned: permission is empty\n",__FUNCTION__);
 		}
+
+		if(!found) {
+			ch_info_clean(value);
+		}
+
 		turn_free(chn,sizeof(ch_info));
 	}
 
@@ -234,11 +247,19 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 void turn_channel_delete(ch_info* chn)
 {
 	if(chn) {
-	  turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
-		if(tinfo) {
-			ur_map_del(tinfo->channels, (ur_map_key_type)addr_get_port(&(chn->peer_addr)),NULL);
-			delete_channel_info_from_allocation_map((ur_map_key_type)addr_get_port(&(chn->peer_addr)),(ur_map_value_type)chn);
+		int port = addr_get_port(&(chn->peer_addr));
+		if(port<1) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty\n",__FUNCTION__);
 		}
+		{
+			turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
+			if(tinfo) {
+				lm_map_del(&(tinfo->chns), (ur_map_key_type)port,NULL);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) channel to be cleaned: permission is empty\n",__FUNCTION__);
+			}
+		}
+		delete_channel_info_from_allocation_map((ur_map_key_type)port,(ur_map_value_type)chn);
 	}
 }
 
@@ -258,16 +279,16 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	chn->port = addr_get_port(peer_addr);
 	addr_cpy(&(chn->peer_addr), peer_addr);
 	chn->owner = tinfo;
-	ur_map_put(a->channel_to_ch_info, chnum, (ur_map_value_type)chn);
+	lm_map_put(&(a->chn_to_ch_info), chnum, (ur_map_value_type)chn);
 
-	ur_map_put(tinfo->channels, (ur_map_key_type) addr_get_port(peer_addr), (ur_map_value_type) chn);
+	lm_map_put(&(tinfo->chns), (ur_map_key_type) addr_get_port(peer_addr), (ur_map_value_type) chn);
 
 	return chn;
 }
 
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
 	ur_map_value_type vchn = 0;
-	if (ur_map_get(a->channel_to_ch_info, chnum, &vchn) && vchn) {
+	if (lm_map_get(&(a->chn_to_ch_info), chnum, &vchn) && vchn) {
 		return (ch_info*) vchn;
 	}
 	return NULL;
@@ -285,7 +306,7 @@ u16bits get_turn_channel_number(turn_permission_info* tinfo, ioa_addr *addr)
 {
 	if (tinfo) {
 		ur_map_value_type t = 0;
-		if (ur_map_get(tinfo->channels, (ur_map_key_type)addr_get_port(addr), &t) && t) {
+		if (lm_map_get(&(tinfo->chns), (ur_map_key_type)addr_get_port(addr), &t) && t) {
 			ch_info* chn = (ch_info*) t;
 			if (STUN_VALID_CHANNEL(chn->chnum)) {
 				return chn->chnum;
@@ -300,7 +321,7 @@ ch_info *get_turn_channel(turn_permission_info* tinfo, ioa_addr *addr)
 {
 	if (tinfo) {
 		ur_map_value_type t = 0;
-		if (ur_map_get(tinfo->channels, (ur_map_key_type)addr_get_port(addr), &t) && t) {
+		if (lm_map_get(&(tinfo->chns), (ur_map_key_type)addr_get_port(addr), &t) && t) {
 			ch_info* chn = (ch_info*) t;
 			if (STUN_VALID_CHANNEL(chn->chnum)) {
 				return chn;
@@ -372,7 +393,6 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 		ns_bzero(slot,sizeof(turn_permission_slot));
 		slot->info.allocated = 1;
 		turn_permission_info *elem = &(slot->info);
-		elem->channels = ur_map_create();
 		addr_cpy(&(elem->addr), addr);
 		elem->owner = a;
 

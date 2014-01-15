@@ -130,7 +130,7 @@ typedef struct _ch_info {
 
 typedef struct _turn_permission_info {
 	int allocated;
-	ur_map *channels;
+	lm_map chns;
 	ioa_addr addr;
 	turn_time_t expiration_time;
 	ioa_timer_handle lifetime_ev;
@@ -160,9 +160,9 @@ typedef struct _allocation {
   ioa_timer_handle lifetime_ev;
   turn_permission_hashtable addr_to_perm;
   ts_ur_session relay_session;
-  ur_map *channel_to_ch_info;
+  lm_map chn_to_ch_info;
   void *owner; //ss
-  ur_map *tcp_connections; //global reference
+  ur_map *tcp_connections; //global (per turn server) reference
   tcp_connection_list tcl; //local reference
 } allocation;
 

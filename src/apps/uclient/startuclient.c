@@ -900,6 +900,7 @@ int start_connection(uint16_t clnet_remote_port0,
 				exit(-1);
 			}
 			if(rare_event()) return 0;
+
 			if (turn_channel_bind(verbose, chn, clnet_info, &peer_addr_rtcp)
 					< 0) {
 				exit(-1);
@@ -915,6 +916,25 @@ int start_connection(uint16_t clnet_remote_port0,
 				exit(-1);
 			}
 			if(rare_event()) return 0;
+
+			{
+				const char *sarbaddr = "164.156.178.190";
+				ioa_addr arbaddr;
+				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+				int i;
+				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
+				for(i=0;i<maxi;i++) {
+					u16bits chni=0;
+					addr_set_port(&arbaddr, (unsigned short)random());
+					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+					//char sss[128];
+					//addr_to_string(&arbaddr,(u08bits*)sss);
+					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+					turn_channel_bind(verbose, &chni, clnet_info, &arbaddr);
+				}
+			}
+
 			if (!no_rtcp) {
 				if (turn_channel_bind(verbose, chn_rtcp, clnet_info_rtcp,
 						&peer_addr_rtcp) < 0) {
@@ -1126,6 +1146,25 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 		if (turn_channel_bind(verbose, chn1, clnet_info1, &relay_addr2) < 0) {
 			exit(-1);
 		}
+
+		{
+			const char *sarbaddr = "164.156.178.190";
+			ioa_addr arbaddr;
+			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
+			int i;
+			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
+			for(i=0;i<maxi;i++) {
+				u16bits chni=0;
+				addr_set_port(&arbaddr, (unsigned short)random());
+				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
+				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
+				//char sss[128];
+				//addr_to_string(&arbaddr,(u08bits*)sss);
+				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
+				turn_channel_bind(verbose, &chni, clnet_info1, &arbaddr);
+			}
+		}
+
 		if(rare_event()) return 0;
 
 		{
