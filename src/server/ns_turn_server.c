@@ -681,6 +681,9 @@ static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server,
 }
 
 static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
+	//TODO: remove later this print:
+	printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
+	//
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
