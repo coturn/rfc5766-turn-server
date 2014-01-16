@@ -42,7 +42,6 @@ void init_allocation(void *owner, allocation* a, ur_map *tcp_connections) {
   if(a) {
     ns_bzero(a,sizeof(allocation));
     a->owner = owner;
-    lm_map_init(&(a->chn_to_ch_info));
     a->tcp_connections = tcp_connections;
     init_turn_permission_hashtable(&(a->addr_to_perm));
   }
@@ -67,7 +66,7 @@ void clear_allocation(allocation *a)
 
 		/* The order is important here: */
 		free_turn_permission_hashtable(&(a->addr_to_perm));
-		lm_map_clean(&(a->chn_to_ch_info));
+		ch_map_clean(&(a->chns));
 
 		a->is_valid=0;
 	}
@@ -204,9 +203,8 @@ static turn_permission_info* get_from_turn_permission_hashtable(turn_permission_
 	return NULL;
 }
 
-static void ch_info_clean(ur_map_value_type value) {
-  if(value) {
-    ch_info* c = (ch_info*)value;
+static void ch_info_clean(ch_info* c) {
+  if(c) {
     IOA_EVENT_DEL(c->lifetime_ev);
     ns_bzero(c,sizeof(ch_info));
   }
@@ -217,32 +215,13 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 	UNUSED_ARG(key);
 
 	if(value) {
-		int found = 0;
 		ch_info* chn = (ch_info*)value;
+
 		if(chn->chnum <1) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (0) channel to be cleaned: chnum<1\n",__FUNCTION__);
-		} else {
-			turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
-			if(tinfo) {
-				allocation* a = (allocation*)tinfo->owner;
-				if(a) {
-					found = lm_map_del(&(a->chn_to_ch_info), chn->chnum, ch_info_clean);
-					if(!found) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: not found\n",__FUNCTION__);
-					}
-				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) channel to be cleaned: allocation is empty\n",__FUNCTION__);
-				}
-			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (3) channel to be cleaned: permission is empty\n",__FUNCTION__);
-			}
 		}
 
-		if(!found) {
-			ch_info_clean(value);
-		}
-
-		turn_free(chn,sizeof(ch_info));
+		ch_info_clean(chn);
 	}
 
 	return 0;
@@ -274,15 +253,13 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 	if (!tinfo)
 		tinfo = allocation_add_permission(a, peer_addr);
 
-	ch_info* chn = (ch_info*)turn_malloc(sizeof(ch_info));
+	ch_info* chn = ch_map_get(&(a->chns), chnum, 1);
 
-	ns_bzero(chn,sizeof(ch_info));
-
+	chn->allocated = 1;
 	chn->chnum = chnum;
 	chn->port = addr_get_port(peer_addr);
 	addr_cpy(&(chn->peer_addr), peer_addr);
 	chn->owner = tinfo;
-	lm_map_put(&(a->chn_to_ch_info), chnum, (ur_map_value_type)chn);
 
 	lm_map_put(&(tinfo->chns), (ur_map_key_type) addr_get_port(peer_addr), (ur_map_value_type) chn);
 
@@ -290,11 +267,7 @@ ch_info* allocation_get_new_ch_info(allocation* a, u16bits chnum, ioa_addr* peer
 }
 
 ch_info* allocation_get_ch_info(allocation* a, u16bits chnum) {
-	ur_map_value_type vchn = 0;
-	if (lm_map_get(&(a->chn_to_ch_info), chnum, &vchn) && vchn) {
-		return (ch_info*) vchn;
-	}
-	return NULL;
+	return ch_map_get(&(a->chns), chnum, 0);
 }
 
 ch_info* allocation_get_ch_info_by_peer_addr(allocation* a, ioa_addr* peer_addr) {
@@ -402,6 +375,91 @@ turn_permission_info* allocation_add_permission(allocation *a, const ioa_addr* a
 		return elem;
 	} else {
 		return NULL;
+	}
+}
+
+ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
+{
+	ch_info *ret = NULL;
+	if(map) {
+		size_t index = (size_t)(chnum & CH_MAP_HASH_SIZE);
+		ch_map_array *a = &(map->table[index]);
+
+		size_t i;
+		for(i=0;i<CH_MAP_ARRAY_SIZE;++i) {
+			ch_info *chi = &(a->main_chns[i]);
+			if(chi->allocated) {
+				if(!new_chn && (chi->chnum == chnum)) {
+					return chi;
+				}
+			} else if(new_chn) {
+				return chi;
+			}
+		}
+
+		size_t old_sz = a->extra_sz;
+		if(old_sz && a->extra_chns) {
+			for(i=0;i<old_sz;++i) {
+				ch_info *chi = a->extra_chns[i];
+				if(chi) {
+					if(chi->allocated) {
+						if(!new_chn && (chi->chnum == chnum)) {
+							return chi;
+						}
+					} else if(new_chn) {
+						return chi;
+					}
+				}
+			}
+		}
+
+		if(new_chn) {
+			size_t old_sz_mem = old_sz * sizeof(ch_info*);
+			a->extra_chns = (ch_info**)turn_realloc(a->extra_chns,old_sz_mem,old_sz_mem + sizeof(ch_info*));
+			a->extra_chns[old_sz] = (ch_info*)turn_malloc(sizeof(ch_info));
+			ns_bzero(a->extra_chns[old_sz],sizeof(ch_info));
+			a->extra_sz += 1;
+
+			return a->extra_chns[old_sz];
+		}
+	}
+
+	return ret;
+}
+
+void ch_map_clean(ch_map* map)
+{
+	if(map) {
+		size_t index;
+		for(index = 0; index < CH_MAP_HASH_SIZE; ++index) {
+
+			ch_map_array *a = &(map->table[index]);
+
+			size_t i;
+			for(i=0;i<CH_MAP_ARRAY_SIZE;++i) {
+				ch_info *chi = &(a->main_chns[i]);
+				if(chi->allocated) {
+					ch_info_clean(chi);
+				}
+			}
+
+			if(a->extra_chns) {
+				size_t sz = a->extra_sz;
+				for(i=0;i<sz;++i) {
+					ch_info *chi = a->extra_chns[i];
+					if(chi) {
+						if(chi->allocated) {
+							ch_info_clean(chi);
+						}
+						turn_free(chi,sizeof(ch_info));
+						a->extra_chns[i] = NULL;
+					}
+				}
+				turn_free(a->extra_chns, sizeof(ch_info*)*sz);
+				a->extra_chns = NULL;
+			}
+			a->extra_sz = 0;
+		}
 	}
 }
 

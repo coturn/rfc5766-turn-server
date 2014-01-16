@@ -137,16 +137,14 @@ typedef struct _ch_info {
 typedef struct _chn_map_array {
 	ch_info main_chns[CH_MAP_ARRAY_SIZE];
 	size_t extra_sz;
-	ur_map_value_type **extra_chns;
+	ch_info **extra_chns;
 } ch_map_array;
 
 typedef struct _ch_map {
 	ch_map_array table[CH_MAP_HASH_SIZE];
 } ch_map;
 
-void ch_map_init(lm_map *map);
-ch_info *ch_map_new(ch_map* map, u16bits chnum);
-ch_info *ch_map_get(const ch_map* map, u16bits chnum);
+ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn);
 void ch_map_clean(ch_map* map);
 
 ////////////////////////////
@@ -183,7 +181,7 @@ typedef struct _allocation {
   ioa_timer_handle lifetime_ev;
   turn_permission_hashtable addr_to_perm;
   ts_ur_session relay_session;
-  lm_map chn_to_ch_info;
+  ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
   tcp_connection_list tcl; //local reference
