@@ -121,12 +121,35 @@ struct _allocation;
 
 typedef struct _ch_info {
   u16bits chnum;
+  int allocated;
   u16bits port;
   ioa_addr peer_addr;
   turn_time_t expiration_time;
   ioa_timer_handle lifetime_ev;
   void *owner; //perm
 } ch_info;
+
+///////////// "channel" map /////////////////////
+
+#define CH_MAP_HASH_SIZE (8)
+#define CH_MAP_ARRAY_SIZE (3)
+
+typedef struct _chn_map_array {
+	ch_info main_chns[CH_MAP_ARRAY_SIZE];
+	size_t extra_sz;
+	ur_map_value_type **extra_chns;
+} ch_map_array;
+
+typedef struct _ch_map {
+	ch_map_array table[CH_MAP_HASH_SIZE];
+} ch_map;
+
+void ch_map_init(lm_map *map);
+ch_info *ch_map_new(ch_map* map, u16bits chnum);
+ch_info *ch_map_get(const ch_map* map, u16bits chnum);
+void ch_map_clean(ch_map* map);
+
+////////////////////////////
 
 typedef struct _turn_permission_info {
 	int allocated;

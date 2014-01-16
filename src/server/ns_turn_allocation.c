@@ -219,19 +219,23 @@ static int delete_channel_info_from_allocation_map(ur_map_key_type key, ur_map_v
 	if(value) {
 		int found = 0;
 		ch_info* chn = (ch_info*)value;
-		turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
-		if(tinfo) {
-			allocation* a = (allocation*)tinfo->owner;
-			if(a) {
-				found = lm_map_del(&(a->chn_to_ch_info), chn->chnum, ch_info_clean);
-				if(!found) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: not found\n",__FUNCTION__);
+		if(chn->chnum <1) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (0) channel to be cleaned: chnum<1\n",__FUNCTION__);
+		} else {
+			turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
+			if(tinfo) {
+				allocation* a = (allocation*)tinfo->owner;
+				if(a) {
+					found = lm_map_del(&(a->chn_to_ch_info), chn->chnum, ch_info_clean);
+					if(!found) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: not found\n",__FUNCTION__);
+					}
+				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) channel to be cleaned: allocation is empty\n",__FUNCTION__);
 				}
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (2) channel to be cleaned: allocation is empty\n",__FUNCTION__);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (3) channel to be cleaned: permission is empty\n",__FUNCTION__);
 			}
-		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (3) channel to be cleaned: permission is empty\n",__FUNCTION__);
 		}
 
 		if(!found) {
@@ -250,8 +254,7 @@ void turn_channel_delete(ch_info* chn)
 		int port = addr_get_port(&(chn->peer_addr));
 		if(port<1) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty\n",__FUNCTION__);
-		}
-		{
+		} else {
 			turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
 			if(tinfo) {
 				lm_map_del(&(tinfo->chns), (ur_map_key_type)port,NULL);

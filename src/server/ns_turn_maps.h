@@ -101,7 +101,7 @@ int ur_map_unlock(const ur_map* map);
 
 ///////////// "local" map /////////////////////
 
-#define LM_MAP_HASH_SIZE (7)
+#define LM_MAP_HASH_SIZE (8)
 #define LM_MAP_ARRAY_SIZE (3)
 
 typedef struct _lm_map_array {
