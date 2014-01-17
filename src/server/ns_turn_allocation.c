@@ -243,8 +243,11 @@ void turn_channel_delete(ch_info* chn)
 	if(chn) {
 		int port = addr_get_port(&(chn->peer_addr));
 		if(port<1) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty\n",__FUNCTION__);
-		} else {
+			char s[129];
+			addr_to_string(&(chn->peer_addr),(u08bits*)s);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s: strange (1) channel to be cleaned: port is empty: %s\n",__FUNCTION__,s);
+		}
+		{
 			turn_permission_info* tinfo = (turn_permission_info*)chn->owner;
 			if(tinfo) {
 				lm_map_del(&(tinfo->chns), (ur_map_key_type)port,NULL);

@@ -925,7 +925,9 @@ int start_connection(uint16_t clnet_remote_port0,
 				int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 				for(i=0;i<maxi;i++) {
 					u16bits chni=0;
-					addr_set_port(&arbaddr, (unsigned short)random());
+					int port = (unsigned short)random();
+					if(port<1024) port += 1024;
+					addr_set_port(&arbaddr, port);
 					u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
 					u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 					//char sss[128];
@@ -1155,7 +1157,9 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			int maxi = (unsigned short)random() % EXTRA_CREATE_PERMS;
 			for(i=0;i<maxi;i++) {
 				u16bits chni=0;
-				addr_set_port(&arbaddr, (unsigned short)random());
+				int port = (unsigned short)random();
+				if(port<1024) port += 1024;
+				addr_set_port(&arbaddr, port);
 				u08bits *u=(u08bits*)&(arbaddr.s4.sin_addr);
 				u[(unsigned short)random()%4] = u[(unsigned short)random()%4] + 1;
 				//char sss[128];

@@ -497,7 +497,7 @@ static int create_new_connected_udp_socket(
 		int connect_err = 0;
 		if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"Cannot connect new detached udp server socket to remote addr\n");
+					"Cannot connect new detached udp client socket to remote addr\n");
 			IOA_CLOSE_SOCKET(ret);
 			return -1;
 		}
