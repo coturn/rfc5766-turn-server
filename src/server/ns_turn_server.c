@@ -2110,6 +2110,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 	ioa_addr peer_addr;
 	addr_set_any(&peer_addr);
 	allocation* a = get_allocation_ss(ss);
+	int addr_found = 0;
 
 	if(ss->is_tcp_relay) {
 		*err_code = 403;
@@ -2151,6 +2152,13 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
 
+				if(addr_get_port(&peer_addr) < 1) {
+					*err_code = 400;
+					*reason = (const u08bits *)"Empty port number in channel bind request";
+				} else {
+					addr_found = 1;
+				}
+
 				break;
 			  }
 			default:
@@ -2171,7 +2179,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 			;
 
-		} else if (!chnum || addr_any(&peer_addr)) {
+		} else if (!chnum || addr_any(&peer_addr) || !addr_found) {
 
 			*err_code = 400;
 			*reason = (const u08bits *)"Bad channel bind request";
