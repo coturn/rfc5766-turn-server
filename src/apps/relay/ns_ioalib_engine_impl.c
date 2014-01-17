@@ -194,11 +194,11 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 static void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *elem)
 {
 	if (bufs && elem) {
-		if (bufs->tail && bufs->tsz) {
-			elem->next = NULL;
-			elem->prev = bufs->tail;
-			bufs->tail->next = elem;
-			bufs->tail = elem;
+		if (bufs->head && bufs->tsz) {
+			elem->prev = NULL;
+			elem->next = bufs->head;
+			bufs->head->prev = elem;
+			bufs->head = elem;
 			++bufs->tsz;
 		} else {
 			bufs->head = elem;
