@@ -486,11 +486,18 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			}
 
 			{
-				tcp_connection_list *tcl = &(ss->alloc.tcl);
-				while(tcl->next) {
-					tcp_connection *tc = (tcp_connection*)(tcl->next);
-					turn_session_info_add_peer(tsi,&(tc->peer_addr));
-					tcl=tcl->next;
+				tcp_connection_list *tcl = &(ss->alloc.tcs);
+				if(tcl->elems) {
+					size_t i;
+					size_t sz = tcl->sz;
+					for(i=0;i<sz;++i) {
+						if(tcl->elems[i]) {
+							tcp_connection *tc = tcl->elems[i];
+							if(tc) {
+								turn_session_info_add_peer(tsi,&(tc->peer_addr));
+							}
+						}
+					}
 				}
 			}
 		}
@@ -677,8 +684,8 @@ static ts_ur_super_session* get_session_from_mobile_map(turn_turnserver* server,
 }
 
 static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
-	//TODO: remove later this print:
-	printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
+	//
+	//printf("%s: 111.111: session size=%lu\n",__FUNCTION__,(unsigned long)sizeof(ts_ur_super_session));
 	//
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));

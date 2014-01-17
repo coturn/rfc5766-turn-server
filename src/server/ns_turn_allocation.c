@@ -54,10 +54,21 @@ void clear_allocation(allocation *a)
 		if(a->is_valid)
 			turn_report_allocation_delete(a);
 
-		while(a->tcl.next) {
-			tcp_connection *tc = (tcp_connection*)(a->tcl.next);
-			delete_tcp_connection(tc);
+		if(a->tcs.elems) {
+			size_t i;
+			size_t sz = a->tcs.sz;
+			for(i=0;i<sz;++i) {
+				tcp_connection *tc = a->tcs.elems[i];
+				if(tc) {
+					delete_tcp_connection(tc);
+					a->tcs.elems[i] = NULL;
+					break;
+				}
+			}
+			turn_free(a->tcs.elems,sz*sizeof(tcp_connection*));
+			a->tcs.elems = NULL;
 		}
+		a->tcs.sz = 0;
 
 		clear_ioa_socket_session_if(a->relay_session.s, a->owner);
 		clear_ts_ur_session_data(&(a->relay_session));
@@ -490,22 +501,47 @@ static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 
 tcp_connection *create_tcp_connection(u08bits server_id, allocation *a, stun_tid *tid, ioa_addr *peer_addr, int *err_code)
 {
-	tcp_connection_list *tcl = &(a->tcl);
-	while(tcl->next) {
-		tcp_connection *otc = (tcp_connection*)(tcl->next);
-		if(addr_eq(&(otc->peer_addr),peer_addr)) {
-			*err_code = 446;
-			return NULL;
+	tcp_connection_list *tcl = &(a->tcs);
+	if(tcl->elems) {
+		size_t i;
+		for(i=0;i<tcl->sz;++i) {
+			tcp_connection *otc = tcl->elems[i];
+			if(otc) {
+				if(addr_eq(&(otc->peer_addr),peer_addr)) {
+					*err_code = 446;
+					return NULL;
+				}
+			}
 		}
-		tcl=tcl->next;
 	}
 	tcp_connection *tc = (tcp_connection*)turn_malloc(sizeof(tcp_connection));
 	ns_bzero(tc,sizeof(tcp_connection));
-	tcl->next = &(tc->list);
 	addr_cpy(&(tc->peer_addr),peer_addr);
 	if(tid)
 		ns_bcopy(tid,&(tc->tid),sizeof(stun_tid));
 	tc->owner = a;
+
+	int found = 0;
+	if(a->tcs.elems) {
+		size_t i;
+		for(i=0;i<tcl->sz;++i) {
+			tcp_connection *otc = tcl->elems[i];
+			if(!otc) {
+				tcl->elems[i] = tc;
+				found = 1;
+				break;
+			}
+		}
+	}
+
+	if(!found) {
+		size_t old_sz_mem = a->tcs.sz * sizeof(tcp_connection*);
+		a->tcs.elems = (tcp_connection**)turn_realloc(a->tcs.elems,old_sz_mem,old_sz_mem+sizeof(tcp_connection*));
+		a->tcs.elems[a->tcs.sz] = tc;
+		a->tcs.sz += 1;
+		tcl = &(a->tcs);
+	}
+
 	set_new_tc_id(server_id, tc);
 	return tc;
 }
@@ -529,13 +565,14 @@ void delete_tcp_connection(tcp_connection *tc)
 			if(map) {
 				ur_map_del(map, (ur_map_key_type)(tc->id),NULL);
 			}
-			tcp_connection_list *tcl = &(a->tcl);
-			while(tcl->next) {
-				if((void*)(tcl->next) == (void*)tc) {
-					tcl->next = tc->list.next;
-					break;
-				} else {
-					tcl=tcl->next;
+			tcp_connection_list *tcl = &(a->tcs);
+			if(tcl->elems) {
+				size_t i;
+				for(i=0;i<tcl->sz;++i) {
+					if(tcl->elems[i] == tc) {
+						tcl->elems[i] = NULL;
+						break;
+					}
 				}
 			}
 		}
@@ -562,13 +599,18 @@ tcp_connection *get_and_clean_tcp_connection_by_id(ur_map *map, tcp_connection_i
 tcp_connection *get_tcp_connection_by_peer(allocation *a, ioa_addr *peer_addr)
 {
 	if(a && peer_addr) {
-		tcp_connection_list *tcl = &(a->tcl);
-		while(tcl->next) {
-			tcp_connection *tc = (tcp_connection*)(tcl->next);
-			if(addr_eq(&(tc->peer_addr),peer_addr)) {
-				return tc;
+		tcp_connection_list *tcl = &(a->tcs);
+		if(tcl->elems) {
+			size_t i;
+			size_t sz = tcl->sz;
+			for(i=0;i<sz;++i) {
+				tcp_connection *tc = tcl->elems[i];
+				if(tc) {
+					if(addr_eq(&(tc->peer_addr),peer_addr)) {
+						return tc;
+					}
+				}
 			}
-			tcl=tcl->next;
 		}
 	}
 	return NULL;

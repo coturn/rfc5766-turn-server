@@ -72,6 +72,8 @@ static inline void clear_ts_ur_session_data(ts_ur_session* cdi)
 
 ////////// RFC 6062 TCP connection ////////
 
+#define MAX_UNSENT_BUFFER_SIZE (16)
+
 enum _TC_STATE {
 	TC_STATE_UNKNOWN=0,
 	TC_STATE_CLIENT_TO_PEER_CONNECTING,
@@ -83,13 +85,7 @@ enum _TC_STATE {
 
 typedef enum _TC_STATE TC_STATE;
 
-typedef struct _tcp_connection_list {
-  struct _tcp_connection_list *next;
-} tcp_connection_list;
-
 typedef u32bits tcp_connection_id;
-
-#define MAX_UNSENT_BUFFER_SIZE (16)
 
 typedef struct {
 	size_t sz;
@@ -98,7 +94,6 @@ typedef struct {
 
 typedef struct
 {
-	tcp_connection_list list;
 	TC_STATE state;
 	tcp_connection_id id;
 	ioa_addr peer_addr;
@@ -111,6 +106,11 @@ typedef struct
 	int done;
 	unsent_buffer ub_to_client;
 } tcp_connection;
+
+typedef struct _tcp_connection_list {
+	size_t sz;
+	tcp_connection **elems;
+} tcp_connection_list;
 
 ////////////////////////////////
 
@@ -184,7 +184,7 @@ typedef struct _allocation {
   ch_map chns; /* chnum-to-ch_info* */
   void *owner; //ss
   ur_map *tcp_connections; //global (per turn server) reference
-  tcp_connection_list tcl; //local reference
+  tcp_connection_list tcs; //local reference
 } allocation;
 
 //////////// CHANNELS ////////////////////
