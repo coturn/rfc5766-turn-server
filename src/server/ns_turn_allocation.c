@@ -396,7 +396,7 @@ ch_info *ch_map_get(ch_map* map, u16bits chnum, int new_chn)
 {
 	ch_info *ret = NULL;
 	if(map) {
-		size_t index = (size_t)(chnum & CH_MAP_HASH_SIZE);
+		size_t index = (size_t)(chnum & (CH_MAP_HASH_SIZE-1));
 		ch_map_array *a = &(map->table[index]);
 
 		size_t i;

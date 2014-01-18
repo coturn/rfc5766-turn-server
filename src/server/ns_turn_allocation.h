@@ -72,7 +72,7 @@ static inline void clear_ts_ur_session_data(ts_ur_session* cdi)
 
 ////////// RFC 6062 TCP connection ////////
 
-#define MAX_UNSENT_BUFFER_SIZE (16)
+#define MAX_UNSENT_BUFFER_SIZE (0x10)
 
 enum _TC_STATE {
 	TC_STATE_UNKNOWN=0,
@@ -115,7 +115,7 @@ typedef struct _tcp_connection_list {
 ////////////////////////////////
 
 #define TURN_PERMISSION_HASHTABLE_SIZE (0x8)
-#define TURN_PERMISSION_ARRAY_SIZE (3)
+#define TURN_PERMISSION_ARRAY_SIZE (0x3)
 
 struct _allocation;
 
@@ -131,8 +131,8 @@ typedef struct _ch_info {
 
 ///////////// "channel" map /////////////////////
 
-#define CH_MAP_HASH_SIZE (8)
-#define CH_MAP_ARRAY_SIZE (3)
+#define CH_MAP_HASH_SIZE (0x8)
+#define CH_MAP_ARRAY_SIZE (0x3)
 
 typedef struct _chn_map_array {
 	ch_info main_chns[CH_MAP_ARRAY_SIZE];
