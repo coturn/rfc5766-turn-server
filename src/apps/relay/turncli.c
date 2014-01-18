@@ -516,13 +516,20 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				}
 				myprintf(cs,"      usage: rp=%lu, rb=%lu, sp=%lu, sb=%lu\n",(unsigned long)(tsi->received_packets), (unsigned long)(tsi->received_bytes),(unsigned long)(tsi->sent_packets),(unsigned long)(tsi->sent_bytes));
 				myprintf(cs,"       rate: r=%lu, s=%lu, total=%lu (bytes per sec)\n",(unsigned long)(tsi->received_rate), (unsigned long)(tsi->sent_rate),(unsigned long)(tsi->total_rate));
-				if(tsi->peers_size && tsi->peers_data) {
+				if(tsi->main_peers_size) {
 					myprintf(cs,"      peers:\n");
 					size_t i;
-					for(i=0;i<tsi->peers_size;++i) {
-						if(!tsi->peers_data[i].saddr[0])
-							addr_to_string(&(tsi->peers_data[i].addr),(u08bits*)tsi->peers_data[i].saddr);
-						myprintf(cs,"          %s\n",tsi->peers_data[i].saddr);
+					for(i=0;i<tsi->main_peers_size;++i) {
+						if(!(tsi->main_peers_data[i].saddr[0]))
+							addr_to_string(&(tsi->main_peers_data[i].addr),(u08bits*)tsi->main_peers_data[i].saddr);
+						myprintf(cs,"          %s\n",tsi->main_peers_data[i].saddr);
+					}
+					if(tsi->extra_peers_size && tsi->extra_peers_data) {
+						for(i=0;i<tsi->extra_peers_size;++i) {
+							if(!(tsi->extra_peers_data[i].saddr[0]))
+								addr_to_string(&(tsi->extra_peers_data[i].addr),(u08bits*)tsi->extra_peers_data[i].saddr);
+							myprintf(cs,"          %s\n",tsi->extra_peers_data[i].saddr);
+						}
 					}
 				}
 			}

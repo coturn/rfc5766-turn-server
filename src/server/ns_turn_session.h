@@ -85,7 +85,8 @@ typedef struct {
 
 ////// Session info for statistics //////
 
-#define TURN_ADDR_STR_SIZE (101)
+#define TURN_ADDR_STR_SIZE (65)
+#define TURN_MAIN_PEERS_ARRAY_SIZE (5)
 
 typedef struct _addr_data {
 	ioa_addr addr;
@@ -104,8 +105,6 @@ struct turn_session_info {
 	addr_data local_addr_data;
 	addr_data remote_addr_data;
 	addr_data relay_addr_data;
-	addr_data *peers_data;
-	size_t peers_size;
 	u08bits username[STUN_MAX_USERNAME_SIZE+1];
 	int enforce_fingerprints;
 	SHATYPE shatype;
@@ -119,6 +118,11 @@ struct turn_session_info {
     u32bits total_rate;
 /* Mobile */
 	int is_mobile;
+/* Peers */
+	addr_data main_peers_data[TURN_MAIN_PEERS_ARRAY_SIZE];
+	size_t main_peers_size;
+	addr_data *extra_peers_data;
+	size_t extra_peers_size;
 };
 
 void turn_session_info_init(struct turn_session_info* tsi);

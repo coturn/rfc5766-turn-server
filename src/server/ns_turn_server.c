@@ -335,9 +335,8 @@ void turn_session_info_init(struct turn_session_info* tsi) {
 
 void turn_session_info_clean(struct turn_session_info* tsi) {
 	if(tsi) {
-		if(tsi->peers_data) {
-			turn_free(tsi->peers_data, sizeof(addr_data)*(tsi->peers_size));
-			tsi->peers_data = NULL;
+		if(tsi->extra_peers_data) {
+			turn_free(tsi->extra_peers_data, sizeof(addr_data)*(tsi->extra_peers_size));
 		}
 		turn_session_info_init(tsi);
 	}
@@ -346,19 +345,36 @@ void turn_session_info_clean(struct turn_session_info* tsi) {
 void turn_session_info_add_peer(struct turn_session_info* tsi, ioa_addr *peer)
 {
 	if(tsi && peer) {
-		if(tsi->peers_data) {
+		{
+			size_t i;
+			for(i=0;i<tsi->main_peers_size;++i) {
+				if(addr_eq(peer, &(tsi->main_peers_data[i].addr))) {
+					return;
+				}
+			}
+
+			if(tsi->main_peers_size < TURN_MAIN_PEERS_ARRAY_SIZE) {
+				addr_cpy(&(tsi->main_peers_data[tsi->main_peers_size].addr),peer);
+				addr_to_string(&(tsi->main_peers_data[tsi->main_peers_size].addr),
+					(u08bits*)tsi->main_peers_data[tsi->main_peers_size].saddr);
+				tsi->main_peers_size += 1;
+				return;
+			}
+		}
+
+		if(tsi->extra_peers_data) {
 			size_t sz;
-			for(sz=0;sz<tsi->peers_size;++sz) {
-				if(addr_eq(peer, &(tsi->peers_data[sz].addr))) {
+			for(sz=0;sz<tsi->extra_peers_size;++sz) {
+				if(addr_eq(peer, &(tsi->extra_peers_data[sz].addr))) {
 					return;
 				}
 			}
 		}
-		tsi->peers_data = (addr_data*)turn_realloc(tsi->peers_data,tsi->peers_size*sizeof(addr_data),(tsi->peers_size+1)*sizeof(addr_data));
-		addr_cpy(&(tsi->peers_data[tsi->peers_size].addr),peer);
-		addr_to_string(&(tsi->peers_data[tsi->peers_size].addr),
-			       (u08bits*)tsi->peers_data[tsi->peers_size].saddr);
-		tsi->peers_size += 1;
+		tsi->extra_peers_data = (addr_data*)turn_realloc(tsi->extra_peers_data,tsi->extra_peers_size*sizeof(addr_data),(tsi->extra_peers_size+1)*sizeof(addr_data));
+		addr_cpy(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),peer);
+		addr_to_string(&(tsi->extra_peers_data[tsi->extra_peers_size].addr),
+			       (u08bits*)tsi->extra_peers_data[tsi->extra_peers_size].saddr);
+		tsi->extra_peers_size += 1;
 	}
 }
 
