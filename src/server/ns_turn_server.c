@@ -2962,17 +2962,17 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 	}
 }
 
-static void log_method(const char* func, const char* username, const char* method, int err_code)
-{
-  if(!err_code) {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-		  "%s: user <%s>: incoming packet %s processed, success\n",
-		  func, username, method);
-  } else {
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-		  "%s: user <%s>: incoming packet %s processed, error %d\n",
-		  func, username, method, err_code);
-  }
+#define log_method(username, method, err_code) \
+{\
+  if(!(err_code)) {\
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+		  "user <%s>: incoming packet " method " processed, success\n",\
+		  (const char*)(username));\
+  } else {\
+    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
+		  "user <%s>: incoming packet " method " processed, error %d\n",\
+		  (username), (err_code));\
+  }\
 }
 
 static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss, ioa_net_data *in_buffer, ioa_network_buffer_handle nbh, int *resp_constructed, int can_resume)
@@ -3059,7 +3059,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "ALLOCATE", err_code);
+				  log_method(ss->username, "ALLOCATE", err_code);
 				}
 
 				break;
@@ -3071,7 +3071,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							unknown_attrs, &ua_num, in_buffer);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "CONNECT", err_code);
+				  log_method(ss->username, "CONNECT", err_code);
 				}
 
 				if(!err_code)
@@ -3085,7 +3085,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "CONNECTION_BIND", err_code);
+				  log_method(ss->username, "CONNECTION_BIND", err_code);
 				}
 
 				break;
@@ -3097,7 +3097,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								&no_response, can_resume);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "REFRESH", err_code);
+				  log_method(ss->username, "REFRESH", err_code);
 				}
 				break;
 
@@ -3107,7 +3107,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "CHANNEL_BIND", err_code);
+				  log_method(ss->username, "CHANNEL_BIND", err_code);
 				}
 				break;
 
@@ -3117,7 +3117,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "CREATE_PERMISSION", err_code);
+				  log_method(ss->username, "CREATE_PERMISSION", err_code);
 				}
 				break;
 
@@ -3136,7 +3136,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							0, 0);
 
 				if(server->verbose) {
-				  log_method(__FUNCTION__, (char*)ss->username, "BINDING", err_code);
+				  log_method(ss->username, "BINDING", err_code);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
@@ -3188,7 +3188,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
 				if(eve(server->verbose)) {
-				  log_method(__FUNCTION__, (char*)ss->username, "SEND", err_code);
+				  log_method(ss->username, "SEND", err_code);
 				}
 
 				break;
@@ -3198,7 +3198,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				err_code = 403;
 
 				if(eve(server->verbose)) {
-				  log_method(__FUNCTION__, (char*)ss->username, "DATA", err_code);
+				  log_method(ss->username, "DATA", err_code);
 				}
 
 				break;
@@ -3267,7 +3267,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(err_code) {
 			if(server->verbose) {
-			  log_method(__FUNCTION__, (char*)ss->username, "message", err_code);
+			  log_method(ss->username, "message", err_code);
 			}
 		}
 
@@ -3323,7 +3323,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 						cookie,1);
 
 			if(server->verbose) {
-			  log_method(__FUNCTION__, (char*)ss->username, "OLD BINDING", err_code);
+			  log_method(ss->username, "OLD BINDING", err_code);
 			}
 
 			if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
@@ -3397,7 +3397,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 
 		if(err_code) {
 			if(server->verbose) {
-			  log_method(__FUNCTION__, (char*)ss->username, "OLD STUN message", err_code);
+			  log_method(ss->username, "OLD STUN message", err_code);
 			}
 		}
 
