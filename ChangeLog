@@ -1,6 +1,6 @@
-01/11/2014 Oleg Moskalenko <mom040267@gmail.com>
+01/18/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.1 'Marshal West':
-	- CPU optimization.
+	- CPU/memory cache optimization (memory locality).
 
 01/06/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.4 'Marshal West':

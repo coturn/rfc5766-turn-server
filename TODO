@@ -58,11 +58,9 @@
 	I/O technique, but still the underlying stock TCP/IP stack 
 	is a limitation.  
 	
-3) Multiple authentication threads, each in a separate thread.
+3) Multiple authentication threads.
 
 4) Memory fragmentation solution.
-
-5) Structures optimization for better CPU cache performance.
 
 ==================================================================
 
