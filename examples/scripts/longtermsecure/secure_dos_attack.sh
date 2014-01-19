@@ -32,14 +32,16 @@ type killall >>/dev/null 2>>/dev/null
 ER=$?
 if [ ${ER} -eq 0 ] ; then
   killall turnutils_uclient >>/dev/null 2>>/dev/null
+fi
+
+type pkill >>/dev/null 2>>/dev/null
+ER=$?
+if [ ${ER} -eq 0 ] ; then
+  pkill turnutils_u >>/dev/null 2>>/dev/null
+  pkill turnutils_uclie >>/dev/null 2>>/dev/null
+  pkill turnutils_uclient >>/dev/null 2>>/dev/null
 else
-  type pkill >>/dev/null 2>>/dev/null
-  ER=$?
-  if [ ${ER} -eq 0 ] ; then
-    pkill turnutils_u >>/dev/null 2>>/dev/null
-  else
-    sleep 10
-  fi
+  sleep 10
 fi
 
 done
