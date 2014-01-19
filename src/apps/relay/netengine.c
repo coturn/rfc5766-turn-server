@@ -221,64 +221,68 @@ void send_auth_message_to_auth_server(struct auth_message *am)
 
 static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
 {
-	UNUSED_ARG(ptr);
-
-	struct auth_message am;
-	int n = 0;
-	struct evbuffer *input = bufferevent_get_input(bev);
-
-	while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
-		if (n != sizeof(struct auth_message)) {
-			fprintf(stderr,"%s: Weird buffer error: size=%d\n",__FUNCTION__,n);
-			continue;
-		}
-
-		if(use_st_credentials) {
-			st_password_t pwd;
-			if(get_user_pwd(am.username,pwd)<0) {
-				am.success = 0;
-			} else {
-				ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
-				am.success = 1;
-			}
-		} else {
-			hmackey_t key;
-			if(get_user_key(am.username,key,am.in_buffer.nbh)<0) {
-				am.success = 0;
-			} else {
-				ns_bcopy(key,am.key,sizeof(hmackey_t));
-				am.success = 1;
-			}
-		}
-
-		size_t dest = am.id;
-
-		struct evbuffer *output = NULL;
-
-		if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
-			dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
-			if(dest >= get_real_udp_relay_servers_number()) {
-					TURN_LOG_FUNC(
-								TURN_LOG_LEVEL_ERROR,
-								"%s: Too large UDP relay number: %d\n",
-									__FUNCTION__,(int)dest);
-			} else {
-				output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
-			}
-		} else {
-			if(dest >= get_real_general_relay_servers_number()) {
-					TURN_LOG_FUNC(
-							TURN_LOG_LEVEL_ERROR,
-							"%s: Too large general relay number: %d\n",
-										__FUNCTION__,(int)dest);
-			} else {
-				output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
-			}
-		}
-
-		if(output)
-			evbuffer_add(output,&am,sizeof(struct auth_message));
-	}
+  UNUSED_ARG(ptr);
+  
+  struct auth_message am;
+  int n = 0;
+  struct evbuffer *input = bufferevent_get_input(bev);
+  
+  while ((n = evbuffer_remove(input, &am, sizeof(struct auth_message))) > 0) {
+    if (n != sizeof(struct auth_message)) {
+      fprintf(stderr,"%s: Weird buffer error: size=%d\n",__FUNCTION__,n);
+      continue;
+    }
+    
+    if(use_st_credentials) {
+      st_password_t pwd;
+      if(get_user_pwd(am.username,pwd)<0) {
+	am.success = 0;
+      } else {
+	ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
+	am.success = 1;
+      }
+    } else {
+      hmackey_t key;
+      if(get_user_key(am.username,key,am.in_buffer.nbh)<0) {
+	am.success = 0;
+      } else {
+	ns_bcopy(key,am.key,sizeof(hmackey_t));
+	am.success = 1;
+      }
+    }
+    
+    size_t dest = am.id;
+    
+    struct evbuffer *output = NULL;
+    
+    if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
+      dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
+      if(dest >= get_real_udp_relay_servers_number()) {
+	TURN_LOG_FUNC(
+		      TURN_LOG_LEVEL_ERROR,
+		      "%s: Too large UDP relay number: %d\n",
+		      __FUNCTION__,(int)dest);
+      } else {
+	output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
+      }
+    } else {
+      if(dest >= get_real_general_relay_servers_number()) {
+	TURN_LOG_FUNC(
+		      TURN_LOG_LEVEL_ERROR,
+		      "%s: Too large general relay number: %d\n",
+		      __FUNCTION__,(int)dest);
+      } else {
+	output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
+      }
+    }
+    
+    if(output)
+      evbuffer_add(output,&am,sizeof(struct auth_message));
+    else {
+      ioa_network_buffer_delete(NULL, am.in_buffer.nbh);
+      am.in_buffer.nbh = NULL;
+    }
+  }
 }
 
 static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_relay *sm)
@@ -328,7 +332,8 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	return 0;
 }
 
-static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd)
+static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, 
+				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd)
 {
 	int ret = 0;
 
@@ -344,7 +349,8 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Too large UDP relay number: %d, rmt=%d\n",
 					__FUNCTION__,(int)dest,(int)rmt);
-			dest=0;
+			ret = -1;
+			goto err;
 		}
 		rs = udp_relay_servers[dest];
 	} else {
@@ -354,7 +360,8 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 					TURN_LOG_LEVEL_ERROR,
 					"%s: Too large general relay number: %d, rmt=%d\n",
 					__FUNCTION__,(int)dest,(int)rmt);
-			dest=0;
+			ret = -1;
+			goto err;
 		}
 		rs = general_relay_servers[dest];
 	}
@@ -406,10 +413,17 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 		}
 	}
 
-	if(ret != 0) {
-		IOA_CLOSE_SOCKET(s);
-		ioa_network_buffer_delete(rs->ioa_eng, sm.m.sm.nd.nbh);
-		sm.m.sm.nd.nbh = NULL;
+ err:
+	if(ret < 0) {
+	  IOA_CLOSE_SOCKET(s);
+	  if(nd) {
+	    ioa_network_buffer_delete(NULL, nd->nbh);
+	    nd->nbh = NULL;
+	  }
+	  if(rmt == RMT_MOBILE_SOCKET) {
+	    ioa_network_buffer_delete(NULL, sm.m.sm.nd.nbh);
+	    sm.m.sm.nd.nbh = NULL;
+	  }
 	}
 
 	return ret;

@@ -1284,8 +1284,13 @@ static int handle_turn_refresh(turn_turnserver *server,
 					if(server->send_socket_to_relay) {
 						ioa_socket_handle new_s = detach_ioa_socket(ss->client_session.s, 1);
 						if(new_s) {
-							server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, RMT_MOBILE_SOCKET, in_buffer);
-							*no_response = 1;
+						  if(server->send_socket_to_relay(tsid, mid, tid, new_s, message_integrity, 
+										  RMT_MOBILE_SOCKET, in_buffer)<0) {
+						    *err_code = 400;
+						    *reason = (const u08bits *)"Wrong mobile ticket";
+						  } else {
+						    *no_response = 1;
+						  }
 						} else {
 							*err_code = 500;
 							*reason = (const u08bits *)"Cannot create new socket";
@@ -1986,7 +1991,10 @@ static int handle_turn_connection_bind(turn_turnserver *server,
 				if(s) {
 					ioa_socket_handle new_s = detach_ioa_socket(s, 1);
 					if(new_s) {
-						server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL);
+					  if(server->send_socket_to_relay(sid, id, tid, new_s, message_integrity, RMT_CB_SOCKET, NULL)<0) {
+					    *err_code = 400;
+					    *reason = (const u08bits *)"Wrong connection id";
+					  }
 					} else {
 						*err_code = 500;
 					}
