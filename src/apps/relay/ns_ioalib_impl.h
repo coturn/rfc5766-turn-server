@@ -121,6 +121,9 @@ typedef int (*ioa_engine_udp_event_handler)(relay_server_handle rs, struct messa
 
 #define TURN_CMSG_SZ (65536)
 
+#define PREDEF_TIMERS_NUM (14)
+extern const int predef_timer_intervals[PREDEF_TIMERS_NUM];
+
 struct _ioa_engine
 {
   struct event_base *event_base;
@@ -146,8 +149,8 @@ struct _ioa_engine
   band_limit_t max_bpj;
   ioa_timer_handle timer_ev;
   s08bits cmsg[TURN_CMSG_SZ+1];
-  struct timeval **predefined_timers;
-  int predefined_timers_num;
+  int predef_timer_intervals[PREDEF_TIMERS_NUM];
+  struct timeval predef_timers[PREDEF_TIMERS_NUM];
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -175,7 +178,7 @@ struct _ioa_socket
 	struct event *read_event;
 	ioa_net_event_handler read_cb;
 	void *read_ctx;
-	volatile int done;
+	int done;
 	void* session;
 	int current_df_relay_flag;
 	/* RFC6156: if IPv6 is involved, do not use DF: */
@@ -201,9 +204,6 @@ struct _ioa_socket
 	accept_cb acb;
 	void *acbarg;
 	/* <<== RFC 6062 */
-	const char *func;
-	const char *file;
-	int line;
 };
 
 typedef struct _timer_event

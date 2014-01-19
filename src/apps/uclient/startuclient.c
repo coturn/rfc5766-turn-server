@@ -739,6 +739,11 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 	if(no_permissions)
 		return 0;
 
+	char saddr[129]="\0";
+	if (verbose) {
+		addr_to_string(peer_addr,(u08bits*)saddr);
+	}
+
 	beg_cp:
 
 	{
@@ -759,7 +764,7 @@ static int turn_create_permission(int verbose, app_ur_conn_info *clnet_info,
 
 			if (len > 0) {
 				if (verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create perm sent\n");
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "create perm sent: %s\n",saddr);
 				}
 				cp_sent = 1;
 			} else {
@@ -919,6 +924,8 @@ int start_connection(uint16_t clnet_remote_port0,
 
 			{
 				const char *sarbaddr = "164.156.178.190";
+				if(random() % 2 == 0)
+					sarbaddr = "2001::172";
 				ioa_addr arbaddr;
 				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 				int i;
@@ -947,6 +954,8 @@ int start_connection(uint16_t clnet_remote_port0,
 
 			{
 				const char *sarbaddr = "64.56.78.90";
+				if(random() % 2 == 0)
+					sarbaddr = "2001::172";
 				ioa_addr arbaddr;
 				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 				int i;
@@ -958,9 +967,7 @@ int start_connection(uint16_t clnet_remote_port0,
 					//char sss[128];
 					//addr_to_string(&arbaddr,(u08bits*)sss);
 					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
-					if (turn_create_permission(verbose, clnet_info, &arbaddr) < 0) {
-						exit(-1);
-					}
+					turn_create_permission(verbose, clnet_info, &arbaddr);
 				}
 			}
 		} else {
@@ -981,6 +988,8 @@ int start_connection(uint16_t clnet_remote_port0,
 
 			{
 				const char *sarbaddr = "64.56.78.90";
+				if(random() % 2 == 0)
+					sarbaddr = "2001::172";
 				ioa_addr arbaddr;
 				make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 				int i;
@@ -992,9 +1001,7 @@ int start_connection(uint16_t clnet_remote_port0,
 					//char sss[128];
 					//addr_to_string(&arbaddr,(u08bits*)sss);
 					//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
-					if (turn_create_permission(verbose, clnet_info, &arbaddr) < 0) {
-						exit(-1);
-					}
+					turn_create_permission(verbose, clnet_info, &arbaddr);
 				}
 			}
 
@@ -1151,6 +1158,8 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 		{
 			const char *sarbaddr = "164.156.178.190";
+			if(random() % 2 == 0)
+				sarbaddr = "2001::172";
 			ioa_addr arbaddr;
 			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 			int i;
@@ -1173,6 +1182,8 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 		{
 			const char *sarbaddr = "64.56.78.90";
+			if(random() % 2 == 0)
+				sarbaddr = "2001::172";
 			ioa_addr arbaddr;
 			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 			int i;
@@ -1184,9 +1195,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 				//char sss[128];
 				//addr_to_string(&arbaddr,(u08bits*)sss);
 				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
-				if (turn_create_permission(verbose, clnet_info1, &arbaddr) < 0) {
-					exit(-1);
-				}
+				turn_create_permission(verbose, clnet_info1, &arbaddr);
 			}
 		}
 
@@ -1214,6 +1223,8 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 		{
 			const char *sarbaddr = "64.56.78.90";
+			if(random() % 2 == 0)
+				sarbaddr = "2001::172";
 			ioa_addr arbaddr;
 			make_ioa_addr((const u08bits*)sarbaddr, 333, &arbaddr);
 			int i;
@@ -1225,9 +1236,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 				//char sss[128];
 				//addr_to_string(&arbaddr,(u08bits*)sss);
 				//printf("%s: 111.111: %s\n",__FUNCTION__,sss);
-				if (turn_create_permission(verbose, clnet_info1, &arbaddr) < 0) {
-					exit(-1);
-				}
+				turn_create_permission(verbose, clnet_info1, &arbaddr);
 			}
 		}
 

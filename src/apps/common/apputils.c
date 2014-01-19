@@ -231,7 +231,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	}
 }
 
-int addr_bind_func(evutil_socket_t fd, const ioa_addr* addr, const char *file, const char *func, int line)
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr)
 {
 	if (!addr || fd < 0) {
 
@@ -261,7 +261,7 @@ int addr_bind_func(evutil_socket_t fd, const ioa_addr* addr, const char *file, c
 			perror("bind");
 			char str[129];
 			addr_to_string(addr,(u08bits*)str);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "(%s:%s:%d) Trying to bind fd %d to <%s>: errno=%d\n", file,func,line,fd, str, err);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
 		}
 		return ret;
 	}
