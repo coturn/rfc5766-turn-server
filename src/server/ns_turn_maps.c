@@ -588,18 +588,13 @@ typedef struct _addr_list {
 
 typedef struct _addr_elem {
   addr_list list;
-  ur_addr_map_key_base_type key;
+  ioa_addr key;
   ur_addr_map_value_type value;
 } addr_elem;
 
 typedef struct _addr_list_header {
   addr_list *list;
 } addr_list_header;
-
-static size_t addr_list_size(const addr_list *sl) {
-  if(!sl) return 0;
-  return 1+addr_list_size(sl->next);
-}
 
 static void addr_list_free(addr_list_header* slh) {
   if(slh) {
@@ -613,7 +608,7 @@ static void addr_list_free(addr_list_header* slh) {
   }
 }
     
-static addr_list* addr_list_add(addr_list* sl, const ur_addr_map_key_type key,  ur_addr_map_value_type value) {
+static addr_list* addr_list_add(addr_list* sl, const ioa_addr* key,  ur_addr_map_value_type value) {
   if(!key) return sl;
   addr_elem *elem=(addr_elem*)turn_malloc(sizeof(addr_elem));
   elem->list.next=sl;
@@ -622,7 +617,7 @@ static addr_list* addr_list_add(addr_list* sl, const ur_addr_map_key_type key,  
   return &(elem->list);
 }
 
-static addr_list* addr_list_remove(addr_list* sl, const ur_addr_map_key_type key, 
+static addr_list* addr_list_remove(addr_list* sl, const ioa_addr* key,
 				   ur_addr_map_func delfunc, int *counter) {
   if(!sl || !key) return sl;
   addr_elem *elem=(addr_elem*)sl;
@@ -638,22 +633,6 @@ static addr_list* addr_list_remove(addr_list* sl, const ur_addr_map_key_type key
   return sl;
 }
 
-static addr_list* addr_list_remove_by_ip(addr_list* sl, const ur_addr_map_key_type key,
-					   ur_addr_map_func delfunc, int *counter) {
-  if(!sl || !key) return sl;
-  addr_elem *elem=(addr_elem*)sl;
-  addr_list* tail=elem->list.next;
-  if(addr_eq_no_port(&(elem->key),key)) {
-    if(delfunc && elem->value) delfunc(elem->value);
-    turn_free(elem,sizeof(addr_elem));
-    if(counter) *counter+=1;
-    sl=addr_list_remove_by_ip(tail, key, delfunc, counter);
-  } else {
-    elem->list.next=addr_list_remove_by_ip(tail,key,delfunc,counter);
-  }
-  return sl;
-}
-
 static void addr_list_foreach(addr_list* sl,  ur_addr_map_func func) {
   if(sl && func) {
 	  addr_elem *elem=(addr_elem*)sl;
@@ -663,16 +642,7 @@ static void addr_list_foreach(addr_list* sl,  ur_addr_map_func func) {
   }
 }
 
-static void addr_list_foreach_arg(addr_list* sl,  ur_addr_map_func_arg func, void *arg) {
-  if(sl && func) {
-	  addr_elem *elem=(addr_elem*)sl;
-	  addr_list* tail=elem->list.next;
-	  func(&(elem->key), elem->value, arg);
-	  addr_list_foreach_arg(tail, func, arg);
-  }
-}
-
-static addr_elem* addr_list_get(addr_list* sl, const ur_addr_map_key_type key) {
+static addr_elem* addr_list_get(addr_list* sl, const ioa_addr* key) {
 
   if(!sl || !key) return NULL;
 
@@ -692,20 +662,19 @@ static addr_elem* addr_list_get(addr_list* sl, const ur_addr_map_key_type key) {
 struct _ur_addr_map {
   addr_list_header lists[ADDR_MAP_SIZE];
   u64bits magic;
-  TURN_MUTEX_DECLARE(mutex)
 };
 
-static int addr_map_index(ur_addr_map_key_type key) {
+static int addr_map_index(ioa_addr* key) {
   u32bits hash = addr_hash(key);
   hash = hash & (ADDR_MAP_SIZE - 1);
   return (int)hash;
 }
 
-static addr_list_header* get_addr_list_header(ur_addr_map *map, ur_addr_map_key_type key) {
+static addr_list_header* get_addr_list_header(ur_addr_map *map, ioa_addr* key) {
   return &(map->lists[addr_map_index(key)]);
 }
 
-static const addr_list_header* get_addr_list_header_const(const ur_addr_map *map, ur_addr_map_key_type key) {
+static const addr_list_header* get_addr_list_header_const(const ur_addr_map *map, ioa_addr* key) {
   return &(map->lists[addr_map_index(key)]);
 }
 
@@ -713,7 +682,6 @@ static int ur_addr_map_init(ur_addr_map* map) {
   if(map) {
     ns_bzero(map,sizeof(ur_addr_map));
     map->magic=MAGIC_HASH;
-    TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
     return 0;
   }
   return -1;
@@ -738,7 +706,7 @@ ur_addr_map* ur_addr_map_create(void) {
  * -1 - error
  * if the addr key exists, the value is updated.
  */
-int ur_addr_map_put(ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_value_type value) {
+int ur_addr_map_put(ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type value) {
 
   if(!ur_addr_map_valid(map)) return -1;
 
@@ -762,7 +730,7 @@ int ur_addr_map_put(ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_valu
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_get(const ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_value_type *value) {
+int ur_addr_map_get(const ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type *value) {
 
   if(!ur_addr_map_valid(map)) return 0;
 
@@ -785,7 +753,7 @@ int ur_addr_map_get(const ur_addr_map* map, ur_addr_map_key_type key, ur_addr_ma
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_del(ur_addr_map* map, ur_addr_map_key_type key,ur_addr_map_func delfunc) {
+int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func delfunc) {
 
   if(!ur_addr_map_valid(map)) return 0;
 
@@ -799,26 +767,6 @@ int ur_addr_map_del(ur_addr_map* map, ur_addr_map_key_type key,ur_addr_map_func 
 
     return (counter>0);
   }
-}
-
-int ur_addr_map_del_by_ip(ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_func delfunc)
-{
-
-	if (!ur_addr_map_valid(map))
-		return 0;
-	else {
-
-		int counter = 0;
-		u32bits i = 0;
-		for (i = 0; i < ADDR_MAP_SIZE; ++i) {
-
-			addr_list_header* slh = &(map->lists[i]);
-
-			slh->list = addr_list_remove_by_ip(slh->list, key, delfunc, &counter);
-		}
-
-		return (counter > 0);
-	}
 }
 
 /**
@@ -840,20 +788,6 @@ void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func) {
   }
 }
 
-void ur_addr_map_foreach_arg(ur_addr_map* map, ur_addr_map_func_arg func, void *arg) {
-
-  if(ur_addr_map_valid(map)) {
-
-    u32bits i=0;
-    for(i=0;i<ADDR_MAP_SIZE;i++) {
-
-      addr_list_header* slh = &(map->lists[i]);
-
-      addr_list_foreach_arg(slh->list, func, arg);
-    }
-  }
-}
-
 void ur_addr_map_free(ur_addr_map** map) {
   if(map && ur_addr_map_valid(*map)) {
     u32bits i=0;
@@ -861,39 +795,9 @@ void ur_addr_map_free(ur_addr_map** map) {
       addr_list_free(&((*map)->lists[i]));
     }
     (*map)->magic=0;
-    TURN_MUTEX_DESTROY(&((*map)->mutex));
     turn_free(*map,sizeof(ur_addr_map));
     *map=NULL;
   }
-}
-
-size_t ur_addr_map_size(const ur_addr_map* map) {
-  if(ur_addr_map_valid(map)) {
-    size_t ret=0;
-    u32bits i=0;
-    for(i=0;i<ADDR_MAP_SIZE;i++) {
-      ret+=addr_list_size(map->lists[i].list);
-    }
-    return ret;
-  } else {
-    return 0;
-  }
-}
-
-int ur_addr_map_lock(const ur_addr_map* map) {
-  if(ur_addr_map_valid(map)) {
-    TURN_MUTEX_LOCK((const turn_mutex*)&(map->mutex));
-    return 0;
-  }
-  return -1;
-}
-
-int ur_addr_map_unlock(const ur_addr_map* map) {
-  if(ur_addr_map_valid(map)) {
-    TURN_MUTEX_UNLOCK((const turn_mutex*)&(map->mutex));
-    return 0;
-  }
-  return -1;
 }
 
 ////////////////////  STRING LISTS ///////////////////////////////////

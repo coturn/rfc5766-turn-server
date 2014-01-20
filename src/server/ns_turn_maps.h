@@ -158,16 +158,12 @@ int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg);
 
 //////////////// UR ADDR MAP //////////////////
 
-typedef ioa_addr ur_addr_map_key_base_type;
-typedef ur_addr_map_key_base_type* ur_addr_map_key_type;
 typedef unsigned long ur_addr_map_value_type;
+
 struct _ur_addr_map;
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
-typedef void (*ur_addr_map_func_arg)(ur_addr_map_key_type key,
-				ur_addr_map_value_type value,
-				void *arg);
 
 ur_addr_map* ur_addr_map_create(void);
 
@@ -177,22 +173,21 @@ ur_addr_map* ur_addr_map_create(void);
  * -1 - error
  * if the addr key exists, the value is updated.
  */
-int ur_addr_map_put(ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_value_type value);
+int ur_addr_map_put(ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type value);
 
 /**
  * @ret:
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_get(const ur_addr_map* map, ur_addr_map_key_type key, ur_addr_map_value_type *value);
+int ur_addr_map_get(const ur_addr_map* map, ioa_addr* key, ur_addr_map_value_type *value);
 
 /**
  * @ret:
  * 1 - success
  * 0 - not found
  */
-int ur_addr_map_del(ur_addr_map* map, ur_addr_map_key_type key,ur_addr_map_func func);
-int ur_addr_map_del_by_ip(ur_addr_map* map, ur_addr_map_key_type key,ur_addr_map_func func);
+int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func func);
 
 /**
  * @ret:
@@ -200,14 +195,10 @@ int ur_addr_map_del_by_ip(ur_addr_map* map, ur_addr_map_key_type key,ur_addr_map
  * 0 - not found
  */
 void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func);
-void ur_addr_map_foreach_arg(ur_addr_map* map, ur_addr_map_func_arg func, void *arg);
 
 void ur_addr_map_free(ur_addr_map** map);
 
 size_t ur_addr_map_size(const ur_addr_map* map);
-
-int ur_addr_map_lock(const ur_addr_map* map);
-int ur_addr_map_unlock(const ur_addr_map* map);
 
 //////////////// UR STRING MAP //////////////////
 
