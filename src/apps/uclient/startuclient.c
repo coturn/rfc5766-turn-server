@@ -922,7 +922,7 @@ int start_connection(uint16_t clnet_remote_port0,
 			}
 			if(rare_event()) return 0;
 
-			{
+			if(extra_requests) {
 				const char *sarbaddr = "164.156.178.190";
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
@@ -952,7 +952,7 @@ int start_connection(uint16_t clnet_remote_port0,
 			}
 			if(rare_event()) return 0;
 
-			{
+			if(extra_requests) {
 				const char *sarbaddr = "64.56.78.90";
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
@@ -986,7 +986,7 @@ int start_connection(uint16_t clnet_remote_port0,
 				if(rare_event()) return 0;
 			}
 
-			{
+			if(extra_requests) {
 				const char *sarbaddr = "64.56.78.90";
 				if(random() % 2 == 0)
 					sarbaddr = "2001::172";
@@ -1156,7 +1156,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			exit(-1);
 		}
 
-		{
+		if(extra_requests) {
 			const char *sarbaddr = "164.156.178.190";
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";
@@ -1180,7 +1180,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 
 		if(rare_event()) return 0;
 
-		{
+		if(extra_requests) {
 			const char *sarbaddr = "64.56.78.90";
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";
@@ -1221,7 +1221,7 @@ int start_c2c_connection(uint16_t clnet_remote_port0,
 			exit(-1);
 		}
 
-		{
+		if(extra_requests) {
 			const char *sarbaddr = "64.56.78.90";
 			if(random() % 2 == 0)
 				sarbaddr = "2001::172";

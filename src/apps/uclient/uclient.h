@@ -77,6 +77,7 @@ extern int dos;
 extern SHATYPE shatype;
 extern int mobility;
 extern int no_permissions;
+extern int extra_requests;
 
 #define is_TCP_relay() (relay_transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
 

@@ -85,6 +85,8 @@ int mobility = 0;
 
 int no_permissions = 0;
 
+int extra_requests = 0;
+
 //////////////// local definitions /////////////////
 
 static char Usage[] =
@@ -114,6 +116,7 @@ static char Usage[] =
   "	-M	ICE Mobility engaged.\n"
   "	-I	Do not set permissions on TURN relay endpoints\n"
   "     	(for testing the non-standard server relay functionality).\n"
+  "	-G	Generate extra requests (create permissions, channel bind).\n"
   "Options:\n"
   "	-l	Message length (Default: 100 Bytes).\n"
   "	-i	Certificate file (for secure connections only, optional).\n"
@@ -159,8 +162,11 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:vsyhcxgtTSAPDNOUHMRI")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:vsyhcxgtTSAPDNOUHMRIG")) != -1) {
 		switch (c){
+		case 'G':
+			extra_requests = 1;
+			break;
 		case 'F':
 			STRCPY(cipher_suite,optarg);
 			break;
