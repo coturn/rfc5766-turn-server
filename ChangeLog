@@ -1,6 +1,11 @@
-01/18/2014 Oleg Moskalenko <mom040267@gmail.com>
+01/19/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.1 'Marshal West':
 	- CPU/memory cache optimization (memory locality).
+	- torture tests enhanced.
+	- stability fixes.
+	- minor possible memory leak fix.
+	- new TLS options: --no-sslv2, --no-sslv3, --no-tlsv1,
+		--no-tlsv1_1, --no-tlsv1_2
 
 01/06/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.1.4 'Marshal West':

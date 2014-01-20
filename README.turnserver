@@ -165,9 +165,19 @@ Flags:
 			This option can be used with long-term credentials mechanisms only -
 			it does not make much sense with the short-term mechanism.
 			
---dh566		Use 566 bits predefined DH TLS key. Default size of the key is 1066.
+--dh566			Use 566 bits predefined DH TLS key. Default size of the key is 1066.
 
---dh2066	Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
+--dh2066		Use 2066 bits predefined DH TLS key. Default size of the key is 1066.
+
+--no-sslv2		Do not allow SSLv2 protocol.
+
+--no-sslv3		Do not allow SSLv3 protocol.
+
+--no-tlsv1		Do not allow TLSv1 protocol.
+
+--no-tlsv1_1		Do not allow TLSv1.1 protocol.
+
+--no-tlsv1_2		Do not allow TLSv1.2 protocol.
 
 --no-udp		Do not start UDP client listeners.
 

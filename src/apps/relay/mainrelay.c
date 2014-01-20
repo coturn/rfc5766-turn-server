@@ -64,6 +64,12 @@ SHATYPE shatype = SHATYPE_SHA1;
 DH_KEY_SIZE dh_key_size = DH_1066;
 char dh_file[1025]="";
 
+int no_sslv2 = 0;
+int no_sslv3 = 0;
+int no_tlsv1 = 0;
+int no_tlsv1_1 = 0;
+int no_tlsv1_2 = 0;
+
 //////////////// Common params ////////////////////
 
 char pidfile[1025] = "/var/run/turnserver.pid";
@@ -397,6 +403,11 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --dh2066					Use 2066 bits predefined DH TLS key. Default size of the predefined key is 1066.\n"
 " --dh-file	<dh-file-name>			Use custom DH TLS key, stored in PEM format in the file.\n"
 "						Flags --dh566 and --dh2066 are ignored when the DH key is taken from a file.\n"
+" --no-sslv2					Do not allow SSLv2 protocol.\n"
+" --no-sslv3					Do not allow SSLv3 protocol.\n"
+" --no-tlsv1					Do not allow TLSv1 protocol.\n"
+" --no-tlsv1_1					Do not allow TLSv1.1 protocol.\n"
+" --no-tlsv1_2					Do not allow TLSv1.2 protocol.\n"
 " --no-udp					Do not start UDP client listeners.\n"
 " --no-tcp					Do not start TCP client listeners.\n"
 " --no-tls					Do not start TLS client listeners.\n"
@@ -550,7 +561,12 @@ enum EXTRA_OPTS {
 	EC_CURVE_NAME_OPT,
 	DH566_OPT,
 	DH2066_OPT,
-	NE_TYPE_OPT
+	NE_TYPE_OPT,
+	NO_SSLV2_OPT,
+	NO_SSLV3_OPT,
+	NO_TLSV1_OPT,
+	NO_TLSV1_1_OPT,
+	NO_TLSV1_2_OPT
 };
 
 static struct option long_options[] = {
@@ -637,6 +653,11 @@ static struct option long_options[] = {
 				{ "dh566", optional_argument, NULL, DH566_OPT },
 				{ "dh2066", optional_argument, NULL, DH2066_OPT },
 				{ "ne", required_argument, NULL, NE_TYPE_OPT },
+				{ "no-sslv2", optional_argument, NULL, NO_SSLV2_OPT },
+				{ "no-sslv3", optional_argument, NULL, NO_SSLV3_OPT },
+				{ "no-tlsv1", optional_argument, NULL, NO_TLSV1_OPT },
+				{ "no-tlsv1_1", optional_argument, NULL, NO_TLSV1_1_OPT },
+				{ "no-tlsv1_2", optional_argument, NULL, NO_TLSV1_2_OPT },
 				{ NULL, no_argument, NULL, 0 }
 };
 
@@ -691,6 +712,21 @@ static void set_option(int c, char *value)
   }
 
   switch (c) {
+  case NO_SSLV2_OPT:
+	  no_sslv2 = get_bool_value(value);
+	  break;
+  case NO_SSLV3_OPT:
+	  no_sslv3 = get_bool_value(value);
+	  break;
+  case NO_TLSV1_OPT:
+	  no_tlsv1 = get_bool_value(value);
+	  break;
+  case NO_TLSV1_1_OPT:
+	  no_tlsv1_1 = get_bool_value(value);
+	  break;
+  case NO_TLSV1_2_OPT:
+	  no_tlsv1_2 = get_bool_value(value);
+	  break;
   case NE_TYPE_OPT:
   {
 	  int ne = atoi(value);
@@ -701,10 +737,12 @@ static void set_option(int c, char *value)
   }
 	  break;
   case DH566_OPT:
-	  dh_key_size = DH_566;
+	  if(get_bool_value(value))
+		  dh_key_size = DH_566;
 	  break;
   case DH2066_OPT:
-	  dh_key_size = DH_2066;
+	  if(get_bool_value(value))
+		  dh_key_size = DH_2066;
 	  break;
   case EC_CURVE_NAME_OPT:
 	  STRCPY(ec_curve_name,value);
@@ -2046,6 +2084,24 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{
 		int op = 0;
 
+		if(no_sslv2)
+			op |= SSL_OP_NO_SSLv2;
+
+		if(no_sslv3)
+			op |= SSL_OP_NO_SSLv3;
+
+		if(no_tlsv1)
+			op |= SSL_OP_NO_TLSv1;
+
+#if defined(SSL_OP_NO_TLSv1_1)
+		if(no_tlsv1_1)
+			op |= SSL_OP_NO_TLSv1_1;
+#endif
+#if defined(SSL_OP_NO_TLSv1_2)
+		if(no_tlsv1_2)
+			op |= SSL_OP_NO_TLSv1_2;
+#endif
+
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
 		op |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 #endif
@@ -2094,14 +2150,20 @@ static void openssl_setup(void)
 	if(!no_tls) {
 		tls_ctx_ssl23 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
 		set_ctx(tls_ctx_ssl23,"SSL23");
-		tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
-		set_ctx(tls_ctx_v1_0,"TLS1.0");
+		if(!no_tlsv1) {
+			tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
+			set_ctx(tls_ctx_v1_0,"TLS1.0");
+		}
 #if defined(SSL_TXT_TLSV1_1)
-		tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
-		set_ctx(tls_ctx_v1_1,"TLS1.1");
+		if(!no_tlsv1_1) {
+			tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
+			set_ctx(tls_ctx_v1_1,"TLS1.1");
+		}
 #if defined(SSL_TXT_TLSV1_2)
-		tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
-		set_ctx(tls_ctx_v1_2,"TLS1.2");
+		if(!no_tlsv1_2) {
+			tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
+			set_ctx(tls_ctx_v1_2,"TLS1.2");
+		}
 #endif
 #endif
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n",cipher_list);

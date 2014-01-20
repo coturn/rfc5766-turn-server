@@ -146,6 +146,12 @@ extern char pkey_file[1025];
 extern char tls_password[513];
 extern char dh_file[1025];
 
+extern int no_sslv2;
+extern int no_sslv3;
+extern int no_tlsv1;
+extern int no_tlsv1_1;
+extern int no_tlsv1_2;
+
 ////////////////  Listener server /////////////////
 
 extern int listener_port;

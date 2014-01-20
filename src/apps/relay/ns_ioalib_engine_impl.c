@@ -2103,25 +2103,37 @@ static int socket_input_worker(ioa_socket_handle s)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d: bev already exist\n", __FUNCTION__,(long)s, s->st, s->sat);
 			}
 			switch(tls_type) {
-			case TURN_TLS_v1_0:
-				s->ssl = SSL_new(s->e->tls_ctx_v1_0);
-				STRCPY(s->orig_ctx_type,"TLSv1.0");
-				break;
-#if defined(SSL_TXT_TLSV1_1)
-			case TURN_TLS_v1_1:
-				s->ssl = SSL_new(s->e->tls_ctx_v1_1);
-				STRCPY(s->orig_ctx_type,"TLSv1.1");
-				break;
 #if defined(SSL_TXT_TLSV1_2)
 			case TURN_TLS_v1_2:
-				s->ssl = SSL_new(s->e->tls_ctx_v1_2);
-				STRCPY(s->orig_ctx_type,"TLSv1.2");
-				break;
+				if(s->e->tls_ctx_v1_2) {
+					s->ssl = SSL_new(s->e->tls_ctx_v1_2);
+					STRCPY(s->orig_ctx_type,"TLSv1.2");
+					break;
+				}
 #endif
+#if defined(SSL_TXT_TLSV1_1)
+			case TURN_TLS_v1_1:
+				if(s->e->tls_ctx_v1_1) {
+					s->ssl = SSL_new(s->e->tls_ctx_v1_1);
+					STRCPY(s->orig_ctx_type,"TLSv1.1");
+					break;
+				}
+
 #endif
+			case TURN_TLS_v1_0:
+				if(s->e->tls_ctx_v1_0) {
+					s->ssl = SSL_new(s->e->tls_ctx_v1_0);
+					STRCPY(s->orig_ctx_type,"TLSv1.0");
+					break;
+				}
 			default:
-				s->ssl = SSL_new(s->e->tls_ctx_ssl23);
-				STRCPY(s->orig_ctx_type,"SSLv23");
+				if(s->e->tls_ctx_ssl23) {
+					s->ssl = SSL_new(s->e->tls_ctx_ssl23);
+					STRCPY(s->orig_ctx_type,"SSLv23");
+				} else {
+					s->tobeclosed = 1;
+					return 0;
+				}
 			};
 			s->bev = bufferevent_openssl_socket_new(s->e->event_base,
 								s->fd,
