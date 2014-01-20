@@ -857,7 +857,7 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
-  server->children_ss = ur_addr_map_create(65535);
+  server->children_ss = ur_addr_map_create();
   server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);

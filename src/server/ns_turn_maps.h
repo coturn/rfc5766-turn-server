@@ -169,7 +169,7 @@ typedef void (*ur_addr_map_func_arg)(ur_addr_map_key_type key,
 				ur_addr_map_value_type value,
 				void *arg);
 
-ur_addr_map* ur_addr_map_create(u32bits size);
+ur_addr_map* ur_addr_map_create(void);
 
 /**
  * @ret:

@@ -687,42 +687,32 @@ static addr_elem* addr_list_get(addr_list* sl, const ur_addr_map_key_type key) {
 
 ////////// ADDR MAPS ////////////////////////////////////////////
 
-#define DEFAULT_ADDR_MAP_SIZE (1021)
+#define ADDR_MAP_SIZE (1024)
 
 struct _ur_addr_map {
-  addr_list_header *lists;
-  u32bits size;
+  addr_list_header lists[ADDR_MAP_SIZE];
   u64bits magic;
   TURN_MUTEX_DECLARE(mutex)
 };
 
-static int addr_map_index(const ur_addr_map *map, ur_addr_map_key_type key) {
+static int addr_map_index(ur_addr_map_key_type key) {
   u32bits hash = addr_hash(key);
-  if(map->size)
-	  hash = hash % map->size;
+  hash = hash & (ADDR_MAP_SIZE - 1);
   return (int)hash;
 }
 
 static addr_list_header* get_addr_list_header(ur_addr_map *map, ur_addr_map_key_type key) {
-  return &(map->lists[addr_map_index(map,key)]);
+  return &(map->lists[addr_map_index(key)]);
 }
 
 static const addr_list_header* get_addr_list_header_const(const ur_addr_map *map, ur_addr_map_key_type key) {
-  return &(map->lists[addr_map_index(map,key)]);
+  return &(map->lists[addr_map_index(key)]);
 }
 
-static int ur_addr_map_init(ur_addr_map* map, u32bits size) {
+static int ur_addr_map_init(ur_addr_map* map) {
   if(map) {
     ns_bzero(map,sizeof(ur_addr_map));
     map->magic=MAGIC_HASH;
-    if(size)
-	    map->size = size;
-    else
-	    map->size = DEFAULT_ADDR_MAP_SIZE;
-
-    map->lists = (addr_list_header*)turn_malloc(sizeof(addr_list_header) * (map->size));
-    ns_bzero(map->lists,sizeof(addr_list_header) * (map->size));
-
     TURN_MUTEX_INIT_RECURSIVE(&(map->mutex));
     return 0;
   }
@@ -733,9 +723,9 @@ static int ur_addr_map_valid(const ur_addr_map *map) {
   return (map && map->magic==MAGIC_HASH);
 }
 
-ur_addr_map* ur_addr_map_create(u32bits size) {
+ur_addr_map* ur_addr_map_create(void) {
   ur_addr_map *map=(ur_addr_map*)turn_malloc(sizeof(ur_addr_map));
-  if(ur_addr_map_init(map,size)<0) {
+  if(ur_addr_map_init(map)<0) {
     turn_free(map,sizeof(ur_addr_map));
     return NULL;
   }
@@ -820,7 +810,7 @@ int ur_addr_map_del_by_ip(ur_addr_map* map, ur_addr_map_key_type key, ur_addr_ma
 
 		int counter = 0;
 		u32bits i = 0;
-		for (i = 0; i < map->size; ++i) {
+		for (i = 0; i < ADDR_MAP_SIZE; ++i) {
 
 			addr_list_header* slh = &(map->lists[i]);
 
@@ -841,7 +831,7 @@ void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func) {
   if(ur_addr_map_valid(map)) {
 
     u32bits i=0;
-    for(i=0;i<map->size;i++) {
+    for(i=0;i<ADDR_MAP_SIZE;i++) {
       
       addr_list_header* slh = &(map->lists[i]);
       
@@ -855,7 +845,7 @@ void ur_addr_map_foreach_arg(ur_addr_map* map, ur_addr_map_func_arg func, void *
   if(ur_addr_map_valid(map)) {
 
     u32bits i=0;
-    for(i=0;i<map->size;i++) {
+    for(i=0;i<ADDR_MAP_SIZE;i++) {
 
       addr_list_header* slh = &(map->lists[i]);
 
@@ -867,13 +857,10 @@ void ur_addr_map_foreach_arg(ur_addr_map* map, ur_addr_map_func_arg func, void *
 void ur_addr_map_free(ur_addr_map** map) {
   if(map && ur_addr_map_valid(*map)) {
     u32bits i=0;
-    for(i=0;i<(*map)->size;i++) {
+    for(i=0;i<ADDR_MAP_SIZE;i++) {
       addr_list_free(&((*map)->lists[i]));
     }
     (*map)->magic=0;
-    turn_free((*map)->lists,sizeof(addr_list_header) * (*map)->size);
-    (*map)->lists = NULL;
-    (*map)->size=0;
     TURN_MUTEX_DESTROY(&((*map)->mutex));
     turn_free(*map,sizeof(ur_addr_map));
     *map=NULL;
@@ -884,7 +871,7 @@ size_t ur_addr_map_size(const ur_addr_map* map) {
   if(ur_addr_map_valid(map)) {
     size_t ret=0;
     u32bits i=0;
-    for(i=0;i<map->size;i++) {
+    for(i=0;i<ADDR_MAP_SIZE;i++) {
       ret+=addr_list_size(map->lists[i].list);
     }
     return ret;

@@ -310,8 +310,8 @@ static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 turnipports* turnipports_create(u16bits start, u16bits end)
 {
 	turnipports *ret = (turnipports*) turn_malloc(sizeof(turnipports));
-	ret->ip_to_turnports_udp = ur_addr_map_create(0);
-	ret->ip_to_turnports_tcp = ur_addr_map_create(0);
+	ret->ip_to_turnports_udp = ur_addr_map_create();
+	ret->ip_to_turnports_tcp = ur_addr_map_create();
 	ret->start = start;
 	ret->end = end;
 	TURN_MUTEX_INIT_RECURSIVE(&(ret->mutex));
