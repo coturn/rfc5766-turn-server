@@ -108,7 +108,7 @@ int handle_socket_error(void);
 /////////////////////// SYS /////////////////////
 
 void ignore_sigpipe(void);
-void set_system_parameters(int max_resources);
+unsigned long set_system_parameters(int max_resources);
 
 ///////////////////////// MTU //////////////////////////
 

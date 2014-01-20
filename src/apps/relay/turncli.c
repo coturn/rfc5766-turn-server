@@ -680,6 +680,12 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_flag(cs,no_dtls,"no-dtls",0);
 		cli_print_flag(cs,no_tls,"no-tls",0);
 
+		cli_print_flag(cs,(!no_sslv2 && !no_tls),"Allow SSLv2",0);
+		cli_print_flag(cs,(!no_sslv3 && !no_tls),"Allow SSLv3",0);
+		cli_print_flag(cs,(!no_tlsv1 && !no_tls),"Allow TLSv1.0",0);
+		cli_print_flag(cs,(!no_tlsv1_1 && !no_tls),"Allow TLSv1.1",0);
+		cli_print_flag(cs,(!no_tlsv1_2 && !no_tls),"Allow TLSv1.2",0);
+
 		cli_print_uint(cs,(unsigned long)listener_port,"listener-port",0);
 		cli_print_uint(cs,(unsigned long)tls_listener_port,"tls-listener-port",0);
 		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);

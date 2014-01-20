@@ -684,7 +684,7 @@ void ignore_sigpipe(void)
 	}
 }
 
-void set_system_parameters(int max_resources)
+unsigned long set_system_parameters(int max_resources)
 {
 	srandom((unsigned int) time(NULL));
 	setlocale(LC_ALL, "C");
@@ -702,8 +702,11 @@ void set_system_parameters(int max_resources)
 			while((setrlimit(RLIMIT_NOFILE, &rlim)<0) && (rlim.rlim_cur>0)) {
 				rlim.rlim_cur = rlim.rlim_cur>>1;
 			}
+			return (unsigned long)rlim.rlim_cur;
 		}
 	}
+
+	return 0;
 }
 
 ////////////////////// Base 64 ////////////////////////////
