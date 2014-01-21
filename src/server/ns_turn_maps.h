@@ -161,10 +161,10 @@ int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg);
 typedef unsigned long ur_addr_map_value_type;
 
 #define ADDR_MAP_SIZE (1024)
-#define ADDR_ARRAY_SIZE (16)
+#define ADDR_ARRAY_SIZE (4)
 
 typedef struct _addr_elem {
-  int allocated;
+  u08bits allocated;
   ioa_addr key;
   ur_addr_map_value_type value;
 } addr_elem;
