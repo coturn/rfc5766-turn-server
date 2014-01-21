@@ -292,8 +292,8 @@ struct _turnipports
 {
 	u16bits start;
 	u16bits end;
-	ur_addr_map* ip_to_turnports_udp;
-	ur_addr_map* ip_to_turnports_tcp;
+	ur_addr_map ip_to_turnports_udp;
+	ur_addr_map ip_to_turnports_tcp;
 	TURN_MUTEX_DECLARE(mutex)
 };
 
@@ -302,16 +302,16 @@ struct _turnipports
 static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 {
 	if(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)
-		return tp->ip_to_turnports_tcp;
-	return tp->ip_to_turnports_udp;
+		return &(tp->ip_to_turnports_tcp);
+	return &(tp->ip_to_turnports_udp);
 }
 //////////////////////////////////////////////////
 
 turnipports* turnipports_create(u16bits start, u16bits end)
 {
 	turnipports *ret = (turnipports*) turn_malloc(sizeof(turnipports));
-	ret->ip_to_turnports_udp = ur_addr_map_create();
-	ret->ip_to_turnports_tcp = ur_addr_map_create();
+	ur_addr_map_init(&(ret->ip_to_turnports_udp));
+	ur_addr_map_init(&(ret->ip_to_turnports_tcp));
 	ret->start = start;
 	ret->end = end;
 	TURN_MUTEX_INIT_RECURSIVE(&(ret->mutex));
@@ -327,10 +327,10 @@ static void turnipports_del_func(ur_addr_map_value_type val)
 void turnipports_destroy(turnipports** tp)
 {
 	if (tp && *tp) {
-		ur_addr_map_foreach((*tp)->ip_to_turnports_udp, turnipports_del_func);
-		ur_addr_map_free(&((*tp)->ip_to_turnports_udp));
-		ur_addr_map_foreach((*tp)->ip_to_turnports_tcp, turnipports_del_func);
-		ur_addr_map_free(&((*tp)->ip_to_turnports_tcp));
+		ur_addr_map_foreach(&((*tp)->ip_to_turnports_udp), turnipports_del_func);
+		ur_addr_map_clean(&((*tp)->ip_to_turnports_udp));
+		ur_addr_map_foreach(&((*tp)->ip_to_turnports_tcp), turnipports_del_func);
+		ur_addr_map_clean(&((*tp)->ip_to_turnports_tcp));
 		TURN_MUTEX_DESTROY(&((*tp)->mutex));
 		turn_free(*tp,sizeof(turnipports));
 		*tp = NULL;

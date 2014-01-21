@@ -60,7 +60,7 @@ struct dtls_listener_relay_server_info {
   SSL_CTX *dtls_ctx;
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
-  ur_addr_map *children_ss; /* map of socket children on remote addr */
+  ur_addr_map children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
   ioa_engine_new_connection_event_handler connect_cb;
@@ -303,7 +303,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 	ioa_socket_handle s = sm->m.sm.s;
 
 	ur_addr_map_value_type mvt = 0;
-	ur_addr_map *amap = server->children_ss;
+	ur_addr_map *amap = &(server->children_ss);
 
 	ioa_socket_handle chs = NULL;
 	if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt) {
@@ -857,7 +857,7 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
-  server->children_ss = ur_addr_map_create();
+  ur_addr_map_init(&(server->children_ss));
   server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);

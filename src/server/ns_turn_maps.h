@@ -160,12 +160,33 @@ int lm_map_foreach_arg(lm_map* map, foreachcb_arg_type func, void* arg);
 
 typedef unsigned long ur_addr_map_value_type;
 
+#define ADDR_MAP_SIZE (1024)
+#define ADDR_ARRAY_SIZE (1)
+
+typedef struct _addr_elem {
+  int allocated;
+  ioa_addr key;
+  ur_addr_map_value_type value;
+} addr_elem;
+
+typedef struct _addr_list_header {
+  addr_elem main_list[ADDR_ARRAY_SIZE];
+  addr_elem *extra_list;
+  size_t extra_sz;
+} addr_list_header;
+
+struct _ur_addr_map {
+  addr_list_header lists[ADDR_MAP_SIZE];
+  u64bits magic;
+};
+
 struct _ur_addr_map;
 typedef struct _ur_addr_map ur_addr_map;
 
 typedef void (*ur_addr_map_func)(ur_addr_map_value_type);
 
-ur_addr_map* ur_addr_map_create(void);
+void ur_addr_map_init(ur_addr_map* map);
+void ur_addr_map_clean(ur_addr_map* map);
 
 /**
  * @ret:
@@ -195,8 +216,6 @@ int ur_addr_map_del(ur_addr_map* map, ioa_addr* key,ur_addr_map_func func);
  * 0 - not found
  */
 void ur_addr_map_foreach(ur_addr_map* map, ur_addr_map_func func);
-
-void ur_addr_map_free(ur_addr_map** map);
 
 size_t ur_addr_map_size(const ur_addr_map* map);
 
