@@ -1,3 +1,7 @@
+01/21/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.2.2 'Marshal West':
+	- SSLv2 fixed (for those who are still using it).
+	
 01/19/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.1 'Marshal West':
 	- CPU/memory cache optimization (memory locality).

@@ -398,13 +398,16 @@ int main(int argc, char **argv)
 		SSL_load_error_strings();
 		OpenSSL_add_ssl_algorithms();
 
-		const char *csuite = "DEFAULT"; //"AES256-SHA" "DH"
+		const char *csuite = "ALL"; //"AES256-SHA" "DH"
 		if(use_null_cipher)
 			csuite = "eNULL";
 		else if(cipher_suite[0])
 			csuite=cipher_suite;
 
 		if(use_tcp) {
+		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv2_client_method());
+		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
+		  root_tls_ctx_num++;
 		  root_tls_ctx[root_tls_ctx_num] = SSL_CTX_new(SSLv23_client_method());
 		  SSL_CTX_set_cipher_list(root_tls_ctx[root_tls_ctx_num], csuite);
 		  root_tls_ctx_num++;
