@@ -1524,7 +1524,7 @@ int main(int argc, char **argv)
 
 	{
 		unsigned long mfn = set_system_parameters(1);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Max number of open files/sockets allowed for this process: %lu\n",mfn);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
 	}
 
 #if defined(_SC_NPROCESSORS_ONLN)
