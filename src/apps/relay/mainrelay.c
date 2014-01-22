@@ -220,7 +220,7 @@ static int make_local_listeners_list(void)
 	return 0;
 }
 
-static int make_local_relays_list(int allow_local)
+static int make_local_relays_list(int allow_local, int family)
 {
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
@@ -229,8 +229,9 @@ static int make_local_relays_list(int allow_local)
 
 	getifaddrs(&ifs);
 
+	int counter = 0;
+
 	if (ifs) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
 			if(!(ifa->ifa_flags & IFF_UP))
@@ -245,6 +246,10 @@ static int make_local_relays_list(int allow_local)
 				continue;
 
 			if (ifa ->ifa_addr->sa_family == AF_INET) {
+
+				if(family != AF_INET)
+					continue;
+
 				if(!inet_ntop(AF_INET, &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr, saddr,
 								INET_ADDRSTRLEN))
 					continue;
@@ -253,6 +258,10 @@ static int make_local_relays_list(int allow_local)
 				if(!strcmp(saddr,"0.0.0.0"))
 				  continue;
 			} else if (ifa->ifa_addr->sa_family == AF_INET6) {
+
+				if(family != AF_INET6)
+					continue;
+
 				if(!inet_ntop(AF_INET6, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, saddr,
 								INET6_ADDRSTRLEN))
 					continue;
@@ -263,13 +272,14 @@ static int make_local_relays_list(int allow_local)
 			} else
 				continue;
 
-			add_relay_addr(saddr);
+			if(add_relay_addr(saddr)>=0) {
+				counter += 1;
+			}
 		}
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		freeifaddrs(ifs);
 	}
 
-	return 0;
+	return counter;
 }
 
 //////////////////////////////////////////////////
@@ -1647,16 +1657,22 @@ int main(int argc, char **argv)
 				}
 			}
 		}
-		if (!relays_number)
-			make_local_relays_list(0);
 		if (!relays_number) {
-			make_local_relays_list(1);
-			if (!relays_number) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
-								__FUNCTION__);
-				fprintf(stderr,"\n%s\n", Usage);
-				exit(-1);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
+			if(make_local_relays_list(0,AF_INET)<1) {
+				make_local_relays_list(1,AF_INET);
 			}
+			if(make_local_relays_list(0,AF_INET6)<1) {
+				make_local_relays_list(1,AF_INET6);
+			}
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+		}
+
+		if (!relays_number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
+							__FUNCTION__);
+			fprintf(stderr,"\n%s\n", Usage);
+			exit(-1);
 		}
 	}
 

@@ -307,7 +307,7 @@ void del_tls_alternate_server(const char *saddr);
 ////////// Addrs ////////////////////
 
 void add_listener_addr(const char* addr);
-void add_relay_addr(const char* addr);
+int add_relay_addr(const char* addr);
 
 ///////// Auth ////////////////
 

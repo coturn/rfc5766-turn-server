@@ -193,15 +193,17 @@ void add_listener_addr(const char* addr) {
 	}
 }
 
-void add_relay_addr(const char* addr) {
+int add_relay_addr(const char* addr) {
 	ioa_addr baddr;
 	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",addr);
+		return -1;
 	} else {
 		++relays_number;
 		relay_addrs = (char**)realloc(relay_addrs, sizeof(char*)*relays_number);
 		relay_addrs[relays_number-1]=strdup(addr);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
+		return 0;
 	}
 }
 
