@@ -190,7 +190,8 @@ void inc_ioa_socket_ref_counter(ioa_socket_handle s);
  * event_port == 0: reserve rtcp;
  * even_port == +1: reserve and bind rtcp.
  */
-int create_relay_ioa_sockets(ioa_engine_handle e, int address_family, u08bits transport,
+int create_relay_ioa_sockets(ioa_engine_handle e, ioa_socket_handle client_s,
+				int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s, ioa_socket_handle *rtcp_s,
 				u64bits *out_reservation_token, int *err_code, const u08bits **reason,
 				accept_cb acb, void *acbarg);

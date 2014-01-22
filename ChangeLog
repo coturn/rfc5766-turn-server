@@ -1,6 +1,9 @@
 01/21/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.2 'Marshal West':
-	- SSLv2 fixed (for those who are still using it).
+	- Default "implicit" relay IP allocation policy is more usable 
+		(issue 94 fixed).
+	- SSLv2 fixed (for those who are still using it)
+		(issue 93 fixed).
 	
 01/19/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.1 'Marshal West':

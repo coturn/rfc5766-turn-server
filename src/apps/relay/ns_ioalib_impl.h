@@ -132,6 +132,7 @@ struct _ioa_engine
   size_t relays_number;
   size_t relay_addr_counter;
   ioa_addr *relay_addrs;
+  int default_relays;
   int verbose;
   turnipports* tp;
   rtcp_map *map_rtcp;
@@ -219,7 +220,7 @@ typedef struct _timer_event
 
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp, 
 				    const s08bits* relay_if,
-				    size_t relays_number, s08bits **relay_addrs,
+				    size_t relays_number, s08bits **relay_addrs, int default_relays,
 				    int verbose, band_limit_t max_bps);
 
 void set_ssl_ctx(ioa_engine_handle e,

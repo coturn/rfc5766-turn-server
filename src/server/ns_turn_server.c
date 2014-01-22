@@ -3679,6 +3679,7 @@ static int create_relay_connection(turn_turnserver* server,
 		} else {
 
 			int res = create_relay_ioa_sockets(server->e,
+							ss->client_session.s,
 							address_family, transport,
 							even_port, &(newelem->s), &rtcp_s, out_reservation_token,
 							err_code, reason, acb, ss);

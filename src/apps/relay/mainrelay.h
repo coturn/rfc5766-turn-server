@@ -263,6 +263,7 @@ extern char relay_ifname[1025];
 
 extern size_t relays_number;
 extern char **relay_addrs;
+extern int default_relays;
 
 // Single global public IP.
 // If multiple public IPs are used

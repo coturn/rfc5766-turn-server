@@ -138,6 +138,7 @@ char relay_ifname[1025]="";
 
 size_t relays_number = 0;
 char **relay_addrs = NULL;
+int default_relays = 0;
 
 // Single global public IP.
 // If multiple public IPs are used
@@ -313,7 +314,15 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						The load balancing is happening by the ALTERNATE-SERVER mechanism.\n"
 "						The TURN client must support 300 ALTERNATE-SERVER response for this functionality.\n"
 " -i, --relay-device		<device-name>	Relay interface device for relay sockets (NOT RECOMMENDED. Optional, Linux only).\n"
-" -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the packets to the peer).\n"
+" -E, --relay-ip		<ip>			Relay address (the local IP address that will be used to relay the\n"
+"						packets to the peer).\n"
+"						Multiple relay addresses may be used.\n"
+"						The same IP(s) can be used as both listening IP(s) and relay IP(s).\n"
+"						If no relay IP(s) specified, then the turnserver will apply the default\n"
+"						policy: it will decide itself which relay addresses to be used, and it\n"
+"						will always be using the client socket IP address as the relay IP address\n"
+"						of the TURN session (if the requested relay address family is the same\n"
+"						as the family of the client socket).\n"
 " -X, --external-ip  <public-ip[/private-ip]>	TURN Server public/private address mapping, if the server is behind NAT.\n"
 "						In that situation, if a -X is used in form \"-X ip\" then that ip will be reported\n"
 "						as relay IP address of all allocations. This scenario works only in a simple case\n"
@@ -1658,6 +1667,7 @@ int main(int argc, char **argv)
 			}
 		}
 		if (!relays_number) {
+			default_relays = 1;
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 			if(make_local_relays_list(0,AF_INET)<1) {
 				make_local_relays_list(1,AF_INET);

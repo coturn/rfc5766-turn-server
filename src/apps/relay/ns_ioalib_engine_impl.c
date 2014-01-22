@@ -252,7 +252,8 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
 }
 
 ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
-				size_t relays_number, s08bits **relay_addrs, int verbose, band_limit_t max_bps)
+				size_t relays_number, s08bits **relay_addrs, int default_relays,
+				int verbose, band_limit_t max_bps)
 {
 	static int capabilities_checked = 0;
 
@@ -283,6 +284,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 
 		ns_bzero(e,sizeof(ioa_engine));
 
+		e->default_relays = default_relays;
 		e->max_bpj = max_bps;
 		e->verbose = verbose;
 		e->tp = tp;
@@ -360,34 +362,60 @@ void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap)
 		e->map_rtcp = rtcpmap;
 }
 
-static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, int address_family, int *err_code)
+static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket_handle client_s,
+						int address_family, int *err_code)
 {
-	if (e && e->relays_number) {
+	if(e) {
 
-		size_t i = 0;
+		if(e->default_relays) {
 
-		for(i=0; i<e->relays_number; i++) {
+			ioa_addr *client_addr = get_local_addr_from_ioa_socket(client_s);
+			if(client_addr) {
 
-			e->relay_addr_counter = e->relay_addr_counter % e->relays_number;
-			const ioa_addr *relay_addr = &(e->relay_addrs[e->relay_addr_counter++]);
+				int family = get_ioa_socket_address_family(client_s);
 
-			switch (address_family){
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-				if (relay_addr->ss.ss_family == AF_INET)
-					return relay_addr;
-				break;
-			case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-				if (relay_addr->ss.ss_family == AF_INET6)
-					return relay_addr;
-				break;
-			default:
-				*err_code = 440;
-				return NULL;
-			};
+				switch (address_family){
+					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+						if (family == AF_INET)
+							return client_addr;
+					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+						if (family == AF_INET6)
+							return client_addr;
+					default:
+						;
+				};
+
+			}
 		}
 
-		*err_code = 440;
+		if (e->relays_number) {
+
+			size_t i = 0;
+
+			for(i=0; i<e->relays_number; i++) {
+
+				e->relay_addr_counter = e->relay_addr_counter % e->relays_number;
+				const ioa_addr *relay_addr = &(e->relay_addrs[e->relay_addr_counter++]);
+
+				switch (address_family){
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+					if (relay_addr->ss.ss_family == AF_INET)
+						return relay_addr;
+					break;
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+					if (relay_addr->ss.ss_family == AF_INET6)
+						return relay_addr;
+					break;
+				default:
+					*err_code = 440;
+					return NULL;
+				};
+			}
+
+			*err_code = 440;
+		}
 	}
 	return NULL;
 }
@@ -911,6 +939,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 }
 
 int create_relay_ioa_sockets(ioa_engine_handle e,
+				ioa_socket_handle client_s,
 				int address_family, u08bits transport,
 				int even_port, ioa_socket_handle *rtp_s,
 				ioa_socket_handle *rtcp_s, uint64_t *out_reservation_token,
@@ -929,7 +958,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 	for (iip = 0; iip < e->relays_number; ++iip) {
 
 		ioa_addr relay_addr;
-		const ioa_addr *ra = ioa_engine_get_relay_addr(e, address_family, err_code);
+		const ioa_addr *ra = ioa_engine_get_relay_addr(e, client_s, address_family, err_code);
 		if(ra)
 			addr_cpy(&relay_addr, ra);
 
