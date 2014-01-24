@@ -91,7 +91,7 @@ cd ${CPWD}
  
 # Platform file
 
-echo "CentOS6" > ${BUILDDIR}/platform
+echo "CentOS6.5" > ${BUILDDIR}/platform
 
 cp ${CPWD}/epel.install.sh ${BUILDDIR}/install.sh
 

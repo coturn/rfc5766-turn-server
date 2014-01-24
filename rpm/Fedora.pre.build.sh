@@ -15,6 +15,6 @@ if ! [ ${ER} -eq 0 ] ; then
     exit -1
 fi
 
-echo "Fedora" > ${BUILDDIR}/platform
+echo "Fedora20" > ${BUILDDIR}/platform
 
 cd ${CPWD}
