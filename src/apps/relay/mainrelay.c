@@ -2126,9 +2126,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{
 		int op = 0;
 
+#if defined(SSL_OP_NO_SSLv2)
 		if(no_sslv2)
 			op |= SSL_OP_NO_SSLv2;
-
+#endif
 		if(no_sslv3)
 			op |= SSL_OP_NO_SSLv3;
 
