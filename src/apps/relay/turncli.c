@@ -157,7 +157,7 @@ struct toggleable_command tcmds[] = {
 				{"stun-only",&stun_only},
 				{"no-stun",&no_stun},
 				{"secure-stun",&secure_stun},
-				{"server-relay",&server_relay},
+				{"server-relay",(vintp)&server_relay},
 				{"no-udp-relay",&no_udp_relay},
 				{"no-tcp-relay",&no_tcp_relay},
 				{"no-multicast-peers",&no_multicast_peers},

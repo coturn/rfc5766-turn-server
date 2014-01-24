@@ -49,68 +49,6 @@ int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 ///////////////////////////////////////////
 
-struct _turn_turnserver {
-
-	turnserver_id id;
-
-	turnsession_id session_id_counter;
-	ur_map *sessions_map;
-
-	turn_time_t ctime;
-
-	ioa_engine_handle e;
-	int verbose;
-	int fingerprint;
-	int rfc5780;
-	vintp stale_nonce;
-	vintp stun_only;
-	vintp no_stun;
-	vintp secure_stun;
-	SHATYPE shatype;
-	get_alt_addr_cb alt_addr_cb;
-	send_message_cb sm_cb;
-	dont_fragment_option_t dont_fragment;
-	int (*disconnect)(ts_ur_super_session*);
-	turn_credential_type ct;
-	u08bits realm[STUN_MAX_REALM_SIZE+1];
-	get_user_key_cb userkeycb;
-	check_new_allocation_quota_cb chquotacb;
-	release_allocation_quota_cb raqcb;
-	int external_ip_set;
-	ioa_addr external_ip;
-	vintp no_loopback_peers;
-	vintp no_multicast_peers;
-	send_turn_session_info_cb send_turn_session_info;
-
-	/* RFC 6062 ==>> */
-	vintp no_udp_relay;
-	vintp no_tcp_relay;
-	ur_map *tcp_relay_connections;
-	send_socket_to_relay_cb send_socket_to_relay;
-	/* <<== RFC 6062 */
-
-	/* Alternate servers ==>> */
-	turn_server_addrs_list_t *alternate_servers_list;
-	size_t as_counter;
-	turn_server_addrs_list_t *tls_alternate_servers_list;
-	size_t tls_as_counter;
-	turn_server_addrs_list_t *aux_servers_list;
-	int self_udp_balance;
-
-	/* White/black listing of address ranges */
-	ip_range_list_t* ip_whitelist;
-	ip_range_list_t* ip_blacklist;
-
-	/* Mobility */
-	vintp mobility;
-	ur_map *mobile_connections_map;
-
-	/* Server relay */
-	vintp server_relay;
-};
-
-///////////////////////////////////////////
-
 static int attach_socket_to_session(turn_turnserver* server, ioa_socket_handle s, ts_ur_super_session* ss);
 
 static int check_stun_auth(turn_turnserver *server,
@@ -2558,10 +2496,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 			turn_permission_info* tinfo = NULL;
 
-			if(!(server->server_relay))
+			if(!(*(server->server_relay)))
 				tinfo = allocation_get_permission(a, &peer_addr);
 
-			if (tinfo || server->server_relay) {
+			if (tinfo || *(server->server_relay)) {
 
 				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
@@ -4058,7 +3996,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							&(in_buffer->src_addr));
 			if (tinfo) {
 				chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-			} else if(!(server->server_relay)){
+			} else if(!(*(server->server_relay))) {
 				return;
 			}
 
@@ -4178,7 +4116,8 @@ static void client_input_handler(ioa_socket_handle s, int event_type,
 
 ///////////////////////////////////////////////////////////
 
-turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_handle e,
+void init_turn_server(turn_turnserver* server,
+		turnserver_id id, int verbose, ioa_engine_handle e,
 		int stun_port, int fingerprint, dont_fragment_option_t dont_fragment,
 		turn_credential_type ct,
 		u08bits *realm,
@@ -4198,14 +4137,11 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 		vintp no_multicast_peers, vintp no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		vintp secure_stun, SHATYPE shatype, vintp mobility, vintp server_relay,
+		vintp secure_stun, SHATYPE shatype, vintp mobility, int *server_relay,
 		send_turn_session_info_cb send_turn_session_info) {
 
-	turn_turnserver* server =
-			(turn_turnserver*) turn_malloc(sizeof(turn_turnserver));
-
 	if (!server)
-		return server;
+		return;
 
 	ns_bzero(server,sizeof(turn_turnserver));
 
@@ -4261,8 +4197,6 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose, ioa_engine_ha
 	server->send_socket_to_relay = send_socket_to_relay;
 
 	set_ioa_timer(server->e, 1, 0, timer_timeout_handler, server, 1, "timer_timeout_handler");
-
-	return server;
 }
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s) {

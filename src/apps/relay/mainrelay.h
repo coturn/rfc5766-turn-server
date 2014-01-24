@@ -126,7 +126,7 @@ extern vint stale_nonce;
 extern vint stun_only;
 extern vint no_stun;
 extern vint secure_stun;
-extern vint server_relay;
+extern int server_relay;
 
 extern int do_not_use_config_file;
 

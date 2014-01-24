@@ -80,7 +80,7 @@ vint stale_nonce = 0;
 vint stun_only = 0;
 vint no_stun = 0;
 vint secure_stun = 0;
-vint server_relay = 0;
+int server_relay = 0;
 
 int do_not_use_config_file = 0;
 

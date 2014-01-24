@@ -100,7 +100,7 @@ struct relay_server {
 	struct bufferevent *auth_in_buf;
 	struct bufferevent *auth_out_buf;
 	ioa_engine_handle ioa_eng;
-	turn_turnserver *server;
+	turn_turnserver server;
 	pthread_t thr;
 };
 

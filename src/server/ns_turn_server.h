@@ -38,6 +38,28 @@
 extern "C" {
 #endif
 
+
+//////////// ALTERNATE-SERVER /////////////
+
+struct _turn_server_addrs_list {
+	ioa_addr *addrs;
+	volatile size_t size;
+	turn_mutex m;
+};
+
+typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
+
+void init_turn_server_addrs_list(turn_server_addrs_list_t *l);
+
+typedef volatile int vint;
+
+typedef vint* vintp;
+
+////////// RFC 5780 ///////////////////////
+
+typedef int (*get_alt_addr_cb)(ioa_addr *addr, ioa_addr *alt_addr);
+typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination);
+
 //////////////////////////////////////////
 
 extern int TURN_MAX_ALLOCATE_TIMEOUT;
@@ -58,14 +80,14 @@ struct socket_message {
 	ioa_net_data nd;
 };
 
-struct _turn_turnserver;
-typedef struct _turn_turnserver turn_turnserver;
-
 typedef enum {
 	DONT_FRAGMENT_UNSUPPORTED=0,
 	DONT_FRAGMENT_SUPPORTED,
 	DONT_FRAGMENT_SUPPORT_EMULATED
 } dont_fragment_option_t;
+
+struct _turn_turnserver;
+typedef struct _turn_turnserver turn_turnserver;
 
 typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_password_t pwd, turn_turnserver *server, u64bits ctxkey, ioa_net_data *in_buffer);
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
@@ -74,25 +96,70 @@ typedef void (*release_allocation_quota_cb)(u08bits *username);
 typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 
-//////////// ALTERNATE-SERVER /////////////
+struct _turn_turnserver {
 
-struct _turn_server_addrs_list {
-	ioa_addr *addrs;
-	volatile size_t size;
-	turn_mutex m;
+	turnserver_id id;
+
+	turnsession_id session_id_counter;
+	ur_map *sessions_map;
+
+	turn_time_t ctime;
+
+	ioa_engine_handle e;
+	int verbose;
+	int fingerprint;
+	int rfc5780;
+	vintp stale_nonce;
+	vintp stun_only;
+	vintp no_stun;
+	vintp secure_stun;
+	SHATYPE shatype;
+	get_alt_addr_cb alt_addr_cb;
+	send_message_cb sm_cb;
+	dont_fragment_option_t dont_fragment;
+	int (*disconnect)(ts_ur_super_session*);
+	turn_credential_type ct;
+	u08bits realm[STUN_MAX_REALM_SIZE+1];
+	get_user_key_cb userkeycb;
+	check_new_allocation_quota_cb chquotacb;
+	release_allocation_quota_cb raqcb;
+	int external_ip_set;
+	ioa_addr external_ip;
+	vintp no_loopback_peers;
+	vintp no_multicast_peers;
+	send_turn_session_info_cb send_turn_session_info;
+
+	/* RFC 6062 ==>> */
+	vintp no_udp_relay;
+	vintp no_tcp_relay;
+	ur_map *tcp_relay_connections;
+	send_socket_to_relay_cb send_socket_to_relay;
+	/* <<== RFC 6062 */
+
+	/* Alternate servers ==>> */
+	turn_server_addrs_list_t *alternate_servers_list;
+	size_t as_counter;
+	turn_server_addrs_list_t *tls_alternate_servers_list;
+	size_t tls_as_counter;
+	turn_server_addrs_list_t *aux_servers_list;
+	int self_udp_balance;
+
+	/* White/black listing of address ranges */
+	ip_range_list_t* ip_whitelist;
+	ip_range_list_t* ip_blacklist;
+
+	/* Mobility */
+	vintp mobility;
+	ur_map *mobile_connections_map;
+
+	/* Server relay */
+	int *server_relay;
 };
-
-typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
-
-void init_turn_server_addrs_list(turn_server_addrs_list_t *l);
-
-typedef volatile int vint;
-
-typedef vint* vintp;
 
 ///////////////////////////////////////////
 
-turn_turnserver* create_turn_server(turnserver_id id, int verbose,
+void init_turn_server(turn_turnserver* server,
+					turnserver_id id, int verbose,
 				    ioa_engine_handle e,
 				    int stun_port,
 				    int fingerprint,
@@ -120,15 +187,12 @@ turn_turnserver* create_turn_server(turnserver_id id, int verbose,
 				    vintp secure_stun,
 				    SHATYPE shatype,
 				    vintp mobility,
-				    vintp server_relay,
+				    int* server_relay,
 				    send_turn_session_info_cb send_turn_session_info);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);
 
 ////////// RFC 5780 ///////////////////////
-
-typedef int (*get_alt_addr_cb)(ioa_addr *addr, ioa_addr *alt_addr);
-typedef int (*send_message_cb)(ioa_engine_handle e, ioa_network_buffer_handle nbh, ioa_addr *origin, ioa_addr *destination);
 
 void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb);
 
