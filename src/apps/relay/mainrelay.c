@@ -1551,13 +1551,13 @@ int main(int argc, char **argv)
 		unsigned long mfn = set_system_parameters(1);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
 		if(net_engine_version == 1)
-			mfn = mfn/4;
-		else
 			mfn = mfn/3;
+		else
+			mfn = mfn/2;
 		mfn = ((unsigned long)(mfn/500))*500;
 		if(mfn<500)
 			mfn = 500;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nDue to the open files/sockets limitation,\nmax number of TURN Sessions possible is: %lu (approximately)\n",mfn);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nDue to the open files/sockets limitation,\nmax supported number of TURN Sessions possible is: %lu (approximately)\n",mfn);
 	}
 
 	print_features();

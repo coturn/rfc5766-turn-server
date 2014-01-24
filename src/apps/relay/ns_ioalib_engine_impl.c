@@ -141,14 +141,9 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 
 		ret=bufs->head;
 		bufs->head=ret->next;
-		if(bufs->head)
-			bufs->head->prev = NULL;
-		if(ret == bufs->tail)
-			bufs->tail = NULL;
 		--bufs->tsz;
 
 		ret->next=NULL;
-		ret->prev = NULL;
 		ret->buf.len = 0;
 	}
 
@@ -159,19 +154,10 @@ static void pop_elem_from_buffer_list(stun_buffer_list *bufs)
 {
 	if(bufs && bufs->head && bufs->tsz) {
 
-		if(bufs->head == bufs->tail) {
-			turn_free(bufs->head,sizeof(stun_buffer_list_elem));
-			bufs->head = NULL;
-			bufs->tail = NULL;
-			bufs->tsz = 0;
-		} else {
-			stun_buffer_list_elem *ret = bufs->head;
-			bufs->head=ret->next;
-			if(bufs->head)
-				bufs->head->prev = NULL;
-			--bufs->tsz;
-			turn_free(ret,sizeof(stun_buffer_list_elem));
-		}
+		stun_buffer_list_elem *ret = bufs->head;
+		bufs->head=ret->next;
+		--bufs->tsz;
+		turn_free(ret,sizeof(stun_buffer_list_elem));
 	}
 }
 
@@ -185,37 +171,22 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 	  ret = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  ret->buf.len = 0;
 	  ret->next = NULL;
-	  ret->prev = NULL;
 	}
 
 	return ret;
 }
 
-static void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *elem)
+static inline void add_elem_to_buffer_list(stun_buffer_list *bufs, stun_buffer_list_elem *elem)
 {
-	if (bufs && elem) {
-		if (bufs->head && bufs->tsz) {
-			elem->prev = NULL;
-			elem->next = bufs->head;
-			bufs->head->prev = elem;
-			bufs->head = elem;
-			++bufs->tsz;
-		} else {
-			bufs->head = elem;
-			bufs->tail = elem;
-			bufs->tsz = 1;
-			elem->next = NULL;
-			elem->prev = NULL;
-		}
-	}
+	elem->next = bufs->head;
+	bufs->head = elem;
+	bufs->tsz += 1;
 }
 
 static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size_t len)
 {
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
 	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
-	  elem->next = NULL;
-	  elem->prev = NULL;
 	  ns_bcopy(buf,elem->buf.buf,len);
 	  elem->buf.len = (ssize_t)len;
 	  add_elem_to_buffer_list(bufs,elem);
@@ -225,15 +196,9 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size
 static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *elem)
 {
 	if(elem) {
-
-		if(e) {
-			if(e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE) {
-				add_elem_to_buffer_list(&(e->bufs), elem);
-				elem=NULL;
-			}
-		}
-
-		if(elem) {
+		if(e && (e->bufs.tsz<MAX_BUFFER_QUEUE_SIZE_PER_ENGINE)) {
+			add_elem_to_buffer_list(&(e->bufs), elem);
+		} else {
 			turn_free(elem,sizeof(stun_buffer_list_elem));
 		}
 	}

@@ -68,13 +68,11 @@ extern "C" {
 
 typedef struct _stun_buffer_list_elem {
 	struct _stun_buffer_list_elem *next;
-	struct _stun_buffer_list_elem *prev;
 	stun_buffer buf;
 } stun_buffer_list_elem;
 
 typedef struct _stun_buffer_list {
 	stun_buffer_list_elem *head;
-	stun_buffer_list_elem *tail;
 	size_t tsz;
 } stun_buffer_list;
 
