@@ -153,7 +153,7 @@ struct _turn_turnserver {
 	ur_map *mobile_connections_map;
 
 	/* Server relay */
-	int *server_relay;
+	int server_relay;
 };
 
 ///////////////////////////////////////////
@@ -187,7 +187,7 @@ void init_turn_server(turn_turnserver* server,
 				    vintp secure_stun,
 				    SHATYPE shatype,
 				    vintp mobility,
-				    int* server_relay,
+				    int server_relay,
 				    send_turn_session_info_cb send_turn_session_info);
 
 ioa_engine_handle turn_server_get_engine(turn_turnserver *s);

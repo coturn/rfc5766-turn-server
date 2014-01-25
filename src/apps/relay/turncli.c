@@ -157,7 +157,6 @@ struct toggleable_command tcmds[] = {
 				{"stun-only",&stun_only},
 				{"no-stun",&no_stun},
 				{"secure-stun",&secure_stun},
-				{"server-relay",(vintp)&server_relay},
 				{"no-udp-relay",&no_udp_relay},
 				{"no-tcp-relay",&no_tcp_relay},
 				{"no-multicast-peers",&no_multicast_peers},
@@ -711,7 +710,7 @@ static void cli_print_configuration(struct cli_session* cs)
 		if(relay_ifname[0])
 			cli_print_str(cs,listener_ifname,"relay-ifname",0);
 
-		cli_print_flag(cs,server_relay,"server-relay",1);
+		cli_print_flag(cs,server_relay,"server-relay",0);
 
 		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
 		cli_print_flag(cs,no_tcp_relay,"no-tcp-relay",1);

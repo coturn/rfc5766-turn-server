@@ -1310,7 +1310,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 					&no_multicast_peers, &no_loopback_peers,
 					&ip_whitelist, &ip_blacklist,
 					send_socket_to_relay,
-					&secure_stun, shatype, &mobility, &server_relay,
+					&secure_stun, shatype, &mobility, server_relay,
 					send_turn_session_info);
 
 	if(to_set_rfc5780) {

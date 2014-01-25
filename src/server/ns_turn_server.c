@@ -1689,7 +1689,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			return;
 		}
 
-		if(!can_accept_tcp_connection_from_peer(a,peer_addr,*(server->server_relay))) {
+		if(!can_accept_tcp_connection_from_peer(a,peer_addr,server->server_relay)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: peer has no permission to connect\n", __FUNCTION__);
 			close_ioa_socket(s);
 			FUNCEND;
@@ -2496,10 +2496,10 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 			turn_permission_info* tinfo = NULL;
 
-			if(!(*(server->server_relay)))
+			if(!(server->server_relay))
 				tinfo = allocation_get_permission(a, &peer_addr);
 
-			if (tinfo || *(server->server_relay)) {
+			if (tinfo || (server->server_relay)) {
 
 				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
@@ -3998,7 +3998,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 							&(in_buffer->src_addr));
 			if (tinfo) {
 				chnum = get_turn_channel_number(tinfo, &(in_buffer->src_addr));
-			} else if(!(*(server->server_relay))) {
+			} else if(!(server->server_relay)) {
 				return;
 			}
 
@@ -4139,7 +4139,7 @@ void init_turn_server(turn_turnserver* server,
 		vintp no_multicast_peers, vintp no_loopback_peers,
 		ip_range_list_t* ip_whitelist, ip_range_list_t* ip_blacklist,
 		send_socket_to_relay_cb send_socket_to_relay,
-		vintp secure_stun, SHATYPE shatype, vintp mobility, int *server_relay,
+		vintp secure_stun, SHATYPE shatype, vintp mobility, int server_relay,
 		send_turn_session_info_cb send_turn_session_info) {
 
 	if (!server)
