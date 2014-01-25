@@ -219,6 +219,7 @@ fi
 %{_datadir}/%{name}/scripts/longtermsecure/secure_dos_attack.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_dtls_client.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_dtls_client_cert.sh
+%{_datadir}/%{name}/scripts/longtermsecure/secure_tls_client_cert.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_relay.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_relay_cert.sh
 %{_datadir}/%{name}/scripts/longtermsecure/secure_tcp_client.sh
