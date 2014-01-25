@@ -1,12 +1,12 @@
 Name:		turnserver
-Version:	3.2.2.3
+Version:	3.2.2.4
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
 Group:		System Environment/Libraries
 License:	BSD
 URL:		https://code.google.com/p/rfc5766-turn-server/ 
-Source0:	https://rfc5766-turn-server.googlecode.com/files/%{name}-%{version}.tar.gz
+Source0:	http://turnserver.open-sys.org/downloads/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:	gcc, make, redhat-rpm-config
 BuildRequires:	openssl-devel, libevent-devel >= 2.0.0, postgresql-devel
@@ -282,6 +282,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Fri Jan 24 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 3.2.2.4
 * Thu Jan 23 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.2.3
 * Tue Jan 21 2014 Oleg Moskalenko <mom040267@gmail.com>
