@@ -5,7 +5,7 @@
 #
 # Options:
 #
-# 1) -t is absent, it means that UDP networking is used.
+# 1) -t means that TCP networking is used.
 # 2) -S means "SSL protocol with default encryption"
 # 3) -i sets certificate file for TLS. -R sets certificate check mode.
 #    -E sets CA file for certificate check.
@@ -32,5 +32,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -i turn_server_cert.pem -k turn_server_pkey.pem -E turn_server_cert.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u bolt -w kwyjibo -s $@ 127.0.0.1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -t -S -i turn_server_cert.pem -k turn_server_pkey.pem -E turn_server_cert.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u bolt -w kwyjibo -s $@ 127.0.0.1
 

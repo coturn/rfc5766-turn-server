@@ -2681,6 +2681,7 @@ static void resume_processing_after_username_check(int success,  hmackey_t hmack
 
 			if(success) {
 				ns_bcopy(hmackey,ss->hmackey,sizeof(hmackey_t));
+				ss->hmackey_set = 1;
 				ns_bcopy(pwd,ss->pwd,sizeof(st_password_t));
 			}
 
@@ -2702,7 +2703,7 @@ static int check_stun_auth(turn_turnserver *server,
 			int *postpone_reply,
 			int can_resume)
 {
-	u08bits uname[STUN_MAX_USERNAME_SIZE+1];
+	u08bits usname[STUN_MAX_USERNAME_SIZE+1];
 	u08bits realm[STUN_MAX_REALM_SIZE+1];
 	u08bits nonce[STUN_MAX_NONCE_SIZE+1];
 	size_t alen = 0;
@@ -2783,9 +2784,9 @@ static int check_stun_auth(turn_turnserver *server,
 		return -1;
 	}
 
-	alen = min((size_t)stun_attr_get_len(sar),sizeof(uname)-1);
-	ns_bcopy(stun_attr_get_value(sar),uname,alen);
-	uname[alen]=0;
+	alen = min((size_t)stun_attr_get_len(sar),sizeof(usname)-1);
+	ns_bcopy(stun_attr_get_value(sar),usname,alen);
+	usname[alen]=0;
 
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
 		/* NONCE ATTR: */
@@ -2820,10 +2821,10 @@ static int check_stun_auth(turn_turnserver *server,
 	}
 
 	/* Password */
-	if((ss->hmackey[0] == 0) && (ss->pwd[0] == 0)) {
+	if(!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
 		ur_string_map_value_type ukey = NULL;
 		if(can_resume) {
-			ukey = (server->userkeycb)(server->id, uname, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			ukey = (server->userkeycb)(server->id, usname, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
 			if(*postpone_reply) {
 				return 0;
 			}
@@ -2833,7 +2834,7 @@ static int check_stun_auth(turn_turnserver *server,
 			/* direct user pattern is supported only for long-term credentials */
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 					"%s: Cannot find credentials of user <%s>\n",
-					__FUNCTION__, (char*)uname);
+					__FUNCTION__, (char*)usname);
 			*err_code = 401;
 			*reason = (const u08bits*)"Unauthorised";
 			if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
@@ -2843,6 +2844,7 @@ static int check_stun_auth(turn_turnserver *server,
 			}
 		}
 		ns_bcopy(ukey,ss->hmackey,16);
+		ss->hmackey_set = 1;
 	}
 
 	SHATYPE sht;
@@ -2855,7 +2857,7 @@ static int check_stun_auth(turn_turnserver *server,
 					  &sht)<1) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect\n",
-				__FUNCTION__, (char*)uname);
+				__FUNCTION__, (char*)usname);
 		*err_code = 401;
 		*reason = (const u08bits*)"Unauthorised";
 		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
@@ -2869,7 +2871,7 @@ static int check_stun_auth(turn_turnserver *server,
 		adjust_shatype(server,ss);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect: SHA function is too weak\n",
-						__FUNCTION__, (char*)uname);
+						__FUNCTION__, (char*)usname);
 		*err_code = SHA_TOO_WEAK;
 		*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
 		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {

@@ -60,6 +60,7 @@ typedef struct {
   turn_time_t nonce_expiration_time;
   u08bits username[STUN_MAX_USERNAME_SIZE+1];
   hmackey_t hmackey;
+  int hmackey_set;
   st_password_t pwd;
   int enforce_fingerprints;
   int is_tcp_relay;

@@ -762,18 +762,18 @@ static int get_auth_secrets(secrets_list_t *sl)
 /*
  * Timestamp retrieval
  */
-static turn_time_t get_rest_api_timestamp(char *uname)
+static turn_time_t get_rest_api_timestamp(char *usname)
 {
 	turn_time_t ts = 0;
 	int ts_set = 0;
 
-	char *col = strchr(uname,rest_api_separator);
+	char *col = strchr(usname,rest_api_separator);
 
 	if(col) {
-		if(col == uname) {
-			uname +=1;
+		if(col == usname) {
+			usname +=1;
 		} else {
-			char *ptr = uname;
+			char *ptr = usname;
 			int found_non_figure = 0;
 			while(ptr < col) {
 				if(!(ptr[0]>='0' && ptr[0]<='9')) {
@@ -787,7 +787,7 @@ static turn_time_t get_rest_api_timestamp(char *uname)
 				ts_set = 1;
 			} else {
 				*col=0;
-				ts = (turn_time_t)atol(uname);
+				ts = (turn_time_t)atol(usname);
 				ts_set = 1;
 				*col=rest_api_separator;
 			}
@@ -795,21 +795,21 @@ static turn_time_t get_rest_api_timestamp(char *uname)
 	}
 
 	if(!ts_set) {
-		ts = (turn_time_t)atol(uname);
+		ts = (turn_time_t)atol(usname);
 	}
 
 	return ts;
 }
 
-static char *get_real_username(char *uname)
+static char *get_real_username(char *usname)
 {
 	if(use_auth_secret_with_timestamp) {
-		char *col=strchr(uname,rest_api_separator);
+		char *col=strchr(usname,rest_api_separator);
 		if(col) {
-			if(col == uname) {
-				uname +=1;
+			if(col == usname) {
+				usname +=1;
 			} else {
-				char *ptr = uname;
+				char *ptr = usname;
 				int found_non_figure = 0;
 				while(ptr < col) {
 					if(!(ptr[0]>='0' && ptr[0]<='9')) {
@@ -819,24 +819,24 @@ static char *get_real_username(char *uname)
 					++ptr;
 				}
 				if(!found_non_figure) {
-					uname = col+1;
+					usname = col+1;
 				} else {
 					*col=0;
-					uname = strdup(uname);
+					usname = strdup(usname);
 					*col=rest_api_separator;
-					return uname;
+					return usname;
 				}
 			}
 		}
 	}
 
-	return strdup(uname);
+	return strdup(usname);
 }
 
 /*
  * Long-term mechanism password retrieval
  */
-int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
+int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 {
 	int ret = -1;
 
@@ -852,7 +852,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		if(get_auth_secrets(&sl)<0)
 			return ret;
 
-		ts = get_rest_api_timestamp((char*)uname);
+		ts = get_rest_api_timestamp((char*)usname);
 
 		if(!turn_time_before(ts, ctime)) {
 
@@ -888,7 +888,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 				const char* secret = get_secrets_list_elem(&sl,sll);
 
 				if(secret) {
-					if(stun_calculate_hmac(uname, strlen((char*)uname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, shatype)>=0) {
+					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, shatype)>=0) {
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
@@ -896,7 +896,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 							if(pwd_length<1) {
 								turn_free(pwd,strlen(pwd)+1);
 							} else {
-								if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
+								if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)global_realm, (u08bits*)pwd, key)>=0) {
 
 									SHATYPE sht;
 
@@ -928,11 +928,11 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 
 	ur_string_map_value_type ukey = NULL;
 	ur_string_map_lock(users->static_accounts);
-	if(ur_string_map_get(users->static_accounts, (ur_string_map_key_type)uname, &ukey)) {
+	if(ur_string_map_get(users->static_accounts, (ur_string_map_key_type)usname, &ukey)) {
 		ret = 0;
 	} else {
 		ur_string_map_lock(users->dynamic_accounts);
-		if(ur_string_map_get(users->dynamic_accounts, (ur_string_map_key_type)uname, &ukey)) {
+		if(ur_string_map_get(users->dynamic_accounts, (ur_string_map_key_type)usname, &ukey)) {
 			ret = 0;
 		}
 		ur_string_map_unlock(users->dynamic_accounts);
@@ -943,12 +943,13 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		ns_bcopy(ukey,key,sizeof(hmackey_t));
 		return 0;
 	}
+
 #if !defined(TURN_NO_PQ)
 	{
 		PGconn * pqc = get_pqdb_connection();
 		if(pqc) {
 			char statement[LONG_STRING_SIZE];
-			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",uname);
+			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",usname);
 			PGresult *res = PQexec(pqc, statement);
 
 			if(!res || (PQresultStatus(res) != PGRES_TUPLES_OK) || (PQntuples(res)!=1)) {
@@ -957,12 +958,12 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 				char *kval = PQgetvalue(res,0,0);
 				if(kval) {
 					if(convert_string_key_to_binary(kval, key)<0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
 					} else {
 						ret = 0;
 					}
 				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",uname);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s: NULL\n",usname);
 				}
 			}
 
@@ -972,12 +973,13 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		}
 	}
 #endif
+
 #if !defined(TURN_NO_MYSQL)
 	{
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			char statement[LONG_STRING_SIZE];
-			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",uname);
+			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",usname);
 			int res = mysql_query(myc, statement);
 			if(res) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving MySQL DB information: %s\n",mysql_error(myc));
@@ -994,13 +996,13 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						if(lengths) {
 							size_t sz = sizeof(hmackey_t)*2;
 							if(lengths[0]!=sz) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",uname,lengths[0]);
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",usname,lengths[0]);
 							} else {
 								char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
 								ns_bcopy(row[0],kval,sz);
 								kval[sz]=0;
 								if(convert_string_key_to_binary(kval, key)<0) {
-									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,uname);
+									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
 								} else {
 									ret = 0;
 								}
@@ -1015,12 +1017,13 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 		}
 	}
 #endif
+
 #if !defined(TURN_NO_HIREDIS)
 	{
 		redisContext * rc = get_redis_connection();
 		if(rc) {
 			char s[LONG_STRING_SIZE];
-			snprintf(s,sizeof(s),"get turn/user/%s/key", uname);
+			snprintf(s,sizeof(s),"get turn/user/%s/key", usname);
 			redisReply *rget = (redisReply *)redisCommand(rc, s);
 			if(rget) {
 				if (rget->type == REDIS_REPLY_ERROR)
@@ -1030,7 +1033,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 				} else {
 					if(convert_string_key_to_binary(rget->str, key)<0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,uname);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,usname);
 					} else {
 						ret = 0;
 					}
@@ -1038,7 +1041,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 				turnFreeRedisReply(rget);
 			}
 			if(ret != 0) {
-				snprintf(s,sizeof(s),"get turn/user/%s/password", uname);
+				snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
 				rget = (redisReply *)redisCommand(rc, s);
 				if(rget) {
 					if (rget->type == REDIS_REPLY_ERROR)
@@ -1047,7 +1050,7 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
-						if(stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)rget->str, key)>=0) {
+						if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)global_realm, (u08bits*)rget->str, key)>=0) {
 							ret = 0;
 						}
 					}
@@ -1064,14 +1067,14 @@ int get_user_key(u08bits *uname, hmackey_t key, ioa_network_buffer_handle nbh)
 /*
  * Short-term mechanism password retrieval
  */
-int get_user_pwd(u08bits *uname, st_password_t pwd)
+int get_user_pwd(u08bits *usname, st_password_t pwd)
 {
 	int ret = -1;
 
 	UNUSED_ARG(pwd);
 
 	char statement[LONG_STRING_SIZE];
-	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",uname);
+	snprintf(statement,sizeof(statement),"select password from turnusers_st where name='%s'",usname);
 
 	{
 #if !defined(TURN_NO_PQ)
@@ -1087,7 +1090,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 				strncpy((char*)pwd,kval,sizeof(st_password_t));
 				ret = 0;
 			} else {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",uname);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s: NULL\n",usname);
 			}
 		}
 
@@ -1114,7 +1117,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 					unsigned long *lengths = mysql_fetch_lengths(mres);
 					if(lengths) {
 						if(lengths[0]<1) {
-							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MySQL DB is zero(0)\n",uname);
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password data for user %s, size in MySQL DB is zero(0)\n",usname);
 						} else {
 							ns_bcopy(row[0],pwd,lengths[0]);
 							pwd[lengths[0]]=0;
@@ -1134,7 +1137,7 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 		redisContext * rc = get_redis_connection();
 		if(rc) {
 			char s[LONG_STRING_SIZE];
-			snprintf(s,sizeof(s),"get turn/user/%s/password", uname);
+			snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
 			redisReply *rget = (redisReply *)redisCommand(rc, s);
 			if(rget) {
 				if (rget->type == REDIS_REPLY_ERROR)
@@ -1157,14 +1160,14 @@ int get_user_pwd(u08bits *uname, st_password_t pwd)
 	return ret;
 }
 
-u08bits *start_user_check(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
+u08bits *start_user_check(turnserver_id id, u08bits *usname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply)
 {
 	*postpone_reply = 1;
 
 	struct auth_message am;
 	ns_bzero(&am,sizeof(struct auth_message));
 	am.id = id;
-	STRCPY(am.username,uname);
+	STRCPY(am.username,usname);
 	am.resume_func = resume;
 	memcpy(&(am.in_buffer),in_buffer,sizeof(ioa_net_data));
 	in_buffer->nbh = NULL;
@@ -1308,12 +1311,12 @@ int add_user_account(char *user, int dynamic)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user account: %s\n",user);
 		} else {
 			size_t ulen = s-user;
-			char *uname = (char*)turn_malloc(sizeof(char)*(ulen+1));
-			strncpy(uname,user,ulen);
-			uname[ulen]=0;
-			if(SASLprep((u08bits*)uname)<0) {
+			char *usname = (char*)turn_malloc(sizeof(char)*(ulen+1));
+			strncpy(usname,user,ulen);
+			usname[ulen]=0;
+			if(SASLprep((u08bits*)usname)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
-				turn_free(uname,sizeof(char)*(ulen+1));
+				turn_free(usname,sizeof(char)*(ulen+1));
 				return -1;
 			}
 			s = skip_blanks(s+1);
@@ -1322,24 +1325,24 @@ int add_user_account(char *user, int dynamic)
 				char *keysource = s + 2;
 				if(convert_string_key_to_binary(keysource, *key)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					free(uname);
+					free(usname);
 					free(key);
 					return -1;
 				}
 			} else {
-				stun_produce_integrity_key_str((u08bits*)uname, (u08bits*)global_realm, (u08bits*)s, *key);
+				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)global_realm, (u08bits*)s, *key);
 			}
 			if(dynamic) {
 				ur_string_map_lock(users->dynamic_accounts);
-				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)*key);
+				ur_string_map_put(users->dynamic_accounts, (ur_string_map_key_type)usname, (ur_string_map_value_type)*key);
 				ur_string_map_unlock(users->dynamic_accounts);
 			} else {
 				ur_string_map_lock(users->static_accounts);
-				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)uname, (ur_string_map_value_type)*key);
+				ur_string_map_put(users->static_accounts, (ur_string_map_key_type)usname, (ur_string_map_value_type)*key);
 				ur_string_map_unlock(users->static_accounts);
 			}
 			users_number++;
-			free(uname);
+			free(usname);
 			return 0;
 		}
 	}
