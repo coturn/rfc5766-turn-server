@@ -153,15 +153,15 @@ struct toggleable_command {
 };
 
 struct toggleable_command tcmds[] = {
-				{"stale-nonce",&stale_nonce},
-				{"stun-only",&stun_only},
-				{"no-stun",&no_stun},
-				{"secure-stun",&secure_stun},
-				{"no-udp-relay",&no_udp_relay},
-				{"no-tcp-relay",&no_tcp_relay},
-				{"no-multicast-peers",&no_multicast_peers},
-				{"no-loopback-peers",&no_loopback_peers},
-				{"mobility",&mobility},
+				{"stale-nonce",&turn_params.stale_nonce},
+				{"stun-only",&turn_params.stun_only},
+				{"no-stun",&turn_params.no_stun},
+				{"secure-stun",&turn_params.secure_stun},
+				{"no-udp-relay",&turn_params.no_udp_relay},
+				{"no-tcp-relay",&turn_params.no_tcp_relay},
+				{"no-multicast-peers",&turn_params.no_multicast_peers},
+				{"no-loopback-peers",&turn_params.no_loopback_peers},
+				{"mobility",&turn_params.mobility},
 				{NULL,NULL}
 };
 
@@ -362,11 +362,11 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 					*(ccmds[i].data) = (vint)pnv;
 					cli_print_uint(cs,(unsigned long)(*(ccmds[i].data)),ccmds[i].cmd,2);
 				} else if(strcmp(ccmds[i].cmd,"total-quota")==0) {
-					users->total_quota = pnv;
-					cli_print_uint(cs,(unsigned long)(users->total_quota),ccmds[i].cmd,2);
+					users_params.users.total_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(users_params.users.total_quota),ccmds[i].cmd,2);
 				} else if(strcmp(ccmds[i].cmd,"user-quota")==0) {
-					users->user_quota = pnv;
-					cli_print_uint(cs,(unsigned long)(users->user_quota),ccmds[i].cmd,2);
+					users_params.users.user_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(users_params.users.user_quota),ccmds[i].cmd,2);
 				}
 				return;
 			}
@@ -505,9 +505,9 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
 				myprintf(cs,"      SHA256: %s\n",get_flag(tsi->shatype));
-				if(shatype == SHATYPE_SHA1)
+				if(turn_params.shatype == SHATYPE_SHA1)
 					myprintf(cs,"      SHA type: SHA1\n");
-				else if(shatype == SHATYPE_SHA256)
+				else if(turn_params.shatype == SHATYPE_SHA256)
 					myprintf(cs,"      SHA type: SHA256\n");
 				if(tsi->tls_method[0]) {
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
@@ -613,20 +613,20 @@ static void cli_print_configuration(struct cli_session* cs)
 	if(cs) {
 		myprintf(cs,"\n");
 
-		cli_print_flag(cs,verbose,"verbose",0);
-		cli_print_flag(cs,turn_daemon,"daemon process",0);
-		cli_print_flag(cs,stale_nonce,"stale-nonce",1);
-		cli_print_flag(cs,stun_only,"stun-only",1);
-		cli_print_flag(cs,no_stun,"no-stun",1);
-		cli_print_flag(cs,secure_stun,"secure-stun",1);
-		cli_print_flag(cs,do_not_use_config_file,"do-not-use-config-file",0);
-		cli_print_flag(cs,rfc5780,"RFC5780 support",0);
-		cli_print_uint(cs,(unsigned int)net_engine_version,"net engine version",0);
-		cli_print_str(cs,net_engine_version_txt[(int)net_engine_version],"net engine",0);
-		cli_print_flag(cs,fingerprint,"enforce fingerprints",0);
-		cli_print_flag(cs,mobility,"mobility",1);
-		cli_print_flag(cs,udp_self_balance,"udp-self-balance",0);
-		cli_print_str(cs,pidfile,"pidfile",0);
+		cli_print_flag(cs,turn_params.verbose,"verbose",0);
+		cli_print_flag(cs,turn_params.turn_daemon,"daemon process",0);
+		cli_print_flag(cs,turn_params.stale_nonce,"stale-nonce",1);
+		cli_print_flag(cs,turn_params.stun_only,"stun-only",1);
+		cli_print_flag(cs,turn_params.no_stun,"no-stun",1);
+		cli_print_flag(cs,turn_params.secure_stun,"secure-stun",1);
+		cli_print_flag(cs,turn_params.do_not_use_config_file,"do-not-use-config-file",0);
+		cli_print_flag(cs,turn_params.rfc5780,"RFC5780 support",0);
+		cli_print_uint(cs,(unsigned int)turn_params.net_engine_version,"net engine version",0);
+		cli_print_str(cs,turn_params.net_engine_version_txt[(int)turn_params.net_engine_version],"net engine",0);
+		cli_print_flag(cs,turn_params.fingerprint,"enforce fingerprints",0);
+		cli_print_flag(cs,turn_params.mobility,"mobility",1);
+		cli_print_flag(cs,turn_params.udp_self_balance,"udp-self-balance",0);
+		cli_print_str(cs,turn_params.pidfile,"pidfile",0);
 		cli_print_uint(cs,(unsigned long)getuid(),"process user ID",0);
 		cli_print_uint(cs,(unsigned long)getgid(),"process group ID",0);
 
@@ -639,95 +639,95 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		myprintf(cs,"\n");
 
-		if(cipher_list[0])
-			cli_print_str(cs,cipher_list,"cipher-list",0);
+		if(turn_params.cipher_list[0])
+			cli_print_str(cs,turn_params.cipher_list,"cipher-list",0);
 		else
 			cli_print_str(cs,DEFAULT_CIPHER_LIST,"cipher-list",0);
 
-		cli_print_str(cs,ec_curve_name,"ec-curve-name",0);
+		cli_print_str(cs,turn_params.ec_curve_name,"ec-curve-name",0);
 		{
-			if(dh_key_size == DH_CUSTOM)
-				cli_print_str(cs,dh_file,"dh-file",0);
+			if(turn_params.dh_key_size == DH_CUSTOM)
+				cli_print_str(cs,turn_params.dh_file,"dh-file",0);
 			else {
 				unsigned int dh_key_length = 1066;
-				if(dh_key_size == DH_566)
+				if(turn_params.dh_key_size == DH_566)
 					dh_key_length = 566;
-				else if(dh_key_size == DH_2066)
+				else if(turn_params.dh_key_size == DH_2066)
 					dh_key_length = 2066;
 				cli_print_uint(cs,(unsigned long)dh_key_length,"DH-key-length",0);
 			}
 		}
 
-		cli_print_str(cs,ca_cert_file,"Certificate Authority file",0);
-		cli_print_str(cs,cert_file,"Certificate file",0);
-		cli_print_str(cs,pkey_file,"Private Key file",0);
+		cli_print_str(cs,turn_params.ca_cert_file,"Certificate Authority file",0);
+		cli_print_str(cs,turn_params.cert_file,"Certificate file",0);
+		cli_print_str(cs,turn_params.pkey_file,"Private Key file",0);
 
-		if(shatype == SHATYPE_SHA1)
+		if(turn_params.shatype == SHATYPE_SHA1)
 			cli_print_str(cs,"SHA1 and SHA256","allowed SHA types",0);
-		else if(shatype == SHATYPE_SHA256)
+		else if(turn_params.shatype == SHATYPE_SHA256)
 					cli_print_str(cs,"SHA256 only","allowed SHA types",0);
 
 		myprintf(cs,"\n");
 
-		cli_print_str_array(cs,listener.addrs,listener.addrs_number,"Listener addr",0);
+		cli_print_str_array(cs,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr",0);
 
-		if(listener_ifname[0])
-			cli_print_str(cs,listener_ifname,"listener-ifname",0);
+		if(turn_params.listener_ifname[0])
+			cli_print_str(cs,turn_params.listener_ifname,"listener-ifname",0);
 
-		cli_print_flag(cs,no_udp,"no-udp",0);
-		cli_print_flag(cs,no_tcp,"no-tcp",0);
-		cli_print_flag(cs,no_dtls,"no-dtls",0);
-		cli_print_flag(cs,no_tls,"no-tls",0);
+		cli_print_flag(cs,turn_params.no_udp,"no-udp",0);
+		cli_print_flag(cs,turn_params.no_tcp,"no-tcp",0);
+		cli_print_flag(cs,turn_params.no_dtls,"no-dtls",0);
+		cli_print_flag(cs,turn_params.no_tls,"no-tls",0);
 
 #ifndef OPENSSL_NO_SSL2
-		cli_print_flag(cs,(!no_sslv2 && !no_tls),"SSLv2",0);
+		cli_print_flag(cs,(!turn_params.no_sslv2 && !turn_params.no_tls),"SSLv2",0);
 #else
 		cli_print_flag(cs,0,"SSLv2",0);
 #endif
 
-		cli_print_flag(cs,(!no_sslv3 && !no_tls),"SSLv3",0);
-		cli_print_flag(cs,(!no_tlsv1 && !no_tls),"TLSv1.0",0);
-		cli_print_flag(cs,(!no_tlsv1_1 && !no_tls),"TLSv1.1",0);
-		cli_print_flag(cs,(!no_tlsv1_2 && !no_tls),"TLSv1.2",0);
+		cli_print_flag(cs,(!turn_params.no_sslv3 && !turn_params.no_tls),"SSLv3",0);
+		cli_print_flag(cs,(!turn_params.no_tlsv1 && !turn_params.no_tls),"TLSv1.0",0);
+		cli_print_flag(cs,(!turn_params.no_tlsv1_1 && !turn_params.no_tls),"TLSv1.1",0);
+		cli_print_flag(cs,(!turn_params.no_tlsv1_2 && !turn_params.no_tls),"TLSv1.2",0);
 
-		cli_print_uint(cs,(unsigned long)listener_port,"listener-port",0);
-		cli_print_uint(cs,(unsigned long)tls_listener_port,"tls-listener-port",0);
-		cli_print_uint(cs,(unsigned long)alt_listener_port,"alt-listener-port",0);
-		cli_print_uint(cs,(unsigned long)alt_tls_listener_port,"alt-tls-listener-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.listener_port,"listener-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.tls_listener_port,"tls-listener-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.alt_listener_port,"alt-listener-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.alt_tls_listener_port,"alt-tls-listener-port",0);
 
-		cli_print_addr(cs,external_ip,0,"External public IP",0);
-
-		myprintf(cs,"\n");
-
-		cli_print_addr_list(cs,&aux_servers_list,1,"Aux server",0);
-		cli_print_addr_list(cs,&alternate_servers_list,1,"Alternate server",0);
-		cli_print_addr_list(cs,&tls_alternate_servers_list,1,"TLS alternate server",0);
+		cli_print_addr(cs,turn_params.external_ip,0,"External public IP",0);
 
 		myprintf(cs,"\n");
 
-		cli_print_str_array(cs,relay_addrs,relays_number,"Relay addr",0);
-
-		if(relay_ifname[0])
-			cli_print_str(cs,listener_ifname,"relay-ifname",0);
-
-		cli_print_flag(cs,server_relay,"server-relay",0);
-
-		cli_print_flag(cs,no_udp_relay,"no-udp-relay",1);
-		cli_print_flag(cs,no_tcp_relay,"no-tcp-relay",1);
-
-		cli_print_uint(cs,(unsigned long)min_port,"min-port",0);
-		cli_print_uint(cs,(unsigned long)max_port,"max-port",0);
-
-		cli_print_ip_range_list(cs,&ip_whitelist,"Whitelist IP",0);
-		cli_print_ip_range_list(cs,&ip_blacklist,"Blacklist IP",0);
-
-		cli_print_flag(cs,no_multicast_peers,"no-multicast-peers",1);
-		cli_print_flag(cs,no_loopback_peers,"no-loopback-peers",1);
+		cli_print_addr_list(cs,&turn_params.aux_servers_list,1,"Aux server",0);
+		cli_print_addr_list(cs,&turn_params.alternate_servers_list,1,"Alternate server",0);
+		cli_print_addr_list(cs,&turn_params.tls_alternate_servers_list,1,"TLS alternate server",0);
 
 		myprintf(cs,"\n");
 
-		if(userdb[0]) {
-			switch(userdb_type) {
+		cli_print_str_array(cs,turn_params.relay_addrs,turn_params.relays_number,"Relay addr",0);
+
+		if(turn_params.relay_ifname[0])
+			cli_print_str(cs,turn_params.relay_ifname,"relay-ifname",0);
+
+		cli_print_flag(cs,turn_params.server_relay,"server-relay",0);
+
+		cli_print_flag(cs,turn_params.no_udp_relay,"no-udp-relay",1);
+		cli_print_flag(cs,turn_params.no_tcp_relay,"no-tcp-relay",1);
+
+		cli_print_uint(cs,(unsigned long)turn_params.min_port,"min-port",0);
+		cli_print_uint(cs,(unsigned long)turn_params.max_port,"max-port",0);
+
+		cli_print_ip_range_list(cs,&turn_params.ip_whitelist,"Whitelist IP",0);
+		cli_print_ip_range_list(cs,&turn_params.ip_blacklist,"Blacklist IP",0);
+
+		cli_print_flag(cs,turn_params.no_multicast_peers,"no-multicast-peers",1);
+		cli_print_flag(cs,turn_params.no_loopback_peers,"no-loopback-peers",1);
+
+		myprintf(cs,"\n");
+
+		if(users_params.userdb[0]) {
+			switch(users_params.userdb_type) {
 			case TURN_USERDB_TYPE_FILE:
 				cli_print_str(cs,"file","DB type",0);
 				break;
@@ -749,35 +749,35 @@ static void cli_print_configuration(struct cli_session* cs)
 			default:
 				cli_print_str(cs,"unknown","DB type",0);
 			};
-			cli_print_str(cs,userdb,"DB",0);
+			cli_print_str(cs,users_params.userdb,"DB",0);
 		} else {
 			cli_print_str(cs,"none","DB type",0);
 			cli_print_str(cs,"none","DB",0);
 		}
 
 #if !defined(TURN_NO_HIREDIS)
-		if(use_redis_statsdb && redis_statsdb[0])
-			cli_print_str(cs,redis_statsdb,"Redis Statistics DB",0);
+		if(turn_params.use_redis_statsdb && turn_params.redis_statsdb[0])
+			cli_print_str(cs,turn_params.redis_statsdb,"Redis Statistics DB",0);
 #endif
 
 		myprintf(cs,"\n");
 
-		cli_print_flag(cs,use_lt_credentials,"Long-term authorization mechanism",0);
-		cli_print_flag(cs,use_st_credentials,"Short-term authorization mechanism",0);
-		cli_print_flag(cs,anon_credentials,"Anonymous credentials",0);
-		cli_print_flag(cs,use_auth_secret_with_timestamp,"REST API",0);
-		if(use_auth_secret_with_timestamp && rest_api_separator)
-			cli_print_uint(cs,rest_api_separator,"REST API separator ASCII number",0);
+		cli_print_flag(cs,users_params.use_lt_credentials,"Long-term authorization mechanism",0);
+		cli_print_flag(cs,users_params.use_st_credentials,"Short-term authorization mechanism",0);
+		cli_print_flag(cs,users_params.anon_credentials,"Anonymous credentials",0);
+		cli_print_flag(cs,users_params.use_auth_secret_with_timestamp,"REST API",0);
+		if(users_params.use_auth_secret_with_timestamp && users_params.rest_api_separator)
+			cli_print_uint(cs,users_params.rest_api_separator,"REST API separator ASCII number",0);
 
-		if(global_realm[0])
-			cli_print_str(cs,global_realm,"Realm",0);
+		if(users_params.global_realm[0])
+			cli_print_str(cs,users_params.global_realm,"Realm",0);
 
 		myprintf(cs,"\n");
 
-		cli_print_uint(cs,(unsigned long)users->total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)users->user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)users->total_current_allocs,"total-current-allocs",0);
-		cli_print_uint(cs,(unsigned long)max_bps,"max-bps",0);
+		cli_print_uint(cs,(unsigned long)users_params.users.total_quota,"total-quota",2);
+		cli_print_uint(cs,(unsigned long)users_params.users.user_quota,"user-quota",2);
+		cli_print_uint(cs,(unsigned long)users_params.users.total_current_allocs,"total-current-allocs",0);
+		cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",0);
 
 		myprintf(cs,"\n");
 

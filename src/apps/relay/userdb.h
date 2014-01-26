@@ -102,18 +102,6 @@ enum _TURNADMIN_COMMAND_TYPE {
 
 typedef enum _TURNADMIN_COMMAND_TYPE TURNADMIN_COMMAND_TYPE;
 
-extern TURN_USERDB_TYPE userdb_type;
-extern char userdb[1025];
-
-extern size_t users_number;
-extern int use_lt_credentials;
-extern int use_st_credentials;
-extern int anon_credentials;
-
-extern turn_user_db *users;
-
-extern s08bits global_realm[STUN_MAX_REALM_SIZE+1];
-
 /////////// SHARED SECRETS //////////////////
 
 struct _secrets_list {
@@ -122,9 +110,32 @@ struct _secrets_list {
 };
 typedef struct _secrets_list secrets_list_t;
 
-extern int use_auth_secret_with_timestamp;
-extern char rest_api_separator;
-extern secrets_list_t static_auth_secrets;
+/////////// USERS PARAM /////////////////////
+
+#define TURN_LONG_STRING_SIZE (1025)
+
+typedef struct _users_params_t {
+
+  TURN_USERDB_TYPE userdb_type;
+  char userdb[TURN_LONG_STRING_SIZE];
+
+  size_t users_number;
+  int use_lt_credentials;
+  int use_st_credentials;
+  int anon_credentials;
+
+  turn_user_db users;
+
+  s08bits global_realm[STUN_MAX_REALM_SIZE+1];
+
+  int use_auth_secret_with_timestamp;
+  char rest_api_separator;
+  secrets_list_t static_auth_secrets;
+} users_params_t;
+
+extern users_params_t users_params;
+
+/////////////////////////////////////////////
 
 void init_secrets_list(secrets_list_t *sl);
 void init_dynamic_ip_lists(void);

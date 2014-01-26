@@ -29,6 +29,7 @@
  */
 
 #include "apputils.h"
+#include "mainrelay.h"
 
 #include "dtls_listener.h"
 #include "ns_ioalib_impl.h"
@@ -406,7 +407,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		chs = NULL;
 
 #if !defined(TURN_NO_DTLS)
-		if (!no_dtls &&
+		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
 			chs = dtls_server_input_handler(server,s,
@@ -514,7 +515,7 @@ static int create_new_connected_udp_socket(
 	ret->default_tos = s->default_tos;
 
 #if !defined(TURN_NO_DTLS)
-	if (!no_dtls
+	if (!turn_params.no_dtls
 			&& is_dtls_handshake_message(
 					ioa_network_buffer_data(server->sm.m.sm.nd.nbh),
 					(int) ioa_network_buffer_get_size(
@@ -745,11 +746,11 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
   }
 
   if(report_creation) {
-	  if(!no_udp && !no_dtls)
+	  if(!turn_params.no_udp && !turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"UDP/DTLS listener opened on");
-	  else if(!no_dtls)
+	  else if(!turn_params.no_dtls)
 		  addr_debug_print(server->verbose, &server->addr,"DTLS listener opened on");
-	  else if(!no_udp)
+	  else if(!turn_params.no_udp)
 		  addr_debug_print(server->verbose, &server->addr,"UDP listener opened on");
   }
 
@@ -815,13 +816,13 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 		event_add(server->udp_listen_ev, NULL );
 	}
 
-	if (!no_udp && !no_dtls)
+	if (!turn_params.no_udp && !turn_params.no_dtls)
 		addr_debug_print(server->verbose, &server->addr,
 					"UDP/DTLS listener opened on ");
-	else if (!no_dtls)
+	else if (!turn_params.no_dtls)
 		addr_debug_print(server->verbose, &server->addr,
 					"DTLS listener opened on ");
-	else if (!no_udp)
+	else if (!turn_params.no_udp)
 		addr_debug_print(server->verbose, &server->addr,
 				"UDP listener opened on ");
 

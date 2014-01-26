@@ -30,23 +30,69 @@
 
 #include "mainrelay.h"
 
+//////TURN PARAMS STRUCTURE DEFINITION //////
+
+#define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
+
+turn_params_t turn_params = {
+
+NULL, NULL,
+
+#if defined(SSL_TXT_TLSV1_1)
+	NULL,
+#if defined(SSL_TXT_TLSV1_2)
+	NULL,
+#endif
+#endif
+
+NULL,
+
+SHATYPE_SHA1, DH_1066, "", DEFAULT_EC_CURVE_NAME, "",
+"turn_server_cert.pem","turn_server_pkey.pem", "", "",
+0,0,0,0,0,
+#if defined(TURN_NO_TLS)
+1,
+#else
+0,
+#endif
+
+#if defined(TURN_NO_DTLS)
+1,
+#else
+0,
+#endif
+
+TURN_VERBOSE_NONE,0,0,0,0,0,0,0,
+"/var/run/turnserver.pid",
+DEFAULT_STUN_PORT,DEFAULT_STUN_TLS_PORT,0,0,1,
+0,0,0,0,
+"",
+#if !defined(TURN_NO_HIREDIS)
+"",0,
+#endif
+{
+  NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL
+#if !defined(TURN_NO_HIREDIS)
+,NULL
+#endif
+},
+{NULL, NULL, 0},{NULL, NULL, 0},
+NEV_UNKNOWN, 
+{ "Unknown", "UDP listening socket per session", "UDP thread per network endpoint", "UDP thread per CPU core" },
+//////////////// Relay servers //////////////////////////////////
+0,LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
+0,NULL,0,NULL,0,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,0,
+////////////// Auth server /////////////////////////////////////
+{NULL,NULL,NULL,NULL},
+/////////////// AUX SERVERS ////////////////
+{NULL,0,{0,NULL}},0,
+/////////////// ALTERNATE SERVERS ////////////////
+{NULL,0,{0,NULL}},{NULL,0,{0,NULL}}
+};
+
 //////////////// OpenSSL Init //////////////////////
 
 static void openssl_setup(void);
-
-char cipher_list[1025]="";
-char ec_curve_name[33] = DEFAULT_EC_CURVE_NAME;
-SSL_CTX *tls_ctx_ssl23 = NULL;
-SSL_CTX *tls_ctx_v1_0 = NULL;
-
-#if defined(SSL_TXT_TLSV1_1)
-SSL_CTX *tls_ctx_v1_1 = NULL;
-#if defined(SSL_TXT_TLSV1_2)
-SSL_CTX *tls_ctx_v1_2 = NULL;
-#endif
-#endif
-
-SSL_CTX *dtls_ctx = NULL;
 
 /*
  * openssl genrsa -out pkey 2048
@@ -54,35 +100,8 @@ SSL_CTX *dtls_ctx = NULL;
  * openssl x509 -req -days 365 -in cert.req -signkey pkey -out cert
  *
 */
-char ca_cert_file[1025]="";
-char cert_file[1025]="turn_server_cert.pem";
-char pkey_file[1025]="turn_server_pkey.pem";
-char tls_password[513]="";
 
-SHATYPE shatype = SHATYPE_SHA1;
-
-DH_KEY_SIZE dh_key_size = DH_1066;
-char dh_file[1025]="";
-
-int no_sslv2 = 0;
-int no_sslv3 = 0;
-int no_tlsv1 = 0;
-int no_tlsv1_1 = 0;
-int no_tlsv1_2 = 0;
-
-//////////////// Common params ////////////////////
-
-char pidfile[1025] = "/var/run/turnserver.pid";
-
-int verbose=TURN_VERBOSE_NONE;
-int turn_daemon = 0;
-vint stale_nonce = 0;
-vint stun_only = 0;
-vint no_stun = 0;
-vint secure_stun = 0;
-int server_relay = 0;
-
-int do_not_use_config_file = 0;
+//////////// Common static process params ////////
 
 static gid_t procgroupid = 0;
 static uid_t procuserid = 0;
@@ -91,87 +110,9 @@ static uid_t procuserid_set = 0;
 static char procusername[1025]="\0";
 static char procgroupname[1025]="\0";
 
-////////////////  Listener server /////////////////
-
-int listener_port = DEFAULT_STUN_PORT;
-int tls_listener_port = DEFAULT_STUN_TLS_PORT;
-int alt_listener_port = 0;
-int alt_tls_listener_port = 0;
-int rfc5780 = 1;
-
-int no_udp = 0;
-int no_tcp = 0;
-int no_tls = 0;
-
-#if defined(TURN_NO_DTLS)
-int no_dtls = 1;
-#else
-int no_dtls = 0;
-#endif
-
-vint no_tcp_relay = 0;
-vint no_udp_relay = 0;
-
-char listener_ifname[1025]="";
-
-#if !defined(TURN_NO_HIREDIS)
-char redis_statsdb[1025]="";
-int use_redis_statsdb = 0;
-#endif
-
-struct listener_server listener;
-
-ip_range_list_t ip_whitelist = {NULL, NULL, 0};
-ip_range_list_t ip_blacklist = {NULL, NULL, 0};
-
-//////////////// Relay servers //////////////////////////////////
-
-band_limit_t max_bps = 0;
-
-u16bits min_port = LOW_DEFAULT_PORTS_BOUNDARY;
-u16bits max_port = HIGH_DEFAULT_PORTS_BOUNDARY;
-
-vint no_multicast_peers = 0;
-vint no_loopback_peers = 0;
-
-char relay_ifname[1025]="";
-
-size_t relays_number = 0;
-char **relay_addrs = NULL;
-int default_relays = 0;
-
-// Single global public IP.
-// If multiple public IPs are used
-// then ioa_addr mapping must be used.
-ioa_addr *external_ip = NULL;
-
-int fingerprint = 0;
-
-#define DEFAULT_GENERAL_RELAY_SERVERS_NUMBER (1)
-
-turnserver_id general_relay_servers_number = DEFAULT_GENERAL_RELAY_SERVERS_NUMBER;
-
-turnserver_id udp_relay_servers_number = 0;
-
-vint mobility = 0;
-
-////////////// Auth server ////////////////////////////////////////////////
-
-struct auth_server authserver;
-
 ////////////// Configuration functionality ////////////////////////////////
 
 static void read_config_file(int argc, char **argv, int pass);
-
-/////////////// AUX SERVERS ////////////////
-
-turn_server_addrs_list_t aux_servers_list = {NULL,0,{0,NULL}};
-int udp_self_balance = 0;
-
-/////////////// ALTERNATE SERVERS ////////////////
-
-turn_server_addrs_list_t alternate_servers_list = {NULL,0,{0,NULL}};
-turn_server_addrs_list_t tls_alternate_servers_list = {NULL,0,{0,NULL}};
 
 //////////////////////////////////////////////////
 
@@ -737,19 +678,19 @@ static void set_option(int c, char *value)
 
   switch (c) {
   case NO_SSLV2_OPT:
-	  no_sslv2 = get_bool_value(value);
+	  turn_params.no_sslv2 = get_bool_value(value);
 	  break;
   case NO_SSLV3_OPT:
-	  no_sslv3 = get_bool_value(value);
+	  turn_params.no_sslv3 = get_bool_value(value);
 	  break;
   case NO_TLSV1_OPT:
-	  no_tlsv1 = get_bool_value(value);
+	  turn_params.no_tlsv1 = get_bool_value(value);
 	  break;
   case NO_TLSV1_1_OPT:
-	  no_tlsv1_1 = get_bool_value(value);
+	  turn_params.no_tlsv1_1 = get_bool_value(value);
 	  break;
   case NO_TLSV1_2_OPT:
-	  no_tlsv1_2 = get_bool_value(value);
+	  turn_params.no_tlsv1_2 = get_bool_value(value);
 	  break;
   case NE_TYPE_OPT:
   {
@@ -757,28 +698,28 @@ static void set_option(int c, char *value)
 	  if((ne<(int)NEV_MIN)||(ne>(int)NEV_MAX)) {
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: wrong version of the network engine: %d\n",ne);
 	  }
-	  net_engine_version = (NET_ENG_VERSION)ne;
+	  turn_params.net_engine_version = (NET_ENG_VERSION)ne;
   }
 	  break;
   case DH566_OPT:
 	  if(get_bool_value(value))
-		  dh_key_size = DH_566;
+		  turn_params.dh_key_size = DH_566;
 	  break;
   case DH2066_OPT:
 	  if(get_bool_value(value))
-		  dh_key_size = DH_2066;
+		  turn_params.dh_key_size = DH_2066;
 	  break;
   case EC_CURVE_NAME_OPT:
-	  STRCPY(ec_curve_name,value);
+	  STRCPY(turn_params.ec_curve_name,value);
 	  break;
   case CLI_MAX_SESSIONS_OPT:
 	  cli_max_output_sessions = atoi(value);
 	  break;
   case SERVER_RELAY_OPT:
-	  server_relay = get_bool_value(value);
+	  turn_params.server_relay = get_bool_value(value);
 	  break;
   case MOBILITY_OPT:
-	  mobility = get_bool_value(value);
+	  turn_params.mobility = get_bool_value(value);
 	  break;
   case NO_CLI_OPT:
 	  use_cli = !get_bool_value(value);
@@ -821,70 +762,70 @@ static void set_option(int c, char *value)
 	}
 	break;
 	case 'i':
-		STRCPY(relay_ifname, value);
+		STRCPY(turn_params.relay_ifname, value);
 		break;
 	case 'm':
 #if defined(OPENSSL_THREADS)
 		if(atoi(value)>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: max number of relay threads is 128.\n");
-			general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
+			turn_params.general_relay_servers_number = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 		} else if(atoi(value)<=0) {
-			general_relay_servers_number = 0;
+			turn_params.general_relay_servers_number = 0;
 		} else {
-			general_relay_servers_number = atoi(value);
+			turn_params.general_relay_servers_number = atoi(value);
 		}
 #else
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: OpenSSL version is too old OR does not support threading,\n I am using single thread for relaying.\n");
 #endif
 		break;
 	case 'd':
-		STRCPY(listener_ifname, value);
+		STRCPY(turn_params.listener_ifname, value);
 		break;
 	case 'p':
-		listener_port = atoi(value);
+		turn_params.listener_port = atoi(value);
 		break;
 	case TLS_PORT_OPT:
-		tls_listener_port = atoi(value);
+		turn_params.tls_listener_port = atoi(value);
 		break;
 	case ALT_PORT_OPT:
-		alt_listener_port = atoi(value);
+		turn_params.alt_listener_port = atoi(value);
 		break;
 	case ALT_TLS_PORT_OPT:
-		alt_tls_listener_port = atoi(value);
+		turn_params.alt_tls_listener_port = atoi(value);
 		break;
 	case MIN_PORT_OPT:
-		min_port = atoi(value);
+		turn_params.min_port = atoi(value);
 		break;
 	case MAX_PORT_OPT:
-		max_port = atoi(value);
+		turn_params.max_port = atoi(value);
 		break;
 	case SECURE_STUN_OPT:
-		secure_stun = get_bool_value(value);
+		turn_params.secure_stun = get_bool_value(value);
 		break;
 	case SHA256_OPT:
 		if(get_bool_value(value))
-			shatype = SHATYPE_SHA256;
+			turn_params.shatype = SHATYPE_SHA256;
 		else
-			shatype = SHATYPE_SHA1;
+			turn_params.shatype = SHATYPE_SHA1;
 		break;
 	case NO_MULTICAST_PEERS_OPT:
-		no_multicast_peers = get_bool_value(value);
+		turn_params.no_multicast_peers = get_bool_value(value);
 		break;
 	case NO_LOOPBACK_PEERS_OPT:
-		no_loopback_peers = get_bool_value(value);
+		turn_params.no_loopback_peers = get_bool_value(value);
 		break;
 	case STALE_NONCE_OPT:
-		stale_nonce = get_bool_value(value);
+		turn_params.stale_nonce = get_bool_value(value);
 		break;
 	case MAX_ALLOCATE_TIMEOUT_OPT:
 		TURN_MAX_ALLOCATE_TIMEOUT = atoi(value);
 		TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = atoi(value);
 		break;
 	case 'S':
-		stun_only = get_bool_value(value);
+		turn_params.stun_only = get_bool_value(value);
 		break;
 	case NO_STUN_OPT:
-		no_stun = get_bool_value(value);
+		turn_params.no_stun = get_bool_value(value);
 		break;
 	case 'L':
 		add_listener_addr(value);
@@ -912,15 +853,15 @@ static void set_option(int c, char *value)
 				}
 				turn_free(nval,strlen(nval)+1);
 			} else {
-				if(external_ip) {
+				if(turn_params.external_ip) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 				} else {
-					external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
-					ns_bzero(external_ip,sizeof(ioa_addr));
-					if(make_ioa_addr((const u08bits*)value,0,external_ip)<0) {
+					turn_params.external_ip = (ioa_addr*)turn_malloc(sizeof(ioa_addr));
+					ns_bzero(turn_params.external_ip,sizeof(ioa_addr));
+					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
-						turn_free(external_ip,sizeof(ioa_addr));
-						external_ip = NULL;
+						turn_free(turn_params.external_ip,sizeof(ioa_addr));
+						turn_params.external_ip = NULL;
 					}
 				}
 			}
@@ -928,141 +869,141 @@ static void set_option(int c, char *value)
 		break;
 	case 'v':
 		if(get_bool_value(value)) {
-			verbose = TURN_VERBOSE_NORMAL;
+			turn_params.verbose = TURN_VERBOSE_NORMAL;
 		} else {
-			verbose = TURN_VERBOSE_NONE;
+			turn_params.verbose = TURN_VERBOSE_NONE;
 		}
 		break;
 	case 'V':
 		if(get_bool_value(value)) {
-			verbose = TURN_VERBOSE_EXTRA;
+			turn_params.verbose = TURN_VERBOSE_EXTRA;
 		}
 		break;
 	case 'o':
-		turn_daemon = get_bool_value(value);
+		turn_params.turn_daemon = get_bool_value(value);
 		break;
 	case 'a':
 		if (get_bool_value(value)) {
-			users->ct = TURN_CREDENTIALS_LONG_TERM;
-			use_lt_credentials=1;
+			users_params.users.ct = TURN_CREDENTIALS_LONG_TERM;
+			users_params.use_lt_credentials=1;
 		} else {
-			users->ct = TURN_CREDENTIALS_UNDEFINED;
-			use_lt_credentials=0;
+			users_params.users.ct = TURN_CREDENTIALS_UNDEFINED;
+			users_params.use_lt_credentials=0;
 		}
 		break;
 	case 'A':
 		if (get_bool_value(value)) {
-			users->ct = TURN_CREDENTIALS_SHORT_TERM;
-			use_st_credentials=1;
+			users_params.users.ct = TURN_CREDENTIALS_SHORT_TERM;
+			users_params.use_st_credentials=1;
 		} else {
-			users->ct = TURN_CREDENTIALS_UNDEFINED;
-			use_st_credentials=0;
+			users_params.users.ct = TURN_CREDENTIALS_UNDEFINED;
+			users_params.use_st_credentials=0;
 		}
 		break;
 	case 'z':
 		if (!get_bool_value(value)) {
-			users->ct = TURN_CREDENTIALS_UNDEFINED;
-			anon_credentials = 0;
+			users_params.users.ct = TURN_CREDENTIALS_UNDEFINED;
+			users_params.anon_credentials = 0;
 		} else {
-			users->ct = TURN_CREDENTIALS_NONE;
-			anon_credentials = 1;
+			users_params.users.ct = TURN_CREDENTIALS_NONE;
+			users_params.anon_credentials = 1;
 		}
 		break;
 	case 'f':
-		fingerprint = get_bool_value(value);
+		turn_params.fingerprint = get_bool_value(value);
 		break;
 	case 'u':
 		add_user_account(value,0);
 		break;
 	case 'b':
-		STRCPY(userdb, value);
-		userdb_type = TURN_USERDB_TYPE_FILE;
+		STRCPY(users_params.userdb, value);
+		users_params.userdb_type = TURN_USERDB_TYPE_FILE;
 		break;
 #if !defined(TURN_NO_PQ)
 	case 'e':
-		STRCPY(userdb, value);
-		userdb_type = TURN_USERDB_TYPE_PQ;
+		STRCPY(users_params.userdb, value);
+		users_params.userdb_type = TURN_USERDB_TYPE_PQ;
 		break;
 #endif
 #if !defined(TURN_NO_MYSQL)
 	case 'M':
-		STRCPY(userdb, value);
-		userdb_type = TURN_USERDB_TYPE_MYSQL;
+		STRCPY(users_params.userdb, value);
+		users_params.userdb_type = TURN_USERDB_TYPE_MYSQL;
 		break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
 	case 'N':
-		STRCPY(userdb, value);
-		userdb_type = TURN_USERDB_TYPE_REDIS;
+		STRCPY(users_params.userdb, value);
+		users_params.userdb_type = TURN_USERDB_TYPE_REDIS;
 		break;
 	case 'O':
-		STRCPY(redis_statsdb, value);
-		use_redis_statsdb = 1;
+		STRCPY(turn_params.redis_statsdb, value);
+		turn_params.use_redis_statsdb = 1;
 		break;
 #endif
 	case AUTH_SECRET_OPT:
-		use_auth_secret_with_timestamp = 1;
+		users_params.use_auth_secret_with_timestamp = 1;
 		break;
 	case STATIC_AUTH_SECRET_VAL_OPT:
-		add_to_secrets_list(&static_auth_secrets,value);
-		use_auth_secret_with_timestamp = 1;
+		add_to_secrets_list(&users_params.static_auth_secrets,value);
+		users_params.use_auth_secret_with_timestamp = 1;
 		break;
 	case AUTH_SECRET_TS_EXP:
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: Option --secret-ts-exp-time deprecated and has no effect.\n");
 		break;
 	case 'r':
-		STRCPY(global_realm,value);
+		STRCPY(users_params.global_realm,value);
 		break;
 	case 'q':
-		users->user_quota = atoi(value);
+		users_params.users.user_quota = atoi(value);
 		break;
 	case 'Q':
-		users->total_quota = atoi(value);
+		users_params.users.total_quota = atoi(value);
 		break;
 	case 's':
-		max_bps = (band_limit_t)atol(value);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second is allowed per session\n",(unsigned long)max_bps);
+		turn_params.max_bps = (band_limit_t)atol(value);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second is allowed per session\n",(unsigned long)turn_params.max_bps);
 		break;
 	case NO_UDP_OPT:
-		no_udp = get_bool_value(value);
+		turn_params.no_udp = get_bool_value(value);
 		break;
 	case NO_TCP_OPT:
-		no_tcp = get_bool_value(value);
+		turn_params.no_tcp = get_bool_value(value);
 		break;
 	case NO_UDP_RELAY_OPT:
-		no_udp_relay = get_bool_value(value);
+		turn_params.no_udp_relay = get_bool_value(value);
 		break;
 	case NO_TCP_RELAY_OPT:
-		no_tcp_relay = get_bool_value(value);
+		turn_params.no_tcp_relay = get_bool_value(value);
 		break;
 	case NO_TLS_OPT:
 #if defined(TURN_NO_TLS)
-		no_tls = 1;
+		turn_params.no_tls = 1;
 #else
-		no_tls = get_bool_value(value);
+		turn_params.no_tls = get_bool_value(value);
 #endif
 		break;
 	case NO_DTLS_OPT:
 #if !defined(TURN_NO_DTLS)
-		no_dtls = get_bool_value(value);
+		turn_params.no_dtls = get_bool_value(value);
 #else
-		no_dtls = 1;
+		turn_params.no_dtls = 1;
 #endif
 		break;
 	case CERT_FILE_OPT:
-		STRCPY(cert_file,value);
+		STRCPY(turn_params.cert_file,value);
 		break;
 	case CA_FILE_OPT:
-		STRCPY(ca_cert_file,value);
+		STRCPY(turn_params.ca_cert_file,value);
 		break;
 	case DH_FILE_OPT:
-		STRCPY(dh_file,value);
+		STRCPY(turn_params.dh_file,value);
 		break;
 	case PKEY_FILE_OPT:
-		STRCPY(pkey_file,value);
+		STRCPY(turn_params.pkey_file,value);
 		break;
 	case PKEY_PWD_OPT:
-		STRCPY(tls_password,value);
+		STRCPY(turn_params.tls_password,value);
 		break;
 	case ALTERNATE_SERVER_OPT:
 		add_alternate_server(value);
@@ -1071,26 +1012,26 @@ static void set_option(int c, char *value)
 		add_aux_server(value);
 		break;
 	case UDP_SELF_BALANCE_OPT:
-		udp_self_balance = get_bool_value(value);
+		turn_params.udp_self_balance = get_bool_value(value);
 		break;
 	case TLS_ALTERNATE_SERVER_OPT:
 		add_tls_alternate_server(value);
 		break;
 	case ALLOWED_PEER_IPS:
-		if (add_ip_list_range(value, &ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
+		if (add_ip_list_range(value, &turn_params.ip_whitelist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "White listing: %s\n", value);
 		break;
 	case DENIED_PEER_IPS:
-		if (add_ip_list_range(value, &ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
+		if (add_ip_list_range(value, &turn_params.ip_blacklist) == 0) TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Black listing: %s\n", value);
 		break;
 	case CIPHER_LIST_OPT:
-		STRCPY(cipher_list,value);
+		STRCPY(turn_params.cipher_list,value);
 		break;
 	case PIDFILE_OPT:
-		STRCPY(pidfile,value);
+		STRCPY(turn_params.pidfile,value);
 		break;
 	case 'C':
 		if(value && *value) {
-			rest_api_separator=*value;
+			users_params.rest_api_separator=*value;
 		}
 		break;
 	/* these options have been already taken care of before: */
@@ -1169,7 +1110,7 @@ static void read_config_file(int argc, char **argv, int pass)
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Wrong usage of -c option\n");
 		}
 	      } else if (!strcmp(argv[i], "-n")) {
-		do_not_use_config_file = 1;
+		turn_params.do_not_use_config_file = 1;
 		config_file[0]=0;
 		return;
 	      } else if (!strcmp(argv[i], "-h")) {
@@ -1180,7 +1121,7 @@ static void read_config_file(int argc, char **argv, int pass)
 	  }
 	}
 
-	if (!do_not_use_config_file && config_file[0]) {
+	if (!turn_params.do_not_use_config_file && config_file[0]) {
 
 		FILE *f = NULL;
 		char *full_path_to_config_file = NULL;
@@ -1291,25 +1232,25 @@ static int adminmain(int argc, char **argv)
 			break;
 #endif
 		case 'b':
-		  STRCPY(userdb,optarg);
-		  userdb_type = TURN_USERDB_TYPE_FILE;
+		  STRCPY(users_params.userdb,optarg);
+		  users_params.userdb_type = TURN_USERDB_TYPE_FILE;
 		  break;
 #if !defined(TURN_NO_PQ)
 		case 'e':
-		  STRCPY(userdb,optarg);
-		  userdb_type = TURN_USERDB_TYPE_PQ;
+		  STRCPY(users_params.userdb,optarg);
+		  users_params.userdb_type = TURN_USERDB_TYPE_PQ;
 		  break;
 #endif
 #if !defined(TURN_NO_MYSQL)
 		case 'M':
-		  STRCPY(userdb,optarg);
-		  userdb_type = TURN_USERDB_TYPE_MYSQL;
+		  STRCPY(users_params.userdb,optarg);
+		  users_params.userdb_type = TURN_USERDB_TYPE_MYSQL;
 		  break;
 #endif
 #if !defined(TURN_NO_HIREDIS)
 		case 'N':
-		  STRCPY(userdb,optarg);
-		  userdb_type = TURN_USERDB_TYPE_REDIS;
+		  STRCPY(users_params.userdb,optarg);
+		  users_params.userdb_type = TURN_USERDB_TYPE_REDIS;
 		  break;
 #endif
 		case 'u':
@@ -1343,13 +1284,13 @@ static int adminmain(int argc, char **argv)
 		}
 	}
 
-	if(is_st && (userdb_type == TURN_USERDB_TYPE_FILE)) {
+	if(is_st && (users_params.userdb_type == TURN_USERDB_TYPE_FILE)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: you have to use a PostgreSQL or MySQL database with short-term credentials\n");
 		exit(-1);
 	}
 
-	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
-		STRCPY(userdb,DEFAULT_USERDB_FILE);
+	if(!strlen(users_params.userdb) && (users_params.userdb_type == TURN_USERDB_TYPE_FILE))
+		STRCPY(users_params.userdb,DEFAULT_USERDB_FILE);
 
 	if(ct == TA_COMMAND_UNKNOWN) {
 		fprintf(stderr,"\n%s\n", AdminUsage);
@@ -1415,7 +1356,7 @@ static void print_features(void)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "OpenSSL version: antique\n");
 #endif
 
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)net_engine_version, net_engine_version_txt[(int)net_engine_version]);
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Default Net Engine version: %d (%s)\n\n=====================================================\n\n", (int)turn_params.net_engine_version, turn_params.net_engine_version_txt[(int)turn_params.net_engine_version]);
 
 }
 
@@ -1425,22 +1366,22 @@ static void print_features(void)
 
 static void set_network_engine(void)
 {
-	if(net_engine_version != NEV_UNKNOWN)
+	if(turn_params.net_engine_version != NEV_UNKNOWN)
 		return;
-	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #if defined(SO_REUSEPORT)
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
-	net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_THREAD;
 #else /* BSD ? */
-	net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
 #endif /* Linux */
 #else /* defined(SO_REUSEPORT) */
 #if defined(__linux__) || defined(__LINUX__) || defined(__linux) || defined(linux__) || defined(LINUX) || defined(__LINUX) || defined(LINUX__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
 	//net_engine_version = NEV_UDP_SOCKET_PER_SESSION;
-	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #else
-	net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
+	turn_params.net_engine_version = NEV_UDP_SOCKET_PER_ENDPOINT;
 #endif /* Linux version */
 #endif /* Linux */
 #endif /* defined(SO_REUSEPORT) */
@@ -1484,14 +1425,14 @@ int main(int argc, char **argv)
 
 	set_execdir();
 
-	init_turn_server_addrs_list(&alternate_servers_list);
-	init_turn_server_addrs_list(&tls_alternate_servers_list);
-	init_turn_server_addrs_list(&aux_servers_list);
+	init_turn_server_addrs_list(&turn_params.alternate_servers_list);
+	init_turn_server_addrs_list(&turn_params.tls_alternate_servers_list);
+	init_turn_server_addrs_list(&turn_params.aux_servers_list);
 
 	set_network_engine();
 
 	init_listener();
-	init_secrets_list(&static_auth_secrets);
+	init_secrets_list(&users_params.static_auth_secrets);
 	init_dynamic_ip_lists();
 
 	if (!strstr(argv[0], "turnadmin")) {
@@ -1515,11 +1456,11 @@ int main(int argc, char **argv)
 	optind = 0;
 
 #if defined(TURN_NO_TLS)
-	no_tls = 1;
+	turn_params.no_tls = 1;
 #endif
 
 #if defined(TURN_NO_DTLS)
-	no_dtls = 1;
+	turn_params.no_dtls = 1;
 #endif
 
 #if defined(_SC_NPROCESSORS_ONLN)
@@ -1532,17 +1473,16 @@ int main(int argc, char **argv)
 		 else if(cpus>MAX_NUMBER_OF_GENERAL_RELAY_SERVERS)
 			 cpus = MAX_NUMBER_OF_GENERAL_RELAY_SERVERS;
 
-		 general_relay_servers_number = (turnserver_id)cpus;
+		 turn_params.general_relay_servers_number = (turnserver_id)cpus;
 	}
 
 #endif
 
-	users = (turn_user_db*)turn_malloc(sizeof(turn_user_db));
-	ns_bzero(users,sizeof(turn_user_db));
-	users->ct = TURN_CREDENTIALS_NONE;
-	users->static_accounts = ur_string_map_create(free);
-	users->dynamic_accounts = ur_string_map_create(free);
-	users->alloc_counters = ur_string_map_create(NULL);
+	ns_bzero(&users_params.users,sizeof(turn_user_db));
+	users_params.users.ct = TURN_CREDENTIALS_NONE;
+	users_params.users.static_accounts = ur_string_map_create(free);
+	users_params.users.dynamic_accounts = ur_string_map_create(free);
+	users_params.users.alloc_counters = ur_string_map_create(NULL);
 
 	if(strstr(argv[0],"turnadmin"))
 		return adminmain(argc,argv);
@@ -1550,7 +1490,7 @@ int main(int argc, char **argv)
 	{
 		unsigned long mfn = set_system_parameters(1);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
-		if(net_engine_version == 1)
+		if(turn_params.net_engine_version == 1)
 			mfn = mfn/3;
 		else
 			mfn = mfn/2;
@@ -1579,25 +1519,25 @@ int main(int argc, char **argv)
 	  }
 	}
 
-	if(no_udp_relay && no_tcp_relay) {
+	if(turn_params.no_udp_relay && turn_params.no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: --no-udp-relay and --no-tcp-relay options cannot be used together.\n");
 		exit(-1);
 	}
 
-	if(no_udp_relay) {
+	if(turn_params.no_udp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-udp-relay: UDP relay endpoints are not allowed.\n");
 	}
 
-	if(no_tcp_relay) {
+	if(turn_params.no_tcp_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nCONFIG: --no-tcp-relay: TCP relay endpoints are not allowed.\n");
 	}
 
-	if(server_relay) {
+	if(turn_params.server_relay) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIG: WARNING: --server-relay: NON-STANDARD AND DANGEROUS OPTION.\n");
 	}
 
-	if(!strlen(userdb) && (userdb_type == TURN_USERDB_TYPE_FILE))
-			STRCPY(userdb,DEFAULT_USERDB_FILE);
+	if(!strlen(users_params.userdb) && (users_params.userdb_type == TURN_USERDB_TYPE_FILE))
+			STRCPY(users_params.userdb,DEFAULT_USERDB_FILE);
 
 	read_userdb_file(0);
 	update_white_and_black_lists();
@@ -1609,50 +1549,50 @@ int main(int argc, char **argv)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ALERT: Unknown argument: %s\n",argv[argc-1]);
 	}
 
-	if(use_lt_credentials && anon_credentials) {
+	if(users_params.use_lt_credentials && users_params.anon_credentials) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -z options cannot be used together.\n");
 		exit(-1);
 	}
 
-	if(use_st_credentials && anon_credentials) {
+	if(users_params.use_st_credentials && users_params.anon_credentials) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -A and -z options cannot be used together.\n");
 		exit(-1);
 	}
 
-	if(use_lt_credentials && use_st_credentials) {
+	if(users_params.use_lt_credentials && users_params.use_st_credentials) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIG ERROR: -a and -A options cannot be used together.\n");
 		exit(-1);
 	}
 
-	if(!use_lt_credentials && !anon_credentials && !use_st_credentials) {
-		if(users_number) {
+	if(!users_params.use_lt_credentials && !users_params.anon_credentials && !users_params.use_st_credentials) {
+		if(users_params.users_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified long-term user accounts, (-u option) \n	but you did not specify the long-term credentials option\n	(-a or --lt-cred-mech option).\n 	I am turning --lt-cred-mech ON for you, but double-check your configuration.\n");
-			users->ct = TURN_CREDENTIALS_LONG_TERM;
-			use_lt_credentials=1;
+			users_params.users.ct = TURN_CREDENTIALS_LONG_TERM;
+			users_params.use_lt_credentials=1;
 		} else {
-			users->ct = TURN_CREDENTIALS_NONE;
-			use_lt_credentials=0;
+			users_params.users.ct = TURN_CREDENTIALS_NONE;
+			users_params.use_lt_credentials=0;
 		}
 	}
 
-	if(use_lt_credentials) {
-		if(!users_number && (userdb_type == TURN_USERDB_TYPE_FILE) && !use_auth_secret_with_timestamp) {
+	if(users_params.use_lt_credentials) {
+		if(!users_params.users_number && (users_params.userdb_type == TURN_USERDB_TYPE_FILE) && !users_params.use_auth_secret_with_timestamp) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did not specify any user account, (-u option) \n	but you did specified a long-term credentials mechanism option (-a option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
-		} else if(!global_realm[0]) {
+		} else if(!users_params.global_realm[0]) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you did specify the long-term credentials usage\n but you did not specify the realm option (-r option).\n	The TURN Server will be inaccessible.\n		Check your configuration.\n");
 		}
 	}
 
-	if(anon_credentials) {
-		if(users_number) {
+	if(users_params.anon_credentials) {
+		if(users_params.users_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "\nCONFIGURATION ALERT: you specified user accounts, (-u option) \n	but you also specified the anonymous user access option (-z or --no-auth option).\n 	User accounts will be ignored.\n");
-			users->ct = TURN_CREDENTIALS_NONE;
-			use_lt_credentials=0;
-			use_st_credentials=0;
+			users_params.users.ct = TURN_CREDENTIALS_NONE;
+			users_params.use_lt_credentials=0;
+			users_params.use_st_credentials=0;
 		}
 	}
 
-	if(use_auth_secret_with_timestamp && use_st_credentials) {
+	if(users_params.use_auth_secret_with_timestamp && users_params.use_st_credentials) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "\nCONFIGURATION ERROR: Authentication secret (REST API) cannot be used with short-term credentials mechanism.\n");
 		exit(-1);
 	}
@@ -1660,27 +1600,27 @@ int main(int argc, char **argv)
 	openssl_setup();
 
 	int local_listeners = 0;
-	if (!listener.addrs_number) {
+	if (!turn_params.listener.addrs_number) {
 		make_local_listeners_list();
 		local_listeners = 1;
-		if (!listener.addrs_number) {
+		if (!turn_params.listener.addrs_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
 		}
 	}
 
-	if (!relays_number) {
-		if(!local_listeners && listener.addrs_number && listener.addrs) {
+	if (!turn_params.relays_number) {
+		if(!local_listeners && turn_params.listener.addrs_number && turn_params.listener.addrs) {
 			size_t la = 0;
-			for(la=0;la<listener.addrs_number;la++) {
-				if(listener.addrs[la]) {
-					add_relay_addr(listener.addrs[la]);
+			for(la=0;la<turn_params.listener.addrs_number;la++) {
+				if(turn_params.listener.addrs[la]) {
+					add_relay_addr(turn_params.listener.addrs[la]);
 				}
 			}
 		}
-		if (!relays_number) {
-			default_relays = 1;
+		if (!turn_params.relays_number) {
+			turn_params.default_relays = 1;
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 			if(make_local_relays_list(0,AF_INET)<1) {
 				make_local_relays_list(1,AF_INET);
@@ -1691,7 +1631,7 @@ int main(int argc, char **argv)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		}
 
-		if (!relays_number) {
+		if (!turn_params.relays_number) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the relay address(es)\n",
 							__FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
@@ -1699,7 +1639,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(turn_daemon) {
+	if(turn_params.turn_daemon) {
 #if !defined(TURN_HAS_DAEMON)
 		pid_t pid = fork();
 		if(pid>0)
@@ -1717,14 +1657,14 @@ int main(int argc, char **argv)
 #endif
 	}
 
-	if(pidfile[0]) {
+	if(turn_params.pidfile[0]) {
 
 		char s[2049];
-		FILE *f = fopen(pidfile,"w");
+		FILE *f = fopen(turn_params.pidfile,"w");
 		if(f) {
-			STRCPY(s,pidfile);
+			STRCPY(s,turn_params.pidfile);
 		} else {
-		  snprintf(s,sizeof(s),"Cannot create pid file: %s",pidfile);
+		  snprintf(s,sizeof(s),"Cannot create pid file: %s",turn_params.pidfile);
 			perror(s);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "%s\n", s);
 
@@ -1760,7 +1700,7 @@ int main(int argc, char **argv)
 
 	drop_privileges();
 
-	run_listener_server(listener.event_base);
+	run_listener_server(turn_params.listener.event_base);
 
 	return 0;
 }
@@ -1867,8 +1807,8 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	    goto keyerr;
 	  }
 
-	  strncpy(fn,full_path_to_file,sizeof(cert_file)-1);
-	  fn[sizeof(cert_file)-1]=0;
+	  strncpy(fn,full_path_to_file,sizeof(turn_params.cert_file)-1);
+	  fn[sizeof(turn_params.cert_file)-1]=0;
 
 	  if(full_path_to_file)
 	    turn_free(full_path_to_file,strlen(full_path_to_file)+1);
@@ -1878,8 +1818,8 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	keyerr:
 	{
 		if(critical) {
-			no_tls = 1;
-			no_dtls = 1;
+			turn_params.no_tls = 1;
+			turn_params.no_dtls = 1;
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot start TLS and DTLS listeners because %s file is not set properly\n",file_title);
 		}
 		if(full_path_to_file)
@@ -1890,12 +1830,12 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 
 static void adjust_key_file_names(void)
 {
-	if(ca_cert_file[0])
-		adjust_key_file_name(ca_cert_file,"CA",1);
-	adjust_key_file_name(cert_file,"certificate",1);
-	adjust_key_file_name(pkey_file,"private key",1);
-	if(dh_file[0])
-		adjust_key_file_name(dh_file,"DH key",0);
+	if(turn_params.ca_cert_file[0])
+		adjust_key_file_name(turn_params.ca_cert_file,"CA",1);
+	adjust_key_file_name(turn_params.cert_file,"certificate",1);
+	adjust_key_file_name(turn_params.pkey_file,"private key",1);
+	if(turn_params.dh_file[0])
+		adjust_key_file_name(turn_params.dh_file,"DH key",0);
 }
 
 static DH *get_dh566(void) {
@@ -2017,43 +1957,43 @@ static int pem_password_func(char *buf, int size, int rwflag, void *password)
 
 static void set_ctx(SSL_CTX* ctx, const char *protocol)
 {
-	SSL_CTX_set_default_passwd_cb_userdata(ctx, tls_password);
+	SSL_CTX_set_default_passwd_cb_userdata(ctx, turn_params.tls_password);
 
 	SSL_CTX_set_default_passwd_cb(ctx, pem_password_func);
 
-	if(!(cipher_list[0]))
-		STRCPY(cipher_list,DEFAULT_CIPHER_LIST);
+	if(!(turn_params.cipher_list[0]))
+		STRCPY(turn_params.cipher_list,DEFAULT_CIPHER_LIST);
 
-	SSL_CTX_set_cipher_list(ctx, cipher_list);
+	SSL_CTX_set_cipher_list(ctx, turn_params.cipher_list);
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
-	if (!SSL_CTX_use_certificate_chain_file(ctx, cert_file)) {
+	if (!SSL_CTX_use_certificate_chain_file(ctx, turn_params.cert_file)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no certificate found\n", protocol);
 	} else {
-		print_abs_file_name(protocol, ": Certificate", cert_file);
+		print_abs_file_name(protocol, ": Certificate", turn_params.cert_file);
 	}
 
-	if (!SSL_CTX_use_PrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
-		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, pkey_file, SSL_FILETYPE_PEM)) {
+	if (!SSL_CTX_use_PrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
+		if (!SSL_CTX_use_RSAPrivateKey_file(ctx, turn_params.pkey_file, SSL_FILETYPE_PEM)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: no valid private key found, or invalid private key password provided\n", protocol);
 		} else {
-			print_abs_file_name(protocol, ": Private RSA key", pkey_file);
+			print_abs_file_name(protocol, ": Private RSA key", turn_params.pkey_file);
 		}
 	} else {
-		print_abs_file_name(protocol, ": Private key", pkey_file);
+		print_abs_file_name(protocol, ": Private key", turn_params.pkey_file);
 	}
 
 	if (!SSL_CTX_check_private_key(ctx)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: ERROR: invalid private key\n", protocol);
 	}
 
-	if(ca_cert_file[0]) {
+	if(turn_params.ca_cert_file[0]) {
 
-		if (!SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL )) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot load CA from file: %s\n", ca_cert_file);
+		if (!SSL_CTX_load_verify_locations(ctx, turn_params.ca_cert_file, NULL )) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot load CA from file: %s\n", turn_params.ca_cert_file);
 		}
 
-		SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(ca_cert_file));
+		SSL_CTX_set_client_CA_list(ctx,SSL_load_client_CA_file(turn_params.ca_cert_file));
 
 		/* Set to require peer (client) certificate verification */
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, NULL);
@@ -2069,10 +2009,10 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{ //Elliptic curve algorithms:
 		int nid = NID_X9_62_prime256v1;
 
-		if (ec_curve_name[0]) {
-			nid = OBJ_sn2nid(ec_curve_name);
+		if (turn_params.ec_curve_name[0]) {
+			nid = OBJ_sn2nid(turn_params.ec_curve_name);
 			if (nid == 0) {
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",ec_curve_name);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"unknown curve name (%s), using NID_X9_62_prime256v1\n",turn_params.ec_curve_name);
 				nid = NID_X9_62_prime256v1;
 			}
 		}
@@ -2091,23 +2031,23 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 	{//DH algorithms:
 
 		DH *dh = NULL;
-		if(dh_file[0]) {
-			FILE *paramfile = fopen(dh_file, "r");
+		if(turn_params.dh_file[0]) {
+			FILE *paramfile = fopen(turn_params.dh_file, "r");
 			 if (!paramfile) {
 				 perror("Cannot open DH file");
 			 } else {
 			   dh = PEM_read_DHparams(paramfile, NULL, NULL, NULL);
 			   fclose(paramfile);
 			   if(dh) {
-				   dh_key_size = DH_CUSTOM;
+				   turn_params.dh_key_size = DH_CUSTOM;
 			   }
 			 }
 		}
 
 		if(!dh) {
-			if(dh_key_size == DH_566)
+			if(turn_params.dh_key_size == DH_566)
 				dh = get_dh566();
-			else if(dh_key_size == DH_2066)
+			else if(turn_params.dh_key_size == DH_2066)
 				dh = get_dh2066();
 			else
 				dh = get_dh1066();
@@ -2127,21 +2067,21 @@ static void set_ctx(SSL_CTX* ctx, const char *protocol)
 		int op = 0;
 
 #if defined(SSL_OP_NO_SSLv2)
-		if(no_sslv2)
+		if(turn_params.no_sslv2)
 			op |= SSL_OP_NO_SSLv2;
 #endif
-		if(no_sslv3)
+		if(turn_params.no_sslv3)
 			op |= SSL_OP_NO_SSLv3;
 
-		if(no_tlsv1)
+		if(turn_params.no_tlsv1)
 			op |= SSL_OP_NO_TLSv1;
 
 #if defined(SSL_OP_NO_TLSv1_1)
-		if(no_tlsv1_1)
+		if(turn_params.no_tlsv1_1)
 			op |= SSL_OP_NO_TLSv1_1;
 #endif
 #if defined(SSL_OP_NO_TLSv1_2)
-		if(no_tlsv1_2)
+		if(turn_params.no_tlsv1_2)
 			op |= SSL_OP_NO_TLSv1_2;
 #endif
 
@@ -2168,61 +2108,61 @@ static void openssl_setup(void)
 	OpenSSL_add_ssl_algorithms();
 
 #if defined(TURN_NO_TLS)
-	if(!no_tls) {
+	if(!turn_params.no_tls) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "WARNING: TLS is not supported\n");
-		no_tls = 1;
+		turn_params.no_tls = 1;
 	}
 #endif
 
-	if(!(no_tls && no_dtls) && !cert_file[0]) {
+	if(!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.cert_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: certificate file is not specified, I cannot start TLS/DTLS services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
-		no_tls = 1;
-		no_dtls = 1;
+		turn_params.no_tls = 1;
+		turn_params.no_dtls = 1;
 	}
 
-	if(!(no_tls && no_dtls) && !pkey_file[0]) {
+	if(!(turn_params.no_tls && turn_params.no_dtls) && !turn_params.pkey_file[0]) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"\nWARNING: private key file is not specified, I cannot start TLS/DTLS services.\nOnly 'plain' UDP/TCP listeners can be started.\n");
-		no_tls = 1;
-		no_dtls = 1;
+		turn_params.no_tls = 1;
+		turn_params.no_dtls = 1;
 	}
 
-	if(!(no_tls && no_dtls)) {
+	if(!(turn_params.no_tls && turn_params.no_dtls)) {
 		adjust_key_file_names();
 	}
 
-	if(!no_tls) {
-		tls_ctx_ssl23 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
-		set_ctx(tls_ctx_ssl23,"SSL23");
-		if(!no_tlsv1) {
-			tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
-			set_ctx(tls_ctx_v1_0,"TLS1.0");
+	if(!turn_params.no_tls) {
+		turn_params.tls_ctx_ssl23 = SSL_CTX_new(SSLv23_server_method()); /*compatibility mode */
+		set_ctx(turn_params.tls_ctx_ssl23,"SSL23");
+		if(!turn_params.no_tlsv1) {
+			turn_params.tls_ctx_v1_0 = SSL_CTX_new(TLSv1_server_method());
+			set_ctx(turn_params.tls_ctx_v1_0,"TLS1.0");
 		}
 #if defined(SSL_TXT_TLSV1_1)
-		if(!no_tlsv1_1) {
-			tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
-			set_ctx(tls_ctx_v1_1,"TLS1.1");
+		if(!turn_params.no_tlsv1_1) {
+			turn_params.tls_ctx_v1_1 = SSL_CTX_new(TLSv1_1_server_method());
+			set_ctx(turn_params.tls_ctx_v1_1,"TLS1.1");
 		}
 #if defined(SSL_TXT_TLSV1_2)
-		if(!no_tlsv1_2) {
-			tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
-			set_ctx(tls_ctx_v1_2,"TLS1.2");
+		if(!turn_params.no_tlsv1_2) {
+			turn_params.tls_ctx_v1_2 = SSL_CTX_new(TLSv1_2_server_method());
+			set_ctx(turn_params.tls_ctx_v1_2,"TLS1.2");
 		}
 #endif
 #endif
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n",cipher_list);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "TLS cipher suite: %s\n",turn_params.cipher_list);
 	}
 
-	if(!no_dtls) {
+	if(!turn_params.no_dtls) {
 #if defined(TURN_NO_DTLS)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "ERROR: DTLS is not supported.\n");
 #else
 		if(OPENSSL_VERSION_NUMBER < 0x10000000L) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "WARNING: TURN Server was compiled with rather old OpenSSL version, DTLS may not be working correctly.\n");
 		}
-		dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
-		set_ctx(dtls_ctx,"DTLS");
-		SSL_CTX_set_read_ahead(dtls_ctx, 1);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",cipher_list);
+		turn_params.dtls_ctx = SSL_CTX_new(DTLSv1_server_method());
+		set_ctx(turn_params.dtls_ctx,"DTLS");
+		SSL_CTX_set_read_ahead(turn_params.dtls_ctx, 1);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "DTLS cipher suite: %s\n",turn_params.cipher_list);
 #endif
 	}
 }

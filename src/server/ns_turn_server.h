@@ -51,7 +51,7 @@ typedef struct _turn_server_addrs_list turn_server_addrs_list_t;
 
 void init_turn_server_addrs_list(turn_server_addrs_list_t *l);
 
-typedef volatile int vint;
+typedef int vint;
 
 typedef vint* vintp;
 

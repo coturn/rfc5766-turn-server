@@ -284,7 +284,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			STRCPY(e->relay_ifname, relay_ifname);
 		if (relay_addrs) {
 			size_t i = 0;
-			e->relay_addrs = (ioa_addr*)turn_malloc(relays_number * sizeof(ioa_addr));
+			e = (ioa_engine_handle)turn_realloc(e, sizeof(ioa_engine), sizeof(ioa_engine) + relays_number * sizeof(ioa_addr));
 			for (i = 0; i < relays_number; i++) {
 				if(make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]))<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",relay_addrs[i]);
@@ -292,7 +292,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			}
 			e->relays_number = relays_number;
 		}
-		e->relay_addr_counter = (size_t) random() % relays_number;
+		e->relay_addr_counter = (unsigned short) random();
 		timer_handler(e,e);
 		e->timer_ev = set_ioa_timer(e, 1, 0, timer_handler, e, 1, "timer_handler");
 		return e;
@@ -360,7 +360,8 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket
 
 			for(i=0; i<e->relays_number; i++) {
 
-				e->relay_addr_counter = e->relay_addr_counter % e->relays_number;
+				if(e->relay_addr_counter >= e->relays_number)
+					e->relay_addr_counter = 0;
 				const ioa_addr *relay_addr = &(e->relay_addrs[e->relay_addr_counter++]);
 
 				switch (address_family){

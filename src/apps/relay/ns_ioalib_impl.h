@@ -126,11 +126,6 @@ struct _ioa_engine
 {
   struct event_base *event_base;
   int deallocate_eb;
-  s08bits relay_ifname[1025];
-  size_t relays_number;
-  size_t relay_addr_counter;
-  ioa_addr *relay_addrs;
-  int default_relays;
   int verbose;
   turnipports* tp;
   rtcp_map *map_rtcp;
@@ -150,6 +145,12 @@ struct _ioa_engine
   s08bits cmsg[TURN_CMSG_SZ+1];
   int predef_timer_intervals[PREDEF_TIMERS_NUM];
   struct timeval predef_timers[PREDEF_TIMERS_NUM];
+  /* Relays */
+  s08bits relay_ifname[1025];
+  int default_relays;
+  size_t relays_number;
+  size_t relay_addr_counter;
+  ioa_addr relay_addrs[0];
 };
 
 #define SOCKET_MAGIC (0xABACADEF)

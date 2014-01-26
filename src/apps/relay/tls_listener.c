@@ -29,6 +29,7 @@
  */
 
 #include "apputils.h"
+#include "mainrelay.h"
 
 #include "ns_turn_utils.h"
 
@@ -80,9 +81,9 @@ static void server_input_handler(struct evconnlistener *l, evutil_socket_t fd,
 
 	SOCKET_TYPE st = TENTATIVE_TCP_SOCKET;
 
-	if(no_tls)
+	if(turn_params.no_tls)
 		st = TCP_SOCKET;
-	else if(no_tcp)
+	else if(turn_params.no_tcp)
 		st = TLS_SOCKET;
 
 	ioa_socket_handle ioas =
@@ -170,11 +171,11 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
     return -1;
   }
 
-  if(!no_tcp && !no_tls)
+  if(!turn_params.no_tcp && !turn_params.no_tls)
 	  addr_debug_print(server->verbose, &server->addr,"TCP/TLS listener opened on ");
-  else if(!no_tls)
+  else if(!turn_params.no_tls)
 	  addr_debug_print(server->verbose, &server->addr,"TLS listener opened on ");
-  else if(!no_tcp)
+  else if(!turn_params.no_tcp)
 	  addr_debug_print(server->verbose, &server->addr,"TCP listener opened on ");
 
   FUNCEND;

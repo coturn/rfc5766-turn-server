@@ -45,13 +45,6 @@ extern "C" {
 
 ///////////////////////////////////////////
 
-extern int no_udp;
-extern int no_tcp;
-extern int no_tls;
-extern int no_dtls;
-
-///////////////////////////////////////////
-
 struct dtls_listener_relay_server_info;
 typedef struct dtls_listener_relay_server_info dtls_listener_relay_server_type;
 

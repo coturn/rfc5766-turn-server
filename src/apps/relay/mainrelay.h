@@ -91,21 +91,21 @@
 extern "C" {
 #endif
 
-//////////////// OpenSSL Init //////////////////////
+////////////// DEFINES ////////////////////////////
 
-extern SSL_CTX *tls_ctx_ssl23;
-extern SSL_CTX *tls_ctx_v1_0;
+#define DEFAULT_CONFIG_FILE "turnserver.conf"
 
-#if defined(SSL_TXT_TLSV1_1)
-extern SSL_CTX *tls_ctx_v1_1;
-#if defined(SSL_TXT_TLSV1_2)
-extern SSL_CTX *tls_ctx_v1_2;
-#endif
-#endif
+#define DEFAULT_CIPHER_LIST "DEFAULT"
+/* "ALL:eNULL:aNULL:NULL" */
 
-extern SSL_CTX *dtls_ctx;
+#define DEFAULT_EC_CURVE_NAME "prime256v1"
 
-extern SHATYPE shatype;
+#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
+
+#define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
+#define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
+
+/////////// TYPES ///////////////////////////////////
 
 enum _DH_KEY_SIZE {
 	DH_566,
@@ -116,76 +116,7 @@ enum _DH_KEY_SIZE {
 
 typedef enum _DH_KEY_SIZE DH_KEY_SIZE;
 
-extern DH_KEY_SIZE dh_key_size;
-
-//////////////// Common params ////////////////////
-
-extern int verbose;
-extern int turn_daemon;
-extern vint stale_nonce;
-extern vint stun_only;
-extern vint no_stun;
-extern vint secure_stun;
-extern int server_relay;
-
-extern int do_not_use_config_file;
-
-extern char pidfile[1025];
-
-#define DEFAULT_CONFIG_FILE "turnserver.conf"
-
-#define DEFAULT_CIPHER_LIST "DEFAULT"
-/* "ALL:eNULL:aNULL:NULL" */
-extern char cipher_list[1025];
-#define DEFAULT_EC_CURVE_NAME "prime256v1"
-extern char ec_curve_name[33];
-
-extern char ca_cert_file[1025];
-extern char cert_file[1025];
-extern char pkey_file[1025];
-extern char tls_password[513];
-extern char dh_file[1025];
-
-extern int no_sslv2;
-extern int no_sslv3;
-extern int no_tlsv1;
-extern int no_tlsv1_1;
-extern int no_tlsv1_2;
-
-////////////////  Listener server /////////////////
-
-extern int listener_port;
-extern int tls_listener_port;
-extern int alt_listener_port;
-extern int alt_tls_listener_port;
-extern int rfc5780;
-
-static inline int get_alt_listener_port(void) {
-	if(alt_listener_port<1)
-		return listener_port + 1;
-	return alt_listener_port;
-}
-
-static inline int get_alt_tls_listener_port(void) {
-	if(alt_tls_listener_port<1)
-		return tls_listener_port + 1;
-	return alt_tls_listener_port;
-}
-
-extern int no_udp;
-extern int no_tcp;
-extern int no_tls;
-extern int no_dtls;
-
-extern vint no_tcp_relay;
-extern vint no_udp_relay;
-
-extern char listener_ifname[1025];
-
-#if !defined(TURN_NO_HIREDIS)
-extern char redis_statsdb[1025];
-extern int use_redis_statsdb;
-#endif
+///////// LISTENER SERVER TYPES /////////////////////
 
 struct message_to_listener_to_client {
 	ioa_addr origin;
@@ -225,59 +156,19 @@ struct listener_server {
 #endif
 };
 
-extern struct listener_server listener;
-
-extern ip_range_list_t ip_whitelist;
-extern ip_range_list_t ip_blacklist;
-
 enum _NET_ENG_VERSION {
 	NEV_UNKNOWN=0,
 	NEV_MIN,
 	NEV_UDP_SOCKET_PER_SESSION=NEV_MIN,
 	NEV_UDP_SOCKET_PER_ENDPOINT,
 	NEV_UDP_SOCKET_PER_THREAD,
-	NEV_MAX=NEV_UDP_SOCKET_PER_THREAD
+	NEV_MAX=NEV_UDP_SOCKET_PER_THREAD,
+	NEV_TOTAL
 };
 
 typedef enum _NET_ENG_VERSION NET_ENG_VERSION;
 
-extern NET_ENG_VERSION net_engine_version;
-extern const char* net_engine_version_txt[];
-
-//////////////// Relay servers //////////////////////////////////
-
-#define MAX_NUMBER_OF_GENERAL_RELAY_SERVERS ((u08bits)(0x80))
-
-#define TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP MAX_NUMBER_OF_GENERAL_RELAY_SERVERS
-#define TURNSERVER_ID_BOUNDARY_BETWEEN_UDP_AND_TCP TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP
-
-extern band_limit_t max_bps;
-
-extern u16bits min_port;
-extern u16bits max_port;
-
-extern vint no_multicast_peers;
-extern vint no_loopback_peers;
-
-extern char relay_ifname[1025];
-
-extern size_t relays_number;
-extern char **relay_addrs;
-extern int default_relays;
-
-// Single global public IP.
-// If multiple public IPs are used
-// then ioa_addr mapping must be used.
-extern ioa_addr *external_ip;
-
-extern int fingerprint;
-
-extern turnserver_id general_relay_servers_number;
-extern turnserver_id udp_relay_servers_number;
-
-extern vint mobility;
-
-////////////// Auth server ////////////////
+////////////// Auth Server Types ////////////////
 
 struct auth_server {
 	struct event_base* event_base;
@@ -286,19 +177,150 @@ struct auth_server {
 	pthread_t thr;
 };
 
-extern struct auth_server authserver;
+/////////// PARAMS //////////////////////////////////
+
+typedef struct _turn_params_ {
+
+//////////////// OpenSSL group //////////////////////
+
+  SSL_CTX *tls_ctx_ssl23;
+  
+  SSL_CTX *tls_ctx_v1_0;
+  
+#if defined(SSL_TXT_TLSV1_1)
+  SSL_CTX *tls_ctx_v1_1;
+#if defined(SSL_TXT_TLSV1_2)
+  SSL_CTX *tls_ctx_v1_2;
+#endif
+#endif
+  
+  SSL_CTX *dtls_ctx;
+  
+  SHATYPE shatype;
+  
+  DH_KEY_SIZE dh_key_size;
+  
+  char cipher_list[1025];
+  char ec_curve_name[33];
+  
+  char ca_cert_file[1025];
+  char cert_file[1025];
+  char pkey_file[1025];
+  char tls_password[513];
+  char dh_file[1025];
+  
+  int no_sslv2;
+  int no_sslv3;
+  int no_tlsv1;
+  int no_tlsv1_1;
+  int no_tlsv1_2;
+  int no_tls;
+  int no_dtls;
+
+//////////////// Common params ////////////////////
+
+  int verbose;
+  int turn_daemon;
+  vint stale_nonce;
+  vint stun_only;
+  vint no_stun;
+  vint secure_stun;
+  int server_relay;
+
+  int do_not_use_config_file;
+
+  char pidfile[1025];
+
+  ////////////////  Listener server /////////////////
+
+  int listener_port;
+  int tls_listener_port;
+  int alt_listener_port;
+  int alt_tls_listener_port;
+  int rfc5780;
+
+  int no_udp;
+  int no_tcp;
+  
+  vint no_tcp_relay;
+  vint no_udp_relay;
+
+  char listener_ifname[1025];
+
+#if !defined(TURN_NO_HIREDIS)
+  char redis_statsdb[1025];
+  int use_redis_statsdb;
+#endif
+
+  struct listener_server listener;
+
+  ip_range_list_t ip_whitelist;
+  ip_range_list_t ip_blacklist;
+
+  NET_ENG_VERSION net_engine_version;
+  const char* net_engine_version_txt[NEV_TOTAL];
+
+//////////////// Relay servers /////////////
+
+  band_limit_t max_bps;
+
+  u16bits min_port;
+  u16bits max_port;
+
+  vint no_multicast_peers;
+  vint no_loopback_peers;
+
+  char relay_ifname[1025];
+
+  size_t relays_number;
+  char **relay_addrs;
+  int default_relays;
+
+  // Single global public IP.
+  // If multiple public IPs are used
+  // then ioa_addr mapping must be used.
+  ioa_addr *external_ip;
+
+  int fingerprint;
+
+  turnserver_id general_relay_servers_number;
+  turnserver_id udp_relay_servers_number;
+
+  vint mobility;
+
+////////////// Auth server ////////////////
+
+  struct auth_server authserver;
 
 /////////////// AUX SERVERS ////////////////
 
-extern turn_server_addrs_list_t aux_servers_list;
-extern int udp_self_balance;
-
-void add_aux_server(const char *saddr);
+  turn_server_addrs_list_t aux_servers_list;
+  int udp_self_balance;
 
 /////////////// ALTERNATE SERVERS ////////////////
 
-extern turn_server_addrs_list_t alternate_servers_list;
-extern turn_server_addrs_list_t tls_alternate_servers_list;
+  turn_server_addrs_list_t alternate_servers_list;
+  turn_server_addrs_list_t tls_alternate_servers_list;
+
+} turn_params_t;
+
+extern turn_params_t turn_params;
+
+////////////////  Listener server /////////////////
+
+static inline int get_alt_listener_port(void) {
+	if(turn_params.alt_listener_port<1)
+		return turn_params.listener_port + 1;
+	return turn_params.alt_listener_port;
+}
+
+static inline int get_alt_tls_listener_port(void) {
+	if(turn_params.alt_tls_listener_port<1)
+		return turn_params.tls_listener_port + 1;
+	return turn_params.alt_tls_listener_port;
+}
+
+void add_aux_server(const char *saddr);
 
 void add_alternate_server(const char *saddr);
 void del_alternate_server(const char *saddr);
