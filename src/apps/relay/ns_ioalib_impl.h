@@ -150,7 +150,7 @@ struct _ioa_engine
   int default_relays;
   size_t relays_number;
   size_t relay_addr_counter;
-  ioa_addr relay_addrs[0];
+  ioa_addr relay_addrs[1];
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
