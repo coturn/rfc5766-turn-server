@@ -302,6 +302,10 @@ typedef struct _turn_params_ {
   turn_server_addrs_list_t alternate_servers_list;
   turn_server_addrs_list_t tls_alternate_servers_list;
 
+////////////// USERS /////////////////////
+
+  users_params_t users_params;
+
 } turn_params_t;
 
 extern turn_params_t turn_params;

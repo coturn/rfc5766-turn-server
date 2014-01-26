@@ -230,7 +230,7 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
       continue;
     }
     
-    if(users_params.use_st_credentials) {
+    if(turn_params.users_params.use_st_credentials) {
       st_password_t pwd;
       if(get_user_pwd(am.username,pwd)<0) {
 	am.success = 0;
@@ -1287,8 +1287,8 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 			 rs->id, turn_params.verbose,
 			 rs->ioa_eng, 0,
 			 turn_params.fingerprint, DONT_FRAGMENT_SUPPORTED,
-			 users_params.users.ct,
-			 (u08bits*)users_params.global_realm,
+			 turn_params.users_params.users.ct,
+			 (u08bits*)turn_params.users_params.global_realm,
 			 start_user_check,
 			 check_new_allocation_quota,
 			 release_allocation_quota,

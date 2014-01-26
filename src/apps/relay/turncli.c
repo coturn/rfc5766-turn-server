@@ -362,11 +362,11 @@ static void change_cli_param(struct cli_session* cs, const char* pn)
 					*(ccmds[i].data) = (vint)pnv;
 					cli_print_uint(cs,(unsigned long)(*(ccmds[i].data)),ccmds[i].cmd,2);
 				} else if(strcmp(ccmds[i].cmd,"total-quota")==0) {
-					users_params.users.total_quota = pnv;
-					cli_print_uint(cs,(unsigned long)(users_params.users.total_quota),ccmds[i].cmd,2);
+					turn_params.users_params.users.total_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(turn_params.users_params.users.total_quota),ccmds[i].cmd,2);
 				} else if(strcmp(ccmds[i].cmd,"user-quota")==0) {
-					users_params.users.user_quota = pnv;
-					cli_print_uint(cs,(unsigned long)(users_params.users.user_quota),ccmds[i].cmd,2);
+					turn_params.users_params.users.user_quota = pnv;
+					cli_print_uint(cs,(unsigned long)(turn_params.users_params.users.user_quota),ccmds[i].cmd,2);
 				}
 				return;
 			}
@@ -726,8 +726,8 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		myprintf(cs,"\n");
 
-		if(users_params.userdb[0]) {
-			switch(users_params.userdb_type) {
+		if(turn_params.users_params.userdb[0]) {
+			switch(turn_params.users_params.userdb_type) {
 			case TURN_USERDB_TYPE_FILE:
 				cli_print_str(cs,"file","DB type",0);
 				break;
@@ -749,7 +749,7 @@ static void cli_print_configuration(struct cli_session* cs)
 			default:
 				cli_print_str(cs,"unknown","DB type",0);
 			};
-			cli_print_str(cs,users_params.userdb,"DB",0);
+			cli_print_str(cs,turn_params.users_params.userdb,"DB",0);
 		} else {
 			cli_print_str(cs,"none","DB type",0);
 			cli_print_str(cs,"none","DB",0);
@@ -762,21 +762,21 @@ static void cli_print_configuration(struct cli_session* cs)
 
 		myprintf(cs,"\n");
 
-		cli_print_flag(cs,users_params.use_lt_credentials,"Long-term authorization mechanism",0);
-		cli_print_flag(cs,users_params.use_st_credentials,"Short-term authorization mechanism",0);
-		cli_print_flag(cs,users_params.anon_credentials,"Anonymous credentials",0);
-		cli_print_flag(cs,users_params.use_auth_secret_with_timestamp,"REST API",0);
-		if(users_params.use_auth_secret_with_timestamp && users_params.rest_api_separator)
-			cli_print_uint(cs,users_params.rest_api_separator,"REST API separator ASCII number",0);
+		cli_print_flag(cs,turn_params.users_params.use_lt_credentials,"Long-term authorization mechanism",0);
+		cli_print_flag(cs,turn_params.users_params.use_st_credentials,"Short-term authorization mechanism",0);
+		cli_print_flag(cs,turn_params.users_params.anon_credentials,"Anonymous credentials",0);
+		cli_print_flag(cs,turn_params.users_params.use_auth_secret_with_timestamp,"REST API",0);
+		if(turn_params.users_params.use_auth_secret_with_timestamp && turn_params.users_params.rest_api_separator)
+			cli_print_uint(cs,turn_params.users_params.rest_api_separator,"REST API separator ASCII number",0);
 
-		if(users_params.global_realm[0])
-			cli_print_str(cs,users_params.global_realm,"Realm",0);
+		if(turn_params.users_params.global_realm[0])
+			cli_print_str(cs,turn_params.users_params.global_realm,"Realm",0);
 
 		myprintf(cs,"\n");
 
-		cli_print_uint(cs,(unsigned long)users_params.users.total_quota,"total-quota",2);
-		cli_print_uint(cs,(unsigned long)users_params.users.user_quota,"user-quota",2);
-		cli_print_uint(cs,(unsigned long)users_params.users.total_current_allocs,"total-current-allocs",0);
+		cli_print_uint(cs,(unsigned long)turn_params.users_params.users.total_quota,"total-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.users_params.users.user_quota,"user-quota",2);
+		cli_print_uint(cs,(unsigned long)turn_params.users_params.users.total_current_allocs,"total-current-allocs",0);
 		cli_print_uint(cs,(unsigned long)turn_params.max_bps,"max-bps",0);
 
 		myprintf(cs,"\n");

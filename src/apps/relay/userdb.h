@@ -133,8 +133,6 @@ typedef struct _users_params_t {
   secrets_list_t static_auth_secrets;
 } users_params_t;
 
-extern users_params_t users_params;
-
 /////////////////////////////////////////////
 
 void init_secrets_list(secrets_list_t *sl);
