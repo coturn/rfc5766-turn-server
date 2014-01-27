@@ -83,7 +83,7 @@ NEV_UNKNOWN,
 0,LOW_DEFAULT_PORTS_BOUNDARY,HIGH_DEFAULT_PORTS_BOUNDARY,0,0,"",
 0,NULL,0,NULL,0,DEFAULT_GENERAL_RELAY_SERVERS_NUMBER,0,0,
 ////////////// Auth server /////////////////////////////////////
-{NULL,NULL,NULL,NULL},
+{NULL,NULL,NULL,0},
 /////////////// AUX SERVERS ////////////////
 {NULL,0,{0,NULL}},0,
 /////////////// ALTERNATE SERVERS ////////////////
