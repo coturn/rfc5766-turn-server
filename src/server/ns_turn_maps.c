@@ -593,13 +593,13 @@ static void addr_list_free(addr_list_header* slh) {
     
 static void addr_list_add(addr_list_header* slh, const ioa_addr* key,  ur_addr_map_value_type value) {
 
-  if(!key) return;
+  if(!key || !value) return;
 
   addr_elem *elem = NULL;
   size_t i;
 
   for(i=0;i<ADDR_ARRAY_SIZE;++i) {
-	  if(!(slh->main_list[i].allocated)) {
+	  if(!(slh->main_list[i].value)) {
 		  elem = &(slh->main_list[i]);
 		  break;
 	  }
@@ -607,7 +607,7 @@ static void addr_list_add(addr_list_header* slh, const ioa_addr* key,  ur_addr_m
 
   if(!elem && slh->extra_list) {
 	  for(i=0;i<slh->extra_sz;++i) {
-		  if(!(slh->extra_list[i].allocated)) {
+		  if(!(slh->extra_list[i].value)) {
 			  elem = &(slh->extra_list[i]);
 			  break;
 		  }
@@ -622,7 +622,6 @@ static void addr_list_add(addr_list_header* slh, const ioa_addr* key,  ur_addr_m
 	  slh->extra_sz += 1;
   }
 
-  elem->allocated = 1;
   addr_cpy(&(elem->key),key);
   elem->value=value;
 }
@@ -638,11 +637,11 @@ static void addr_list_remove(addr_list_header* slh, const ioa_addr* key,
 
   for(i=0;i<ADDR_ARRAY_SIZE;++i) {
 	addr_elem *elem=&(slh->main_list[i]);
-	if(elem->allocated) {
+	if(elem->value) {
 		if(addr_eq(&(elem->key),key)) {
 			if(delfunc && elem->value)
 				delfunc(elem->value);
-			elem->allocated = 0;
+			elem->value = 0;
 			if(counter) {
 			  *counter += 1;
 			}
@@ -653,11 +652,11 @@ static void addr_list_remove(addr_list_header* slh, const ioa_addr* key,
   if(slh->extra_list) {
   	  for(i=0;i<slh->extra_sz;++i) {
   		  addr_elem *elem=&(slh->extra_list[i]);
-  		  if(elem->allocated) {
+  		  if(elem->value) {
   			  if(addr_eq(&(elem->key),key)) {
   				  if(delfunc && elem->value)
   					  delfunc(elem->value);
-  				  elem->allocated = 0;
+  				  elem->value = 0;
   				  if(counter) {
   					  *counter += 1;
   				  }
@@ -674,7 +673,7 @@ static void addr_list_foreach(addr_list_header* slh,  ur_addr_map_func func) {
 
     	  for(i=0;i<ADDR_ARRAY_SIZE;++i) {
     		  addr_elem *elem=&(slh->main_list[i]);
-    		  if(elem->allocated) {
+    		  if(elem->value) {
     			  func(elem->value);
     		  }
     	  }
@@ -682,7 +681,7 @@ static void addr_list_foreach(addr_list_header* slh,  ur_addr_map_func func) {
 	  if(slh->extra_list) {
 	    	  for(i=0;i<slh->extra_sz;++i) {
 	    		  addr_elem *elem=&(slh->extra_list[i]);
-	    		  if(elem->allocated) {
+	    		  if(elem->value) {
 	    			func(elem->value);
 	    		  }
 	    	  }
@@ -698,7 +697,7 @@ static addr_elem* addr_list_get(addr_list_header* slh, const ioa_addr* key) {
 
   for(i=0;i<ADDR_ARRAY_SIZE;++i) {
 	  addr_elem *elem=&(slh->main_list[i]);
-	  if(elem->allocated) {
+	  if(elem->value) {
 		  if(addr_eq(&(elem->key),key)) {
 			  return elem;
 		  }
@@ -708,7 +707,7 @@ static addr_elem* addr_list_get(addr_list_header* slh, const ioa_addr* key) {
   if(slh->extra_list) {
     	  for(i=0;i<slh->extra_sz;++i) {
     		  addr_elem *elem=&(slh->extra_list[i]);
-    		  if(elem->allocated) {
+    		  if(elem->value) {
     			  if(addr_eq(&(elem->key),key)) {
     				  return elem;
     			  }
@@ -727,7 +726,7 @@ static const addr_elem* addr_list_get_const(const addr_list_header* slh, const i
 
   for(i=0;i<ADDR_ARRAY_SIZE;++i) {
 	  const addr_elem *elem=&(slh->main_list[i]);
-	  if(elem->allocated) {
+	  if(elem->value) {
 		  if(addr_eq(&(elem->key),key)) {
 			  return elem;
 		  }
@@ -737,7 +736,7 @@ static const addr_elem* addr_list_get_const(const addr_list_header* slh, const i
   if(slh->extra_list) {
     	  for(i=0;i<slh->extra_sz;++i) {
     		  const addr_elem *elem=&(slh->extra_list[i]);
-    		  if(elem->allocated) {
+    		  if(elem->value) {
     			  if(addr_eq(&(elem->key),key)) {
     				  return elem;
     			  }

@@ -164,7 +164,6 @@ typedef unsigned long ur_addr_map_value_type;
 #define ADDR_ARRAY_SIZE (4)
 
 typedef struct _addr_elem {
-  u08bits allocated;
   ioa_addr key;
   ur_addr_map_value_type value;
 } addr_elem;

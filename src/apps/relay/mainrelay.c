@@ -865,7 +865,6 @@ static void set_option(int c, char *value)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 				} else {
 					turn_params.external_ip = (ioa_addr*)allocate_super_memory(sizeof(ioa_addr));
-					ns_bzero(turn_params.external_ip,sizeof(ioa_addr));
 					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
 						turn_free(turn_params.external_ip,sizeof(ioa_addr));
@@ -1430,13 +1429,6 @@ int main(int argc, char **argv)
 	int c = 0;
 
 	IS_TURN_SERVER = 1;
-
-	printf("%s: 111.111: %lu\n",__FUNCTION__,sizeof(ur_addr_map));
-	printf("%s: 111.222: %lu\n",__FUNCTION__,sizeof(addr_list_header));
-	printf("%s: 111.333: %lu\n",__FUNCTION__,sizeof(addr_elem));
-	printf("%s: 111.444: %lu\n",__FUNCTION__,sizeof(ioa_addr));
-	printf("%s: 111.666: %lu\n",__FUNCTION__,sizeof(struct sockaddr_in));
-	printf("%s: 111.777: %lu\n",__FUNCTION__,sizeof(struct sockaddr_in6));
 
 	set_execdir();
 

@@ -408,7 +408,7 @@ static int clnet_allocate(int verbose,
 							if (verbose) {
 								ioa_addr remote_addr;
 								memcpy(&remote_addr, relay_addr,
-										sizeof(remote_addr));
+										sizeof(ioa_addr));
 								addr_debug_print(verbose, &remote_addr,
 										"Received relay addr");
 							}

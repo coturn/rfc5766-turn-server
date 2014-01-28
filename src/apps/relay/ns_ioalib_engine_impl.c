@@ -37,7 +37,6 @@
 #include "apputils.h"
 
 #include "ns_ioalib_impl.h"
-#include "mainrelay.h"
 
 #if !defined(TURN_NO_TLS)
 #include <event2/bufferevent_ssl.h>
@@ -247,8 +246,6 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		return NULL;
 	} else {
 		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory(sizeof(ioa_engine));
-
-		ns_bzero(e,sizeof(ioa_engine));
 
 		e->default_relays = default_relays;
 		e->max_bpj = max_bps;
@@ -3132,6 +3129,7 @@ void init_super_memory(void)
 {
 	pthread_mutex_init(&mutex_sm, NULL);
 	super_memory = (char*)malloc(TURN_SM_SIZE);
+	ns_bzero(super_memory,TURN_SM_SIZE);
 	sm_allocated = 0;
 	sm_total_sz = TURN_SM_SIZE;
 	sm_chunk = 0;
@@ -3159,6 +3157,7 @@ void* allocate_super_memory_func(size_t size, const char* file, const char* func
 		}
 
 		super_memory = (char*)malloc(new_sz);
+		ns_bzero(super_memory,new_sz);
 		sm_allocated = 0;
 		sm_total_sz = new_sz;
 
@@ -3166,8 +3165,7 @@ void* allocate_super_memory_func(size_t size, const char* file, const char* func
 	}
 
 	{
-		if(turn_params.verbose)
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): can allocate super memory: chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned long)sm_chunk, (unsigned long)sm_total_sz, (unsigned long)sm_allocated,(unsigned long)size);
+		//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): can allocate super memory: chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned long)sm_chunk, (unsigned long)sm_total_sz, (unsigned long)sm_allocated,(unsigned long)size);
 
 		char* ptr = super_memory + sm_total_sz - sm_allocated - size;
 

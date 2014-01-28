@@ -918,13 +918,10 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
 		allocate_super_memory(sizeof(dtls_listener_relay_server_type));
 
-  ns_bzero(server,sizeof(dtls_listener_relay_server_type));
-
   if(init_server(server,
 		 ifname, local_address, port,
 		 verbose,
 		 e, ts, report_creation, send_socket)<0) {
-    turn_free(server,sizeof(dtls_listener_relay_server_type));
     return NULL;
   } else {
     return server;
