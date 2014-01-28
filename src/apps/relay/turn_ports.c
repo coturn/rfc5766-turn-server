@@ -32,6 +32,7 @@
 #include "ns_turn_msg_defs.h"
 
 #include "ns_turn_ioalib.h"
+#include "ns_ioalib_impl.h"
 
 #include "turn_ports.h"
 
@@ -57,7 +58,6 @@ typedef struct _turnports turnports;
 /////////////// TURNPORTS statics //////////////////////////
 
 static turnports* turnports_create(u16bits start, u16bits end);
-static void turnports_destroy(turnports** tp);
 static u16bits turnports_size(turnports* tp);
 
 static int turnports_allocate(turnports* tp);
@@ -140,18 +140,10 @@ turnports* turnports_create(u16bits start, u16bits end) {
 
   if(start>end) return NULL;
 
-  turnports* ret=(turnports*)turn_malloc(sizeof(turnports));
+  turnports* ret=(turnports*)allocate_super_memory(sizeof(turnports));
   turnports_init(ret,start,end);
 
   return ret;
-}
-
-void turnports_destroy(turnports** tp) {
-  if(tp && *tp) {
-    TURN_MUTEX_DESTROY(&((*tp)->mutex));
-    turn_free(*tp,sizeof(turnports));
-    *tp=NULL;
-  }
 }
 
 u16bits turnports_size(turnports* tp) {
@@ -309,32 +301,13 @@ static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 
 turnipports* turnipports_create(u16bits start, u16bits end)
 {
-	turnipports *ret = (turnipports*) turn_malloc(sizeof(turnipports));
+	turnipports *ret = (turnipports*) allocate_super_memory(sizeof(turnipports));
 	ur_addr_map_init(&(ret->ip_to_turnports_udp));
 	ur_addr_map_init(&(ret->ip_to_turnports_tcp));
 	ret->start = start;
 	ret->end = end;
 	TURN_MUTEX_INIT_RECURSIVE(&(ret->mutex));
 	return ret;
-}
-
-static void turnipports_del_func(ur_addr_map_value_type val)
-{
-	turnports *tp = (turnports*) val;
-	turnports_destroy(&tp);
-}
-
-void turnipports_destroy(turnipports** tp)
-{
-	if (tp && *tp) {
-		ur_addr_map_foreach(&((*tp)->ip_to_turnports_udp), turnipports_del_func);
-		ur_addr_map_clean(&((*tp)->ip_to_turnports_udp));
-		ur_addr_map_foreach(&((*tp)->ip_to_turnports_tcp), turnipports_del_func);
-		ur_addr_map_clean(&((*tp)->ip_to_turnports_tcp));
-		TURN_MUTEX_DESTROY(&((*tp)->mutex));
-		turn_free(*tp,sizeof(turnipports));
-		*tp = NULL;
-	}
 }
 
 static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
@@ -352,18 +325,6 @@ static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 	return (turnports*) t;
-}
-
-void turnipports_remove(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
-{
-	if (tp && backend_addr) {
-		ioa_addr ba;
-		addr_cpy(&ba, backend_addr);
-		addr_set_port(&ba, 0);
-		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
-		ur_addr_map_del(get_map(tp, transport), &ba, turnipports_del_func);
-		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
-	}
 }
 
 int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)

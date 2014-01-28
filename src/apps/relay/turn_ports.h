@@ -50,9 +50,6 @@ typedef struct _turnipports turnipports;
 //////////////////////////////////////////////////
 
 turnipports* turnipports_create(u16bits start, u16bits end);
-void turnipports_destroy(turnipports** tp);
-
-void turnipports_remove(turnipports* tp, u08bits transport, const ioa_addr *backend_addr);
 
 int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr);
 int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, 
