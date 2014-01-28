@@ -61,7 +61,7 @@ struct dtls_listener_relay_server_info {
   SSL_CTX *dtls_ctx;
   struct event *udp_listen_ev;
   ioa_socket_handle udp_listen_s;
-  ur_addr_map children_ss; /* map of socket children on remote addr */
+  ur_addr_map *children_ss; /* map of socket children on remote addr */
   struct message_to_relay sm;
   int slen0;
   ioa_engine_new_connection_event_handler connect_cb;
@@ -139,7 +139,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
   
   /* Create buffer with peer's address and port */
   length = 0;
-  switch (peer.ss.ss_family) {
+  switch (peer.ss.sa_family) {
   case AF_INET:
     length += sizeof(struct in_addr);
     break;
@@ -158,7 +158,7 @@ static int generate_cookie(SSL *ssl, unsigned char *cookie, unsigned int *cookie
     return 0;
   }
   
-  switch (peer.ss.ss_family) {
+  switch (peer.ss.sa_family) {
   case AF_INET:
     memcpy(buffer,
 	   &peer.s4.sin_port,
@@ -304,7 +304,11 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 	ioa_socket_handle s = sm->m.sm.s;
 
 	ur_addr_map_value_type mvt = 0;
-	ur_addr_map *amap = &(server->children_ss);
+	if(!(server->children_ss)) {
+		server->children_ss = (ur_addr_map*)allocate_super_memory(sizeof(ur_addr_map));
+		ur_addr_map_init(server->children_ss);
+	}
+	ur_addr_map *amap = server->children_ss;
 
 	ioa_socket_handle chs = NULL;
 	if ((ur_addr_map_get(amap, &(sm->m.sm.nd.src_addr), &mvt) > 0) && mvt) {
@@ -451,7 +455,7 @@ static int create_new_connected_udp_socket(
 		dtls_listener_relay_server_type* server, ioa_socket_handle s)
 {
 
-	evutil_socket_t udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
+	evutil_socket_t udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 	if (udp_fd < 0) {
 		perror("socket");
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot allocate new socket\n",
@@ -709,7 +713,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
   {
 	  ioa_socket_raw udp_listen_fd = -1;
 
-	  udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
+	  udp_listen_fd = socket(server->addr.ss.sa_family, SOCK_DGRAM, 0);
 	  if (udp_listen_fd < 0) {
 		  perror("socket");
 		  return -1;
@@ -780,7 +784,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 			return create_server_socket(server,1);
 		}
 
-		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.ss_family, SOCK_DGRAM, 0);
+		ioa_socket_raw udp_listen_fd = socket(server->addr.ss.sa_family, SOCK_DGRAM, 0);
 		if (udp_listen_fd < 0) {
 			perror("socket");
 			FUNCEND;
@@ -858,7 +862,6 @@ static int init_server(dtls_listener_relay_server_type* server,
 
   server->dtls_ctx = e->dtls_ctx;
   server->ts = ts;
-  ur_addr_map_init(&(server->children_ss));
   server->connect_cb = send_socket;
 
   if(ifname) STRCPY(server->ifname,ifname);
@@ -913,7 +916,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     ioa_engine_new_connection_event_handler send_socket) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
-    turn_malloc(sizeof(dtls_listener_relay_server_type));
+		allocate_super_memory(sizeof(dtls_listener_relay_server_type));
 
   ns_bzero(server,sizeof(dtls_listener_relay_server_type));
 

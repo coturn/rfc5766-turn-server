@@ -65,10 +65,10 @@ int not_rare_event(void)
 	return 0;
 }
 
-static int get_allocate_address_family(ioa_addr *relay_addr) {
-	if(relay_addr->ss.ss_family == AF_INET)
+static int get_allocate_addresa_family(ioa_addr *relay_addr) {
+	if(relay_addr->ss.sa_family == AF_INET)
 		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
-	else if(relay_addr->ss.ss_family == AF_INET6)
+	else if(relay_addr->ss.sa_family == AF_INET6)
 		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
 	else
 		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_INVALID;
@@ -106,7 +106,7 @@ static SSL* tls_connect(ioa_socket_raw fd, ioa_addr *remote_addr)
 			BIO_ctrl(bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
 		}
 
-		set_mtu_df(ssl, fd, remote_addr->ss.ss_family, SOSO_MTU, !use_tcp, clnet_verbose);
+		set_mtu_df(ssl, fd, remote_addr->ss.sa_family, SOSO_MTU, !use_tcp, clnet_verbose);
 #endif
 	}
 
@@ -205,9 +205,9 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 			&remote_addr) < 0)
 		return -1;
 
-	ns_bzero(&local_addr, sizeof(struct sockaddr_storage));
+	ns_bzero(&local_addr, sizeof(ioa_addr));
 
-	clnet_fd = socket(remote_addr.ss.ss_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
+	clnet_fd = socket(remote_addr.ss.sa_family, use_tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -883,14 +883,14 @@ int start_connection(uint16_t clnet_remote_port0,
 	  }
 	}
 
-	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_address_family(&peer_addr),NULL,NULL) < 0) {
+	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_addresa_family(&peer_addr),NULL,NULL) < 0) {
 	  exit(-1);
 	}
 
 	if(rare_event()) return 0;
 
 	if(!no_rtcp) {
-	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_address_family(&peer_addr_rtcp),NULL,NULL) < 0) {
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_addresa_family(&peer_addr_rtcp),NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	  if(rare_event()) return 0;
@@ -1410,7 +1410,7 @@ static int turn_tcp_connection_bind(int verbose, app_ur_conn_info *clnet_info, a
 
 void tcp_data_connect(app_ur_session *elem, u32bits cid)
 {
-	int clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
+	int clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
 	if (clnet_fd < 0) {
 		perror("socket");
 		exit(-1);
@@ -1448,7 +1448,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	    if (addr_connect(clnet_fd, &(elem->pinfo.remote_addr),&err) < 0) {
 	      if(err == EADDRINUSE) {
 	    	  socket_closesocket(clnet_fd);
-	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.ss_family, SOCK_STREAM, 0);
+	    	  clnet_fd = socket(elem->pinfo.remote_addr.ss.sa_family, SOCK_STREAM, 0);
 	    	  if (clnet_fd < 0) {
 	    		  perror("socket");
 	    		  exit(-1);

@@ -36,7 +36,7 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
 
   if(!cfield || !clen || !ca || !tsx_id) return -1;
 
-  if (ca->ss.ss_family == AF_INET || ca->ss.ss_family==0) {
+  if (ca->ss.sa_family == AF_INET || ca->ss.sa_family==0) {
 
     /* IPv4 address */
 
@@ -62,7 +62,7 @@ int stun_addr_encode(const ioa_addr* ca, u08bits *cfield, int *clen, int xor_ed,
       ((u32bits*)cfield)[1]=ca->s4.sin_addr.s_addr;
     }
 
-  } else if (ca->ss.ss_family == AF_INET6) {
+  } else if (ca->ss.sa_family == AF_INET6) {
 
     /* IPv6 address */
 
@@ -114,15 +114,15 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
     return -1;
   }
 
-  int ss_family;
+  int sa_family;
 
-  if(cfield[1]==1) ss_family=AF_INET;
-  else if(cfield[1]==2) ss_family=AF_INET6;
+  if(cfield[1]==1) sa_family=AF_INET;
+  else if(cfield[1]==2) sa_family=AF_INET6;
   else return -1;
   
-  ca->ss.ss_family=ss_family;
+  ca->ss.sa_family=sa_family;
 
-  if (ss_family == AF_INET) {
+  if (sa_family == AF_INET) {
 
     if(len!=8) return -1;
 
@@ -139,7 +139,7 @@ int stun_addr_decode(ioa_addr* ca, const u08bits *cfield, int len, int xor_ed, u
       ca->s4.sin_addr.s_addr ^= nswap32(mc);
     }
 
-  } else if (ss_family == AF_INET6) {
+  } else if (sa_family == AF_INET6) {
 
     /* IPv6 address */
 

@@ -57,12 +57,12 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 	ioa_addr remote_addr;
 	int new_udp_fd = -1;
 
-	memset((void *) &remote_addr, 0, sizeof(struct sockaddr_storage));
+	memset((void *) &remote_addr, 0, sizeof(ioa_addr));
 	if (make_ioa_addr((const u08bits*) rip, rport, &remote_addr) < 0)
 		err(-1, NULL);
 
 	if (udp_fd < 0) {
-		udp_fd = socket(remote_addr.ss.ss_family, SOCK_DGRAM, 0);
+		udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
 		if (udp_fd < 0)
 			err(-1, NULL);
 
@@ -74,7 +74,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	if (response_port >= 0) {
 
-		new_udp_fd = socket(remote_addr.ss.ss_family, SOCK_DGRAM, 0);
+		new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
 		if (new_udp_fd < 0)
 			err(-1, NULL);
 
@@ -258,7 +258,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 		err(-1, NULL);
 
 	if (udp_fd < 0) {
-		udp_fd = socket(remote_addr.ss.ss_family, SOCK_DGRAM, 0);
+		udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
 		if (udp_fd < 0)
 			err(-1, NULL);
 
@@ -270,7 +270,7 @@ static int run_stunclient(const char* rip, int rport, int *port, int *rfc5780, i
 
 	if (response_port >= 0) {
 
-		new_udp_fd = socket(remote_addr.ss.ss_family, SOCK_DGRAM, 0);
+		new_udp_fd = socket(remote_addr.ss.sa_family, SOCK_DGRAM, 0);
 		if (new_udp_fd < 0)
 			err(-1, NULL);
 

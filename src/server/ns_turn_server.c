@@ -1174,12 +1174,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 					int is_err = 0;
 					switch (af_req) {
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-						if(addr->ss.ss_family != AF_INET) {
+						if(addr->ss.sa_family != AF_INET) {
 							is_err = 1;
 						}
 						break;
 					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-						if(addr->ss.ss_family != AF_INET6) {
+						if(addr->ss.sa_family != AF_INET6) {
 							is_err = 1;
 						}
 						break;
@@ -1816,7 +1816,7 @@ static int handle_turn_connect(turn_turnserver *server,
 				} else {
 					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-					if(relay_addr && (relay_addr->ss.ss_family != peer_addr.ss.ss_family)) {
+					if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
 						*err_code = 443;
 						*reason = (const u08bits *)"Peer Address Family Mismatch";
 					}
@@ -2109,7 +2109,7 @@ static int handle_turn_channel_bind(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(relay_addr && relay_addr->ss.ss_family != peer_addr.ss.ss_family) {
+				if(relay_addr && relay_addr->ss.sa_family != peer_addr.ss.sa_family) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				}
@@ -2581,7 +2581,7 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(relay_addr && (relay_addr->ss.ss_family != peer_addr.ss.ss_family)) {
+				if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
 					*err_code = 443;
 					*reason = (const u08bits *)"Peer Address Family Mismatch";
 				} else if(!good_peer_addr(server, &peer_addr)) {
@@ -2909,7 +2909,7 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 				*counter = 0;
 			ioa_addr *addr = &(asl->addrs[*counter]);
 			*counter +=1;
-			if(addr->ss.ss_family == local_addr->ss.ss_family) {
+			if(addr->ss.sa_family == local_addr->ss.sa_family) {
 
 				*err_code = 300;
 				*reason = (const u08bits *)"Redirect";
@@ -3656,8 +3656,8 @@ static int create_relay_connection(turn_turnserver* server,
 		newelem->state = UR_STATE_READY;
 
 		/* RFC6156: do not use DF when IPv6 is involved: */
-		if((get_local_addr_from_ioa_socket(newelem->s)->ss.ss_family == AF_INET6) ||
-		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.ss_family == AF_INET6))
+		if((get_local_addr_from_ioa_socket(newelem->s)->ss.sa_family == AF_INET6) ||
+		   (get_local_addr_from_ioa_socket(ss->client_session.s)->ss.sa_family == AF_INET6))
 			set_do_not_use_df(newelem->s);
 
 		if(get_ioa_socket_type(newelem->s) != TCP_SOCKET) {

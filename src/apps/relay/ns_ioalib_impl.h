@@ -150,7 +150,7 @@ struct _ioa_engine
   int default_relays;
   size_t relays_number;
   size_t relay_addr_counter;
-  ioa_addr relay_addrs[1];
+  ioa_addr *relay_addrs;
 };
 
 #define SOCKET_MAGIC (0xABACADEF)
@@ -255,6 +255,10 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 
 int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
 int set_socket_options(ioa_socket_handle s);
+
+void init_super_memory(void);
+#define allocate_super_memory(size) allocate_super_memory_func(size, __FILE__, __FUNCTION__, __LINE__)
+void* allocate_super_memory_func(size_t size, const char* file, const char* func, int line);
 
 /////////////////////////////////////////////////
 

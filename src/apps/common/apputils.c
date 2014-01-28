@@ -212,9 +212,9 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	else {
 		int err = 0;
 		do {
-			if (addr->ss.ss_family == AF_INET) {
+			if (addr->ss.sa_family == AF_INET) {
 				err = connect(fd, (const struct sockaddr *) addr, sizeof(struct sockaddr_in));
-			} else if (addr->ss.ss_family == AF_INET6) {
+			} else if (addr->ss.sa_family == AF_INET6) {
 				err = connect(fd, (const struct sockaddr *) addr, sizeof(struct sockaddr_in6));
 			} else {
 				return -1;
@@ -243,11 +243,11 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr)
 
 		socket_set_reusable(fd);
 
-		if (addr->ss.ss_family == AF_INET) {
+		if (addr->ss.sa_family == AF_INET) {
 			do {
 				ret = bind(fd, (const struct sockaddr *) addr, sizeof(struct sockaddr_in));
 			} while (ret < 0 && errno == EINTR);
-		} else if (addr->ss.ss_family == AF_INET6) {
+		} else if (addr->ss.sa_family == AF_INET6) {
 			const int off = 0;
 			setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char *) &off, sizeof(off));
 			do {
@@ -275,10 +275,10 @@ int addr_get_from_sock(evutil_socket_t fd, ioa_addr *addr)
 	else {
 
 		ioa_addr a;
-		a.ss.ss_family = AF_INET6;
+		a.ss.sa_family = AF_INET6;
 		socklen_t socklen = get_ioa_addr_len(&a);
 		if (getsockname(fd, (struct sockaddr*) &a, &socklen) < 0) {
-			a.ss.ss_family = AF_INET;
+			a.ss.sa_family = AF_INET;
 			socklen = get_ioa_addr_len(&a);
 			if (getsockname(fd, (struct sockaddr*) &a, &socklen) < 0) {
 				return -1;

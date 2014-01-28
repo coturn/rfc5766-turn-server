@@ -815,7 +815,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 
 	{
 		if (!turn_params.no_udp || !turn_params.no_dtls) {
-			udp_relay_servers = (struct relay_server**) turn_malloc(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
+			udp_relay_servers = (struct relay_server**) allocate_super_memory(sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 			ns_bzero(udp_relay_servers,sizeof(struct relay_server *)*get_real_udp_relay_servers_number());
 
 			for (i = 0; i < get_real_udp_relay_servers_number(); i++) {
@@ -833,7 +833,7 @@ static void setup_socket_per_endpoint_udp_listener_servers(void)
 					is_5780 = is_5780 && (i >= (size_t) (turn_params.aux_servers_list.size));
 				}
 
-				struct relay_server* udp_rs = (struct relay_server*) turn_malloc(sizeof(struct relay_server));
+				struct relay_server* udp_rs = (struct relay_server*) allocate_super_memory(sizeof(struct relay_server));
 				ns_bzero(udp_rs, sizeof(struct relay_server));
 				udp_rs->id = (turnserver_id) i + TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
 				setup_relay_server(udp_rs, e, is_5780);
@@ -1189,7 +1189,7 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr)
 
 		for(i=0;i<turn_params.listener.addrs_number;i++) {
 			if(turn_params.listener.encaddrs && turn_params.listener.encaddrs[i]) {
-				if(addr->ss.ss_family == turn_params.listener.encaddrs[i]->ss.ss_family) {
+				if(addr->ss.sa_family == turn_params.listener.encaddrs[i]->ss.sa_family) {
 					index=i;
 					break;
 				}
@@ -1200,7 +1200,7 @@ static int get_alt_addr(ioa_addr *addr, ioa_addr *alt_addr)
 				size_t ind = (index+i+1) % turn_params.listener.addrs_number;
 				if(turn_params.listener.encaddrs && turn_params.listener.encaddrs[ind]) {
 					ioa_addr *caddr = turn_params.listener.encaddrs[ind];
-					if(caddr->ss.ss_family == addr->ss.ss_family) {
+					if(caddr->ss.sa_family == addr->ss.sa_family) {
 						addr_cpy(alt_addr,caddr);
 						addr_set_port(alt_addr, alt_port);
 						return 0;
@@ -1346,12 +1346,12 @@ static void setup_general_relay_servers(void)
 {
 	size_t i = 0;
 
-	general_relay_servers = (struct relay_server**)turn_malloc(sizeof(struct relay_server *)*get_real_general_relay_servers_number());
+	general_relay_servers = (struct relay_server**)allocate_super_memory(sizeof(struct relay_server *)*get_real_general_relay_servers_number());
 	ns_bzero(general_relay_servers,sizeof(struct relay_server *)*get_real_general_relay_servers_number());
 
 	for(i=0;i<get_real_general_relay_servers_number();i++) {
 
-		general_relay_servers[i] = (struct relay_server*)turn_malloc(sizeof(struct relay_server));
+		general_relay_servers[i] = (struct relay_server*)allocate_super_memory(sizeof(struct relay_server));
 		ns_bzero(general_relay_servers[i], sizeof(struct relay_server));
 		general_relay_servers[i]->id = (turnserver_id)i;
 

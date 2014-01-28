@@ -1137,7 +1137,7 @@ void setup_cli_thread(void)
 
 	addr_set_port(&cli_addr,cli_port);
 
-	cliserver.listen_fd = socket(cli_addr.ss.ss_family, SOCK_STREAM, 0);
+	cliserver.listen_fd = socket(cli_addr.ss.sa_family, SOCK_STREAM, 0);
 	if (cliserver.listen_fd < 0) {
 	    perror("socket");
 	    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot open CLI socket\n");

@@ -131,7 +131,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 
   evutil_socket_t tls_listen_fd = -1;
 
-  tls_listen_fd = socket(server->addr.ss.ss_family, SOCK_STREAM, 0);
+  tls_listen_fd = socket(server->addr.ss.sa_family, SOCK_STREAM, 0);
   if (tls_listen_fd < 0) {
       perror("socket");
       return -1;
@@ -222,7 +222,7 @@ tls_listener_relay_server_type* create_tls_listener_server(const char* ifname,
 {
 
 	tls_listener_relay_server_type* server =
-			(tls_listener_relay_server_type*) turn_malloc(sizeof(tls_listener_relay_server_type));
+			(tls_listener_relay_server_type*) allocate_super_memory(sizeof(tls_listener_relay_server_type));
 
 	ns_bzero(server, sizeof(tls_listener_relay_server_type));
 

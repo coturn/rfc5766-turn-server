@@ -37,6 +37,7 @@
 #include "apputils.h"
 
 #include "ns_ioalib_impl.h"
+#include "mainrelay.h"
 
 #if !defined(TURN_NO_TLS)
 #include <event2/bufferevent_ssl.h>
@@ -245,7 +246,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
-		ioa_engine_handle e = (ioa_engine_handle)turn_malloc(sizeof(ioa_engine));
+		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory(sizeof(ioa_engine));
 
 		ns_bzero(e,sizeof(ioa_engine));
 
@@ -282,9 +283,9 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 
 		if (relay_ifname)
 			STRCPY(e->relay_ifname, relay_ifname);
-		if (relay_addrs) {
+		{
 			size_t i = 0;
-			e = (ioa_engine_handle)turn_realloc(e, sizeof(ioa_engine), sizeof(ioa_engine) + relays_number * sizeof(ioa_addr));
+			e->relay_addrs = (ioa_addr*)allocate_super_memory(relays_number * sizeof(ioa_addr)+8);
 			for (i = 0; i < relays_number; i++) {
 				if(make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]))<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",relay_addrs[i]);
@@ -367,11 +368,11 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket
 				switch (address_family){
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-					if (relay_addr->ss.ss_family == AF_INET)
+					if (relay_addr->ss.sa_family == AF_INET)
 						return relay_addr;
 					break;
 				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-					if (relay_addr->ss.ss_family == AF_INET6)
+					if (relay_addr->ss.sa_family == AF_INET6)
 						return relay_addr;
 					break;
 				default:
@@ -960,7 +961,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 				if (port >= 0 && even_port > 0) {
 
 					IOA_CLOSE_SOCKET(*rtcp_s);
-					*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
+					*rtcp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.sa_family, UDP_SOCKET, RELAY_RTCP_SOCKET);
 					if (*rtcp_s == NULL) {
 						perror("socket");
 						IOA_CLOSE_SOCKET(*rtp_s);
@@ -995,7 +996,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 				IOA_CLOSE_SOCKET(*rtp_s);
 
-				*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.ss_family,
+				*rtp_s = create_unbound_ioa_socket(e, NULL, relay_addr.ss.sa_family,
 										(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) ? TCP_SOCKET : UDP_SOCKET,
 										RELAY_SOCKET);
 				if (*rtp_s == NULL) {
@@ -1308,7 +1309,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
-	ret->family = local_addr->ss.ss_family;
+	ret->family = local_addr->ss.sa_family;
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
@@ -1492,7 +1493,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		if(full_detach && s->parent_s) {
 
-			udp_fd = socket(s->local_addr.ss.ss_family, SOCK_DGRAM, 0);
+			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
@@ -3115,6 +3116,69 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 	if(s && (s->ssl))
 		return turn_get_ssl_method(s->ssl);
 	return "";
+}
+
+///////////// Super Memory Region //////////////
+
+#define TURN_SM_SIZE (1024<<12)
+
+static pthread_mutex_t mutex_sm;
+static char *super_memory = NULL;
+static size_t sm_allocated = 0;
+static size_t sm_total_sz = 0;
+static size_t sm_chunk = 0;
+
+void init_super_memory(void)
+{
+	pthread_mutex_init(&mutex_sm, NULL);
+	super_memory = (char*)malloc(TURN_SM_SIZE);
+	sm_allocated = 0;
+	sm_total_sz = TURN_SM_SIZE;
+	sm_chunk = 0;
+}
+
+void* allocate_super_memory_func(size_t size, const char* file, const char* func, int line)
+{
+	UNUSED_ARG(file);
+	UNUSED_ARG(func);
+	UNUSED_ARG(line);
+
+	void *ret = NULL;
+
+	pthread_mutex_lock(&mutex_sm);
+
+	size = ((size_t)((size+sizeof(void*))/(sizeof(void*)))) * sizeof(void*);
+
+	size_t left = (size_t)sm_total_sz - sm_allocated;
+
+	if(left<size) {
+
+		size_t new_sz = TURN_SM_SIZE;
+		while(new_sz < size) {
+			new_sz += 65536;
+		}
+
+		super_memory = (char*)malloc(new_sz);
+		sm_allocated = 0;
+		sm_total_sz = new_sz;
+
+		++sm_chunk;
+	}
+
+	{
+		if(turn_params.verbose)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): can allocate super memory: chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned long)sm_chunk, (unsigned long)sm_total_sz, (unsigned long)sm_allocated,(unsigned long)size);
+
+		char* ptr = super_memory + sm_total_sz - sm_allocated - size;
+
+		sm_allocated += size;
+
+		ret = ptr;
+	}
+
+	pthread_mutex_unlock(&mutex_sm);
+
+	return ret;
 }
 
 //////////////////////////////////////////////////

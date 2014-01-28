@@ -33,8 +33,8 @@
 //////////////////////////////////////////////////////////////
 
 u32bits get_ioa_addr_len(const ioa_addr* addr) {
-  if(addr->ss.ss_family == AF_INET) return sizeof(struct sockaddr_in);
-  else if(addr->ss.ss_family == AF_INET6) return sizeof(struct sockaddr_in6);
+  if(addr->ss.sa_family == AF_INET) return sizeof(struct sockaddr_in);
+  else if(addr->ss.sa_family == AF_INET6) return sizeof(struct sockaddr_in6);
   return 0;
 }
 
@@ -50,9 +50,9 @@ int addr_any(const ioa_addr* addr) {
 	if(!addr)
 		return 1;
 
-  if(addr->ss.ss_family == AF_INET) {
+  if(addr->ss.sa_family == AF_INET) {
     return ((addr->s4.sin_addr.s_addr==0)&&(addr->s4.sin_port==0));
-  } else if(addr->ss.ss_family == AF_INET6) {
+  } else if(addr->ss.sa_family == AF_INET6) {
     if(addr->s6.sin6_port!=0) return 0;
     else {
       size_t i;
@@ -68,9 +68,9 @@ int addr_any_no_port(const ioa_addr* addr) {
 	if(!addr)
 		return 1;
 
-  if(addr->ss.ss_family == AF_INET) {
+  if(addr->ss.sa_family == AF_INET) {
     return (addr->s4.sin_addr.s_addr==0);
-  } else if(addr->ss.ss_family == AF_INET6) {
+  } else if(addr->ss.sa_family == AF_INET6) {
     size_t i;
     for(i=0;i<sizeof(addr->s6.sin6_addr);i++) 
       if(((const s08bits*)(&(addr->s6.sin6_addr)))[i]) return 0;
@@ -101,7 +101,7 @@ u32bits addr_hash(const ioa_addr *addr)
 		return 0;
 
 	u32bits ret = 0;
-	if (addr->ss.ss_family == AF_INET) {
+	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr + addr->s4.sin_port);
 	} else {
 		const u64bits *a = (const u64bits *) (&(addr->s6.sin6_addr));
@@ -116,7 +116,7 @@ u32bits addr_hash_no_port(const ioa_addr *addr)
 		return 0;
 
 	u32bits ret = 0;
-	if (addr->ss.ss_family == AF_INET) {
+	if (addr->ss.sa_family == AF_INET) {
 		ret = hash_int32(addr->s4.sin_addr.s_addr);
 	} else {
 		const u64bits *a = (const u64bits *) (&(addr->s6.sin6_addr));
@@ -143,13 +143,13 @@ void addr_cpy6(ioa_addr* dst, const struct sockaddr_in6* src) {
 int addr_eq(const ioa_addr* a1, const ioa_addr *a2) {
   if(!a1) return (!a2);
 
-  if(a1->ss.ss_family == a2->ss.ss_family) {
-    if(a1->ss.ss_family == AF_INET) {
+  if(a1->ss.sa_family == a2->ss.sa_family) {
+    if(a1->ss.sa_family == AF_INET) {
       if((int)a1->s4.sin_addr.s_addr == (int)a2->s4.sin_addr.s_addr 
 	 && a1->s4.sin_port == a2->s4.sin_port) {
 	return 1;
       }
-    } else if(a1->ss.ss_family == AF_INET6) {
+    } else if(a1->ss.sa_family == AF_INET6) {
       const u64bits *p1=(const u64bits *)(&(a1->s6.sin6_addr));
       const u64bits *p2=(const u64bits *)(&(a2->s6.sin6_addr));
       if(p1[0]==p2[0] && p1[1]==p2[1] && a1->s6.sin6_port == a2->s6.sin6_port) {
@@ -164,12 +164,12 @@ int addr_eq(const ioa_addr* a1, const ioa_addr *a2) {
 int addr_eq_no_port(const ioa_addr* a1, const ioa_addr *a2) {
   if(!a1) return (!a2);
   
-  if(a1->ss.ss_family == a2->ss.ss_family) {
-    if(a1->ss.ss_family == AF_INET) {
+  if(a1->ss.sa_family == a2->ss.sa_family) {
+    if(a1->ss.sa_family == AF_INET) {
       if((int)a1->s4.sin_addr.s_addr == (int)a2->s4.sin_addr.s_addr) {
 	return 1;
       }
-    } else if(a1->ss.ss_family == AF_INET6) {
+    } else if(a1->ss.sa_family == AF_INET6) {
 	const u64bits *p1=(const u64bits *)(&(a1->s6.sin6_addr));
 	const u64bits *p2=(const u64bits *)(&(a2->s6.sin6_addr));
 	if(p1[0]==p2[0] && p1[1]==p2[1]) {
@@ -265,13 +265,13 @@ int addr_to_string(const ioa_addr* addr, u08bits* saddr)
 
 		s08bits addrtmp[MAX_IOA_ADDR_STRING];
 
-		if (addr->ss.ss_family == AF_INET) {
+		if (addr->ss.sa_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
 			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "%s:%d", addrtmp, addr_get_port(addr));
 			else
 			  strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
-		} else if (addr->ss.ss_family == AF_INET6) {
+		} else if (addr->ss.sa_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
 			if(addr_get_port(addr)>0)
 			  snprintf((s08bits*)saddr, MAX_IOA_ADDR_STRING, "[%s]:%d", addrtmp, addr_get_port(addr));
@@ -294,10 +294,10 @@ int addr_to_string_no_port(const ioa_addr* addr, u08bits* saddr)
 
 		s08bits addrtmp[MAX_IOA_ADDR_STRING];
 
-		if (addr->ss.ss_family == AF_INET) {
+		if (addr->ss.sa_family == AF_INET) {
 			inet_ntop(AF_INET, &addr->s4.sin_addr, addrtmp, INET_ADDRSTRLEN);
 			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
-		} else if (addr->ss.ss_family == AF_INET6) {
+		} else if (addr->ss.sa_family == AF_INET6) {
 			inet_ntop(AF_INET6, &addr->s6.sin6_addr, addrtmp, INET6_ADDRSTRLEN);
 			strncpy((s08bits*)saddr, addrtmp, MAX_IOA_ADDR_STRING);
 		} else {
@@ -348,10 +348,10 @@ int addr_less_eq(const ioa_addr* addr1, const ioa_addr* addr2) {
   if(!addr1) return 1;
   else if(!addr2) return 0;
   else {
-    if(addr1->ss.ss_family != addr2->ss.ss_family) return (addr1->ss.ss_family < addr2->ss.ss_family);
-    else if(addr1->ss.ss_family == AF_INET) {
+    if(addr1->ss.sa_family != addr2->ss.sa_family) return (addr1->ss.sa_family < addr2->ss.sa_family);
+    else if(addr1->ss.sa_family == AF_INET) {
       return ((u32bits)nswap32(addr1->s4.sin_addr.s_addr) <= (u32bits)nswap32(addr2->s4.sin_addr.s_addr));
-    } else if(addr1->ss.ss_family == AF_INET6) {
+    } else if(addr1->ss.sa_family == AF_INET6) {
       int i;
       for(i=0;i<16;i++) {
 	if((u08bits)(((const s08bits*)&(addr1->s6.sin6_addr))[i]) > (u08bits)(((const s08bits*)&(addr2->s6.sin6_addr))[i])) 
@@ -389,10 +389,10 @@ void ioa_addr_range_cpy(ioa_addr_range* dest, const ioa_addr_range* src) {
 int ioa_addr_is_multicast(ioa_addr *addr)
 {
 	if(addr) {
-		if(addr->ss.ss_family == AF_INET) {
+		if(addr->ss.sa_family == AF_INET) {
 			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
 			return (u[0] > 223);
-		} else if(addr->ss.ss_family == AF_INET6) {
+		} else if(addr->ss.sa_family == AF_INET6) {
 			u08bits u = ((const u08bits*)&(addr->s6.sin6_addr))[0];
 			return (u == 255);
 		}
@@ -403,10 +403,10 @@ int ioa_addr_is_multicast(ioa_addr *addr)
 int ioa_addr_is_loopback(ioa_addr *addr)
 {
 	if(addr) {
-		if(addr->ss.ss_family == AF_INET) {
+		if(addr->ss.sa_family == AF_INET) {
 			const u08bits *u = ((const u08bits*)&(addr->s4.sin_addr));
 			return (u[0] == 127);
-		} else if(addr->ss.ss_family == AF_INET6) {
+		} else if(addr->ss.sa_family == AF_INET6) {
 			const u08bits *u = ((const u08bits*)&(addr->s6.sin6_addr));
 			if(u[7] == 1) {
 				int i;

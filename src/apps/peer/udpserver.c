@@ -74,7 +74,7 @@ static int udp_create_server_socket(server_type* server,
 
   if(make_ioa_addr((const u08bits*)local_address, port, server_addr)<0) return -1;
   
-  udp_fd = socket(server_addr->ss.ss_family, SOCK_DGRAM, 0);
+  udp_fd = socket(server_addr->ss.sa_family, SOCK_DGRAM, 0);
   if (udp_fd < 0) {
     perror("socket");
     return -1;
