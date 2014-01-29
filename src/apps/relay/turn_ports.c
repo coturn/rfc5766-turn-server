@@ -57,7 +57,7 @@ typedef struct _turnports turnports;
 
 /////////////// TURNPORTS statics //////////////////////////
 
-static turnports* turnports_create(u16bits start, u16bits end);
+static turnports* turnports_create(super_memory_t *sm, u16bits start, u16bits end);
 static u16bits turnports_size(turnports* tp);
 
 static int turnports_allocate(turnports* tp);
@@ -136,11 +136,11 @@ static void turnports_init(turnports* tp, u16bits start, u16bits end) {
 
 /////////////// FUNC ///////////////////////////////////////
 
-turnports* turnports_create(u16bits start, u16bits end) {
+turnports* turnports_create(super_memory_t *sm, u16bits start, u16bits end) {
 
   if(start>end) return NULL;
 
-  turnports* ret=(turnports*)allocate_super_memory(sizeof(turnports));
+  turnports* ret=(turnports*)allocate_super_memory_region(sm, sizeof(turnports));
   turnports_init(ret,start,end);
 
   return ret;
@@ -282,6 +282,7 @@ int turnports_is_available(turnports* tp, u16bits port) {
 
 struct _turnipports
 {
+	super_memory_t *sm;
 	u16bits start;
 	u16bits end;
 	ur_addr_map ip_to_turnports_udp;
@@ -299,9 +300,10 @@ static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 }
 //////////////////////////////////////////////////
 
-turnipports* turnipports_create(u16bits start, u16bits end)
+turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end)
 {
-	turnipports *ret = (turnipports*) allocate_super_memory(sizeof(turnipports));
+	turnipports *ret = (turnipports*) allocate_super_memory_region(sm, sizeof(turnipports));
+	ret->sm = sm;
 	ur_addr_map_init(&(ret->ip_to_turnports_udp));
 	ur_addr_map_init(&(ret->ip_to_turnports_tcp));
 	ret->start = start;
@@ -319,7 +321,7 @@ static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_
 		addr_set_port(&ba, 0);
 		TURN_MUTEX_LOCK((const turn_mutex*)&(tp->mutex));
 		if (!ur_addr_map_get(get_map(tp, transport), &ba, &t)) {
-			t = (ur_addr_map_value_type) turnports_create(tp->start, tp->end);
+			t = (ur_addr_map_value_type) turnports_create(tp->sm, tp->start, tp->end);
 			ur_addr_map_put(get_map(tp, transport), &ba, t);
 		}
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));

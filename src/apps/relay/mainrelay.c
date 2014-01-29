@@ -864,7 +864,7 @@ static void set_option(int c, char *value)
 				if(turn_params.external_ip) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You cannot define external IP more than once in the configuration\n");
 				} else {
-					turn_params.external_ip = (ioa_addr*)allocate_super_memory(sizeof(ioa_addr));
+					turn_params.external_ip = (ioa_addr*)allocate_super_memory_engine(turn_params.listener.ioa_eng, sizeof(ioa_addr));
 					if(make_ioa_addr((const u08bits*)value,0,turn_params.external_ip)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",value);
 						turn_free(turn_params.external_ip,sizeof(ioa_addr));

@@ -52,6 +52,8 @@
 #include "apputils.h"
 #include "stun_buffer.h"
 
+#include "ns_sm.h"
+
 #include <pthread.h>
 
 #ifdef __cplusplus
@@ -92,6 +94,7 @@ struct cb_socket_message {
 
 struct relay_server {
 	turnserver_id id;
+	super_memory_t* sm;
 	struct event_base* event_base;
 	struct bufferevent *in_buf;
 	struct bufferevent *out_buf;
@@ -124,6 +127,7 @@ extern const int predef_timer_intervals[PREDEF_TIMERS_NUM];
 
 struct _ioa_engine
 {
+  super_memory_t *sm;
   struct event_base *event_base;
   int deallocate_eb;
   int verbose;
@@ -217,10 +221,11 @@ typedef struct _timer_event
 
 /* engine handling */
 
-ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports* tp, 
-				    const s08bits* relay_if,
-				    size_t relays_number, s08bits **relay_addrs, int default_relays,
-				    int verbose, band_limit_t max_bps);
+ioa_engine_handle create_ioa_engine(super_memory_t *sm,
+				struct event_base *eb, turnipports* tp,
+				const s08bits* relay_if,
+				size_t relays_number, s08bits **relay_addrs, int default_relays,
+				int verbose, band_limit_t max_bps);
 
 void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *tls_ctx_ssl23,
@@ -256,9 +261,10 @@ int set_raw_socket_tos_options(evutil_socket_t fd, int family);
 int set_socket_options_fd(evutil_socket_t fd, int tcp, int family);
 int set_socket_options(ioa_socket_handle s);
 
-void init_super_memory(void);
-#define allocate_super_memory(size) allocate_super_memory_func(size, __FILE__, __FUNCTION__, __LINE__)
-void* allocate_super_memory_func(size_t size, const char* file, const char* func, int line);
+///////////////////////// SUPER MEMORY ////////
+
+#define allocate_super_memory_engine(e,size) allocate_super_memory_engine_func(e, size, __FILE__, __FUNCTION__, __LINE__)
+void* allocate_super_memory_engine_func(ioa_engine_handle e, size_t size, const char* file, const char* func, int line);
 
 /////////////////////////////////////////////////
 

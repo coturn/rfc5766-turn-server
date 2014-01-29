@@ -216,7 +216,8 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
   _log_time_value_set = 1;
 }
 
-ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
+ioa_engine_handle create_ioa_engine(super_memory_t *sm,
+				struct event_base *eb, turnipports *tp, const s08bits* relay_ifname,
 				size_t relays_number, s08bits **relay_addrs, int default_relays,
 				int verbose, band_limit_t max_bps)
 {
@@ -245,8 +246,9 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
-		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory(sizeof(ioa_engine));
+		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
 
+		e->sm = sm;
 		e->default_relays = default_relays;
 		e->max_bpj = max_bps;
 		e->verbose = verbose;
@@ -282,7 +284,7 @@ ioa_engine_handle create_ioa_engine(struct event_base *eb, turnipports *tp, cons
 			STRCPY(e->relay_ifname, relay_ifname);
 		{
 			size_t i = 0;
-			e->relay_addrs = (ioa_addr*)allocate_super_memory(relays_number * sizeof(ioa_addr)+8);
+			e->relay_addrs = (ioa_addr*)allocate_super_memory_region(sm, relays_number * sizeof(ioa_addr)+8);
 			for (i = 0; i < relays_number; i++) {
 				if(make_ioa_addr((u08bits*) relay_addrs[i], 0, &(e->relay_addrs[i]))<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",relay_addrs[i]);
@@ -3117,66 +3119,104 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 
 ///////////// Super Memory Region //////////////
 
-#define TURN_SM_SIZE (1024<<12)
+#define TURN_SM_SIZE (1024<<10)
 
-static pthread_mutex_t mutex_sm;
-static char *super_memory = NULL;
-static size_t sm_allocated = 0;
-static size_t sm_total_sz = 0;
-static size_t sm_chunk = 0;
+struct _super_memory {
+	pthread_mutex_t mutex_sm;
+	char *super_memory;
+	size_t sm_allocated;
+	size_t sm_total_sz;
+	size_t sm_chunk;
+	u32bits id;
+};
+
+static super_memory_t super_memory_default;
+
+static void init_super_memory_region(super_memory_t *r)
+{
+	if(r) {
+		ns_bzero(r,sizeof(super_memory_t));
+		r->super_memory = (char*)malloc(TURN_SM_SIZE);
+		pthread_mutex_init(&r->mutex_sm, NULL);
+		r->sm_allocated = 0;
+		r->sm_total_sz = TURN_SM_SIZE;
+		r->sm_chunk = 0;
+		while(r->id == 0)
+			r->id = (u32bits)random();
+	}
+}
 
 void init_super_memory(void)
 {
-	pthread_mutex_init(&mutex_sm, NULL);
-	super_memory = (char*)malloc(TURN_SM_SIZE);
-	ns_bzero(super_memory,TURN_SM_SIZE);
-	sm_allocated = 0;
-	sm_total_sz = TURN_SM_SIZE;
-	sm_chunk = 0;
+	init_super_memory_region(&super_memory_default);
+	super_memory_default.id = 0;
 }
 
-void* allocate_super_memory_func(size_t size, const char* file, const char* func, int line)
+super_memory_t* new_super_memory_region(void)
+{
+	super_memory_t* r = (super_memory_t*)malloc(sizeof(super_memory_t));
+	init_super_memory_region(r);
+	return r;
+}
+
+void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const char* file, const char* func, int line)
 {
 	UNUSED_ARG(file);
 	UNUSED_ARG(func);
 	UNUSED_ARG(line);
 
+	if(!r)
+		r = &super_memory_default;
+
 	void *ret = NULL;
 
-	pthread_mutex_lock(&mutex_sm);
+	pthread_mutex_lock(&r->mutex_sm);
 
 	size = ((size_t)((size+sizeof(void*))/(sizeof(void*)))) * sizeof(void*);
 
-	size_t left = (size_t)sm_total_sz - sm_allocated;
+	if(size>=TURN_SM_SIZE) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): Size too large for super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+		goto asm_end;
+	}
+
+	size_t left = (size_t)r->sm_total_sz - r->sm_allocated;
 
 	if(left<size) {
 
-		size_t new_sz = TURN_SM_SIZE;
-		while(new_sz < size) {
-			new_sz += 65536;
-		}
+		r->super_memory = (char*)malloc(TURN_SM_SIZE);
+		ns_bzero(r->super_memory,TURN_SM_SIZE);
+		r->sm_allocated = 0;
+		r->sm_total_sz = TURN_SM_SIZE;
 
-		super_memory = (char*)malloc(new_sz);
-		ns_bzero(super_memory,new_sz);
-		sm_allocated = 0;
-		sm_total_sz = new_sz;
-
-		++sm_chunk;
+		r->sm_chunk += 1;
 	}
 
 	{
-		//TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): can allocate super memory: chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned long)sm_chunk, (unsigned long)sm_total_sz, (unsigned long)sm_allocated,(unsigned long)size);
+		if(r->sm_chunk || !(r->id))
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
 
-		char* ptr = super_memory + sm_total_sz - sm_allocated - size;
+		char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
 
-		sm_allocated += size;
+		r->sm_allocated += size;
 
 		ret = ptr;
 	}
 
-	pthread_mutex_unlock(&mutex_sm);
+	pthread_mutex_unlock(&r->mutex_sm);
+
+	asm_end:
+
+	if(!ret)
+		ret = malloc(size);
 
 	return ret;
+}
+
+void* allocate_super_memory_engine_func(ioa_engine_handle e, size_t size, const char* file, const char* func, int line)
+{
+	if(e)
+		return allocate_super_memory_region_func(e->sm,size,file,func,line);
+	return allocate_super_memory_region_func(NULL,size,file,func,line);
 }
 
 //////////////////////////////////////////////////

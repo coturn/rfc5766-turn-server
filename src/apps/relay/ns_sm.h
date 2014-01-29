@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Citrix Systems
+ * Copyright (C) 2011, 2012, 2013, 2014 Citrix Systems
  *
  * All rights reserved.
  *
@@ -28,44 +28,39 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __TURN_PORTS__
-#define __TURN_PORTS__
+/*
+ * IO Abstraction library
+ */
 
-#include "ns_turn_ioaddr.h"
+#ifndef __IOA_SM__
+#define __IOA_SM__
 
-#include "ns_sm.h"
+#include "ns_turn_ioalib.h"
+
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 
-#define LOW_DEFAULT_PORTS_BOUNDARY (49152)
-#define HIGH_DEFAULT_PORTS_BOUNDARY (65535)
+struct _super_memory;
+typedef struct _super_memory super_memory_t;
 
-//////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 
-struct _turnipports;
-typedef struct _turnipports turnipports;
+void init_super_memory(void);
 
-//////////////////////////////////////////////////
+super_memory_t* new_super_memory_region(void);
 
-turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end);
+#define allocate_super_memory_region(region,size) allocate_super_memory_region_func(region, size, __FILE__, __FUNCTION__, __LINE__)
+void* allocate_super_memory_region_func(super_memory_t *region, size_t size, const char* file, const char* func, int line);
 
-int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr);
-int turnipports_allocate_even(turnipports* tp, const ioa_addr *backend_addr, 
-			      int allocate_rtcp, u64bits *reservation_token);
-
-void turnipports_release(turnipports* tp, u08bits transport, const ioa_addr *socket_addr);
-
-int turnipports_is_allocated(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port);
-int turnipports_is_available(turnipports* tp, u08bits transport, const ioa_addr *backend_addr, u16bits port);
-
-//////////////////////////////////////////////////
+/////////////////////////////////////////////////
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //__TURN_PORTS__
+#endif /* __IOA_SM__ */

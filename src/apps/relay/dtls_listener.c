@@ -305,7 +305,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 
 	ur_addr_map_value_type mvt = 0;
 	if(!(server->children_ss)) {
-		server->children_ss = (ur_addr_map*)allocate_super_memory(sizeof(ur_addr_map));
+		server->children_ss = (ur_addr_map*)allocate_super_memory_engine(server->e, sizeof(ur_addr_map));
 		ur_addr_map_init(server->children_ss);
 	}
 	ur_addr_map *amap = server->children_ss;
@@ -916,7 +916,7 @@ dtls_listener_relay_server_type* create_dtls_listener_server(const char* ifname,
 							     ioa_engine_new_connection_event_handler send_socket) {
   
   dtls_listener_relay_server_type* server=(dtls_listener_relay_server_type*)
-		allocate_super_memory(sizeof(dtls_listener_relay_server_type));
+		allocate_super_memory_engine(e,sizeof(dtls_listener_relay_server_type));
 
   if(init_server(server,
 		 ifname, local_address, port,
