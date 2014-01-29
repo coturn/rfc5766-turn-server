@@ -1315,9 +1315,19 @@ static int adminmain(int argc, char **argv)
 	return adminuser(user, realm, pwd, secret, ct, is_st);
 }
 
-static void print_features(void)
+static void print_features(unsigned long mfn)
 {
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nRFC 3489/5389/5766/5780/6062/6156 STUN/TURN Server\nVersion %s\n",TURN_SOFTWARE);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
+	if(turn_params.net_engine_version == 1)
+		mfn = mfn/3;
+	else
+		mfn = mfn/2;
+	mfn = ((unsigned long)(mfn/500))*500;
+	if(mfn<500)
+		mfn = 500;
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nDue to the open files/sockets limitation,\nmax supported number of TURN Sessions possible is: %lu (approximately)\n",mfn);
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\n\n==== Show him the instruments, Practical Frost: ====\n\n");
 
@@ -1498,18 +1508,9 @@ int main(int argc, char **argv)
 
 	{
 		unsigned long mfn = set_system_parameters(1);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nMax number of open files/sockets allowed for this process: %lu\n",mfn);
-		if(turn_params.net_engine_version == 1)
-			mfn = mfn/3;
-		else
-			mfn = mfn/2;
-		mfn = ((unsigned long)(mfn/500))*500;
-		if(mfn<500)
-			mfn = 500;
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "\nDue to the open files/sockets limitation,\nmax supported number of TURN Sessions possible is: %lu (approximately)\n",mfn);
-	}
 
-	print_features();
+		print_features(mfn);
+	}
 
 	read_config_file(argc,argv,0);
 
