@@ -3192,8 +3192,8 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	}
 
 	{
-		if(r->sm_chunk || !(r->id))
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+		//if(r->sm_chunk || !(r->id))
+		//	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
 
 		char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
 
@@ -3202,9 +3202,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		ret = ptr;
 	}
 
-	pthread_mutex_unlock(&r->mutex_sm);
 
 	asm_end:
+
+	pthread_mutex_unlock(&r->mutex_sm);
 
 	if(!ret)
 		ret = malloc(size);

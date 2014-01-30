@@ -610,6 +610,8 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	server->sm.m.sm.nd.recv_ttl = TTL_IGNORE;
 	server->sm.m.sm.nd.recv_tos = TOS_IGNORE;
 
+	addr_set_any(&(server->sm.m.sm.nd.src_addr));
+
 	int slen = server->slen0;
 	ssize_t bsize = 0;
 
@@ -682,6 +684,9 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 		if(server->connect_cb) {
 
 			rc = create_new_connected_udp_socket(server, s);
+			if(rc<0) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot handle UDP packet, size %d\n",(int)bsize);
+			}
 
 		} else {
 			server->sm.m.sm.s = s;
@@ -698,7 +703,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	ioa_network_buffer_delete(server->e, server->sm.m.sm.nd.nbh);
 	server->sm.m.sm.nd.nbh = NULL;
 
-	if(cycle++<MAX_SINGLE_UDP_BATCH)
+	if((bsize>0) && (cycle++<MAX_SINGLE_UDP_BATCH))
 		goto start_udp_cycle;
 
 	FUNCEND;

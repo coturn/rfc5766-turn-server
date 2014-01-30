@@ -39,15 +39,15 @@
 ////////// DATA ////////////////////////////////////////////
 
 #define PORTS_SIZE (0xFFFF+1)
-#define TPS_OUT_OF_RANGE ((u64bits)(-1))
-#define TPS_TAKEN_SINGLE ((u64bits)(-2))
-#define TPS_TAKEN_EVEN ((u64bits)(-3))
-#define TPS_TAKEN_ODD ((u64bits)(-4))
+#define TPS_OUT_OF_RANGE ((u32bits)(-1))
+#define TPS_TAKEN_SINGLE ((u32bits)(-2))
+#define TPS_TAKEN_EVEN ((u32bits)(-3))
+#define TPS_TAKEN_ODD ((u32bits)(-4))
 
 struct _turnports {
-  u64bits status[PORTS_SIZE];
-  u64bits low;
-  u64bits high;
+  u32bits status[PORTS_SIZE];
+  u32bits low;
+  u32bits high;
   u16bits range_start;
   u16bits range_stop;
   int ports[PORTS_SIZE];
@@ -70,7 +70,7 @@ static int turnports_is_available(turnports* tp, u16bits port);
 
 /////////////// UTILS //////////////////////////////////////
 
-static int is_taken(u64bits status) {
+static int is_taken(u32bits status) {
 	int ret = -1;
 	switch (status) {
 	case TPS_TAKEN_SINGLE :
@@ -110,7 +110,7 @@ static void turnports_randomize(turnports* tp) {
 static void turnports_init(turnports* tp, u16bits start, u16bits end) {
 
   tp->low=start;
-  tp->high=((u64bits)end)+1;
+  tp->high=((u32bits)end)+1;
 
   tp->range_start=start;
   tp->range_stop=end;
@@ -265,7 +265,7 @@ int turnports_is_allocated(turnports* tp, u16bits port) {
 int turnports_is_available(turnports* tp, u16bits port) {
   if(tp) {
     TURN_MUTEX_LOCK(&tp->mutex);
-    u64bits status = tp->status[port];
+    u32bits status = tp->status[port];
     if((status!=TPS_OUT_OF_RANGE) && !is_taken(status)) {
       u16bits position=(u16bits)(status & 0x0000FFFF);
       if((int)(tp->ports[position])==(int)port) {
