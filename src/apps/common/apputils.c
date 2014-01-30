@@ -60,6 +60,8 @@
 
 int IS_TURN_SERVER = 0;
 
+int reusable_value = 1;
+
 /*********************** Sockets *********************************/
 
 int socket_set_nonblocking(evutil_socket_t fd)
@@ -156,14 +158,14 @@ int socket_set_reusable(evutil_socket_t fd)
 
 #ifdef SO_REUSEPORT
 		if (use_reuseaddr) {
-			const int on = 1;
+			const int on = reusable_value;
 			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
 		}
 #endif
 
 #if defined(SO_REUSEADDR)
 		if (use_reuseaddr) {
-			const int on = 1;
+			const int on = reusable_value;
 			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 			if (ret < 0)
 				perror("SO_REUSEADDR");

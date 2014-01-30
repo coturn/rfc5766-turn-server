@@ -28,6 +28,7 @@
  * SUCH DAMAGE.
  */
 
+#include "apputils.h"
 #include "uclient.h"
 #include "ns_turn_utils.h"
 #include "apputils.h"
@@ -153,6 +154,8 @@ int main(int argc, char **argv)
 	char rest_api_separator = ':';
 	char auth_secret[1025]="\0";
 	int use_null_cipher=0;
+
+	reusable_value = 0;
 
 	set_logfile("stdout");
 

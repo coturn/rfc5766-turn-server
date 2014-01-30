@@ -213,8 +213,6 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		exit(-1);
 	}
 
-	socket_set_reusable(clnet_fd);
-
 	if (sock_bind_to_device(clnet_fd, ifname) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 				"Cannot bind client socket to device %s\n", ifname);
@@ -260,7 +258,10 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		}
 	}
 
-	addr_debug_print(verbose, &remote_addr, "Connected to");
+	if(verbose && clnet_info) {
+		addr_debug_print(verbose, &(clnet_info->local_addr), "Connected from");
+		addr_debug_print(verbose, &remote_addr, "Connected to");
+	}
 
 	if(!dos) usleep(50000);
 
@@ -1416,8 +1417,6 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 		exit(-1);
 	}
 
-	socket_set_reusable(clnet_fd);
-
 	if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"Cannot bind client socket to device %s\n", client_ifname);
@@ -1453,7 +1452,6 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	    		  perror("socket");
 	    		  exit(-1);
 	    	  }
-	    	  socket_set_reusable(clnet_fd);
 	    	  if (sock_bind_to_device(clnet_fd, client_ifname) < 0) {
 	    		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 	    				  "Cannot bind client socket to device %s\n", client_ifname);

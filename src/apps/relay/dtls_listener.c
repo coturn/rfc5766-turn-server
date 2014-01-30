@@ -501,8 +501,12 @@ static int create_new_connected_udp_socket(
 	{
 		int connect_err = 0;
 		if (addr_connect(udp_fd, &(server->sm.m.sm.nd.src_addr), &connect_err) < 0) {
+			char sl[129];
+			char sr[129];
+			addr_to_string(&(ret->local_addr),(u08bits*)sl);
+			addr_to_string(&(server->sm.m.sm.nd.src_addr),(u08bits*)sr);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-					"Cannot connect new detached udp client socket to remote addr\n");
+					"Cannot connect new detached udp client socket from local addr %s to remote addr %s\n",sl,sr);
 			IOA_CLOSE_SOCKET(ret);
 			return -1;
 		}

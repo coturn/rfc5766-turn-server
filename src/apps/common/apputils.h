@@ -92,6 +92,8 @@ typedef enum _TURN_TLS_TYPE TURN_TLS_TYPE;
 void read_spare_buffer(evutil_socket_t fd);
 
 int set_sock_buf_size(evutil_socket_t fd, int sz);
+
+extern int reusable_value;
 int socket_set_reusable(evutil_socket_t fd);
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname);
 int socket_set_nonblocking(evutil_socket_t fd);
