@@ -3172,35 +3172,34 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	size = ((size_t)((size+sizeof(void*))/(sizeof(void*)))) * sizeof(void*);
 
 	if(size>=TURN_SM_SIZE) {
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): Size too large for super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
-		goto asm_end;
+
+	} else {
+
+		size_t left = (size_t)r->sm_total_sz - r->sm_allocated;
+
+		if(left<size) {
+
+			r->super_memory = (char*)malloc(TURN_SM_SIZE);
+			ns_bzero(r->super_memory,TURN_SM_SIZE);
+			r->sm_allocated = 0;
+			r->sm_total_sz = TURN_SM_SIZE;
+
+			r->sm_chunk += 1;
+		}
+
+		{
+			if(r->sm_chunk || !(r->id))
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+
+			char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
+
+			r->sm_allocated += size;
+
+			ret = ptr;
+		}
 	}
-
-	size_t left = (size_t)r->sm_total_sz - r->sm_allocated;
-
-	if(left<size) {
-
-		r->super_memory = (char*)malloc(TURN_SM_SIZE);
-		ns_bzero(r->super_memory,TURN_SM_SIZE);
-		r->sm_allocated = 0;
-		r->sm_total_sz = TURN_SM_SIZE;
-
-		r->sm_chunk += 1;
-	}
-
-	{
-		if(r->sm_chunk || !(r->id))
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
-
-		char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
-
-		r->sm_allocated += size;
-
-		ret = ptr;
-	}
-
-
-	asm_end:
 
 	pthread_mutex_unlock(&r->mutex_sm);
 
