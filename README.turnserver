@@ -236,6 +236,12 @@ Flags:
 			This option eliminates the IP permissions check 
 			on the packets incoming to the relay endpoints.
 			See http://tools.ietf.org/search/rfc5766#section-17.2.3 .
+				
+--udp-self-balance	(recommended for older Linuxes only)
+			Automatically balance UDP traffic over auxiliary servers
+			(if configured). The load balancing is using the 
+			ALTERNATE-SERVER mechanism. The TURN client must support 
+			300 ALTERNATE-SERVER response for this functionality.
 
 -h			Help.
     
@@ -290,11 +296,6 @@ Options with required values:
 			Valid formats are 1.2.3.4:5555 for IPv4 and [1:2::3:4]:5555 for IPv6.
 			There may be multiple aux-server options, each will be used for listening
 			to client requests.
-				
---udp-self-balance	Automatically balance UDP traffic over auxiliary servers
-			(if configured). The load balancing is happening by the 
-			ALTERNATE-SERVER mechanism. The TURN client must support 
-			300 ALTERNATE-SERVER response for this functionality.
 
 -i, --relay-device	Relay interface device for relay sockets 
 			(NOT RECOMMENDED. Optional, Linux only).
