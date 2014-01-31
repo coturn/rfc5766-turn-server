@@ -50,7 +50,7 @@ struct _turnports {
   u32bits high;
   u16bits range_start;
   u16bits range_stop;
-  int ports[PORTS_SIZE];
+  u16bits ports[PORTS_SIZE];
   TURN_MUTEX_DECLARE(mutex)
 };
 typedef struct _turnports turnports;
@@ -96,12 +96,12 @@ static void turnports_randomize(turnports* tp) {
       if(port1!=port2) {
     	  int pos1=tp->status[port1];
     	  int pos2=tp->status[port2];
-    	  int tmp=tp->status[port1];
+    	  int tmp=(int)tp->status[port1];
     	  tp->status[port1]=tp->status[port2];
-    	  tp->status[port2]=tmp;
-    	  tmp=tp->ports[pos1];
+    	  tp->status[port2]=(u32bits)tmp;
+    	  tmp=(int)tp->ports[pos1];
     	  tp->ports[pos1]=tp->ports[pos2];
-    	  tp->ports[pos2]=tmp;
+    	  tp->ports[pos2]=(u16bits)tmp;
       }
     }
   }
@@ -118,15 +118,15 @@ static void turnports_init(turnports* tp, u16bits start, u16bits end) {
   int i=0;
   for(i=0;i<start;i++) {
     tp->status[i]=TPS_OUT_OF_RANGE;
-    tp->ports[i]=i;
+    tp->ports[i]=(u16bits)i;
   }
   for(i=start;i<=end;i++) {
-    tp->status[i]=i;
-    tp->ports[i]=i;
+    tp->status[i]=(u32bits)i;
+    tp->ports[i]=(u16bits)i;
   }
   for(i=((int)end)+1;i<PORTS_SIZE;i++) {
     tp->status[i]=TPS_OUT_OF_RANGE;
-    tp->ports[i]=i;
+    tp->ports[i]=(u16bits)i;
   }
 
   turnports_randomize(tp);
@@ -167,24 +167,24 @@ int turnports_allocate(turnports* tp) {
     while(1) {
       
       if(tp->high <= tp->low) {
-	TURN_MUTEX_UNLOCK(&tp->mutex);
-	return -1;
+    	  TURN_MUTEX_UNLOCK(&tp->mutex);
+    	  return -1;
       }
       
       int position=(u16bits)(tp->low & 0x0000FFFF);
       
-      port=tp->ports[position];
+      port=(int)tp->ports[position];
       if(port<(int)(tp->range_start) || port>((int)(tp->range_stop))) {
-	TURN_MUTEX_UNLOCK(&tp->mutex);
-	return -1;
+    	  TURN_MUTEX_UNLOCK(&tp->mutex);
+    	  return -1;
       }
       if(is_taken(tp->status[port])) {
-	++(tp->low);
-	continue;
+    	  ++(tp->low);
+    	  continue;
       } 
       if(tp->status[port]!=tp->low) {
-	++(tp->low);
-	continue;
+    	  ++(tp->low);
+    	  continue;
       }
       tp->status[port]=TPS_TAKEN_SINGLE;
       ++(tp->low);
@@ -217,34 +217,34 @@ int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservati
     if(size>1) {
       u16bits i=0;
       for(i=0;i<size;i++) {
-	int port=turnports_allocate(tp);
-	if(port & 0x00000001) {
-	  turnports_release(tp,port);
-	} else {
-	  if(!allocate_rtcp) {
-	    TURN_MUTEX_UNLOCK(&tp->mutex);
-	    return port;
-	  } else {
-	    int rtcp_port=port+1;
-	    if(rtcp_port>tp->range_stop) {
-	      turnports_release(tp,port);
-	    } else if(!turnports_is_available(tp,rtcp_port)) {
-	      turnports_release(tp,port);
-	    } else {
-	      tp->status[port]=TPS_TAKEN_EVEN;
-	      tp->status[rtcp_port]=TPS_TAKEN_ODD;
-	      if(reservation_token) {
-		u16bits *v16=(u16bits*)reservation_token;
-		u32bits *v32=(u32bits*)reservation_token;
-		v16[0]=(u16bits)(tp->ports[(u16bits)(tp->low & 0x0000FFFF)]);
-		v16[1]=(u16bits)(tp->ports[(u16bits)(tp->high & 0x0000FFFF)]);
-		v32[1]=(u32bits)random();
-	      }
-	      TURN_MUTEX_UNLOCK(&tp->mutex);
-	      return port;
-	    }
-	  }
-	}
+    	  int port=turnports_allocate(tp);
+    	  if(port & 0x00000001) {
+    		  turnports_release(tp,port);
+    	  } else {
+    		  if(!allocate_rtcp) {
+    			  TURN_MUTEX_UNLOCK(&tp->mutex);
+    			  return port;
+    		  } else {
+    			  int rtcp_port=port+1;
+    			  if(rtcp_port>tp->range_stop) {
+    				  turnports_release(tp,port);
+    			  } else if(!turnports_is_available(tp,rtcp_port)) {
+    				  turnports_release(tp,port);
+    			  } else {
+    				  tp->status[port]=TPS_TAKEN_EVEN;
+    				  tp->status[rtcp_port]=TPS_TAKEN_ODD;
+    				  if(reservation_token) {
+    					  u16bits *v16=(u16bits*)reservation_token;
+    					  u32bits *v32=(u32bits*)reservation_token;
+    					  v16[0]=(u16bits)(tp->ports[(u16bits)(tp->low & 0x0000FFFF)]);
+    					  v16[1]=(u16bits)(tp->ports[(u16bits)(tp->high & 0x0000FFFF)]);
+    					  v32[1]=(u32bits)random();
+    				  }
+    				  TURN_MUTEX_UNLOCK(&tp->mutex);
+    				  return port;
+    			  }
+    		  }
+    	  }
       }
     }
     TURN_MUTEX_UNLOCK(&tp->mutex);
@@ -268,9 +268,9 @@ int turnports_is_available(turnports* tp, u16bits port) {
     u32bits status = tp->status[port];
     if((status!=TPS_OUT_OF_RANGE) && !is_taken(status)) {
       u16bits position=(u16bits)(status & 0x0000FFFF);
-      if((int)(tp->ports[position])==(int)port) {
-	TURN_MUTEX_UNLOCK(&tp->mutex);
-	return 1;
+      if(tp->ports[position]==port) {
+    	  TURN_MUTEX_UNLOCK(&tp->mutex);
+    	  return 1;
       }
     }
     TURN_MUTEX_UNLOCK(&tp->mutex);

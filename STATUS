@@ -86,6 +86,8 @@ compatibility.
 35) Optimized (for thousands and more sessions) timers implementation.
 
 36) TCP network engine optimized for the new Linux kernels (3.9+). 
+
+37) telnet-based monitor implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.

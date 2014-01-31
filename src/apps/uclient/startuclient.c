@@ -263,7 +263,7 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 		addr_debug_print(verbose, &remote_addr, "Connected to");
 	}
 
-	if(!dos) usleep(50000);
+	if(!dos) usleep(500);
 
 	return 0;
 }

@@ -63,7 +63,7 @@ static int total_clients = 0;
 /* Patch for unlimited number of clients provided by ucudbm@gmail.com */
 static app_ur_session** elems = NULL;
 
-#define SLEEP_INTERVAL (2345)
+#define SLEEP_INTERVAL (234)
 
 int RTP_PACKET_INTERVAL = 20;
 

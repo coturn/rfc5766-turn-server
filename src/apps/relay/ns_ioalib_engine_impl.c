@@ -3119,7 +3119,7 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 
 ///////////// Super Memory Region //////////////
 
-#define TURN_SM_SIZE (1024<<10)
+#define TURN_SM_SIZE (1824<<10)
 
 struct _super_memory {
 	pthread_mutex_t mutex_sm;
@@ -3129,8 +3129,6 @@ struct _super_memory {
 	size_t sm_chunk;
 	u32bits id;
 };
-
-static super_memory_t super_memory_default;
 
 static void init_super_memory_region(super_memory_t *r)
 {
@@ -3148,8 +3146,7 @@ static void init_super_memory_region(super_memory_t *r)
 
 void init_super_memory(void)
 {
-	init_super_memory_region(&super_memory_default);
-	super_memory_default.id = 0;
+	;
 }
 
 super_memory_t* new_super_memory_region(void)
@@ -3166,7 +3163,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	UNUSED_ARG(line);
 
 	if(!r)
-		r = &super_memory_default;
+		return malloc(size);
 
 	void *ret = NULL;
 
@@ -3192,8 +3189,8 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	}
 
 	{
-		//if(r->sm_chunk || !(r->id))
-		//	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+		if(r->sm_chunk || !(r->id))
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
 
 		char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
 
