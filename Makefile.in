@@ -121,6 +121,7 @@ install:	all ${MAKE_DEPS}
 	${INSTALL_MAN} man/man1/turnutils_peer.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_MAN} man/man1/rfc5766-turn-server.1 ${DESTDIR}${MANPREFIX}/man/man1/
 	${INSTALL_STATIC_LIB} lib/libturnclient.a ${DESTDIR}${LIBDIR}
+	${INSTALL_DATA} LICENSE ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnserver ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnadmin ${DESTDIR}${DOCSDIR}
 	${INSTALL_DATA} README.turnutils ${DESTDIR}${DOCSDIR}
