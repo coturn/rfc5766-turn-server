@@ -166,6 +166,7 @@ fi
 %endif
 
 %files
+%doc LICENSE README.turnserver
 %defattr(-,root,root)
 %{_bindir}/turnserver
 %{_bindir}/turnadmin
@@ -254,6 +255,7 @@ fi
 %{_datadir}/%{name}/scripts/mobile/mobile_udp_client.sh
 
 %files 		utils
+%doc LICENSE README.turnadmin README.turnutils
 %defattr(-,root,root)
 %{_bindir}/turnutils_peer
 %{_bindir}/turnutils_stunclient
@@ -270,9 +272,11 @@ fi
 %{_datadir}/%{name}/etc/turn_client_pkey.pem
 
 %files		client-libs
+%doc LICENSE 
 %{_libdir}/libturnclient.a
 
 %files		client-devel
+%doc LICENSE 
 %dir %{_includedir}/turn
 %{_includedir}/turn/ns_turn_defs.h
 %dir %{_includedir}/turn/client
