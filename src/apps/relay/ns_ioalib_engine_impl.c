@@ -1694,9 +1694,8 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 		return -1;
 	}
 
-	stun_buffer buf;
-	ns_bcopy(buffer,buf.buf,*read_len);
-	buf.len = *read_len;
+	s08bits *new_buffer = buffer + buf_size;
+	int old_buffer_len = *read_len;
 
 	*read_len = -1;
 	int len = 0;
@@ -1710,7 +1709,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 		BIO_set_fd(wbio,fd,BIO_NOCLOSE);
 	}
 
-	BIO* rbio = BIO_new_mem_buf(buf.buf, (int) buf.len);
+	BIO* rbio = BIO_new_mem_buf(buffer, old_buffer_len);
 	BIO_set_mem_eof_return(rbio, -1);
 
 	ssl->rbio = rbio;
@@ -1718,7 +1717,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 	int if1 = SSL_is_init_finished(ssl);
 
 	do {
-		len = SSL_read(ssl, buffer, buf_size);
+		len = SSL_read(ssl, new_buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
 
 	int if2 = SSL_is_init_finished(ssl);
@@ -1801,6 +1800,9 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 			}
 		}
 	}
+
+	if(ret>0)
+		ns_bcopy(new_buffer, buffer, (size_t)ret);
 
 	BIO_free(rbio);
 	ssl->rbio = NULL;
@@ -2219,11 +2221,12 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(len == 0)
 			len = -1;
 	} else if(s->fd>=0){ /* UDP and DTLS */
-		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, &ttl, &tos, s->e->cmsg, 0, NULL);
+		ret = udp_recvfrom(s->fd, &remote_addr, &(s->local_addr), (s08bits*)(elem->buf.buf), UDP_STUN_BUFFER_SIZE, &ttl, &tos, s->e->cmsg, 0, NULL);
 		len = ret;
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
-			ret = ssl_read(s->fd, s->ssl, (s08bits*)(elem->buf.buf), STUN_BUFFER_SIZE, s->e->verbose, &len);
+			ret = ssl_read(s->fd, s->ssl, (s08bits*)(elem->buf.buf),
+				(int)ioa_network_buffer_get_capacity_udp(), s->e->verbose, &len);
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				s->tobeclosed = 1;
@@ -2980,6 +2983,11 @@ size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
 size_t ioa_network_buffer_get_capacity(void)
 {
 	return STUN_BUFFER_SIZE;
+}
+
+size_t ioa_network_buffer_get_capacity_udp(void)
+{
+	return UDP_STUN_BUFFER_SIZE;
 }
 
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)

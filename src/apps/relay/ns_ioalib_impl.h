@@ -62,7 +62,6 @@ extern "C" {
 
 //////////////////////////////////////////////////////
 
-#define TOO_BIG_BAD_TCP_MESSAGE (40000)
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (64)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 

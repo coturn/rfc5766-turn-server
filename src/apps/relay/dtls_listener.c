@@ -220,7 +220,7 @@ static ioa_socket_handle dtls_accept_client_connection(
 	if (!ssl)
 		return NULL;
 
-	int rc = ssl_read(sock->fd, ssl, (s08bits*)s, ioa_network_buffer_get_capacity(), server->verbose, &len);
+	int rc = ssl_read(sock->fd, ssl, (s08bits*)s, ioa_network_buffer_get_capacity_udp(), server->verbose, &len);
 
 	if (rc < 0)
 		return NULL;
@@ -323,7 +323,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		if(s->ssl) {
 			int read_len = (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh);
 			int sslret = ssl_read(s->fd, s->ssl, (s08bits*)ioa_network_buffer_data(sm->m.sm.nd.nbh),
-				(int)ioa_network_buffer_get_capacity(),
+				(int)ioa_network_buffer_get_capacity_udp(),
 				verbose, &read_len);
 			if(sslret < 0) {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
@@ -529,7 +529,7 @@ static int create_new_connected_udp_socket(
 					(int) ioa_network_buffer_get_size(
 							server->sm.m.sm.nd.nbh))) {
 
-		u08bits *s = ioa_network_buffer_data(server->sm.m.sm.nd.nbh);
+		u08bits *str = ioa_network_buffer_data(server->sm.m.sm.nd.nbh);
 		int len = (int) ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh);
 
 		SSL* connecting_ssl = NULL;
@@ -556,8 +556,8 @@ static int create_new_connected_udp_socket(
 
 		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
 		SSL_set_max_cert_list(connecting_ssl, 655350);
-		int rc = ssl_read(ret->fd, connecting_ssl, (s08bits*) s,
-				(int)ioa_network_buffer_get_capacity(), server->verbose, &len);
+		int rc = ssl_read(ret->fd, connecting_ssl, (s08bits*) str,
+				(int)ioa_network_buffer_get_capacity_udp(), server->verbose, &len);
 
 		if (rc < 0) {
 			if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
@@ -618,7 +618,7 @@ static void udp_server_input_handler(evutil_socket_t fd, short what, void* arg)
 	int flags = 0;
 
 	do {
-		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
+		bsize = recvfrom(fd, ioa_network_buffer_data(elem), ioa_network_buffer_get_capacity_udp(), flags, (struct sockaddr*) &(server->sm.m.sm.nd.src_addr), (socklen_t*) &slen);
 	} while (bsize < 0 && (errno == EINTR));
 
 	int conn_reset = is_connreset();
