@@ -1022,6 +1022,7 @@ static void cli_socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			}
 
 			buf.len = len;
+			buf.offset = 0;
 			buf.buf[len]=0;
 
 			telnet_recv(cs->ts, (const char *)buf.buf, (unsigned int)(buf.len));

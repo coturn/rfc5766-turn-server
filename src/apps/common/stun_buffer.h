@@ -43,8 +43,11 @@ extern "C" {
 #define UDP_STUN_BUFFER_SIZE (4096)
 
 typedef struct _stun_buffer {
+  u08bits	channel[STUN_CHANNEL_HEADER_LENGTH];
   u08bits	buf[STUN_BUFFER_SIZE];
-  ssize_t	len;
+  size_t	len;
+  u16bits	offset;
+  u08bits	coffset;
 } stun_buffer;
 
 //////////////////////////////////////////////////////////////
@@ -60,7 +63,6 @@ void stun_tid_from_message(const stun_buffer *buf, stun_tid* id);
 ///////////////////////////////////////////////////////////////
 
 int stun_is_command_message(const stun_buffer* buf);
-int stun_is_command_message_offset(const stun_buffer* buf, int offset);
 int stun_is_request(const stun_buffer* buf);
 int stun_is_response(const stun_buffer* buf);
 int stun_is_success_response(const stun_buffer* buf);
@@ -116,7 +118,6 @@ int stun_set_binding_response(stun_buffer* buf, stun_tid* tid,
 			      const ioa_addr *reflexive_addr, int error_code, const u08bits *reason);
 
 void stun_prepare_binding_request(stun_buffer* buf);
-int stun_is_binding_request(const stun_buffer* buf, size_t offset);
 int stun_is_binding_response(const stun_buffer* buf);
 
 ///////////////////////////////////////////////////////////////

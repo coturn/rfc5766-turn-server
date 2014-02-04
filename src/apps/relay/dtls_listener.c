@@ -557,7 +557,8 @@ static int create_new_connected_udp_socket(
 		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
 		SSL_set_max_cert_list(connecting_ssl, 655350);
 		int rc = ssl_read(ret->fd, connecting_ssl, (s08bits*) str,
-				(int)ioa_network_buffer_get_capacity_udp(), server->verbose, &len);
+				(int)ioa_network_buffer_get_capacity_udp(),
+				server->verbose, &len);
 
 		if (rc < 0) {
 			if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {

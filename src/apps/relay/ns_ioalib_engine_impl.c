@@ -145,6 +145,8 @@ static stun_buffer_list_elem *get_elem_from_buffer_list(stun_buffer_list *bufs)
 
 		ret->next=NULL;
 		ret->buf.len = 0;
+		ret->buf.offset = 0;
+		ret->buf.coffset = 0;
 	}
 
 	return ret;
@@ -170,6 +172,8 @@ static stun_buffer_list_elem *new_blist_elem(ioa_engine_handle e)
 	if(!ret) {
 	  ret = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  ret->buf.len = 0;
+	  ret->buf.offset = 0;
+	  ret->buf.coffset = 0;
 	  ret->next = NULL;
 	}
 
@@ -189,6 +193,8 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size
 	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  ns_bcopy(buf,elem->buf.buf,len);
 	  elem->buf.len = (ssize_t)len;
+	  elem->buf.offset = 0;
+	  elem->buf.coffset = 0;
 	  add_elem_to_buffer_list(bufs,elem);
 	}
 }
@@ -2600,7 +2606,7 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	if(s) {
 		stun_buffer_list_elem *elem = s->bufs.head;
 		while(elem) {
-			int rc = ssl_send(s, (s08bits*)elem->buf.buf, (size_t)elem->buf.len, s->e->verbose);
+			int rc = ssl_send(s, (s08bits*)elem->buf.buf + elem->buf.offset - elem->buf.coffset, (size_t)elem->buf.len, s->e->verbose);
 			if(rc<1)
 				break;
 			++ret;
@@ -2955,6 +2961,8 @@ ioa_network_buffer_handle ioa_network_buffer_allocate(ioa_engine_handle e)
 {
 	stun_buffer_list_elem *elem = new_blist_elem(e);
 	elem->buf.len = 0;
+	elem->buf.offset = 0;
+	elem->buf.coffset = 0;
 	return elem;
 }
 
@@ -2967,7 +2975,7 @@ void ioa_network_buffer_header_init(ioa_network_buffer_handle nbh)
 u08bits *ioa_network_buffer_data(ioa_network_buffer_handle nbh)
 {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
-	return elem->buf.buf;
+	return elem->buf.buf + elem->buf.offset - elem->buf.coffset;
 }
 
 size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
@@ -2975,14 +2983,22 @@ size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh)
 	if(!nbh)
 		return 0;
 	else {
-	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
+		stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
 		return (size_t)(elem->buf.len);
 	}
 }
 
-size_t ioa_network_buffer_get_capacity(void)
+size_t ioa_network_buffer_get_capacity(ioa_network_buffer_handle nbh)
 {
-	return STUN_BUFFER_SIZE;
+	if(!nbh)
+		return 0;
+	else {
+		stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
+		if(elem->buf.offset < STUN_BUFFER_SIZE) {
+			return (STUN_BUFFER_SIZE - elem->buf.offset);
+		}
+		return 0;
+	}
 }
 
 size_t ioa_network_buffer_get_capacity_udp(void)
@@ -2995,6 +3011,27 @@ void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
   elem->buf.len=(ssize_t)len;
 }
+
+void ioa_network_buffer_set_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len)
+{
+  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
+  elem->buf.len=(ssize_t)len;
+  elem->buf.offset = offset;
+  elem->buf.coffset = coffset;
+}
+
+u16bits ioa_network_buffer_get_offset(ioa_network_buffer_handle nbh)
+{
+  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
+  return elem->buf.offset;
+}
+
+u08bits ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh)
+{
+  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
+  return elem->buf.coffset;
+}
+
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh) {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
   free_blist_elem(e,elem);

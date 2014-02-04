@@ -226,10 +226,10 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 
 			int len = 0;
 			do {
-				len = SSL_write(ssl, buffer, message->len);
+				len = SSL_write(ssl, buffer, (int)message->len);
 			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
 
-			if(len == message->len) {
+			if(len == (int)message->len) {
 				if (clnet_verbose) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 							"buffer sent: size=%d\n",len);
@@ -500,8 +500,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 		size_t buffers = 1;
 
 		 if(is_tcp_data) {
-			if (elem->in_buffer.len >= 0) {
-				if (elem->in_buffer.len > clmessage_length) {
+			{
+				if ((int)elem->in_buffer.len > clmessage_length) {
 					if(clnet_verbose) {
 						TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
@@ -509,7 +509,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 						rc, clmessage_length);
 					}
 					buffers=elem->in_buffer.len/clmessage_length;
-				} else if (elem->in_buffer.len < clmessage_length) {
+				} else if ((int)elem->in_buffer.len < clmessage_length) {
 					TURN_LOG_FUNC(
 						TURN_LOG_LEVEL_INFO,
 						"ERROR: received wrong buffer size: length: %d, must be %d; len=%d\n",
@@ -626,8 +626,8 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			}
 
 			if (elem->in_buffer.len >= 4) {
-				if (((elem->in_buffer.len-4) < clmessage_length) ||
-					((elem->in_buffer.len-4) > clmessage_length + 3)) {
+				if (((int)(elem->in_buffer.len-4) < clmessage_length) ||
+					((int)(elem->in_buffer.len-4) > clmessage_length + 3)) {
 					TURN_LOG_FUNC(
 							TURN_LOG_LEVEL_INFO,
 							"ERROR: received buffer have wrong length: %d, must be %d, len=%d\n",

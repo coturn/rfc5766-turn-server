@@ -35,7 +35,9 @@
 int stun_init_buffer(stun_buffer *buf) {
   if(!buf) return -1;
   ns_bzero(buf->buf,sizeof(buf->buf));
-  buf->len=STUN_HEADER_LENGTH;
+  buf->len=0;
+  buf->offset=0;
+  buf->coffset=0;
   return 0;
 }
 
@@ -70,10 +72,6 @@ int stun_is_command_message(const stun_buffer* buf) {
     return 0;
   else
     return stun_is_command_message_str(buf->buf,(size_t)(buf->len));
-}
-
-int stun_is_command_message_offset(const stun_buffer* buf, int offset) {
-  return stun_is_command_message_offset_str(buf->buf, (size_t)(buf->len), offset);
 }
 
 int stun_is_request(const stun_buffer* buf) {
@@ -245,10 +243,6 @@ int stun_set_binding_response(stun_buffer* buf, stun_tid* tid,
 
 void stun_prepare_binding_request(stun_buffer* buf) {
   stun_set_binding_request_str(buf->buf, (size_t*)(&(buf->len)));
-}
-
-int stun_is_binding_request(const stun_buffer* buf, size_t offset) {
-  return stun_is_binding_request_str(buf->buf, (size_t)(buf->len), offset);
 }
 
 int stun_is_binding_response(const stun_buffer* buf) {

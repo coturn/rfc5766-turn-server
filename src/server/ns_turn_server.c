@@ -2504,9 +2504,9 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
 				ioa_network_buffer_handle nbh = in_buffer->nbh;
-				ns_bcopy(value,ioa_network_buffer_data(nbh),len);
+				u16bits offset = (u16bits)(value - ioa_network_buffer_data(nbh));
+				ioa_network_buffer_set_offset_size(nbh,offset,0,len);
 				ioa_network_buffer_header_init(nbh);
-				ioa_network_buffer_set_size(nbh,len);
 				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;
 			}
@@ -3393,11 +3393,11 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 			set_df_on_ioa_socket(get_relay_socket_ss(ss), 0);
 
 			ioa_network_buffer_handle nbh = in_buffer->nbh;
-			ns_bcopy((ioa_network_buffer_data(in_buffer->nbh)+STUN_CHANNEL_HEADER_LENGTH),
-				  ioa_network_buffer_data(nbh),
-				  ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+
+			ioa_network_buffer_set_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0, ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+
 			ioa_network_buffer_header_init(nbh);
-			ioa_network_buffer_set_size(nbh,ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+
 			rc = send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &(chn->peer_addr), nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 			in_buffer->nbh = NULL;
 		}
@@ -3981,7 +3981,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 	int offset = STUN_CHANNEL_HEADER_LENGTH;
 
 	int ilen = min((int)ioa_network_buffer_get_size(in_buffer->nbh),
-					(int)(ioa_network_buffer_get_capacity_udp() - offset));
+			(int)(ioa_network_buffer_get_capacity_udp() - offset));
 
 	if (ilen >= 0) {
 
@@ -4004,7 +4004,12 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 			if (chnum) {
 				nbh = in_buffer->nbh;
-				ns_bcopy(ioa_network_buffer_data(in_buffer->nbh), (s08bits*)(ioa_network_buffer_data(nbh)+offset), len);
+
+				ioa_network_buffer_set_offset_size(nbh,
+								ioa_network_buffer_get_offset(nbh),
+								STUN_CHANNEL_HEADER_LENGTH,
+								ioa_network_buffer_get_size(nbh)+STUN_CHANNEL_HEADER_LENGTH);
+
 				ioa_network_buffer_header_init(nbh);
 
 				SOCKET_TYPE st = get_ioa_socket_type(ss->client_session.s);
