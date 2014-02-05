@@ -213,14 +213,14 @@ static ioa_socket_handle dtls_accept_client_connection(
 				ioa_socket_handle sock,
 				SSL *ssl,
 				ioa_addr *remote_addr, ioa_addr *local_addr,
-				u08bits *s, int len)
+				ioa_network_buffer_handle nbh)
 {
 	FUNCSTART;
 
 	if (!ssl)
 		return NULL;
 
-	int rc = ssl_read(sock->fd, ssl, (s08bits*)s, ioa_network_buffer_get_capacity_udp(), server->verbose, &len);
+	int rc = ssl_read(sock->fd, ssl, nbh, server->verbose);
 
 	if (rc < 0)
 		return NULL;
@@ -247,11 +247,11 @@ static ioa_socket_handle dtls_accept_client_connection(
 
 static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_type* server,
 				ioa_socket_handle s,
-				u08bits *buf, int len)
+				ioa_network_buffer_handle nbh)
 {
 	FUNCSTART;
 
-	if (!server || !buf || len<1) {
+	if (!server || !nbh) {
 		return NULL;
 	}
 
@@ -281,7 +281,7 @@ static ioa_socket_handle dtls_server_input_handler(dtls_listener_relay_server_ty
 	ioa_socket_handle rc = dtls_accept_client_connection(server, s, connecting_ssl,
 					&(server->sm.m.sm.nd.src_addr),
 					&(server->addr),
-					buf, len);
+					nbh);
 
 	if (!rc) {
 		if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {
@@ -321,10 +321,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		s = chs;
 		sm->m.sm.s = s;
 		if(s->ssl) {
-			int read_len = (int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh);
-			int sslret = ssl_read(s->fd, s->ssl, (s08bits*)ioa_network_buffer_data(sm->m.sm.nd.nbh),
-				(int)ioa_network_buffer_get_capacity_udp(),
-				verbose, &read_len);
+			int sslret = ssl_read(s->fd, s->ssl, sm->m.sm.nd.nbh, verbose);
 			if(sslret < 0) {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 				sm->m.sm.nd.nbh = NULL;
@@ -341,8 +338,8 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 				sm->m.sm.s = NULL;
 				s = NULL;
 				chs = NULL;
-			} else if(read_len>0) {
-				ioa_network_buffer_set_size(sm->m.sm.nd.nbh,(size_t)read_len);
+			} else if(ioa_network_buffer_get_size(sm->m.sm.nd.nbh)>0) {
+				;
 			} else {
 				ioa_network_buffer_delete(ioa_eng, sm->m.sm.nd.nbh);
 				sm->m.sm.nd.nbh = NULL;
@@ -414,9 +411,7 @@ static int handle_udp_packet(dtls_listener_relay_server_type *server,
 		if (!turn_params.no_dtls &&
 			is_dtls_handshake_message(ioa_network_buffer_data(sm->m.sm.nd.nbh),
 			(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh))) {
-			chs = dtls_server_input_handler(server,s,
-				ioa_network_buffer_data(sm->m.sm.nd.nbh),
-				(int)ioa_network_buffer_get_size(sm->m.sm.nd.nbh));
+			chs = dtls_server_input_handler(server,s, sm->m.sm.nd.nbh);
 			ioa_network_buffer_delete(server->e, sm->m.sm.nd.nbh);
 			sm->m.sm.nd.nbh = NULL;
 		}
@@ -529,9 +524,6 @@ static int create_new_connected_udp_socket(
 					(int) ioa_network_buffer_get_size(
 							server->sm.m.sm.nd.nbh))) {
 
-		u08bits *str = ioa_network_buffer_data(server->sm.m.sm.nd.nbh);
-		int len = (int) ioa_network_buffer_get_size(server->sm.m.sm.nd.nbh);
-
 		SSL* connecting_ssl = NULL;
 
 		BIO *wbio = NULL;
@@ -556,9 +548,8 @@ static int create_new_connected_udp_socket(
 
 		SSL_set_options(connecting_ssl, SSL_OP_COOKIE_EXCHANGE);
 		SSL_set_max_cert_list(connecting_ssl, 655350);
-		int rc = ssl_read(ret->fd, connecting_ssl, (s08bits*) str,
-				(int)ioa_network_buffer_get_capacity_udp(),
-				server->verbose, &len);
+		int rc = ssl_read(ret->fd, connecting_ssl, server->sm.m.sm.nd.nbh,
+				server->verbose);
 
 		if (rc < 0) {
 			if (!(SSL_get_shutdown(connecting_ssl) & SSL_SENT_SHUTDOWN)) {

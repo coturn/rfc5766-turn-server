@@ -1692,18 +1692,26 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
  * Return: -1 - error, 0 or >0 - OK
  * *read_len -1 - no data, >=0 - data available
  */
-int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int verbose, int *read_len)
+int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int verbose)
 {
 	int ret = 0;
 
-	if (!ssl || !buffer || (*read_len < 1)) {
+	if (!ssl || !nbh)
 		return -1;
-	}
+
+	s08bits* buffer = (s08bits*)ioa_network_buffer_data(nbh);
+	int buf_size = (int)ioa_network_buffer_get_capacity_udp();
+	int read_len = (int)ioa_network_buffer_get_size(nbh);
+	int new_buffer_len = -1;
+
+	printf("%s: 111.111: %d:%d\n",__FUNCTION__,buf_size,read_len);
+
+	if(read_len < 1)
+		return -1;
 
 	s08bits *new_buffer = buffer + buf_size;
-	int old_buffer_len = *read_len;
+	int old_buffer_len = read_len;
 
-	*read_len = -1;
 	int len = 0;
 
 	if (eve(verbose)) {
@@ -1725,6 +1733,8 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 	do {
 		len = SSL_read(ssl, new_buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
+
+	printf("%s: 111.222: %d:%d\n",__FUNCTION__,len,errno);
 
 	int if2 = SSL_is_init_finished(ssl);
 
@@ -1760,7 +1770,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 		}
 
 		if (len >= 0) {
-			*read_len = len;
+			new_buffer_len = len;
 			ret = len;
 		} else {
 			switch (SSL_get_error(ssl, len)){
@@ -1807,8 +1817,13 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, s08bits* buffer, int buf_size, int ve
 		}
 	}
 
-	if(ret>0)
+	printf("%s: 111.333: %d:%d\n",__FUNCTION__,ret,new_buffer_len);
+
+	if(ret>0 && new_buffer_len>=0) {
+
+		ioa_network_buffer_set_size(nbh, (size_t)new_buffer_len);
 		ns_bcopy(new_buffer, buffer, (size_t)ret);
+	}
 
 	BIO_free(rbio);
 	ssl->rbio = NULL;
@@ -2231,12 +2246,15 @@ static int socket_input_worker(ioa_socket_handle s)
 		len = ret;
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
-			ret = ssl_read(s->fd, s->ssl, (s08bits*)(elem->buf.buf),
-				(int)ioa_network_buffer_get_capacity_udp(), s->e->verbose, &len);
+			elem->buf.len = (size_t)len;
+			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)elem, s->e->verbose);
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
+				len = -1;
 				s->tobeclosed = 1;
 				s->broken = 1;
+			} else {
+				len = (int)ioa_network_buffer_get_size((ioa_network_buffer_handle)elem);
 			}
 			if((ret!=-1)&&(len>0))
 				try_again = 1;

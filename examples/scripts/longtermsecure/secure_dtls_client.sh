@@ -19,7 +19,8 @@
 # 10) -u ninefingers means that if the server challenges the client with 
 # authentication challenge, then we use account "ninefingers".
 # 11) -w youhavetoberealistic sets the password for the account.
-# 12) -s option means that the client will be using "send" mechanism for data.
+# 12) -s option absent - that means that the client will be using 
+#     the channel mechanism for data.
 # 13) 127.0.0.1 (the last parameter) is the TURN Server IP address. 
 # We use IPv6 - to - IPv4 here to illustrate how the TURN Server 
 # converts the traffic from IPv6 to IPv4 and back.
@@ -31,5 +32,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -S -k turn_client_pkey.pem -n 1000 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic $@ 127.0.0.1
 
