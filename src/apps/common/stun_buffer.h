@@ -39,9 +39,6 @@ extern "C" {
 
 ///////////////////////////////////////////////////////////////
 
-#define STUN_BUFFER_SIZE (MAX_STUN_MESSAGE_SIZE)
-#define UDP_STUN_BUFFER_SIZE (4096)
-
 typedef struct _stun_buffer {
   u08bits	channel[STUN_CHANNEL_HEADER_LENGTH];
   u08bits	buf[STUN_BUFFER_SIZE];

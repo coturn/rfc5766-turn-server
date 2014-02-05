@@ -192,7 +192,7 @@ static void add_buffer_to_buffer_list(stun_buffer_list *bufs, s08bits *buf, size
 	if(bufs && buf && (bufs->tsz<MAX_SOCKET_BUFFER_BACKLOG)) {
 	  stun_buffer_list_elem *elem = (stun_buffer_list_elem *)turn_malloc(sizeof(stun_buffer_list_elem));
 	  ns_bcopy(buf,elem->buf.buf,len);
-	  elem->buf.len = (ssize_t)len;
+	  elem->buf.len = len;
 	  elem->buf.offset = 0;
 	  elem->buf.coffset = 0;
 	  add_elem_to_buffer_list(bufs,elem);
@@ -1812,8 +1812,7 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	}
 
 	if(ret>0) {
-		ioa_network_buffer_set_size(nbh, (size_t)ret);
-		ns_bcopy(new_buffer, buffer, (size_t)ret);
+		ioa_network_buffer_add_offset_size(nbh, (u16bits)buf_size, 0, (size_t)ret);
 	}
 
 	BIO_free(rbio);
@@ -3018,13 +3017,13 @@ size_t ioa_network_buffer_get_capacity_udp(void)
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
 {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
-  elem->buf.len=(ssize_t)len;
+  elem->buf.len=(size_t)len;
 }
 
 void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len)
 {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
-  elem->buf.len=(ssize_t)len;
+  elem->buf.len=(size_t)len;
   elem->buf.offset += offset;
   elem->buf.coffset += coffset;
 

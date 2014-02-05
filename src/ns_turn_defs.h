@@ -126,6 +126,8 @@ typedef u32bits turn_time_t;
 #endif
 
 #define MAX_STUN_MESSAGE_SIZE (65507)
+#define STUN_BUFFER_SIZE (MAX_STUN_MESSAGE_SIZE)
+#define UDP_STUN_BUFFER_SIZE (8192)
 
 #define NONCE_LENGTH_32BITS (4)
 
