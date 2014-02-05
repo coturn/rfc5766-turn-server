@@ -867,7 +867,7 @@ static int handle_turn_allocate(turn_turnserver *server,
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET:
 				if(!(*(server->mobility))) {
-					*err_code = 403;
+					*err_code = 501;
 					*reason = (const u08bits *)"Mobility Forbidden";
 				} else if (stun_attr_get_len(sar) != 0) {
 					*err_code = 400;
@@ -1130,7 +1130,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 			SKIP_ATTRIBUTES;
 			case STUN_ATTRIBUTE_MOBILITY_TICKET: {
 				if(!(*(server->mobility))) {
-					*err_code = 403;
+					*err_code = 501;
 					*reason = (const u08bits *)"Mobility forbidden";
 				} if(is_allocation_valid(a)) {
 					*err_code = 400;

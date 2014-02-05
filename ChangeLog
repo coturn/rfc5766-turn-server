@@ -3,6 +3,7 @@ Version 3.2.2.6 'Marshal West':
 	- Channel traffic memory copy elimination.
 	- Send indication memory copy elimination.
 	- DTLS optimization.
+	- Mobility forbidden error updated - according to the new draft document.
 	
 01/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.5 'Marshal West':
