@@ -306,6 +306,8 @@ typedef struct _turn_params_ {
 
   users_params_t users_params;
 
+  int stop_turn_server;
+
 } turn_params_t;
 
 extern turn_params_t turn_params;

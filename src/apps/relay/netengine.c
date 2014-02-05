@@ -1235,7 +1235,7 @@ static void run_events(struct event_base *eb)
 void run_listener_server(struct event_base *eb)
 {
 	unsigned int cycle = 0;
-	for (;;) {
+	while (!turn_params.stop_turn_server) {
 
 		if (eve(turn_params.verbose)) {
 			if ((cycle++ & 15) == 0) {
