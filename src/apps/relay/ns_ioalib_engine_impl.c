@@ -1702,9 +1702,6 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	s08bits* buffer = (s08bits*)ioa_network_buffer_data(nbh);
 	int buf_size = (int)ioa_network_buffer_get_capacity_udp();
 	int read_len = (int)ioa_network_buffer_get_size(nbh);
-	int new_buffer_len = -1;
-
-	printf("%s: 111.111: %d:%d\n",__FUNCTION__,buf_size,read_len);
 
 	if(read_len < 1)
 		return -1;
@@ -1733,8 +1730,6 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 	do {
 		len = SSL_read(ssl, new_buffer, buf_size);
 	} while (len < 0 && (errno == EINTR));
-
-	printf("%s: 111.222: %d:%d\n",__FUNCTION__,len,errno);
 
 	int if2 = SSL_is_init_finished(ssl);
 
@@ -1770,7 +1765,6 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 		}
 
 		if (len >= 0) {
-			new_buffer_len = len;
 			ret = len;
 		} else {
 			switch (SSL_get_error(ssl, len)){
@@ -1817,11 +1811,8 @@ int ssl_read(evutil_socket_t fd, SSL* ssl, ioa_network_buffer_handle nbh, int ve
 		}
 	}
 
-	printf("%s: 111.333: %d:%d\n",__FUNCTION__,ret,new_buffer_len);
-
-	if(ret>0 && new_buffer_len>=0) {
-
-		ioa_network_buffer_set_size(nbh, (size_t)new_buffer_len);
+	if(ret>0) {
+		ioa_network_buffer_set_size(nbh, (size_t)ret);
 		ns_bcopy(new_buffer, buffer, (size_t)ret);
 	}
 
@@ -3030,12 +3021,20 @@ void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len)
   elem->buf.len=(ssize_t)len;
 }
 
-void ioa_network_buffer_set_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len)
+void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len)
 {
   stun_buffer_list_elem *elem = (stun_buffer_list_elem *)nbh;
   elem->buf.len=(ssize_t)len;
-  elem->buf.offset = offset;
-  elem->buf.coffset = coffset;
+  elem->buf.offset += offset;
+  elem->buf.coffset += coffset;
+
+  if((elem->buf.offset + elem->buf.len - elem->buf.coffset)>=sizeof(elem->buf.buf) ||
+	(elem->buf.offset + sizeof(elem->buf.channel) < elem->buf.coffset)
+  ) {
+	  elem->buf.coffset = 0;
+	  elem->buf.len = 0;
+	  elem->buf.offset = 0;
+  }
 }
 
 u16bits ioa_network_buffer_get_offset(ioa_network_buffer_handle nbh)

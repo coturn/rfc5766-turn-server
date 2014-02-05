@@ -2505,7 +2505,7 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 
 				ioa_network_buffer_handle nbh = in_buffer->nbh;
 				u16bits offset = (u16bits)(value - ioa_network_buffer_data(nbh));
-				ioa_network_buffer_set_offset_size(nbh,offset,0,len);
+				ioa_network_buffer_add_offset_size(nbh,offset,0,len);
 				ioa_network_buffer_header_init(nbh);
 				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;
@@ -3394,7 +3394,7 @@ static int write_to_peerchannel(ts_ur_super_session* ss, u16bits chnum, ioa_net_
 
 			ioa_network_buffer_handle nbh = in_buffer->nbh;
 
-			ioa_network_buffer_set_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0, ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
+			ioa_network_buffer_add_offset_size(in_buffer->nbh, STUN_CHANNEL_HEADER_LENGTH, 0, ioa_network_buffer_get_size(in_buffer->nbh)-STUN_CHANNEL_HEADER_LENGTH);
 
 			ioa_network_buffer_header_init(nbh);
 
@@ -4005,8 +4005,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 			if (chnum) {
 				nbh = in_buffer->nbh;
 
-				ioa_network_buffer_set_offset_size(nbh,
-								ioa_network_buffer_get_offset(nbh),
+				ioa_network_buffer_add_offset_size(nbh,
+								0,
 								STUN_CHANNEL_HEADER_LENGTH,
 								ioa_network_buffer_get_size(nbh)+STUN_CHANNEL_HEADER_LENGTH);
 

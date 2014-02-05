@@ -151,7 +151,7 @@ size_t ioa_network_buffer_get_size(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_capacity(ioa_network_buffer_handle nbh);
 size_t ioa_network_buffer_get_capacity_udp(void);
 void ioa_network_buffer_set_size(ioa_network_buffer_handle nbh, size_t len);
-void ioa_network_buffer_set_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len);
+void ioa_network_buffer_add_offset_size(ioa_network_buffer_handle nbh, u16bits offset, u08bits coffset, size_t len);
 u16bits ioa_network_buffer_get_offset(ioa_network_buffer_handle nbh);
 u08bits ioa_network_buffer_get_coffset(ioa_network_buffer_handle nbh);
 void ioa_network_buffer_delete(ioa_engine_handle e, ioa_network_buffer_handle nbh);
