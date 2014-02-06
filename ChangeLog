@@ -2,8 +2,9 @@
 Version 3.2.2.6 'Marshal West':
 	- Channel traffic memory copy elimination.
 	- Send indication memory copy elimination.
-	- DTLS optimization.
-	- Mobility forbidden error updated - according to the new draft document.
+	- DTLS traffic processing memort copy eliminated.
+	- Mobility forbidden error code number fixed - according to the new draft document.
+	- getsockname() usage minimized to work around some weird config cases.
 	
 01/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.5 'Marshal West':

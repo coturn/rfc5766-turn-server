@@ -903,7 +903,16 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
-			addr_get_from_sock(s->fd, &(s->local_addr));
+			if(addr_get_port(local_addr)<1) {
+				ioa_addr tmpaddr;
+				addr_get_from_sock(s->fd, &tmpaddr);
+				if(addr_any(&(s->local_addr))) {
+					addr_cpy(&(s->local_addr),&tmpaddr);
+				} else {
+					addr_set_port(&(s->local_addr),addr_get_port(&tmpaddr));
+				}
+			}
+			s->local_addr_known = 1;
 			return 0;
 		}
 	}
@@ -1658,9 +1667,24 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 		} else if (s->bound && (addr_get_port(&(s->local_addr)) > 0)) {
 			s->local_addr_known = 1;
 			return &(s->local_addr);
-		} else if (addr_get_from_sock(s->fd, &(s->local_addr)) == 0) {
-			s->local_addr_known = 1;
-			return &(s->local_addr);
+		} else {
+			ioa_addr tmpaddr;
+			if (addr_get_from_sock(s->fd, &tmpaddr) == 0) {
+				if(addr_get_port(&tmpaddr)>0) {
+					s->local_addr_known = 1;
+					s->bound = 1;
+					if(addr_any(&(s->local_addr))) {
+						addr_cpy(&(s->local_addr),&tmpaddr);
+					} else {
+						addr_set_port(&(s->local_addr),addr_get_port(&tmpaddr));
+					}
+					return &(s->local_addr);
+				}
+				if(addr_any(&(s->local_addr))) {
+					addr_cpy(&(s->local_addr),&tmpaddr);
+				}
+				return &(s->local_addr);
+			}
 		}
 	}
 	return NULL;

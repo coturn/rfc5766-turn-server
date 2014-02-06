@@ -743,11 +743,6 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 				    server->udp_listen_s);
 
 	  event_add(server->udp_listen_ev,NULL);
-
-	  if(addr_get_from_sock(udp_listen_fd, &(server->addr))) {
-		  perror("Cannot get local socket addr");
-		  return -1;
-	  }
   }
 
   if(report_creation) {

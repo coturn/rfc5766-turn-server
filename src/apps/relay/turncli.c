@@ -1171,12 +1171,6 @@ void setup_cli_thread(void)
 	  return;
 	}
 
-	if(addr_get_from_sock(cliserver.listen_fd, &cli_addr)) {
-	  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot get local socket addr\n");
-	  socket_closesocket(cliserver.listen_fd);
-	  return;
-	}
-
 	cliserver.sessions = ur_map_create();
 
 	addr_debug_print(cliserver.verbose, &cli_addr,"CLI listener opened on ");

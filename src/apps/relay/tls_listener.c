@@ -165,12 +165,6 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
 	  return -1;
   }
 
-  if(addr_get_from_sock(tls_listen_fd, &(server->addr))) {
-    perror("Cannot get local socket addr");
-    socket_closesocket(tls_listen_fd);
-    return -1;
-  }
-
   if(!turn_params.no_tcp && !turn_params.no_tls)
 	  addr_debug_print(server->verbose, &server->addr,"TCP/TLS listener opened on ");
   else if(!turn_params.no_tls)
