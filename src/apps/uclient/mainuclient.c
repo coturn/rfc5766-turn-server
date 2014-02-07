@@ -104,7 +104,8 @@ static char Usage[] =
   "	-y	Use client-to-client connections.\n"
   "	-h	Hang on indefinitely after the last sent packet.\n"
   "	-c	No rtcp connections.\n"
-  "	-x	IPv6 relayed address requested.\n"
+  "	-x	IPv6 relay address requested.\n"
+  "	-X	IPv4 relay address explicitly requested.\n"
   "	-g	Include DONT_FRAGMENT option.\n"
   "	-A	Use short-term credentials mechanism. By default, the program uses\n"
   "		the long-term credentials mechanism if authentication is required.\n"
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
 
 	ns_bzero(local_addr, sizeof(local_addr));
 
-	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:vsyhcxgtTSAPDNOUHMRIG")) != -1) {
+	while ((c = getopt(argc, argv, "d:p:l:n:L:m:e:r:u:w:i:k:z:W:C:E:F:vsyhcxXgtTSAPDNOUHMRIG")) != -1) {
 		switch (c){
 		case 'G':
 			extra_requests = 1;
@@ -225,6 +226,9 @@ int main(int argc, char **argv)
 			break;
 		case 'x':
 			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6;
+			break;
+		case 'X':
+			default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4;
 			break;
 		case 'l':
 			clmessage_length = atoi(optarg);

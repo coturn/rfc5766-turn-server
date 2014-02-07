@@ -19,89 +19,89 @@ while [ 0 ] ; do
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s -p 12345 $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s -p 12345 $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s -p 12346 $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s -p 12346 $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12346 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12346 $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12346 $@ ::1 &
 
 ###########################
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s -p 12345 $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s -p 12345 $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12345 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12345 $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12345 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G  -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s -p 12346 $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s -p 12346 $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G -t -n 50 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G -t -n 50 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12346 $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -O -N -R -G -T -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12346 $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -T -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -y -g -u gorst -w hero -p 12346 $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero -p 12346 $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -O -N -R -G  -t -S -k turn_client_pkey.pem -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero -p 12346 $@ ::1 &
 
 #########################
 

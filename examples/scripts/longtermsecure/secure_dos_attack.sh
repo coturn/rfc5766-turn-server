@@ -14,17 +14,17 @@ while [ 0 ] ; do
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -n 10 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y $@ ::1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -n 10 -m 10 -l 170 -e 127.0.0.1 -g -u ninefingers -w youhavetoberealistic $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -n 10 -m 10 -l 170 -e 127.0.0.1 -X -g -u ninefingers -w youhavetoberealistic $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G -O -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G -O -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e ::1 -x -g -u ninefingers -w youhavetoberealistic -s $@ 127.0.0.1 &
 
-PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -t -n 30 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -t -n 30 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G -O -T -n 10 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
 PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G -O -T -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -y -g -u gorst -w hero $@ ::1 &
 
-PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G -O -t -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e 127.0.0.1 -g -u gorst -w hero $@ ::1 &
+PATH=examples/bin/:../bin:./bin/:${PATH} turnutils_uclient -G -O -t -S -k turn_client_pkey.pem -n 10 -m 10 -l 170 -e 127.0.0.1 -X -g -u gorst -w hero $@ ::1 &
 
 sleep 2
 

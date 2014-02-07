@@ -338,31 +338,21 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket
 {
 	if(e) {
 
-		if(e->default_relays) {
+		if(e->default_relays && (address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT)) {
+
+			//No relay addrs defined - just return the client address:
 
 			ioa_addr *client_addr = get_local_addr_from_ioa_socket(client_s);
 			if(client_addr) {
-
-				int family = get_ioa_socket_address_family(client_s);
-
-				switch (address_family){
-					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT:
-					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
-						if (family == AF_INET)
-							return client_addr;
-					case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
-						if (family == AF_INET6)
-							return client_addr;
-					default:
-						;
-				};
-
+				return client_addr;
 			}
 		}
 
-		if (e->relays_number) {
+		if (e->relays_number>0) {
 
 			size_t i = 0;
+
+			//Default recommended behavior:
 
 			for(i=0; i<e->relays_number; i++) {
 
@@ -381,9 +371,18 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket
 						return relay_addr;
 					break;
 				default:
-					*err_code = 440;
-					return NULL;
+					;
 				};
+			}
+
+			if(address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT) {
+
+				//Fallback to "find whatever is available":
+
+				if(e->relay_addr_counter >= e->relays_number)
+					e->relay_addr_counter = 0;
+				const ioa_addr *relay_addr = &(e->relay_addrs[e->relay_addr_counter++]);
+				return relay_addr;
 			}
 
 			*err_code = 440;

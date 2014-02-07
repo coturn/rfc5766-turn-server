@@ -85,7 +85,9 @@ Flags:
 
 -c      Do not create rtcp connections.
 
--x      Request IPv6 relayed address (RFC6156).
+-x      Request IPv6 relay address (RFC6156).
+
+-X	IPv4 relay address explicitly requested.
 
 -g      Set DONT_FRAGMENT parameter in TURN requests.
 

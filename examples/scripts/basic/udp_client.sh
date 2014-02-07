@@ -13,7 +13,8 @@
 # 9) -g means "set DONT_FRAGMENT parameter in TURN requests".
 # 10) -s option is absent - it means that the client will be using 
 # the "channel" mechanism for data.
-# 11) 127.0.0.1 (the last parameter) is the TURN Server IP address. We use IPv4 here
+# 11) -X means that IPv4 relay address is requested.
+# 12) 127.0.0.1 (the last parameter) is the TURN Server IP address. We use IPv4 here
 # to illustrate how the TURN Server convert the traffic from IPv6 to IPv4 and back.
 #
 
@@ -23,5 +24,5 @@ fi
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
 
-PATH=examples/bin/:../bin/:bin/:${PATH} turnutils_uclient -D -n 1000 -m 10 -l 171 -e 127.0.0.1 -g $@ 127.0.0.1
+PATH=examples/bin/:../bin/:bin/:${PATH} turnutils_uclient -D -n 1000 -m 10 -l 171 -e 127.0.0.1 -g -X $@ 127.0.0.1
 

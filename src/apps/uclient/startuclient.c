@@ -65,7 +65,7 @@ int not_rare_event(void)
 	return 0;
 }
 
-static int get_allocate_addresa_family(ioa_addr *relay_addr) {
+static int get_allocate_address_family(ioa_addr *relay_addr) {
 	if(relay_addr->ss.sa_family == AF_INET)
 		return STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
 	else if(relay_addr->ss.sa_family == AF_INET6)
@@ -326,6 +326,7 @@ static int clnet_allocate(int verbose,
 		stun_buffer message;
 		if(current_reservation_token)
 			af = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT;
+
 		if(!dos)
 			stun_set_allocate_request(&message, 800, af, relay_transport, mobility);
 		else
@@ -884,14 +885,16 @@ int start_connection(uint16_t clnet_remote_port0,
 	  }
 	}
 
-	if (clnet_allocate(verbose, clnet_info, &relay_addr, get_allocate_addresa_family(&peer_addr),NULL,NULL) < 0) {
+	int af = default_address_family ? default_address_family : get_allocate_address_family(&peer_addr);
+	if (clnet_allocate(verbose, clnet_info, &relay_addr, af, NULL,NULL) < 0) {
 	  exit(-1);
 	}
 
 	if(rare_event()) return 0;
 
 	if(!no_rtcp) {
-	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, get_allocate_addresa_family(&peer_addr_rtcp),NULL,NULL) < 0) {
+		af = default_address_family ? default_address_family : get_allocate_address_family(&peer_addr_rtcp);
+	  if (clnet_allocate(verbose, clnet_info_rtcp, &relay_addr_rtcp, af,NULL,NULL) < 0) {
 	    exit(-1);
 	  }
 	  if(rare_event()) return 0;
