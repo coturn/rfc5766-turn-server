@@ -141,7 +141,7 @@ static int create_server_listener(tls_listener_relay_server_type* server) {
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
   }
 
-  if(addr_bind(tls_listen_fd,&server->addr)<0) {
+  if(addr_bind(tls_listen_fd,&server->addr,1)<0) {
   	  perror("Cannot bind local socket to addr");
   	  char saddr[129];
   	  addr_to_string(&server->addr,(u08bits*)saddr);

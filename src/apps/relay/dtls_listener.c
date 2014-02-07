@@ -485,7 +485,7 @@ static int create_new_connected_udp_socket(
 	ret->local_addr_known = 1;
 	addr_cpy(&(ret->local_addr), &(s->local_addr));
 
-	if (addr_bind(udp_fd,&(s->local_addr)) < 0) {
+	if (addr_bind(udp_fd,&(s->local_addr),1) < 0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"Cannot bind new detached udp server socket to local addr\n");
 		IOA_CLOSE_SOCKET(ret);
@@ -730,7 +730,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
 	  }
 
-	  if(addr_bind(udp_listen_fd,&server->addr)<0) {
+	  if(addr_bind(udp_listen_fd,&server->addr,1)<0) {
 		  perror("Cannot bind local socket to addr");
 		  char saddr[129];
 		  addr_to_string(&server->addr,(u08bits*)saddr);
@@ -801,7 +801,7 @@ static int reopen_server_socket(dtls_listener_relay_server_type* server, evutil_
 				server->ifname);
 		}
 
-		if(addr_bind(udp_listen_fd,&server->addr)<0) {
+		if(addr_bind(udp_listen_fd,&server->addr,1)<0) {
 			perror("Cannot bind local socket to addr");
 			char saddr[129];
 			addr_to_string(&server->addr,(u08bits*)saddr);

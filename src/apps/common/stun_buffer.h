@@ -42,7 +42,7 @@ extern "C" {
 typedef struct _stun_buffer {
   u08bits	channel[STUN_CHANNEL_HEADER_LENGTH];
   u08bits	buf[STUN_BUFFER_SIZE];
-  u32bits	len;
+  size_t	len;
   u16bits	offset;
   u08bits	coffset;
 } stun_buffer;

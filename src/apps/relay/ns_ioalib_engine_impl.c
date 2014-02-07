@@ -772,7 +772,6 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 	}
 
 	socket_set_nonblocking(fd);
-	socket_set_reusable(fd);
 
 	if (!tcp) {
 		set_raw_socket_ttl_options(fd, family);
@@ -892,14 +891,14 @@ ioa_socket_handle create_unbound_ioa_socket(ioa_engine_handle e, ioa_socket_hand
 	return ret;
 }
 
-static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr)
+static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr, int reusable)
 {
 	if(!s || (s->parent_s))
 		return 0;
 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
-		int res = addr_bind(s->fd, local_addr);
+		int res = addr_bind(s->fd, local_addr, reusable);
 		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
@@ -990,7 +989,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 
 					rtcp_port = port + 1;
 					addr_set_port(&rtcp_local_addr, rtcp_port);
-					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr) < 0) {
+					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr,
+						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) < 0) {
 						addr_set_port(&local_addr, port);
 						turnipports_release(tp, transport, &local_addr);
 						turnipports_release(tp, transport, &rtcp_local_addr);
@@ -1027,7 +1027,8 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 				sock_bind_to_device((*rtp_s)->fd, (unsigned char*)e->relay_ifname);
 
 				addr_set_port(&local_addr, port);
-				if (bind_ioa_socket(*rtp_s, &local_addr) >= 0) {
+				if (bind_ioa_socket(*rtp_s, &local_addr,
+					(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) >= 0) {
 					break;
 				} else {
 					IOA_CLOSE_SOCKET(*rtp_s);
@@ -1197,7 +1198,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 #endif
 #endif
 
-	if(bind_ioa_socket(ret, &new_local_addr)<0) {
+	if(bind_ioa_socket(ret, &new_local_addr,1)<0) {
 		IOA_CLOSE_SOCKET(ret);
 		ret = NULL;
 		goto ccs_end;
@@ -1560,7 +1561,7 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 			    TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind udp server socket to device %s\n",(char*)(s->e->relay_ifname));
 			}
 
-			if(addr_bind(udp_fd,&(s->local_addr))<0) {
+			if(addr_bind(udp_fd,&(s->local_addr),1)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot bind new detached udp server socket to local addr\n");
 				IOA_CLOSE_SOCKET(ret);
 				return ret;

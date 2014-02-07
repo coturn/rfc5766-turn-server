@@ -2504,8 +2504,13 @@ static int handle_turn_send(turn_turnserver *server, ts_ur_super_session *ss,
 				set_df_on_ioa_socket(get_relay_socket_ss(ss), set_df);
 
 				ioa_network_buffer_handle nbh = in_buffer->nbh;
-				u16bits offset = (u16bits)(value - ioa_network_buffer_data(nbh));
-				ioa_network_buffer_add_offset_size(nbh,offset,0,len);
+				if(value && len>0) {
+					u16bits offset = (u16bits)(value - ioa_network_buffer_data(nbh));
+					ioa_network_buffer_add_offset_size(nbh,offset,0,len);
+				} else {
+					len = 0;
+					ioa_network_buffer_set_size(nbh,len);
+				}
 				ioa_network_buffer_header_init(nbh);
 				send_data_from_ioa_socket_nbh(get_relay_socket_ss(ss), &peer_addr, nbh, in_buffer->recv_ttl-1, in_buffer->recv_tos);
 				in_buffer->nbh = NULL;

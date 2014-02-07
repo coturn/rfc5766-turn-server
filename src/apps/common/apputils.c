@@ -60,8 +60,6 @@
 
 int IS_TURN_SERVER = 0;
 
-int reusable_value = 1;
-
 /*********************** Sockets *********************************/
 
 int socket_set_nonblocking(evutil_socket_t fd)
@@ -143,7 +141,7 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
     return 0;
 }
 
-int socket_set_reusable(evutil_socket_t fd)
+int socket_set_reusable(evutil_socket_t fd, int flag)
 {
 
 	if (fd < 0)
@@ -158,14 +156,14 @@ int socket_set_reusable(evutil_socket_t fd)
 
 #ifdef SO_REUSEPORT
 		if (use_reuseaddr) {
-			const int on = reusable_value;
+			const int on = flag;
 			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
 		}
 #endif
 
 #if defined(SO_REUSEADDR)
 		if (use_reuseaddr) {
-			const int on = reusable_value;
+			const int on = flag;
 			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 			if (ret < 0)
 				perror("SO_REUSEADDR");
@@ -179,8 +177,6 @@ int socket_set_reusable(evutil_socket_t fd)
 int sock_bind_to_device(evutil_socket_t fd, const unsigned char* ifname) {
 
 	if (fd >= 0 && ifname && ifname[0]) {
-
-		socket_set_reusable(fd);
 
 #if defined(SO_BINDTODEVICE)
 
@@ -233,7 +229,7 @@ int addr_connect(evutil_socket_t fd, const ioa_addr* addr, int *out_errno)
 	}
 }
 
-int addr_bind(evutil_socket_t fd, const ioa_addr* addr)
+int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable)
 {
 	if (!addr || fd < 0) {
 
@@ -243,7 +239,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr)
 
 		int ret = -1;
 
-		socket_set_reusable(fd);
+		socket_set_reusable(fd, reusable);
 
 		if (addr->ss.sa_family == AF_INET) {
 			do {
