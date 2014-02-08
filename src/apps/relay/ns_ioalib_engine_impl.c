@@ -338,13 +338,24 @@ static const ioa_addr* ioa_engine_get_relay_addr(ioa_engine_handle e, ioa_socket
 {
 	if(e) {
 
-		if(e->default_relays && (address_family == STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAULT)) {
+		if(e->default_relays) {
 
-			//No relay addrs defined - just return the client address:
+			//No relay addrs defined - just return the client address if appropriate:
 
 			ioa_addr *client_addr = get_local_addr_from_ioa_socket(client_s);
 			if(client_addr) {
-				return client_addr;
+				switch(address_family) {
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV4:
+					if (client_addr->ss.sa_family == AF_INET)
+						return client_addr;
+					break;
+				case STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_IPV6:
+					if (client_addr->ss.sa_family == AF_INET6)
+						return client_addr;
+					break;
+				default:
+					return client_addr;
+				};
 			}
 		}
 
