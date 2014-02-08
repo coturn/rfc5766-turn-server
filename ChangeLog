@@ -7,6 +7,7 @@ Version 3.2.2.6 'Marshal West':
 	- getsockname() usage minimized to work around some weird config cases.
 	- port allocation improved.
 	- default relay behavior fixed (when no relay addrs defined).
+	- atomic create permission request handling (Issue 97).
 	
 01/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.5 'Marshal West':
