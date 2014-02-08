@@ -807,11 +807,11 @@ unsigned char *base64_decode(const char *data,
 
 ////////////////// SSL /////////////////////
 
-static const char* turn_get_method(const SSL_METHOD *method)
+static const char* turn_get_method(const SSL_METHOD *method, const char* mdefault)
 {
 	{
 		if(!method)
-			return "NULL";
+			return mdefault;
 		else {
 
 #ifndef OPENSSL_NO_SSL2
@@ -853,6 +853,8 @@ static const char* turn_get_method(const SSL_METHOD *method)
 				return "DTLSv1.0";
 #endif
 			} else {
+				if(mdefault)
+					return mdefault;
 				return "UNKNOWN";
 			}
 		}
@@ -860,16 +862,16 @@ static const char* turn_get_method(const SSL_METHOD *method)
 
 }
 
-const char* turn_get_ssl_method(SSL *ssl)
+const char* turn_get_ssl_method(SSL *ssl, const char* mdefault)
 {
 	if(!ssl)
-		return "EMPTY";
+		return mdefault;
 	else {
 		const SSL_METHOD *method = SSL_get_ssl_method(ssl);
 		if(!method)
-			return "NULL";
+			return mdefault;
 		else
-			return turn_get_method(method);
+			return turn_get_method(method, mdefault);
 	}
 }
 

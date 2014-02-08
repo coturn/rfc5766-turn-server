@@ -3103,7 +3103,8 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl), turn_get_ssl_method(ss->client_session.s->ssl),ss->client_session.s->orig_ctx_type);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
+							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime);
 					}
@@ -3209,7 +3210,7 @@ const char* get_ioa_socket_tls_cipher(ioa_socket_handle s)
 const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 {
 	if(s && (s->ssl))
-		return turn_get_ssl_method(s->ssl);
+		return turn_get_ssl_method(s->ssl,"UNKNOWN");
 	return "";
 }
 

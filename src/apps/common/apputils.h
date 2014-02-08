@@ -148,7 +148,7 @@ unsigned char *base64_decode(const char *data,
 
 ///////////// SSL ////////////////
 
-const char* turn_get_ssl_method(SSL *ssl);
+const char* turn_get_ssl_method(SSL *ssl, const char* mdefault);
 
 //////////// Event Base /////////////////////
 
