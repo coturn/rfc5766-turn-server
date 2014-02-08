@@ -221,18 +221,26 @@ static int clnet_connect(uint16_t clnet_remote_port, const char *remote_address,
 	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
 
 	if(clnet_info->is_peer && (*local_address==0)) {
-		if (make_ioa_addr((const u08bits*) "127.0.0.1", 0,
-					    &local_addr) < 0)
+
+		if(remote_addr.ss.sa_family == AF_INET6) {
+			if (make_ioa_addr((const u08bits*) "::1", 0, &local_addr) < 0) {
 			    return -1;
+			}
+		} else {
+			if (make_ioa_addr((const u08bits*) "127.0.0.1", 0, &local_addr) < 0) {
+			    return -1;
+			}
+		}
 
 		addr_bind(clnet_fd, &local_addr, 0);
+
 	} else if (strlen(local_address) > 0) {
 
-	  if (make_ioa_addr((const u08bits*) local_address, 0,
+		if (make_ioa_addr((const u08bits*) local_address, 0,
 			    &local_addr) < 0)
-	    return -1;
+			return -1;
 
-	  addr_bind(clnet_fd, &local_addr,0);
+		addr_bind(clnet_fd, &local_addr,0);
 	}
 
 	if(clnet_info->is_peer) {
