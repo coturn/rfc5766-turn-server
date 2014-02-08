@@ -2561,9 +2561,6 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 	int ret = -1;
 
-	ioa_addr peer_addr;
-	addr_set_any(&peer_addr);
-
 	int addr_found = 0;
 
 	UNUSED_ARG(server);
@@ -2572,43 +2569,49 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 	if (is_allocation_valid(a)) {
 
-		stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh), 
+		{
+			stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
 							    ioa_network_buffer_get_size(in_buffer->nbh));
-		while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
-			int attr_type = stun_attr_get_type(sar);
-			switch (attr_type) {
-			SKIP_ATTRIBUTES;
-			case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
-				stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh), 
+
+			while (sar && (!(*err_code)) && (*ua_num < MAX_NUMBER_OF_UNKNOWN_ATTRS)) {
+
+				int attr_type = stun_attr_get_type(sar);
+
+				switch (attr_type) {
+
+				SKIP_ATTRIBUTES;
+
+				case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
+
+					ioa_addr peer_addr;
+					addr_set_any(&peer_addr);
+
+					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
 						       ioa_network_buffer_get_size(in_buffer->nbh),
 						       sar, &peer_addr,
 						       &(ss->default_peer_addr));
 
-				ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
+					ioa_addr *relay_addr = get_local_addr_from_ioa_socket(a->relay_session.s);
 
-				if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
-					*err_code = 443;
-					*reason = (const u08bits *)"Peer Address Family Mismatch";
-				} else if(!good_peer_addr(server, &peer_addr)) {
-					*err_code = 403;
-					*reason = (const u08bits *) "Forbidden IP";
-				} else {
-					addr_found = 1;
-					addr_set_port(&peer_addr, 0);
-					if (update_permission(ss, &peer_addr) < 0) {
-						*err_code = 500;
-						*reason = (const u08bits *)"Cannot update permission (internal error)";
+					if(relay_addr && (relay_addr->ss.sa_family != peer_addr.ss.sa_family)) {
+						*err_code = 443;
+						*reason = (const u08bits *)"Peer Address Family Mismatch";
+					} else if(!good_peer_addr(server, &peer_addr)) {
+						*err_code = 403;
+						*reason = (const u08bits *) "Forbidden IP";
+					} else {
+						addr_found++;
 					}
 				}
-			}
-				break;
-			default:
-				if(attr_type>=0x0000 && attr_type<=0x7FFF)
-					unknown_attrs[(*ua_num)++] = nswap16(attr_type);
-			};
-			sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh), 
+					break;
+				default:
+					if(attr_type>=0x0000 && attr_type<=0x7FFF)
+						unknown_attrs[(*ua_num)++] = nswap16(attr_type);
+				};
+				sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
 						     ioa_network_buffer_get_size(in_buffer->nbh), 
 						     sar);
+			}
 		}
 
 		if (*ua_num > 0) {
@@ -2626,13 +2629,52 @@ static int handle_turn_create_permission(turn_turnserver *server,
 
 		} else {
 
-			size_t len = ioa_network_buffer_get_size(nbh);
-			stun_init_success_response_str(STUN_METHOD_CREATE_PERMISSION,
-							ioa_network_buffer_data(nbh), &len, tid);
-			ioa_network_buffer_set_size(nbh,len);
+			stun_attr_ref sar = stun_attr_get_first_str(ioa_network_buffer_data(in_buffer->nbh),
+										    ioa_network_buffer_get_size(in_buffer->nbh));
 
-			ret = 0;
-			*resp_constructed = 1;
+			while (sar) {
+
+				int attr_type = stun_attr_get_type(sar);
+
+				switch (attr_type) {
+
+				SKIP_ATTRIBUTES;
+
+				case STUN_ATTRIBUTE_XOR_PEER_ADDRESS: {
+
+					ioa_addr peer_addr;
+					addr_set_any(&peer_addr);
+
+					stun_attr_get_addr_str(ioa_network_buffer_data(in_buffer->nbh),
+									       ioa_network_buffer_get_size(in_buffer->nbh),
+									       sar, &peer_addr,
+									       &(ss->default_peer_addr));
+
+					addr_set_port(&peer_addr, 0);
+					if (update_permission(ss, &peer_addr) < 0) {
+						*err_code = 500;
+						*reason = (const u08bits *)"Cannot update some permissions (critical server software error)";
+					}
+				}
+					break;
+				default:
+					;
+				}
+
+				sar = stun_attr_get_next_str(ioa_network_buffer_data(in_buffer->nbh),
+									     ioa_network_buffer_get_size(in_buffer->nbh),
+									     sar);
+			}
+
+			if(*err_code == 0) {
+				size_t len = ioa_network_buffer_get_size(nbh);
+				stun_init_success_response_str(STUN_METHOD_CREATE_PERMISSION,
+							ioa_network_buffer_data(nbh), &len, tid);
+				ioa_network_buffer_set_size(nbh,len);
+
+				ret = 0;
+				*resp_constructed = 1;
+			}
 		}
 	}
 
