@@ -1260,7 +1260,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	} else {
 		set_socket_options(s);
 		sock_bind_to_device(s->fd, (unsigned char*)s->e->relay_ifname);
-		if(bind_ioa_socket(s, &new_local_addr)<0) {
+		if(bind_ioa_socket(s, &new_local_addr, 1)<0) {
 			if(ret) {
 				set_ioa_socket_session(ret, NULL);
 				IOA_CLOSE_SOCKET(ret);
