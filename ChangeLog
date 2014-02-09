@@ -6,7 +6,7 @@ Version 3.2.2.6 'Marshal West':
 	- Mobility forbidden error code number fixed - according to the new draft document.
 	- getsockname() usage minimized.
 	- port allocation improved.
-	- default relay behavior fixed (when no relay addrs defined).
+	- default relay behavior fixed (when no relay addresses defined).
 	- atomic create permission request handling (Issue 97).
 	
 01/25/2014 Oleg Moskalenko <mom040267@gmail.com>
