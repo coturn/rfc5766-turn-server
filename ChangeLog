@@ -4,7 +4,7 @@ Version 3.2.2.6 'Marshal West':
 	- Send indication memory copy elimination.
 	- DTLS traffic processing memory copy eliminated.
 	- Mobility forbidden error code number fixed - according to the new draft document.
-	- getsockname() usage minimized to work around some weird config cases.
+	- getsockname() usage minimized.
 	- port allocation improved.
 	- default relay behavior fixed (when no relay addrs defined).
 	- atomic create permission request handling (Issue 97).
