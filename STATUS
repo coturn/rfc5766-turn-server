@@ -88,6 +88,8 @@ compatibility.
 36) TCP network engine optimized for the new Linux kernels (3.9+). 
 
 37) telnet-based monitor implemented.
+
+38) Package memory copy eliminated in traffic routing.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
