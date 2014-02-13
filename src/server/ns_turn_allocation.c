@@ -482,10 +482,11 @@ void ch_map_clean(ch_map* map)
 static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	allocation *a = (allocation*)(tc->owner);
 	ur_map *map = a->tcp_connections;
-	u32bits newid = 0;
+	u32bits newid;
 	u32bits sid = server_id;
 	sid = sid<<24;
 	do {
+		newid = 0;
 		while (!newid) {
 			newid = (u32bits)random();
 			if(!newid) {
