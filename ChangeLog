@@ -1,3 +1,7 @@
+02/12/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.2.7 'Marshal West':
+	- Anycast listener address implemented.
+	
 02/04/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.6 'Marshal West':
 	- Channel traffic memory copy elimination.

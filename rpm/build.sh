@@ -20,7 +20,7 @@ fi
 
 cd ${BUILDDIR}/tmp
 rm -rf turnserver-${TURNVERSION}
-svn export ${TURNSERVER_SVN_URL}/trunk turnserver-${TURNVERSION}
+svn export ${TURNSERVER_SVN_URL}/${TURNSERVER_SVN_URL_VER}/ turnserver-${TURNVERSION}
 ER=$?
 if ! [ ${ER} -eq 0 ] ; then
     cd ${CPWD}

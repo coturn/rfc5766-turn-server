@@ -1082,7 +1082,7 @@ int stun_attr_get_addr_str(const u08bits *buf, size_t len, stun_attr_ref attr, i
 
   map_addr_from_public_to_private(&public_addr, ca);
 
-  if(default_addr && addr_any_no_port(ca)) {
+  if(default_addr && addr_any_no_port(ca) && !addr_any_no_port(default_addr)) {
     int port = addr_get_port(ca);
     addr_cpy(ca,default_addr);
     addr_set_port(ca,port);

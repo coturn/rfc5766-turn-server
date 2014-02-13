@@ -128,6 +128,8 @@ static void read_config_file(int argc, char **argv, int pass);
 
 static int make_local_listeners_list(void)
 {
+	int ret = 0;
+
 	struct ifaddrs * ifs = NULL;
 	struct ifaddrs * ifa = NULL;
 
@@ -135,7 +137,6 @@ static int make_local_listeners_list(void)
 
 	if((getifaddrs(&ifs) == 0) && ifs) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
 		for (ifa = ifs; ifa != NULL; ifa = ifa->ifa_next) {
 
 			if(!(ifa->ifa_flags & IFF_UP))
@@ -160,16 +161,19 @@ static int make_local_listeners_list(void)
 					continue;
 				if(!strcmp(saddr,"::"))
 				  continue;
-			} else
+			} else {
 				continue;
+			}
 
 			add_listener_addr(saddr);
+
+			if(!(ifa->ifa_flags & IFF_LOOPBACK))
+				ret++;
 		}
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		freeifaddrs(ifs);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int make_local_relays_list(int allow_local, int family)
@@ -232,6 +236,87 @@ static int make_local_relays_list(int allow_local, int family)
 	}
 
 	return counter;
+}
+
+int get_a_local_relay(int family, ioa_addr *relay_addr)
+{
+	struct ifaddrs * ifs = NULL;
+
+	int allow_local = 0;
+
+	int ret = -1;
+
+	char saddr[INET6_ADDRSTRLEN] = "";
+
+	getifaddrs(&ifs);
+
+	if (ifs) {
+
+		galr_start:
+
+		{
+			struct ifaddrs *ifa = NULL;
+
+			for (ifa = ifs; ifa != NULL ; ifa = ifa->ifa_next) {
+
+				if (!(ifa->ifa_flags & IFF_UP))
+					continue;
+
+				if (!(ifa->ifa_name))
+					continue;
+				if (!(ifa->ifa_addr))
+					continue;
+
+				if (!allow_local && (ifa->ifa_flags & IFF_LOOPBACK))
+					continue;
+
+				if (ifa->ifa_addr->sa_family == AF_INET) {
+
+					if (family != AF_INET)
+						continue;
+
+					if (!inet_ntop(AF_INET,
+							&((struct sockaddr_in *) ifa->ifa_addr)->sin_addr,
+							saddr, INET_ADDRSTRLEN))
+						continue;
+					if (strstr(saddr, "169.254.") == saddr)
+						continue;
+					if (!strcmp(saddr, "0.0.0.0"))
+						continue;
+				} else if (ifa->ifa_addr->sa_family == AF_INET6) {
+
+					if (family != AF_INET6)
+						continue;
+
+					if (!inet_ntop(AF_INET6,
+							&((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr,
+							saddr, INET6_ADDRSTRLEN))
+						continue;
+					if (strstr(saddr, "fe80") == saddr)
+						continue;
+					if (!strcmp(saddr, "::"))
+						continue;
+				} else
+					continue;
+
+				if (make_ioa_addr((const u08bits*) saddr, 0, relay_addr) < 0) {
+					continue;
+				} else {
+					ret = 0;
+					break;
+				}
+			}
+		}
+
+		if(ret<0 && !allow_local) {
+			allow_local = 1;
+			goto galr_start;
+		}
+
+		freeifaddrs(ifs);
+	}
+
+	return -1;
 }
 
 //////////////////////////////////////////////////
@@ -1614,13 +1699,18 @@ int main(int argc, char **argv)
 
 	int local_listeners = 0;
 	if (!turn_params.listener.addrs_number) {
-		make_local_listeners_list();
-		local_listeners = 1;
-		if (!turn_params.listener.addrs_number) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "You must specify the listener address(es)\n", __FUNCTION__);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering listener addresses: =========\n");
+		int maddrs = make_local_listeners_list();
+		if((maddrs<1) || !turn_params.listener.addrs_number) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot configure any meaningful IP listener address\n", __FUNCTION__);
 			fprintf(stderr,"\n%s\n", Usage);
 			exit(-1);
 		}
+		local_listeners = 1;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d 'real' addresses discovered\n",maddrs);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 	}
 
 	if (!turn_params.relays_number) {
@@ -1634,6 +1724,7 @@ int main(int argc, char **argv)
 		}
 		if (!turn_params.relays_number) {
 			turn_params.default_relays = 1;
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED\n");
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "===========Discovering relay addresses: =============\n");
 			if(make_local_relays_list(0,AF_INET)<1) {
 				make_local_relays_list(1,AF_INET);
@@ -1641,6 +1732,8 @@ int main(int argc, char **argv)
 			if(make_local_relays_list(0,AF_INET6)<1) {
 				make_local_relays_list(1,AF_INET6);
 			}
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d 'real' addresses discovered\n",(int)turn_params.relays_number);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		}
 

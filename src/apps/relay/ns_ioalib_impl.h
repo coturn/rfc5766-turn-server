@@ -242,6 +242,8 @@ void ioa_engine_set_rtcp_map(ioa_engine_handle e, rtcp_map *rtcpmap);
 ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e, ioa_socket_raw fd, ioa_socket_handle parent_s, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 ioa_socket_handle create_ioa_socket_from_ssl(ioa_engine_handle e, ioa_socket_handle parent_s, SSL* ssl, SOCKET_TYPE st, SOCKET_APP_TYPE sat, const ioa_addr *remote_addr, const ioa_addr *local_addr);
 
+int get_a_local_relay(int family, ioa_addr *relay_addr);
+
 void add_socket_to_parent(ioa_socket_handle parent_s, ioa_socket_handle s);
 void delete_socket_from_parent(ioa_socket_handle s);
 

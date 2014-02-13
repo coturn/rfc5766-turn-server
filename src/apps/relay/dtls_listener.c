@@ -730,12 +730,24 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind listener socket to device %s\n",server->ifname);
 	  }
 
-	  if(addr_bind(udp_listen_fd,&server->addr,1)<0) {
-		  perror("Cannot bind local socket to addr");
-		  char saddr[129];
-		  addr_to_string(&server->addr,(u08bits*)saddr);
-		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
-		  return -1;
+	  {
+		  const int max_binding_time = 60;
+		  int addr_bind_cycle = 0;
+		  retry_addr_bind:
+
+		  if(addr_bind(udp_listen_fd,&server->addr,1)<0) {
+			  perror("Cannot bind local socket to addr");
+			  char saddr[129];
+			  addr_to_string(&server->addr,(u08bits*)saddr);
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
+			  if(addr_bind_cycle<max_binding_time) {
+				  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind UDP/DTLS listener socket to addr %s, again...\n",saddr);
+				  sleep(1);
+				  goto retry_addr_bind;
+			  }
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Fatal final failure: cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
+			  exit(-1);
+		  }
 	  }
 
 	  server->udp_listen_ev = event_new(server->e->event_base,udp_listen_fd,
