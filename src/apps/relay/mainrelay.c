@@ -1733,7 +1733,7 @@ int main(int argc, char **argv)
 				make_local_relays_list(1,AF_INET6);
 			}
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d 'real' addresses discovered\n",(int)turn_params.relays_number);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total: %d relay addresses discovered\n",(int)turn_params.relays_number);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "=====================================================\n");
 		}
 
