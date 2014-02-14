@@ -1,6 +1,9 @@
 02/12/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.7 'Marshal West':
-	- Anycast listener address implemented.
+	- Possible indefinite cycle fixed in TCP/TCP routing (Issue 99);
+	- Address 0.0.0.0 can be used as a listener address (Issue 100);
+	- DHCP-configured servers supported (Issue 101);
+	
 	
 02/04/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.6 'Marshal West':
