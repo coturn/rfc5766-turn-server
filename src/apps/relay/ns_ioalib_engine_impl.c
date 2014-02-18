@@ -795,15 +795,6 @@ int set_socket_options_fd(evutil_socket_t fd, int tcp, int family)
 		set_raw_socket_ttl_options(fd, family);
 		set_raw_socket_tos_options(fd, family);
 
-#ifdef SO_BSDCOMPAT
-		//Linux. Option may be obsolete,
-		{
-			int on = 1;
-			if(setsockopt(fd, SOL_SOCKET, SO_BSDCOMPAT, (void *)&on, sizeof(on))<0)
-			perror("SO_BSDCOMPAT");
-		}
-#endif
-
 #ifdef IP_RECVERR
 		if (family != AF_INET6) {
 			int on = 0;
