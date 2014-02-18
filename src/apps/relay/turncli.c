@@ -1218,6 +1218,9 @@ int send_turn_session_info(struct turn_session_info* tsi)
 {
 	int ret = -1;
 
+	if(!use_cli)
+		return ret;
+
 	if(tsi) {
 		struct evbuffer *output = bufferevent_get_output(cliserver.out_buf);
 		if(output) {
