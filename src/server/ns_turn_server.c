@@ -2751,7 +2751,6 @@ static int check_stun_auth(turn_turnserver *server,
 			int can_resume)
 {
 	u08bits usname[STUN_MAX_USERNAME_SIZE+1];
-	u08bits realm[STUN_MAX_REALM_SIZE+1];
 	u08bits nonce[STUN_MAX_NONCE_SIZE+1];
 	size_t alen = 0;
 
@@ -2814,9 +2813,18 @@ static int check_stun_auth(turn_turnserver *server,
 			return -1;
 		}
 
+
+		u08bits realm[STUN_MAX_REALM_SIZE+1];
+
 		alen = min((size_t)stun_attr_get_len(sar),sizeof(realm)-1);
 		ns_bcopy(stun_attr_get_value(sar),realm,alen);
 		realm[alen]=0;
+
+		if(strcmp((char*)realm, (char*)(server->realm))) {
+			*err_code = 400;
+			*reason = (const u08bits*)"Bad request: the realm value incorrect";
+			return -1;
+		}
 	}
 
 	/* USERNAME ATTR: */
