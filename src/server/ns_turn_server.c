@@ -1745,8 +1745,8 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 			ioa_network_buffer_set_size(nbh, len);
 		}
 
-		/* We add integrity for both long-term and short-term indication messages */
-		/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
+		/* We add integrity for short-term indication messages, only */
+		if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
 		{
 			adjust_shatype(server,ss);
 			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
@@ -1760,21 +1760,6 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		}
 
 		write_client_connection(server, ss, nbh, TTL_IGNORE, TOS_IGNORE);
-
-		/* test */
-		if(0) {
-			int i = 0;
-			for(i=0;i<22;i++) {
-				ioa_network_buffer_handle nbh_test = ioa_network_buffer_allocate(server->e);
-				size_t len_test = ioa_network_buffer_get_size(nbh_test);
-				u08bits *data = ioa_network_buffer_data(nbh_test);
-				const char* data_test="111.222.222.222.222";
-				len_test = strlen(data_test);
-				ns_bcopy(data_test,data,len_test);
-				ioa_network_buffer_set_size(nbh_test,len_test);
-				send_data_from_ioa_socket_nbh(tc->peer_s, NULL, nbh_test, TTL_IGNORE, TOS_IGNORE);
-			}
-		}
 
 		FUNCEND;
 	}
@@ -4096,8 +4081,8 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 					ioa_network_buffer_set_size(nbh, len);
 				}
 
-				/* We add integrity for both long-term and short-term indication messages */
-				/* if(server->ct == TURN_CREDENTIALS_SHORT_TERM) */
+				/* We add integrity for short-term indication messages, only */
+				if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
 				{
 					adjust_shatype(server,ss);
 					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
