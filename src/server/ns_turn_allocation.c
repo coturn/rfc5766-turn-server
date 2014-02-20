@@ -488,7 +488,7 @@ static void set_new_tc_id(u08bits server_id, tcp_connection *tc) {
 	do {
 		newid = 0;
 		while (!newid) {
-			newid = (u32bits)random();
+			newid = (u32bits)turn_random();
 			if(!newid) {
 				continue;
 			}

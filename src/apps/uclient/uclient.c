@@ -191,11 +191,11 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 	char *buffer = (char*) (message->buf);
 
 	if(negative_protocol_test && (message->len>0)) {
-		if(random()%10 == 0) {
-			int np = (int)((unsigned long)random()%10);
+		if(turn_random()%10 == 0) {
+			int np = (int)((unsigned long)turn_random()%10);
 			while(np-->0) {
-				int pos = (int)((unsigned long)random()%(unsigned long)message->len);
-				int val = (int)((unsigned long)random()%256);
+				int pos = (int)((unsigned long)turn_random()%(unsigned long)message->len);
+				int val = (int)((unsigned long)turn_random()%256);
 				message->buf[pos]=(u08bits)val;
 			}
 		}
@@ -545,7 +545,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				  sar = stun_attr_get_next_str(elem->in_buffer.buf,elem->in_buffer.len,sar);
 			  }
 			  if(negative_test) {
-				  tcp_data_connect(elem,(u64bits)random());
+				  tcp_data_connect(elem,(u64bits)turn_random());
 			  } else {
 				  /* positive test */
 				  tcp_data_connect(elem,cid);
@@ -732,7 +732,7 @@ static int client_write(app_ur_session *elem) {
 	if (!(elem->pinfo.tcp_conn) || !(elem->pinfo.tcp_conn_number)) {
 		return -1;
 	}
-	int i = (unsigned int)(random()) % elem->pinfo.tcp_conn_number;
+	int i = (unsigned int)(turn_random()) % elem->pinfo.tcp_conn_number;
 	atc = elem->pinfo.tcp_conn[i];
 	if(!atc->tcp_data_bound) {
 		printf("%s: Uninitialized atc: i=%d, atc=0x%lx\n",__FUNCTION__,i,(long)atc);
@@ -1338,7 +1338,7 @@ void start_mclient(const char *remote_address, int port,
 	stime = current_time;
 
 	for(i=0;i<total_clients;i++) {
-		elems[i]->to_send_timems = current_mstime + 1000 + ((u32bits)random())%5000;
+		elems[i]->to_send_timems = current_mstime + 1000 + ((u32bits)turn_random())%5000;
 	}
 
 	tot_messages = elems[0]->tot_msgnum * total_clients;

@@ -3,7 +3,10 @@ Version 3.2.2.8 'Marshal West':
 	- Issue 102: SO_BSDCOMPAT socket option removed;
 	- Issue 104: check for the REALM attribute value;
 	- Issue 105: no-cli segfault fixed;
-	- Issue 106: MESSAGE-INTEGRITY removed from DATA indication.
+	- Issue 106: MESSAGE-INTEGRITY removed from DATA indication;
+	- Issue 108: Server should return 438 on unknown nonce;
+	- Issue 109: make the random functions stronger (mostly for
+	transaction ID and for nonce).
 
 02/12/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.7 'Marshal West':

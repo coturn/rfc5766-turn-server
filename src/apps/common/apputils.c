@@ -124,7 +124,7 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
 #ifdef SO_KEEPALIVE
     /* Set the keepalive option active */
     {
-	    const int on = 1;
+	    int on = 1;
 	    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (const void*)&on, (socklen_t) sizeof(on));
     }
 #else
@@ -133,7 +133,7 @@ int socket_tcp_set_keepalive(evutil_socket_t fd)
 
 #ifdef SO_NOSIGPIPE
     {
-    	 const int on = 1;
+    	 int on = 1;
     	 setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, (const void*)&on, (socklen_t) sizeof(on));
     }
 #endif
@@ -154,16 +154,16 @@ int socket_set_reusable(evutil_socket_t fd, int flag)
 		int use_reuseaddr = 1;
 #endif
 
-#ifdef SO_REUSEPORT
+#if defined(SO_REUSEPORT)
 		if (use_reuseaddr) {
-			const int on = flag;
+			int on = flag;
 			setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void*) &on, (socklen_t) sizeof(on));
 		}
 #endif
 
 #if defined(SO_REUSEADDR)
 		if (use_reuseaddr) {
-			const int on = flag;
+			int on = flag;
 			int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*) &on, (socklen_t) sizeof(on));
 			if (ret < 0)
 				perror("SO_REUSEADDR");
@@ -682,9 +682,22 @@ void ignore_sigpipe(void)
 	}
 }
 
+static u64bits turn_getRandTime(void) {
+  struct timespec tp={0,0};
+#if defined(CLOCK_REALTIME)
+  clock_gettime(CLOCK_REALTIME, &tp);
+#else
+  tp.tv_sec = time(NULL);
+#endif
+  u64bits current_time = (u64bits)(tp.tv_sec);
+  u64bits current_mstime = (u64bits)(current_time + (tp.tv_nsec));
+
+  return current_mstime;
+}
+
 unsigned long set_system_parameters(int max_resources)
 {
-	srandom((unsigned int) time(NULL));
+	srandom((unsigned int) (turn_getRandTime() + (int)(&turn_getRandTime)));
 	setlocale(LC_ALL, "C");
 
 	build_base64_decoding_table();

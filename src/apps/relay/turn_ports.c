@@ -86,13 +86,12 @@ static int is_taken(u32bits status) {
 
 static void turnports_randomize(turnports* tp) {
   if(tp) {
-    srandom((unsigned long)tp);
     unsigned int size=(unsigned int)(tp->high-tp->low);
     unsigned int i=0;
     unsigned int cycles=size*10;
     for(i=0;i<cycles;i++) {
-      u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
-      u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
+      u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
+      u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
       if(port1!=port2) {
     	  int pos1=tp->status[port1];
     	  int pos2=tp->status[port2];
@@ -238,7 +237,7 @@ int turnports_allocate_even(turnports* tp, int allocate_rtcp, u64bits *reservati
     					  u32bits *v32=(u32bits*)reservation_token;
     					  v16[0]=(u16bits)(tp->ports[(u16bits)(tp->low & 0x0000FFFF)]);
     					  v16[1]=(u16bits)(tp->ports[(u16bits)(tp->high & 0x0000FFFF)]);
-    					  v32[1]=(u32bits)random();
+    					  v32[1]=(u32bits)turn_random();
     				  }
     				  TURN_MUTEX_UNLOCK(&tp->mutex);
     				  return port;

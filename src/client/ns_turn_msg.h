@@ -182,9 +182,10 @@ int stun_attr_add_integrity_by_user_str(u08bits *buf, size_t *len, u08bits *unam
 int stun_attr_add_integrity_by_user_short_term_str(u08bits *buf, size_t *len, u08bits *uname, st_password_t pwd, SHATYPE shatype);
 
 /*
- * To be implemented in utilities
+ * To be implemented with openssl
  */
 
+long turn_random(void);
 int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key);
 int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t sz, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype);
 

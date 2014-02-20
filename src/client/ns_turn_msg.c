@@ -37,6 +37,19 @@
 #include <openssl/hmac.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
+
+#include <stdlib.h>
+
+///////////
+
+long turn_random(void)
+{
+	long ret = 0;
+	if(!RAND_bytes((unsigned char *)&ret,sizeof(ret)))
+		ret = random();
+	return ret;
+}
 
 int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t keylen, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype)
 {
@@ -704,7 +717,7 @@ u16bits stun_set_channel_bind_request_str(u08bits* buf, size_t *len,
 					   const ioa_addr* peer_addr, u16bits channel_number) {
 
   if(!STUN_VALID_CHANNEL(channel_number)) {
-    channel_number = 0x4000 + ((u16bits)(((u32bits)random())%(0x7FFF-0x4000+1)));
+    channel_number = 0x4000 + ((u16bits)(((u32bits)turn_random())%(0x7FFF-0x4000+1)));
   }
   
   stun_init_request_str(STUN_METHOD_CHANNEL_BIND, buf, len);
@@ -835,9 +848,9 @@ void stun_tid_message_cpy(u08bits* buf, const stun_tid* id) {
 void stun_tid_generate(stun_tid* id) {
   if(id) {
     u32bits *w=(u32bits*)(id->tsx_id);
-    w[0]=(u32bits)random();
-    w[1]=(u32bits)random();
-    w[2]=(u32bits)random();
+    w[0]=(u32bits)turn_random();
+    w[1]=(u32bits)turn_random();
+    w[2]=(u32bits)turn_random();
   }
 }
 
