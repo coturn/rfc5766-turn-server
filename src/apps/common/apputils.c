@@ -697,7 +697,7 @@ static u64bits turn_getRandTime(void) {
 
 unsigned long set_system_parameters(int max_resources)
 {
-	srandom((unsigned int) (turn_getRandTime() + (int)(&turn_getRandTime)));
+	srandom((unsigned int) (turn_getRandTime() + (unsigned int)((long)(&turn_getRandTime))));
 	setlocale(LC_ALL, "C");
 
 	build_base64_decoding_table();
