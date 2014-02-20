@@ -3291,6 +3291,8 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 			char* ptr = r->super_memory + r->sm_total_sz - r->sm_allocated - size;
 
+			ns_bzero(ptr, size);
+
 			r->sm_allocated += size;
 
 			ret = ptr;
