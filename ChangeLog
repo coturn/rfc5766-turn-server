@@ -8,6 +8,7 @@ Version 3.2.2.8 'Marshal West':
 	- Issue 109: make the random functions stronger (mostly for
 	transaction ID and for nonce);
 	- Issue 111: fix valgrind warning on memory initialization.
+	- Issue 112: RTCP sockets logging.
 
 02/12/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.7 'Marshal West':
