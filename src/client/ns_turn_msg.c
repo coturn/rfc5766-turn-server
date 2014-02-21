@@ -51,6 +51,16 @@ long turn_random(void)
 	return ret;
 }
 
+void turn_random32_size(u32bits *ar, size_t sz)
+{
+	if(!RAND_bytes((unsigned char *)ar, sz<<2)<0) {
+		size_t i;
+		for(i=0;i<sz;++i) {
+			ar[i] = (u32bits)random();
+		}
+	}
+}
+
 int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size_t keylen, u08bits *hmac, unsigned int *hmac_len, SHATYPE shatype)
 {
 	ERR_clear_error();
@@ -848,9 +858,7 @@ void stun_tid_message_cpy(u08bits* buf, const stun_tid* id) {
 void stun_tid_generate(stun_tid* id) {
   if(id) {
     u32bits *w=(u32bits*)(id->tsx_id);
-    w[0]=(u32bits)turn_random();
-    w[1]=(u32bits)turn_random();
-    w[2]=(u32bits)turn_random();
+    turn_random32_size(w,3);
   }
 }
 

@@ -546,8 +546,12 @@ static mobile_id_t get_new_mobile_id(turn_turnserver* server)
 		sid = sid<<56;
 		do {
 			while (!newid) {
-				newid = (mobile_id_t)turn_random();
-				newid = (newid<<32) + (mobile_id_t)turn_random();
+				if(TURN_RANDOM_SIZE == sizeof(mobile_id_t))
+					newid = (mobile_id_t)turn_random();
+				else {
+					newid = (mobile_id_t)turn_random();
+					newid = (newid<<32) + (mobile_id_t)turn_random();
+				}
 				if(!newid) {
 					continue;
 				}
@@ -2744,24 +2748,35 @@ static int check_stun_auth(turn_turnserver *server,
 
 	int new_nonce = 0;
 
-	if(ss->nonce[0]==0) {
-		int i = 0;
-		for(i=0;i<NONCE_LENGTH_32BITS;i++) {
-			u08bits *s = ss->nonce + 4*i;
-			u32bits rand=(u32bits)turn_random();
-			snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
+	{
+		int generate_new_nonce = 0;
+		if(ss->nonce[0]==0) {
+			generate_new_nonce = 1;
+			new_nonce = 1;
 		}
-		ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
-		new_nonce = 1;
-	}
 
-	if(*(server->stale_nonce)) {
-		if(turn_time_before(ss->nonce_expiration_time,server->ctime)) {
+		if(*(server->stale_nonce)) {
+			if(turn_time_before(ss->nonce_expiration_time,server->ctime)) {
+				generate_new_nonce = 1;
+			}
+		}
+
+		if(generate_new_nonce) {
+
 			int i = 0;
-			for(i=0;i<NONCE_LENGTH_32BITS;i++) {
-				u08bits *s = ss->nonce + 4*i;
-				u32bits rand=(u32bits)turn_random();
-				snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
+
+			if(TURN_RANDOM_SIZE == 8) {
+				for(i=0;i<(NONCE_LENGTH_32BITS>>1);i++) {
+					u08bits *s = ss->nonce + 8*i;
+					u64bits rand=(u64bits)turn_random();
+					snprintf((s08bits*)s, NONCE_MAX_SIZE-8*i, "%08lx",(unsigned long)rand);
+				}
+			} else {
+				for(i=0;i<NONCE_LENGTH_32BITS;i++) {
+					u08bits *s = ss->nonce + 4*i;
+					u32bits rand=(u32bits)turn_random();
+					snprintf((s08bits*)s, NONCE_MAX_SIZE-4*i, "%04x",(unsigned int)rand);
+				}
 			}
 			ss->nonce_expiration_time = server->ctime + STUN_NONCE_EXPIRATION_TIME;
 		}
