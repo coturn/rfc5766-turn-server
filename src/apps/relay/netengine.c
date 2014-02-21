@@ -205,13 +205,17 @@ int add_relay_addr(const char* addr) {
 
 static void allocate_relay_addrs_ports(void) {
 	int i;
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Wait for relay ports initialization...\n");
 	for(i=0;i<(int)turn_params.relays_number;i++) {
 		ioa_addr baddr;
 		if(make_ioa_addr((const u08bits*)turn_params.relay_addrs[i],0,&baddr)>=0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization...\n",turn_params.relay_addrs[i]);
 			turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE, &baddr);
 			turnipports_add_ip(STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE, &baddr);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "  relay %s initialization done\n",turn_params.relay_addrs[i]);
 		}
 	}
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay ports initialization done\n");
 }
 
 //////////////////////////////////////////////////
