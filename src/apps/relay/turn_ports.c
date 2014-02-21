@@ -90,8 +90,8 @@ static void turnports_randomize(turnports* tp) {
     unsigned int i=0;
     unsigned int cycles=size*3;
     for(i=0;i<cycles;i++) {
-      u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
-      u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
+      u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
+      u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)random())%((unsigned long)size)));
       if(port1!=port2) {
     	  int pos1=tp->status[port1];
     	  int pos2=tp->status[port2];

@@ -3240,7 +3240,7 @@ static void init_super_memory_region(super_memory_t *r)
 		r->sm_total_sz = TURN_SM_SIZE;
 		r->sm_chunk = 0;
 		while(r->id == 0)
-			r->id = (u32bits)turn_random();
+			r->id = (u32bits)random();
 	}
 }
 
