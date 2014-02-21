@@ -3656,6 +3656,8 @@ static int create_relay_connection(turn_turnserver* server,
 				return -1;
 			}
 
+			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");
+
 		} else {
 
 			int res = create_relay_ioa_sockets(server->e,

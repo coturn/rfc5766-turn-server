@@ -1061,6 +1061,10 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 		if (*rtp_s) {
 			addr_set_port(&local_addr, port);
 			addr_debug_print(e->verbose, &local_addr, "Local relay addr");
+			if (rtcp_s && *rtcp_s) {
+				addr_set_port(&local_addr, port+1);
+				addr_debug_print(e->verbose, &local_addr, "Local reserved relay addr");
+			}
 			break;
 		}
 	}
