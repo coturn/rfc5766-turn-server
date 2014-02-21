@@ -3215,7 +3215,7 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 
 ///////////// Super Memory Region //////////////
 
-#define TURN_SM_SIZE (1824<<10)
+#define TURN_SM_SIZE (1024<<12)
 
 struct _super_memory {
 	pthread_mutex_t mutex_sm;

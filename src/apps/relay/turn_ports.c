@@ -88,7 +88,7 @@ static void turnports_randomize(turnports* tp) {
   if(tp) {
     unsigned int size=(unsigned int)(tp->high-tp->low);
     unsigned int i=0;
-    unsigned int cycles=size*10;
+    unsigned int cycles=size*3;
     for(i=0;i<cycles;i++) {
       u16bits port1 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
       u16bits port2 = (u16bits)(tp->low + (u16bits)(((unsigned long)turn_random())%((unsigned long)size)));
@@ -299,6 +299,8 @@ static ur_addr_map *get_map(turnipports *tp, u08bits transport)
 }
 //////////////////////////////////////////////////
 
+static turnipports* turnipports_singleton = NULL;
+
 turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end)
 {
 	turnipports *ret = (turnipports*) allocate_super_memory_region(sm, sizeof(turnipports));
@@ -308,6 +310,7 @@ turnipports* turnipports_create(super_memory_t *sm, u16bits start, u16bits end)
 	ret->start = start;
 	ret->end = end;
 	TURN_MUTEX_INIT_RECURSIVE(&(ret->mutex));
+	turnipports_singleton = ret;
 	return ret;
 }
 
@@ -326,6 +329,11 @@ static turnports* turnipports_add(turnipports* tp, u08bits transport, const ioa_
 		TURN_MUTEX_UNLOCK((const turn_mutex*)&(tp->mutex));
 	}
 	return (turnports*) t;
+}
+
+void turnipports_add_ip(u08bits transport, const ioa_addr *backend_addr)
+{
+	turnipports_add(turnipports_singleton, transport, backend_addr);
 }
 
 int turnipports_allocate(turnipports* tp, u08bits transport, const ioa_addr *backend_addr)
