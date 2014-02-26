@@ -1057,7 +1057,7 @@ static void set_option(int c, char *value)
 		break;
 	case 's':
 		turn_params.max_bps = (band_limit_t)atol(value);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second is allowed per session\n",(unsigned long)turn_params.max_bps);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed per session\n",(unsigned long)turn_params.max_bps);
 		break;
 	case NO_UDP_OPT:
 		turn_params.no_udp = get_bool_value(value);
