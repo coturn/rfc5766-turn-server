@@ -1497,8 +1497,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 	if (!s) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Detaching NULL socket\n");
 	} else {
-		if(s->done) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on done socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
+		if((s->magic != SOCKET_MAGIC)||(s->done)) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s detach on bad socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return ret;
 		}
@@ -2108,7 +2108,7 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(!s)
 		return 0;
 
-	if(s->done) {
+	if((s->magic != SOCKET_MAGIC)||(s->done)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(long)s, s->st, s->sat);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 		return -1;
@@ -2362,9 +2362,9 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 	if(!s)
 		return;
 
-	if(s->done) {
+	if((s->magic != SOCKET_MAGIC)||(s->done)) {
 		read_spare_buffer(fd);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on bad socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 		return;
 	}
@@ -2377,7 +2377,7 @@ static void socket_input_handler(evutil_socket_t fd, short what, void* arg)
 	if (!ioa_socket_tobeclosed(s))
 		socket_input_worker(s);
 
-	if(s->done) {
+	if((s->magic != SOCKET_MAGIC)||(s->done)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket, ev=%d: 0x%lx, st=%d, sat=%d\n", __FUNCTION__,(int)what,(long)s, s->st, s->sat);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 		return;
@@ -2424,7 +2424,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 
 		ioa_socket_handle s = (ioa_socket_handle) arg;
 
-		if (s->done) {
+		if((s->magic != SOCKET_MAGIC)||(s->done)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return;
@@ -2435,7 +2435,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 				break;
 		}
 
-		if (s->done) {
+		if((s->magic != SOCKET_MAGIC)||(s->done)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s (1) on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return;
@@ -2481,6 +2481,16 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 		if (arg) {
 			ioa_socket_handle s = (ioa_socket_handle) arg;
 
+			if((s->st != TCP_SOCKET)&&(s->st != TLS_SOCKET)&&(s->st != TENTATIVE_TCP_SOCKET)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: socket type is wrong on the socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
+				return;
+			}
+
+			if(s->magic != SOCKET_MAGIC) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: magic is wrong on the socket: 0x%lx, st=%d, sat=%d\n",__FUNCTION__,(long)s,s->st,s->sat);
+				return;
+			}
+
 			if (s->done) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s: closed socket: 0x%lx (1): done=%d, fd=%d, br=%d, st=%d, sat=%d, tbc=%d\n", __FUNCTION__, (long) s, (int) s->done,
 								(int) s->fd, s->broken, s->st, s->sat, s->tobeclosed);
@@ -2515,7 +2525,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 					}
 				}
 			}
-			}
+			};
 		}
 	}
 }
