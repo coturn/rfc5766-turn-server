@@ -1,3 +1,8 @@
+03/02/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.2.9 'Marshal West':
+	- Issue 113 fixed (TCP rate limit fixed);
+	- Issue 114 fixed (TCP stability).
+
 02/18/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.8 'Marshal West':
 	- Issue 102: SO_BSDCOMPAT socket option removed;
