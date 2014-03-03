@@ -259,7 +259,7 @@ int addr_bind(evutil_socket_t fd, const ioa_addr* addr, int reusable)
 			perror("bind");
 			char str[129];
 			addr_to_string(addr,(u08bits*)str);
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING, "Trying to bind fd %d to <%s>: errno=%d\n", fd, str, err);
 		}
 		return ret;
 	}
