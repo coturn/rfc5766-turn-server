@@ -2523,7 +2523,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 						{
 							if (events & BEV_EVENT_EOF) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely\n",(unsigned long long)(ss->id));
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely: %s\n",(unsigned long long)(ss->id),
+										evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 							} else if (events & BEV_EVENT_ERROR) {
 								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: socket error: %s\n",(unsigned long long)(ss->id),
 												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));

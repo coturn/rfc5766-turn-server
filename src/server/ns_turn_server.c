@@ -3581,7 +3581,7 @@ static void client_to_be_allocated_timeout_handler(ioa_engine_handle e,
 
 	if(to_close) {
 		IOA_EVENT_DEL(ss->to_be_allocated_timeout_ev);
-		shutdown_client_connection(server, ss, 1, "allocation watchdog determined bad session state");
+		shutdown_client_connection(server, ss, 1, "allocation watchdog determined stale session state");
 	}
 
 	FUNCEND;
