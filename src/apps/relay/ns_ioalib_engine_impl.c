@@ -2409,7 +2409,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 				if (server) {
 					s->session = NULL;
 					s->sub_session = NULL;
-					shutdown_client_connection(server, ss, 0);
+					shutdown_client_connection(server, ss, 0, "message processing error");
 				}
 			}
 		}
@@ -2462,7 +2462,7 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 					if (server) {
 						s->session=NULL;
 						s->sub_session=NULL;
-						shutdown_client_connection(server, ss, 0);
+						shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (input handler)");
 					}
 				}
 			}
@@ -2519,9 +2519,20 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *) ss->server;
 					if (server) {
+
+
+						{
+							if (events & BEV_EVENT_EOF) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely\n",(unsigned long long)(ss->id));
+							} else if (events & BEV_EVENT_ERROR) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: socket error: %s\n",(unsigned long long)(ss->id),
+												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+							 }
+						}
+
 						s->session = NULL;
 						s->sub_session = NULL;
-						shutdown_client_connection(server, ss, 0);
+						shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (callback)");
 					}
 				}
 			}
@@ -3119,10 +3130,10 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
 							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);
 					} else {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"%s: session id=%018llu, username=<%s>, lifetime=%lu\n", status, (unsigned long long)ss->id, (char*)ss->username, (unsigned long)lifetime);
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, username=<%s>, lifetime=%lu\n", (unsigned long long)ss->id, status, (char*)ss->username, (unsigned long)lifetime);
 					}
 				}
 			}
@@ -3147,7 +3158,7 @@ void turn_report_allocation_delete(void *a)
 			if(server) {
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"delete: session id=%018llu, username=<%s>\n", (unsigned long long)ss->id, (char*)ss->username);
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: delete: username=<%s>\n", (unsigned long long)ss->id, (char*)ss->username);
 				}
 			}
 #if !defined(TURN_NO_HIREDIS)
@@ -3178,7 +3189,7 @@ void turn_report_session_usage(void *session)
 			ioa_engine_handle e = turn_server_get_engine(server);
 			if(((ss->received_packets+ss->sent_packets)&2047)==0) {
 				if(e && e->verbose) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"usage: session id=%018llu, username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: usage: username=<%s>, rp=%lu, rb=%lu, sp=%lu, sb=%lu\n", (unsigned long long)(ss->id), (char*)ss->username, (unsigned long)(ss->received_packets), (unsigned long)(ss->received_bytes),(unsigned long)(ss->sent_packets),(unsigned long)(ss->sent_bytes));
 				}
 #if !defined(TURN_NO_HIREDIS)
 				if(default_async_context_is_not_empty()) {
