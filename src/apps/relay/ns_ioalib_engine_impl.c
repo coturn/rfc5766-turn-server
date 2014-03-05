@@ -2409,7 +2409,7 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 				if (server) {
 					s->session = NULL;
 					s->sub_session = NULL;
-					shutdown_client_connection(server, ss, 0, "message processing error");
+					shutdown_client_connection(server, ss, 0, "general");
 				}
 			}
 		}
@@ -2523,8 +2523,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 						{
 							if (events & BEV_EVENT_EOF) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely: %s\n",(unsigned long long)(ss->id),
-										evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely\n",(unsigned long long)(ss->id));
 								s->session = NULL;
 								s->sub_session = NULL;
 								shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
