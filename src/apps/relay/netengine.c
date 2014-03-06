@@ -249,18 +249,18 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     if(turn_params.users_params.use_st_credentials) {
       st_password_t pwd;
       if(get_user_pwd(am.username,pwd)<0) {
-	am.success = 0;
+    	  am.success = 0;
       } else {
-	ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
-	am.success = 1;
+    	  ns_bcopy(pwd,am.pwd,sizeof(st_password_t));
+    	  am.success = 1;
       }
     } else {
       hmackey_t key;
       if(get_user_key(am.username,key,am.in_buffer.nbh)<0) {
-	am.success = 0;
+    	  am.success = 0;
       } else {
-	ns_bcopy(key,am.key,sizeof(hmackey_t));
-	am.success = 1;
+    	  ns_bcopy(key,am.key,sizeof(hmackey_t));
+    	  am.success = 1;
       }
     }
     
@@ -271,21 +271,21 @@ static void auth_server_receive_message(struct bufferevent *bev, void *ptr)
     if(dest>=TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP) {
       dest -= TURNSERVER_ID_BOUNDARY_BETWEEN_TCP_AND_UDP;
       if(dest >= get_real_udp_relay_servers_number()) {
-	TURN_LOG_FUNC(
+    	  TURN_LOG_FUNC(
 		      TURN_LOG_LEVEL_ERROR,
 		      "%s: Too large UDP relay number: %d\n",
 		      __FUNCTION__,(int)dest);
       } else {
-	output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
+    	  output = bufferevent_get_output(udp_relay_servers[dest]->auth_out_buf);
       }
     } else {
       if(dest >= get_real_general_relay_servers_number()) {
-	TURN_LOG_FUNC(
+    	  TURN_LOG_FUNC(
 		      TURN_LOG_LEVEL_ERROR,
 		      "%s: Too large general relay number: %d\n",
 		      __FUNCTION__,(int)dest);
       } else {
-	output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
+    	  output = bufferevent_get_output(general_relay_servers[dest]->auth_out_buf);
       }
     }
     
@@ -1393,30 +1393,8 @@ static int run_auth_server_flag = 1;
 
 static void* run_auth_server_thread(void *arg)
 {
-	struct event_base *eb = (struct event_base*)arg;
-
-#if !defined(TURN_NO_THREAD_BARRIERS)
-	if((pthread_barrier_wait(&barrier)<0) && errno)
-		perror("barrier wait");
-#endif
-
 	ignore_sigpipe();
 
-	while(run_auth_server_flag) {
-		run_events(eb);
-		read_userdb_file(0);
-		update_white_and_black_lists();
-		auth_ping();
-#if !defined(TURN_NO_HIREDIS)
-		send_message_to_redis(NULL, "publish", "__XXX__", "__YYY__");
-#endif
-	}
-
-	return arg;
-}
-
-static void setup_auth_server(void)
-{
 	ns_bzero(&turn_params.authserver,sizeof(struct auth_server));
 
 	turn_params.authserver.event_base = turn_event_base_new();
@@ -1433,7 +1411,29 @@ static void setup_auth_server(void)
 	bufferevent_setcb(turn_params.authserver.in_buf, auth_server_receive_message, NULL, NULL, &turn_params.authserver);
 	bufferevent_enable(turn_params.authserver.in_buf, EV_READ);
 
-	if(pthread_create(&(turn_params.authserver.thr), NULL, run_auth_server_thread, turn_params.authserver.event_base)<0) {
+	struct event_base *eb = turn_params.authserver.event_base;
+
+#if !defined(TURN_NO_THREAD_BARRIERS)
+	if((pthread_barrier_wait(&barrier)<0) && errno)
+		perror("barrier wait");
+#endif
+
+	while(run_auth_server_flag) {
+		run_events(eb);
+		read_userdb_file(0);
+		update_white_and_black_lists();
+		auth_ping();
+#if !defined(TURN_NO_HIREDIS)
+		send_message_to_redis(NULL, "publish", "__XXX__", "__YYY__");
+#endif
+	}
+
+	return arg;
+}
+
+static void setup_auth_server(void)
+{
+	if(pthread_create(&(turn_params.authserver.thr), NULL, run_auth_server_thread, NULL)<0) {
 		perror("Cannot create auth thread\n");
 		exit(-1);
 	}
