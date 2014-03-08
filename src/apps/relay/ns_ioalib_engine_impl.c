@@ -98,6 +98,31 @@ static void close_socket_net_data(ioa_socket_handle s);
 
 /************** Utils **************************/
 
+static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
+	if(s && (error || (s->e && s->e->verbose))) {
+		if(!msg)
+			msg = "General socket event";
+		turnsession_id id = 0;
+		{
+			ts_ur_super_session *ss = (ts_ur_super_session *) (s->session);
+			if (ss) {
+				id = ss->id;
+			}
+		}
+
+		TURN_LOG_LEVEL ll = TURN_LOG_LEVEL_INFO;
+		if(error)
+			ll = TURN_LOG_LEVEL_ERROR;
+
+		if(EVUTIL_SOCKET_ERROR()) {
+			TURN_LOG_FUNC(ll,"session %018llu: %s: %s\n",(unsigned long long)id,
+											msg, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+		} else {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s\n",(unsigned long long)id,msg);
+		}
+	}
+}
+
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 {
 	if(s->parent_s)
@@ -424,7 +449,7 @@ static void timer_event_handler(evutil_socket_t fd, short what, void* arg)
 	if (!(what & EV_TIMEOUT))
 		return;
 
-	if(eve(te->e->verbose))
+	if(te->e && eve(te->e->verbose))
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%s: timeout 0x%lx: %s\n", __FUNCTION__,(long)te, te->txt);
 
 	ioa_timer_event_handler cb = te->cb;
@@ -1107,7 +1132,7 @@ static void tcp_listener_input_handler(struct evconnlistener *l, evutil_socket_t
 	ioa_addr client_addr;
 	ns_bcopy(sa,&client_addr,socklen);
 
-	addr_debug_print(list_s->e->verbose, &client_addr,"tcp accepted from");
+	addr_debug_print(((list_s->e) && list_s->e->verbose), &client_addr,"tcp accepted from");
 
 	ioa_socket_handle s =
 				create_ioa_socket_from_fd(
@@ -1414,6 +1439,7 @@ static void close_socket_net_data(ioa_socket_handle s)
 					 */
 					SSL_set_shutdown(s->ssl, SSL_RECEIVED_SHUTDOWN);
 					SSL_shutdown(s->ssl);
+					log_socket_event(s, "SSL shutdown received, socket to be closed",0);
 				}
 			}
 			SSL_free(s->ssl);
@@ -1724,7 +1750,7 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
 		if(s->parent_s)
 			return get_local_mtu_ioa_socket(s->parent_s);
 
-		return get_socket_mtu(s->fd, s->family, eve(s->e->verbose));
+		return get_socket_mtu(s->fd, s->family, (s->e && eve(s->e->verbose)));
 	}
 	return -1;
 }
@@ -2245,6 +2271,7 @@ static int socket_input_worker(ioa_socket_handle s)
 						ret = -1;
 						s->tobeclosed = 1;
 						s->broken = 1;
+						log_socket_event(s, "socket read failed, to be closed",1);
 					} else if(s->st == TLS_SOCKET) {
 #if !defined(TURN_NO_TLS)
 						SSL *ctx = bufferevent_openssl_get_ssl(s->bev);
@@ -2263,11 +2290,13 @@ static int socket_input_worker(ioa_socket_handle s)
 				s->tobeclosed = 1;
 				s->broken = 1;
 				ret = -1;
+				log_socket_event(s, "socket buffer copy failed, to be closed",1);
 			}
 		} else {
 			s->tobeclosed = 1;
 			s->broken = 1;
 			ret = -1;
+			log_socket_event(s, "socket input failed, socket to be closed",1);
 		}
 
 		if(len == 0)
@@ -2278,12 +2307,13 @@ static int socket_input_worker(ioa_socket_handle s)
 		if(s->ssl && (len>0)) { /* DTLS */
 			send_ssl_backlog_buffers(s);
 			elem->buf.len = (size_t)len;
-			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)elem, s->e->verbose);
+			ret = ssl_read(s->fd, s->ssl, (ioa_network_buffer_handle)elem, ((s->e) && s->e->verbose));
 			addr_cpy(&remote_addr,&(s->remote_addr));
 			if(ret < 0) {
 				len = -1;
 				s->tobeclosed = 1;
 				s->broken = 1;
+				log_socket_event(s, "SSL read failed, to be closed",0);
 			} else {
 				len = (int)ioa_network_buffer_get_size((ioa_network_buffer_handle)elem);
 			}
@@ -2297,6 +2327,7 @@ static int socket_input_worker(ioa_socket_handle s)
 		s->tobeclosed = 1;
 		s->broken = 1;
 		ret = -1;
+		log_socket_event(s, "socket unknown error, to be closed",1);
 	}
 
 	if ((ret!=-1) && (len >= 0)) {
@@ -2498,8 +2529,10 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				return;
 			}
 
-			if (events == BEV_EVENT_ERROR)
-				s->broken = 1;
+			if (s->connected && (events & BEV_EVENT_ERROR) && (!(events & BEV_EVENT_EOF))) {
+				log_socket_event(s, "socket connection error",1);
+				return;
+			}
 
 			switch (s->sat){
 			case TCP_CLIENT_DATA_SOCKET:
@@ -2678,7 +2711,7 @@ static int send_ssl_backlog_buffers(ioa_socket_handle s)
 	if(s) {
 		stun_buffer_list_elem *elem = s->bufs.head;
 		while(elem) {
-			int rc = ssl_send(s, (s08bits*)elem->buf.buf + elem->buf.offset - elem->buf.coffset, (size_t)elem->buf.len, s->e->verbose);
+			int rc = ssl_send(s, (s08bits*)elem->buf.buf + elem->buf.offset - elem->buf.coffset, (size_t)elem->buf.len, ((s->e) && s->e->verbose));
 			if(rc<1)
 				break;
 			++ret;
@@ -2823,6 +2856,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 											< 0) {
 								ret = -1;
 								perror("bufev send");
+								log_socket_event(s, "socket write failed, to be closed",1);
 								s->tobeclosed = 1;
 								s->broken = 1;
 							} else {
@@ -2835,7 +2869,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 								s,
 								(s08bits*) ioa_network_buffer_data(nbh),
 								ioa_network_buffer_get_size(nbh),
-								s->e->verbose);
+								((s->e) && s->e->verbose));
 						if (ret < 0)
 							s->tobeclosed = 1;
 						else if (ret == 0)
@@ -3005,16 +3039,20 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx was closed\n", __FUNCTION__,(long)s);
 			return 1;
 		}
-		if(s->broken)
+		if(s->broken) {
+			log_socket_event(s, "socket broken", 0);
 			return 1;
-		if(s->tobeclosed)
+		} else if(s->tobeclosed) {
+			log_socket_event(s, "socket to be closed", 0);
 			return 1;
-		if(s->fd < 0) {
+		} else if(s->fd < 0) {
+			log_socket_event(s, "socket fd<0", 0);
 			return 1;
-		}
-		if(s->ssl) {
-			if(SSL_get_shutdown(s->ssl))
+		} else if(s->ssl) {
+			if(SSL_get_shutdown(s->ssl)) {
+				log_socket_event(s, "socket SSL shutdown", 0);
 				return 1;
+			}
 		}
 	}
 	return 0;
