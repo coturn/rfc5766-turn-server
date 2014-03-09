@@ -228,7 +228,7 @@ static int make_local_relays_list(int allow_local, int family)
 			} else
 				continue;
 
-			if(add_relay_addr(saddr)>=0) {
+			if(add_relay_addr(saddr)>0) {
 				counter += 1;
 			}
 		}

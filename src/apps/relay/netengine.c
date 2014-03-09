@@ -177,6 +177,12 @@ void add_listener_addr(const char* addr) {
 	if(make_ioa_addr((const u08bits*)addr,0,&baddr)<0) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a listener address: %s\n",addr);
 	} else {
+		size_t i = 0;
+		for(i=0;i<turn_params.listener.addrs_number;++i) {
+			if(addr_eq(turn_params.listener.encaddrs[turn_params.listener.addrs_number-1],&baddr)) {
+				return;
+			}
+		}
 		++turn_params.listener.addrs_number;
 		++turn_params.listener.services_number;
 		turn_params.listener.addrs = (char**)realloc(turn_params.listener.addrs, sizeof(char*)*turn_params.listener.addrs_number);
@@ -194,12 +200,23 @@ int add_relay_addr(const char* addr) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"Cannot add a relay address: %s\n",addr);
 		return -1;
 	} else {
+
+		char sbaddr[129];
+		addr_to_string_no_port(&baddr,(u08bits*)sbaddr);
+
+		size_t i = 0;
+		for(i=0;i<turn_params.relays_number;++i) {
+			if(!strcmp(turn_params.relay_addrs[turn_params.relays_number-1],sbaddr)) {
+				return 0;
+			}
+		}
+
 		++turn_params.relays_number;
 		turn_params.relay_addrs = (char**)realloc(turn_params.relay_addrs, sizeof(char*)*turn_params.relays_number);
-		turn_params.relay_addrs[turn_params.relays_number-1]=strdup(addr);
+		turn_params.relay_addrs[turn_params.relays_number-1]=strdup(sbaddr);
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",addr);
-		return 0;
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Relay address to use: %s\n",sbaddr);
+		return 1;
 	}
 }
 
