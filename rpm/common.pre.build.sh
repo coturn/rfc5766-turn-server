@@ -4,6 +4,16 @@
 
 . ./build.settings.sh
 
+# DIRS
+
+rm -rf ${BUILDDIR}
+
+mkdir -p ${BUILDDIR}
+mkdir -p ${BUILDDIR}/SOURCES
+mkdir -p ${BUILDDIR}/SPECS
+mkdir -p ${BUILDDIR}/RPMS
+mkdir -p ${BUILDDIR}/tmp
+
 # Common packs
 
 PACKS="make gcc redhat-rpm-config rpm-build doxygen openssl-devel svn"
