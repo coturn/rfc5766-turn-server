@@ -13,6 +13,8 @@ RPMOPTIONS="-ivh --force"
 
 # DIRS
 
+rm -rf ${BUILDDIR}
+
 mkdir -p ${BUILDDIR}
 mkdir -p ${BUILDDIR}/SOURCES
 mkdir -p ${BUILDDIR}/SPECS
