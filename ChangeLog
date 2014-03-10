@@ -1,4 +1,8 @@
-03/04/2014 Oleg Moskalenko <mom040267@gmail.com>
+03/10/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.2.911 'Marshal West':
+	- memory management improvements.
+	
+03/09/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.910 'Marshal West':
 	- Log messages extended and cleaned.
 	- Some memory cleaning.
