@@ -3287,8 +3287,8 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 
 struct _super_memory {
 	pthread_mutex_t mutex_sm;
-	char *super_memory;
-	size_t sm_allocated;
+	char **super_memory;
+	size_t *sm_allocated;
 	size_t sm_total_sz;
 	size_t sm_chunk;
 	u32bits id;
@@ -3298,14 +3298,21 @@ static void init_super_memory_region(super_memory_t *r)
 {
 	if(r) {
 		ns_bzero(r,sizeof(super_memory_t));
-		r->super_memory = (char*)malloc(TURN_SM_SIZE);
-		ns_bzero(r->super_memory,TURN_SM_SIZE);
-		pthread_mutex_init(&r->mutex_sm, NULL);
-		r->sm_allocated = 0;
+
+		r->super_memory = (char**)malloc(sizeof(char*));
+		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
+		ns_bzero(r->super_memory[0],TURN_SM_SIZE);
+
+		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
+		r->sm_allocated[0] = 0;
+
 		r->sm_total_sz = TURN_SM_SIZE;
 		r->sm_chunk = 0;
+
 		while(r->id == 0)
 			r->id = (u32bits)random();
+
+		pthread_mutex_init(&r->mutex_sm, NULL);
 	}
 }
 
@@ -3338,31 +3345,49 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	if(size>=TURN_SM_SIZE) {
 
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): Size too large for super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): Size too large for super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated[r->sm_chunk],(unsigned long)size);
 
 	} else {
 
-		size_t left = (size_t)r->sm_total_sz - r->sm_allocated;
+		size_t i = 0;
+		char *region = NULL;
+		size_t *rsz = NULL;
+		size_t chn = 0;
+		for(i=0;i<=r->sm_chunk;++i) {
 
-		if(left<size) {
+			size_t left = (size_t)r->sm_total_sz - r->sm_allocated[i];
 
-			r->super_memory = (char*)malloc(TURN_SM_SIZE);
-			ns_bzero(r->super_memory,TURN_SM_SIZE);
-			r->sm_allocated = 0;
-			r->sm_total_sz = TURN_SM_SIZE;
+			if(left<size+sizeof(void*)) {
+				continue;
+			} else {
+				region = r->super_memory[i];
+				rsz = r->sm_allocated + i;
+				chn = i;
+				break;
+			}
+		}
 
+		if(!region) {
 			r->sm_chunk += 1;
+			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
+			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
+			ns_bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
+			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
+			r->sm_allocated[r->sm_chunk] = 0;
+			region = r->super_memory[r->sm_chunk];
+			rsz = r->sm_allocated + r->sm_chunk;
+			chn = r->sm_chunk;
 		}
 
 		{
-			if(r->sm_chunk || !(r->id))
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)r->sm_chunk, (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated,(unsigned long)size);
+			if(chn)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, chunks=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)chn, (unsigned long)(r->sm_chunk+1), (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated[chn],(unsigned long)size);
 
-			char* ptr = r->super_memory + r->sm_allocated;
+			char* ptr = region + *rsz;
 
 			ns_bzero(ptr, size);
 
-			r->sm_allocated += size;
+			*rsz += size;
 
 			ret = ptr;
 		}
