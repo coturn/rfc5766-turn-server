@@ -1,7 +1,8 @@
 03/10/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.911 'Marshal West':
 	- memory management improvements;
-	- socket logging improvements. 
+	- socket logging improvements;
+	- debug info added to CentOS and Fedora RPMs.
 	
 03/09/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.910 'Marshal West':
