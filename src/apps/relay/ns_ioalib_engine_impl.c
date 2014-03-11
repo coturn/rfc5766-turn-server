@@ -114,11 +114,20 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 		if(error)
 			ll = TURN_LOG_LEVEL_ERROR;
 
-		if(EVUTIL_SOCKET_ERROR()) {
-			TURN_LOG_FUNC(ll,"session %018llu: %s: %s\n",(unsigned long long)id,
-											msg, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-		} else {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s\n",(unsigned long long)id,msg);
+		{
+			char sraddr[129]="\0";
+			char sladdr[129]="\0";
+			addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
+			addr_to_string(&(s->local_addr),(u08bits*)sladdr);
+
+			if(EVUTIL_SOCKET_ERROR()) {
+				TURN_LOG_FUNC(ll,"session %018llu: %s: %s (local %s, remote %s)\n",(unsigned long long)id,
+											msg, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()),
+											sladdr,sraddr);
+			} else {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s (local %s, remote %s)\n",
+						(unsigned long long)id,msg,sladdr,sraddr);
+			}
 		}
 	}
 }
@@ -2555,14 +2564,16 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 
 
 						{
+							char sraddr[129]="\0";
+							addr_to_string(&(s->remote_addr),(u08bits*)sraddr);
 							if (events & BEV_EVENT_EOF) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely\n",(unsigned long long)(ss->id));
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
 								s->session = NULL;
 								s->sub_session = NULL;
 								shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
 							} else if (events & BEV_EVENT_ERROR) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: socket error: %s\n",(unsigned long long)(ss->id),
-												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: socket error: %s %s\n",(unsigned long long)(ss->id),
+												evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()), sraddr);
 								s->session = NULL;
 								s->sub_session = NULL;
 								shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (callback)");
@@ -3283,7 +3294,7 @@ const char* get_ioa_socket_tls_method(ioa_socket_handle s)
 
 ///////////// Super Memory Region //////////////
 
-#define TURN_SM_SIZE (1024<<12)
+#define TURN_SM_SIZE (1024<<11)
 
 struct _super_memory {
 	pthread_mutex_t mutex_sm;
