@@ -65,7 +65,9 @@ extern "C" {
 #define MAX_BUFFER_QUEUE_SIZE_PER_ENGINE (64)
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 
-#define BUFFEREVENT_HIGH_WATERMARK (150000)
+#define BUFFEREVENT_HIGH_WATERMARK (128<<10)
+#define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64<<10)
+#define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (512<<10)
 
 typedef struct _stun_buffer_list_elem {
 	struct _stun_buffer_list_elem *next;

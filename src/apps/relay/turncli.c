@@ -820,7 +820,7 @@ static void close_cli_session(struct cli_session* cs)
 		}
 
 		if(cs->bev) {
-			bufferevent_flush(cs->bev,EV_WRITE,BEV_FLUSH);
+			bufferevent_flush(cs->bev,EV_READ|EV_WRITE,BEV_FLUSH);
 			bufferevent_disable(cs->bev,EV_READ|EV_WRITE);
 			bufferevent_free(cs->bev);
 			cs->bev=NULL;
@@ -1093,7 +1093,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 					BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 	bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL,
 			cli_eventcb_bev, clisession);
-	bufferevent_setwatermark(clisession->bev, EV_READ, 1, BUFFEREVENT_HIGH_WATERMARK);
+	bufferevent_setwatermark(clisession->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 	bufferevent_enable(clisession->bev, EV_READ); /* Start reading. */
 
 	clisession->ts = telnet_init(cli_telopts, cli_telnet_event_handler, 0, clisession);
