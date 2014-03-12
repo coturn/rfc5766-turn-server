@@ -2861,6 +2861,8 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 						if (!(s->tobeclosed)) {
 
+							ret = (int) ioa_network_buffer_get_size(nbh);
+
 							struct evbuffer *evb = bufferevent_get_output(s->bev);
 							if(evb) {
 								size_t sz = evbuffer_get_length(evb);
@@ -2877,8 +2879,6 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 										log_socket_event(s, "socket write failed, to be closed",1);
 										s->tobeclosed = 1;
 										s->broken = 1;
-									} else {
-										ret = (int) ioa_network_buffer_get_size(nbh);
 									}
 								}
 							}
