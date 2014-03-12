@@ -2545,7 +2545,7 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				return;
 			}
 
-			if (events == BEV_EVENT_ERROR)
+			if (events & BEV_EVENT_ERROR)
 				s->broken = 1;
 
 			switch (s->sat){
