@@ -2545,10 +2545,8 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 				return;
 			}
 
-			if (s->connected && (events & BEV_EVENT_ERROR) && (!(events & BEV_EVENT_EOF))) {
-				log_socket_event(s, "socket connection error",1);
-				return;
-			}
+			if (events == BEV_EVENT_ERROR)
+				s->broken = 1;
 
 			switch (s->sat){
 			case TCP_CLIENT_DATA_SOCKET:
