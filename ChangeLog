@@ -5,6 +5,7 @@ Version 3.2.2.911 'Marshal West':
 	- debug info added to CentOS and Fedora RPMs;
 	- TCP traffic buffering improved;
 	- Thread barriers cleaned;
+	- TCP memory leak fixed;
 	- minor TCP test client improvement.
 	
 03/09/2014 Oleg Moskalenko <mom040267@gmail.com>
