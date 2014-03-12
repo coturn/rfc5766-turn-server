@@ -2860,18 +2860,27 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 						}
 
 						if (!(s->tobeclosed)) {
-							if (bufferevent_write(
+
+							struct evbuffer *evb = bufferevent_get_output(s->bev);
+							if(evb) {
+								size_t sz = evbuffer_get_length(evb);
+								if((s->sat == TCP_CLIENT_DATA_SOCKET) ||
+									(s->sat == TCP_RELAY_DATA_SOCKET) ||
+									(sz < ((BUFFEREVENT_HIGH_WATERMARK)>>1))) {
+									if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
 										ioa_network_buffer_get_size(nbh))
 											< 0) {
-								ret = -1;
-								perror("bufev send");
-								log_socket_event(s, "socket write failed, to be closed",1);
-								s->tobeclosed = 1;
-								s->broken = 1;
-							} else {
-								ret = (int) ioa_network_buffer_get_size(nbh);
+										ret = -1;
+										perror("bufev send");
+										log_socket_event(s, "socket write failed, to be closed",1);
+										s->tobeclosed = 1;
+										s->broken = 1;
+									} else {
+										ret = (int) ioa_network_buffer_get_size(nbh);
+									}
+								}
 							}
 						}
 					} else if (s->ssl) {
