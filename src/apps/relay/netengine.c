@@ -50,6 +50,31 @@ static struct relay_server **udp_relay_servers = NULL;
 static void run_events(struct event_base *eb);
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780);
 
+/////////////// BARRIERS ///////////////////
+
+#if !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
+#endif
+
+static void barrier_wait_func(const char* func, int line)
+{
+#if !defined(TURN_NO_THREAD_BARRIERS)
+	int br = 0;
+	do {
+		br = pthread_barrier_wait(&barrier);
+		if ((br < 0)&&(br != PTHREAD_BARRIER_SERIAL_THREAD)) {
+			int err = errno;
+			perror("barrier wait");
+			printf("%s:%s:%d: %d\n", __FUNCTION__, func,line,err);
+		}
+	} while (((br < 0)&&(br != PTHREAD_BARRIER_SERIAL_THREAD)) && (errno == EINTR));
+#else
+	sleep(5);
+#endif
+}
+
+#define barrier_wait() barrier_wait_func(__FUNCTION__,__LINE__)
+
 /////////////// AUX SERVERS ////////////////
 
 static void add_aux_server_list(const char *saddr, turn_server_addrs_list_t *list)
@@ -700,12 +725,7 @@ static void *run_udp_listener_thread(void *arg)
 
   ignore_sigpipe();
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  if((pthread_barrier_wait(&barrier)<0) && errno)
-	  perror("barrier wait");
-#else
-  sleep(5);
-#endif
+  barrier_wait();
 
   dtls_listener_relay_server_type *server = (dtls_listener_relay_server_type *)arg;
 
@@ -812,8 +832,10 @@ static void setup_barriers(void)
 #endif
 
 #if !defined(TURN_NO_THREAD_BARRIERS)
-	if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
-		perror("barrier init");
+	{
+		if(pthread_barrier_init(&barrier,NULL,barrier_count)<0)
+			perror("barrier init");
+	}
 
 #endif
 }
@@ -1366,10 +1388,7 @@ static void *run_general_relay_thread(void *arg)
 
   setup_relay_server(rs, NULL, we_need_rfc5780);
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-  if((pthread_barrier_wait(&barrier)<0) && errno)
-	  perror("barrier wait");
-#endif
+  barrier_wait();
 
   while(always_true) {
     run_events(rs->event_base);
@@ -1430,10 +1449,7 @@ static void* run_auth_server_thread(void *arg)
 
 	struct event_base *eb = turn_params.authserver.event_base;
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-	if((pthread_barrier_wait(&barrier)<0) && errno)
-		perror("barrier wait");
-#endif
+	barrier_wait();
 
 	while(run_auth_server_flag) {
 		run_events(eb);
@@ -1463,10 +1479,7 @@ static void* run_cli_server_thread(void *arg)
 
 	setup_cli_thread();
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-	if((pthread_barrier_wait(&barrier)<0) && errno)
-		perror("barrier wait");
-#endif
+	barrier_wait();
 
 	while(cliserver.event_base) {
 		run_events(cliserver.event_base);
@@ -1499,8 +1512,9 @@ void setup_server(void)
 	/* udp address listener thread(s) will start later */
 	barrier_count = turn_params.general_relay_servers_number+2;
 
-	if(use_cli)
+	if(use_cli) {
 		barrier_count += 1;
+	}
 
 #endif
 
@@ -1524,10 +1538,7 @@ void setup_server(void)
 	if(use_cli)
 		setup_cli_server();
 
-#if !defined(TURN_NO_THREAD_BARRIERS)
-	if((pthread_barrier_wait(&barrier)<0) && errno)
-		perror("barrier wait");
-#endif
+	barrier_wait();
 }
 
 void init_listener(void)
