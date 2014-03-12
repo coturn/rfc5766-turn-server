@@ -2865,10 +2865,9 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							struct evbuffer *evb = bufferevent_get_output(s->bev);
 							if(evb) {
-								size_t sz = evbuffer_get_length(evb);
 								if((s->sat == TCP_CLIENT_DATA_SOCKET) ||
 									(s->sat == TCP_RELAY_DATA_SOCKET) ||
-									(sz < ((BUFFEREVENT_HIGH_WATERMARK)>>1))) {
+									(evbuffer_get_length(evb) < ((BUFFEREVENT_HIGH_WATERMARK)>>1))) {
 									if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
