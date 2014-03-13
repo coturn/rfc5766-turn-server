@@ -69,6 +69,8 @@ static void barrier_wait_func(const char* func, int line)
 		}
 	} while (((br < 0)&&(br != PTHREAD_BARRIER_SERIAL_THREAD)) && (errno == EINTR));
 #else
+	UNUSED_ARG(func);
+	UNUSED_ARG(line);
 	sleep(5);
 #endif
 }
