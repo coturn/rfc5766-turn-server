@@ -92,7 +92,7 @@ typedef struct {
 	ioa_network_buffer_handle *bufs;
 } unsent_buffer;
 
-typedef struct
+struct _tcp_connection
 {
 	TC_STATE state;
 	tcp_connection_id id;
@@ -105,7 +105,7 @@ typedef struct
 	void *owner; //a
 	int done;
 	unsent_buffer ub_to_client;
-} tcp_connection;
+};
 
 typedef struct _tcp_connection_list {
 	size_t sz;

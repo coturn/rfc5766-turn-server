@@ -41,6 +41,15 @@
 extern "C" {
 #endif
 
+////////////// forward declarations ////////
+
+struct _ts_ur_super_session;
+typedef struct _ts_ur_super_session ts_ur_super_session;
+
+struct _tcp_connection;
+typedef struct _tcp_connection tcp_connection;
+
+
 ////////////// Mutexes /////////////////////
 
 struct _turn_mutex {
@@ -213,11 +222,11 @@ void set_ioa_socket_app_type(ioa_socket_handle s, SOCKET_APP_TYPE sat);
 ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s);
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s);
 int get_local_mtu_ioa_socket(ioa_socket_handle s);
-void *get_ioa_socket_session(ioa_socket_handle s);
-void set_ioa_socket_session(ioa_socket_handle s, void *ss);
+ts_ur_super_session *get_ioa_socket_session(ioa_socket_handle s);
+void set_ioa_socket_session(ioa_socket_handle s, ts_ur_super_session *ss);
 void clear_ioa_socket_session_if(ioa_socket_handle s, void *ss);
-void *get_ioa_socket_sub_session(ioa_socket_handle s);
-void set_ioa_socket_sub_session(ioa_socket_handle s, void *tc);
+tcp_connection *get_ioa_socket_sub_session(ioa_socket_handle s);
+void set_ioa_socket_sub_session(ioa_socket_handle s, tcp_connection *tc);
 int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, int event_type, ioa_net_event_handler cb, void *ctx, int clean_preexisting);
 int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr, ioa_network_buffer_handle nbh, int ttl, int tos);
 void close_ioa_socket(ioa_socket_handle s);

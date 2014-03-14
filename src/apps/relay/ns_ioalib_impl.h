@@ -184,7 +184,7 @@ struct _ioa_socket
 	ioa_net_event_handler read_cb;
 	void *read_ctx;
 	int done;
-	void* session;
+	ts_ur_super_session* session;
 	int current_df_relay_flag;
 	/* RFC6156: if IPv6 is involved, do not use DF: */
 	int do_not_use_df;
@@ -199,7 +199,7 @@ struct _ioa_socket
 	band_limit_t jiffie_bytes;
 	/* RFC 6062 ==>> */
 	//Connection session:
-	void *sub_session;
+	tcp_connection *sub_session;
 	//Connect:
 	struct bufferevent *conn_bev;
 	connect_cb conn_cb;
