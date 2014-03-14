@@ -87,6 +87,7 @@ const int predef_timer_intervals[PREDEF_TIMERS_NUM] = {30,60,90,120,240,300,360,
 static int socket_readerr(evutil_socket_t fd, ioa_addr *orig_addr);
 
 static void socket_input_handler(evutil_socket_t fd, short what, void* arg);
+static void socket_output_handler_bev(struct bufferevent *bev, void* arg);
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg);
 static void eventcb_bev(struct bufferevent *bev, short events, void *arg);
 
@@ -2196,7 +2197,6 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(s->connected)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
-	/*
 	if(s->sub_session) {
 		if(s == s->sub_session->client_s) {
 			if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE)) {
@@ -2208,7 +2208,6 @@ static int socket_input_worker(ioa_socket_handle s)
 			}
 		}
 	}
-	*/
 
 	if(s->st == TLS_SOCKET) {
 #if !defined(TURN_NO_TLS)
@@ -2278,10 +2277,10 @@ static int socket_input_worker(ioa_socket_handle s)
 								s->ssl,
 								BUFFEREVENT_SSL_ACCEPTING,
 								BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 		} else
 #endif //TURN_NO_TLS
 		{
@@ -2292,10 +2291,10 @@ static int socket_input_worker(ioa_socket_handle s)
 			s->bev = bufferevent_socket_new(s->e->event_base,
 							s->fd,
 							BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-			bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+			bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-			bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 		}
 	}
 
@@ -2509,12 +2508,42 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 	}
 }
 
+static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
+{
+
+	if (bev && arg) {
+
+		ioa_socket_handle s = (ioa_socket_handle) arg;
+
+		if((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
+			return;
+		}
+
+		if(s->sub_session) {
+			if(s == s->sub_session->client_s) {
+				if(s->sub_session->peer_s) {
+					socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
+				}
+			} else if(s == s->sub_session->peer_s) {
+				if(s->sub_session->client_s) {
+					socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
+				}
+			}
+		}
+	}
+}
+
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 {
 
 	if (bev && arg) {
 
 		ioa_socket_handle s = (ioa_socket_handle) arg;
+
+		if(bev != s->bev) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!! %s socket: 0x%lx: wrong bev\n", __FUNCTION__,(long)s);
+			return;
+		}
 
 		if((s->magic != SOCKET_MAGIC)||(s->done)) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "!!!%s on socket: 0x%lx, st=%d, sat=%d\n", __FUNCTION__, (long) s, s->st, s->sat);
@@ -3045,10 +3074,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 						s->bev = bufferevent_socket_new(s->e->event_base,
 										s->fd,
 										BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
-						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 					}
 					break;
 				case TLS_SOCKET:
@@ -3076,10 +3105,10 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 											BUFFEREVENT_SSL_OPEN,
 											BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						}
-						bufferevent_setcb(s->bev, socket_input_handler_bev, NULL,
+						bufferevent_setcb(s->bev, socket_input_handler_bev, socket_output_handler_bev,
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
-						bufferevent_enable(s->bev, EV_READ); /* Start reading. */
+						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
 #endif
 					}
 					break;
