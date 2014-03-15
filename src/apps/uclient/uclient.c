@@ -499,26 +499,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		size_t buffers = 1;
 
-		 if(is_tcp_data) {
-			{
-				if ((int)elem->in_buffer.len > clmessage_length) {
-					if(clnet_verbose) {
-						TURN_LOG_FUNC(
-						TURN_LOG_LEVEL_INFO,
-						"WARNING: received multiple buffers: length: %d, length of single buffer must be %d\n",
-						rc, clmessage_length);
-					}
-					buffers=elem->in_buffer.len/clmessage_length;
-				} else if ((int)elem->in_buffer.len < clmessage_length) {
-					TURN_LOG_FUNC(
-						TURN_LOG_LEVEL_INFO,
-						"ERROR: received wrong buffer size: length: %d, must be %d; len=%d\n",
-						rc, clmessage_length, (int)elem->in_buffer.len);
-					return rc;
-				} else {
-					mi = (message_info*)(elem->in_buffer.buf);
-				}
-			}
+		if(is_tcp_data) {
+		   if ((int)elem->in_buffer.len == clmessage_length) {
+		     mi = (message_info*)(elem->in_buffer.buf);
+		   }
 		} else if (stun_is_indication(&(elem->in_buffer))) {
 
 			if(use_short_term) {
