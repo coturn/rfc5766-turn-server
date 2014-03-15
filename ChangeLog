@@ -1,7 +1,5 @@
 03/10/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.911 'Marshal West':
-	- TCP-in-TCP relay data congestion situation fixed;
-	- UDP-in-TCP relay data congestion situation fixed;
 	- memory management improvements;
 	- socket logging improvements;
 	- debug info added to CentOS and Fedora RPMs;
@@ -9,12 +7,12 @@ Version 3.2.2.911 'Marshal West':
 	- Thread barriers cleaned;
 	- TCP memory leak fixed;
 	- minor TCP test client improvement.
-	
+
 03/09/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.910 'Marshal West':
 	- Log messages extended and cleaned.
 	- Some memory cleaning.
-	
+
 03/02/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.9 'Marshal West':
 	- Issue 113 fixed (TCP rate limit fixed);

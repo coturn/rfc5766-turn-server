@@ -99,35 +99,14 @@ static void close_socket_net_data(ioa_socket_handle s);
 
 /************** Utils **************************/
 
-static int is_socket_writeable(ioa_socket_handle s, size_t sz) {
+static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
+{
+  UNUSED_ARG(s);
+  UNUSED_ARG(sz);
+  UNUSED_ARG(msg);
+  UNUSED_ARG(option);
 
-	if(s && !(s->done) && !(s->broken) && !(s->tobeclosed)) {
-
-		switch(s->st) {
-
-		case TCP_SOCKET:
-		case TLS_SOCKET:
-		case TENTATIVE_TCP_SOCKET:
-			if(s->bev) {
-				struct evbuffer *evb = bufferevent_get_output(s->bev);
-				if(evb) {
-					size_t maxbuff = BUFFEREVENT_MAX_UDP_TO_TCP_WRITE;
-					if((s->sat == TCP_CLIENT_DATA_SOCKET) ||
-							(s->sat == TCP_RELAY_DATA_SOCKET)) {
-						maxbuff = BUFFEREVENT_MAX_TCP_TO_TCP_WRITE;
-					}
-					if((evbuffer_get_length(evb)+sz) >= maxbuff) {
-						return 0;
-					}
-				}
-			}
-			break;
-		default:
-			;
-		};
-	}
-
-	return 1;
+  return 1;
 }
 
 static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
@@ -2199,11 +2178,11 @@ static int socket_input_worker(ioa_socket_handle s)
 
 	if(s->sub_session) {
 		if(s == s->sub_session->client_s) {
-			if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE)) {
+		  if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
 				return 0;
 			}
 		} else if(s == s->sub_session->peer_s) {
-			if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE)) {
+		  if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
 				return 0;
 			}
 		}
@@ -2520,6 +2499,7 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 		}
 
 		if(s->sub_session) {
+
 			if(s == s->sub_session->client_s) {
 				if(s->sub_session->peer_s) {
 					socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
@@ -2949,7 +2929,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							ret = (int) ioa_network_buffer_get_size(nbh);
 
-							if(is_socket_writeable(s,(size_t)ret)) {
+							if(is_socket_writeable(s,(size_t)ret,__FUNCTION__,1)) {
 								if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
