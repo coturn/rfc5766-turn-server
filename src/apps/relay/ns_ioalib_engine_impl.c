@@ -106,6 +106,29 @@ static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, 
   UNUSED_ARG(msg);
   UNUSED_ARG(option);
 
+  if((option == 2) && !(s->done) && !(s->broken) && !(s->tobeclosed)) {
+
+    switch(s->st) {
+      
+    case TCP_SOCKET:
+    case TLS_SOCKET:
+      if(s->bev) {
+	if((s->sat != TCP_CLIENT_DATA_SOCKET) &&
+	   (s->sat != TCP_RELAY_DATA_SOCKET)) {
+	  struct evbuffer *evb = bufferevent_get_output(s->bev);
+	  if(evb) {
+	    if((evbuffer_get_length(evb)+sz) >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
+	      return 0;
+	    }
+	  }
+	}
+      }
+      break;
+    default:
+      ;
+    };
+  }
+
   return 1;
 }
 
@@ -2182,7 +2205,7 @@ static int socket_input_worker(ioa_socket_handle s)
 				return 0;
 			}
 		} else if(s == s->sub_session->peer_s) {
-		  if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
+		  if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
 				return 0;
 			}
 		}
@@ -2487,30 +2510,37 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 	}
 }
 
+static const int pipe_the_data = 0;
+
 static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 {
-
-	if (bev && arg) {
-
-		ioa_socket_handle s = (ioa_socket_handle) arg;
-
-		if((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
-			return;
-		}
-
-		if(s->sub_session) {
-
-			if(s == s->sub_session->client_s) {
-				if(s->sub_session->peer_s) {
-					socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
-				}
-			} else if(s == s->sub_session->peer_s) {
-				if(s->sub_session->client_s) {
-					socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
-				}
-			}
-		}
+  UNUSED_ARG(bev);
+  UNUSED_ARG(arg);
+  
+  if(pipe_the_data) {
+    
+    if (bev && arg) {
+      
+      ioa_socket_handle s = (ioa_socket_handle) arg;
+      
+      if((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
+	return;
+      }
+      
+      if(s->sub_session) {
+	
+	if(s == s->sub_session->client_s) {
+	  if(s->sub_session->peer_s) {
+	    socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
+	  }
+	} else if(s == s->sub_session->peer_s) {
+	  if(s->sub_session->client_s) {
+	    socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
+	  }
 	}
+      }
+    }
+  }
 }
 
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
@@ -2929,7 +2959,7 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							ret = (int) ioa_network_buffer_get_size(nbh);
 
-							if(is_socket_writeable(s,(size_t)ret,__FUNCTION__,1)) {
+							if(is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
 								if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
