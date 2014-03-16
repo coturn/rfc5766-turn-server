@@ -99,37 +99,64 @@ static void close_socket_net_data(ioa_socket_handle s);
 
 /************** Utils **************************/
 
-static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
+static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option)
 {
-  UNUSED_ARG(s);
-  UNUSED_ARG(sz);
-  UNUSED_ARG(msg);
-  UNUSED_ARG(option);
 
-  if((option == 2) && !(s->done) && !(s->broken) && !(s->tobeclosed)) {
+	UNUSED_ARG(s);
+	UNUSED_ARG(sz);
+	UNUSED_ARG(msg);
+	UNUSED_ARG(option);
 
-    switch(s->st) {
-      
-    case TCP_SOCKET:
-    case TLS_SOCKET:
-      if(s->bev) {
-	if((s->sat != TCP_CLIENT_DATA_SOCKET) &&
-	   (s->sat != TCP_RELAY_DATA_SOCKET)) {
-	  struct evbuffer *evb = bufferevent_get_output(s->bev);
-	  if(evb) {
-	    if((evbuffer_get_length(evb)+sz) >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
-	      return 0;
-	    }
-	  }
+	if (!(s->done) && !(s->broken) && !(s->tobeclosed)) {
+
+		switch (s->st) {
+
+		case TCP_SOCKET:
+		case TLS_SOCKET:
+			if (s->bev) {
+				struct evbuffer *evb = bufferevent_get_output(s->bev);
+				if (evb) {
+
+					size_t bufsz = evbuffer_get_length(evb);
+					size_t newsz = bufsz + sz;
+					size_t maxsz = 1;
+
+					//Unconditional OK if small enough:
+					if(bufsz < BUFFEREVENT_MAX_UDP_TO_TCP_WRITE)
+						return 1;
+
+					switch (s->sat) {
+					case TCP_CLIENT_DATA_SOCKET:
+					case TCP_RELAY_DATA_SOCKET: {
+						switch(option) {
+						case 2:
+							//always write
+							return 1;
+						case 3:
+						case 4:
+							//drain deeper in this case:
+							return 0;
+						default:
+							//real check
+							maxsz = BUFFEREVENT_MAX_TCP_TO_TCP_WRITE;
+						};
+					}
+					break;
+					default:
+						maxsz = BUFFEREVENT_MAX_UDP_TO_TCP_WRITE;
+					};
+					if (newsz >= maxsz) {
+						return 0;
+					}
+				}
+			}
+			break;
+		default:
+			;
+		};
 	}
-      }
-      break;
-    default:
-      ;
-    };
-  }
 
-  return 1;
+	return 1;
 }
 
 static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
@@ -2199,15 +2226,17 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(s->connected)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
-	if(s->sub_session) {
+	if(s->sub_session && s->bev && bufferevent_get_enabled(s->bev)) {
 		if(s == s->sub_session->client_s) {
 		  if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
-				return 0;
-			}
+			  printf("%s: disable: 111.111: 0x%lx\n",__FUNCTION__,(unsigned long)s);
+			bufferevent_disable(s->bev,EV_READ);
+		  }
 		} else if(s == s->sub_session->peer_s) {
 		  if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
-				return 0;
-			}
+			  printf("%s: disable: 111.222: 0x%lx\n",__FUNCTION__,(unsigned long)s);
+			  bufferevent_disable(s->bev,EV_READ);
+		  }
 		}
 	}
 
@@ -2510,37 +2539,40 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 	}
 }
 
-static const int pipe_the_data = 0;
+static const int pipe_the_data = 1;
 
-static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
-{
-  UNUSED_ARG(bev);
-  UNUSED_ARG(arg);
-  
-  if(pipe_the_data) {
-    
-    if (bev && arg) {
-      
-      ioa_socket_handle s = (ioa_socket_handle) arg;
-      
-      if((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
-	return;
-      }
-      
-      if(s->sub_session) {
-	
-	if(s == s->sub_session->client_s) {
-	  if(s->sub_session->peer_s) {
-	    socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
-	  }
-	} else if(s == s->sub_session->peer_s) {
-	  if(s->sub_session->client_s) {
-	    socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
-	  }
+static void socket_output_handler_bev(struct bufferevent *bev, void* arg) {
+	UNUSED_ARG(bev);
+	UNUSED_ARG(arg);
+
+	if (pipe_the_data) {
+
+		if (bev && arg) {
+
+			ioa_socket_handle s = (ioa_socket_handle) arg;
+
+			if ((s->magic != SOCKET_MAGIC) || (s->done) || ioa_socket_tobeclosed(s) || (bev != s->bev)) {
+				return;
+			}
+
+			if (s->sub_session) {
+
+				if (s == s->sub_session->client_s) {
+					if (s->sub_session->peer_s && s->sub_session->peer_s->bev && !bufferevent_get_enabled(s->sub_session->peer_s->bev)) {
+						if(is_socket_writeable(s->sub_session->peer_s,(size_t)1,__FUNCTION__,3)) {
+							bufferevent_enable(s->sub_session->peer_s->bev,EV_READ);
+						}
+					}
+				} else if (s == s->sub_session->peer_s) {
+					if (s->sub_session->client_s && s->sub_session->client_s->bev && !bufferevent_get_enabled(s->sub_session->client_s->bev)) {
+						if(is_socket_writeable(s->sub_session->client_s,(size_t)1,__FUNCTION__,4)) {
+							bufferevent_enable(s->sub_session->client_s->bev,EV_READ);
+						}
+					}
+				}
+			}
+		}
 	}
-      }
-    }
-  }
 }
 
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
