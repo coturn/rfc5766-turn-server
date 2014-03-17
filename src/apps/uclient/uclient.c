@@ -46,7 +46,9 @@ static size_t current_clients_number = 0;
 static int start_full_timer=0;
 static u32bits tot_messages=0;
 static u32bits tot_send_messages=0;
+static u64bits tot_send_bytes = 0;
 static u32bits tot_recv_messages=0;
+static u64bits tot_recv_bytes = 0;
 
 struct event_base* client_event_base=NULL;
 
@@ -227,7 +229,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 			int len = 0;
 			do {
 				len = SSL_write(ssl, buffer, (int)message->len);
-			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno == EAGAIN)));
+			} while (len < 0 && ((errno == EINTR) || (errno == ENOBUFS)));
 
 			if(len == (int)message->len) {
 				if (clnet_verbose) {
@@ -279,8 +281,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 		while (left > 0) {
 			do {
 				rc = send(fd, buffer, left, 0);
-			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS) || (errno
-							== EAGAIN)));
+			} while (rc < 0 && ((errno == EINTR) || (errno == ENOBUFS)));
 			if (rc > 0) {
 				left -= (size_t) rc;
 				buffer += rc;
@@ -658,6 +659,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		elem->rmsgnum+=buffers;
 		tot_recv_messages+=buffers;
+		tot_recv_bytes += elem->in_buffer.len;
 		elem->recvtimems=current_mstime;
 		elem->wait_cycles = 0;
 
@@ -709,6 +711,7 @@ static int client_write(app_ur_session *elem) {
 			  ++elem->wmsgnum;
 			  elem->to_send_timems += RTP_PACKET_INTERVAL;
 			  tot_send_messages++;
+			  tot_send_bytes += clmessage_length;
 		  }
 		  return 0;
 	  }
@@ -757,6 +760,7 @@ static int client_write(app_ur_session *elem) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int) rc);
 	  }
       tot_send_messages++;
+      tot_send_bytes += elem->out_buffer.len;
     } else {
     	return -1;
     }
@@ -1340,9 +1344,11 @@ void start_mclient(const char *remote_address, int port,
 
 		if(show_statistics) {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-				      "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu\n",
+				      "%s: msz=%d, tot_send_msgs=%lu, tot_recv_msgs=%lu, tot_send_bytes ~ %llu, tot_recv_bytes ~ %llu\n",
 				      __FUNCTION__, msz, (unsigned long) tot_send_messages,
-				      (unsigned long) tot_recv_messages);
+				      (unsigned long) tot_recv_messages, 
+				      (unsigned long long) tot_send_bytes,
+				      (unsigned long long) tot_recv_bytes);
 			show_statistics=0;
 		}
 	}
@@ -1352,6 +1358,12 @@ void start_mclient(const char *remote_address, int port,
 		      __FUNCTION__,
 		      (unsigned long) tot_send_messages,
 		      (unsigned long) tot_recv_messages);
+
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+		      "%s: tot_send_bytes ~ %lu, tot_recv_bytes ~ %lu\n",
+		      __FUNCTION__,
+		      (unsigned long) tot_send_bytes,
+		      (unsigned long) tot_recv_bytes);
 
 	if (client_event_base)
 		event_base_free(client_event_base);

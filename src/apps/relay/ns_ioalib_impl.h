@@ -66,8 +66,8 @@ extern "C" {
 #define MAX_SOCKET_BUFFER_BACKLOG (16)
 
 #define BUFFEREVENT_HIGH_WATERMARK (128<<10)
-#define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64<<10)
-#define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (512<<10)
+#define BUFFEREVENT_MAX_UDP_TO_TCP_WRITE (64<<9)
+#define BUFFEREVENT_MAX_TCP_TO_TCP_WRITE (192<<10)
 
 typedef struct _stun_buffer_list_elem {
 	struct _stun_buffer_list_elem *next;

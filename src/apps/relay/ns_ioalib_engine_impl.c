@@ -99,6 +99,14 @@ static void close_socket_net_data(ioa_socket_handle s);
 
 /************** Utils **************************/
 
+static const int tcp_congestion_control = 1;
+static const int udp_congestion_control = 1;
+
+static int bufferevent_enabled(struct bufferevent *bufev, short flags)
+{
+  return (bufferevent_get_enabled(bufev) & flags);
+}
+
 static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, int option) 
 {
   UNUSED_ARG(s);
@@ -106,21 +114,46 @@ static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, 
   UNUSED_ARG(msg);
   UNUSED_ARG(option);
 
-  if((option == 2) && !(s->done) && !(s->broken) && !(s->tobeclosed)) {
+  if(!(s->done) && !(s->broken) && !(s->tobeclosed)) {
 
     switch(s->st) {
       
     case TCP_SOCKET:
     case TLS_SOCKET:
       if(s->bev) {
-	if((s->sat != TCP_CLIENT_DATA_SOCKET) &&
-	   (s->sat != TCP_RELAY_DATA_SOCKET)) {
-	  struct evbuffer *evb = bufferevent_get_output(s->bev);
-	  if(evb) {
-	    if((evbuffer_get_length(evb)+sz) >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
-	      return 0;
+
+	struct evbuffer *evb = bufferevent_get_output(s->bev);
+	
+	if(evb) {
+	  size_t bufsz = evbuffer_get_length(evb);
+	  size_t newsz = bufsz + sz;
+	  
+	  switch(s->sat) {
+	  case TCP_CLIENT_DATA_SOCKET:
+	  case TCP_RELAY_DATA_SOCKET:
+	    
+	    switch(option) {
+	    case 0:
+	    case 1:
+	      if(newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
+		return 0;
+	      }
+	      break;
+	    case 3:
+	    case 4:
+	      return 1;
+	      break;
+	    default:
+	      return 1;
+	    };
+	    break;
+	  default:
+	    if(option == 2) {
+	      if(newsz >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
+		return 0;
+	      }
 	    }
-	  }
+	  };
 	}
       }
       break;
@@ -2199,16 +2232,20 @@ static int socket_input_worker(ioa_socket_handle s)
 	if(s->connected)
 		addr_cpy(&remote_addr,&(s->remote_addr));
 
-	if(s->sub_session) {
-		if(s == s->sub_session->client_s) {
-		  if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
-				return 0;
-			}
-		} else if(s == s->sub_session->peer_s) {
-		  if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
-				return 0;
-			}
-		}
+	if(tcp_congestion_control && s->sub_session && s->bev) {
+	  if(s == s->sub_session->client_s) {
+	    if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
+	      if(bufferevent_enabled(s->bev,EV_READ)) {
+		bufferevent_disable(s->bev,EV_READ);
+	      }
+	    }
+	  } else if(s == s->sub_session->peer_s) {
+	    if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
+	      if(bufferevent_enabled(s->bev,EV_READ)) {
+		bufferevent_disable(s->bev,EV_READ);
+	      }
+	    }
+	  }
 	}
 
 	if(s->st == TLS_SOCKET) {
@@ -2510,14 +2547,12 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 	}
 }
 
-static const int pipe_the_data = 0;
-
 static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 {
   UNUSED_ARG(bev);
   UNUSED_ARG(arg);
   
-  if(pipe_the_data) {
+  if(tcp_congestion_control) {
     
     if (bev && arg) {
       
@@ -2530,12 +2565,22 @@ static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
       if(s->sub_session) {
 	
 	if(s == s->sub_session->client_s) {
-	  if(s->sub_session->peer_s) {
-	    socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
+	  if(s->sub_session->peer_s && s->sub_session->peer_s->bev) {
+	    if(!bufferevent_enabled(s->sub_session->peer_s->bev,EV_READ)) {
+	      if(is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,3)) {
+		bufferevent_enable(s->sub_session->peer_s->bev,EV_READ);
+		socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
+	      }
+	    }
 	  }
 	} else if(s == s->sub_session->peer_s) {
-	  if(s->sub_session->client_s) {
-	    socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
+	  if(s->sub_session->client_s && s->sub_session->client_s->bev) {
+	    if(!bufferevent_enabled(s->sub_session->client_s->bev,EV_READ)) {
+	      if(is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,4)) {
+		bufferevent_enable(s->sub_session->client_s->bev,EV_READ);
+		socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
+	      }
+	    }
 	  }
 	}
       }
@@ -2959,21 +3004,21 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 
 							ret = (int) ioa_network_buffer_get_size(nbh);
 
-							if(is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
-								if (bufferevent_write(
+							if(!udp_congestion_control || is_socket_writeable(s,(size_t)ret,__FUNCTION__,2)) {
+							  if (bufferevent_write(
 										s->bev,
 										ioa_network_buffer_data(nbh),
 										ioa_network_buffer_get_size(nbh))
-											< 0) {
-										ret = -1;
-										perror("bufev send");
-										log_socket_event(s, "socket write failed, to be closed",1);
-										s->tobeclosed = 1;
-										s->broken = 1;
-								}
+							      < 0) {
+							    ret = -1;
+							    perror("bufev send");
+							    log_socket_event(s, "socket write failed, to be closed",1);
+							    s->tobeclosed = 1;
+							    s->broken = 1;
+							  }
 							} else {
-								//drop the packet
-								;
+							  //drop the packet
+							  ;
 							}
 						}
 					} else if (s->ssl) {
