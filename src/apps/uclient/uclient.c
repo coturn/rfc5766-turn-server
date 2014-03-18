@@ -49,6 +49,7 @@ static u32bits tot_send_messages=0;
 static u64bits tot_send_bytes = 0;
 static u32bits tot_recv_messages=0;
 static u64bits tot_recv_bytes = 0;
+static u64bits tot_send_dropped = 0;
 
 struct event_base* client_event_base=NULL;
 
@@ -286,6 +287,7 @@ int send_buffer(app_ur_conn_info *clnet_info, stun_buffer* message, int data_con
 				left -= (size_t) rc;
 				buffer += rc;
 			} else {
+				tot_send_dropped+=1;
 				break;
 			}
 		}
@@ -1375,8 +1377,9 @@ void start_mclient(const char *remote_address, int port,
 
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total transmit time is %u\n",
 			((unsigned int)(current_time - stime)));
-	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c)\n",
-				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%');
+	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Total lost packets %llu (%f%c), total send dropped %llu (%f%c)\n",
+				(unsigned long long)total_loss, (((double)total_loss/(double)tot_send_messages)*100.00),'%',
+				(unsigned long long)tot_send_dropped, (((double)tot_send_dropped/(double)(tot_send_messages+tot_send_dropped))*100.00),'%');
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "Average round trip delay %f ms; min = %lu ms, max = %lu ms\n",
 				((double)total_latency/(double)((tot_recv_messages<1) ? 1 : tot_recv_messages)),
 				(unsigned long)min_latency,
