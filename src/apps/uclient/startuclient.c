@@ -1443,7 +1443,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 						"Cannot bind client socket to device %s\n", client_ifname);
 	}
-	set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
+	set_sock_buf_size(clnet_fd, (UR_CLIENT_SOCK_BUF_SIZE<<2));
 
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
@@ -1478,7 +1478,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 	    		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
 	    				  "Cannot bind client socket to device %s\n", client_ifname);
 	    	  }
-	    	  set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE);
+	    	  set_sock_buf_size(clnet_fd, UR_CLIENT_SOCK_BUF_SIZE<<2);
 
 	    	  elem->pinfo.tcp_conn[i]->tcp_data_fd = clnet_fd;
 

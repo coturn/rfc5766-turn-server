@@ -1337,7 +1337,7 @@ void start_mclient(const char *remote_address, int port,
 
 	while (1) {
 
-		run_events(0);
+		run_events(1);
 
 		int msz = (int)current_clients_number;
 		if (msz < 1) {
