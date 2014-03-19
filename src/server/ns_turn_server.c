@@ -3484,10 +3484,10 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 		if(elem->s) {
 			clear_ioa_socket_session_if(elem->s,ss);
 			IOA_CLOSE_SOCKET(elem->s);
-		}
 
-		if (server->verbose) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (1st stage), user <%s>, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,reason);
+			if (server->verbose) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (1st stage), user <%s>, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,reason);
+			}
 		}
 
 		FUNCEND;
@@ -3639,7 +3639,7 @@ static void client_ss_allocation_timeout_handler(ioa_engine_handle e, void *arg)
 
 	FUNCSTART;
 
-	shutdown_client_connection(server, ss, 1, "allocation timeout");
+	shutdown_client_connection(server, ss, 0, "allocation timeout");
 
 	FUNCEND;
 }

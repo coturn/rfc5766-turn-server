@@ -174,6 +174,8 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 			ts_ur_super_session *ss = s->session;
 			if (ss) {
 				id = ss->id;
+			} else{
+				return;
 			}
 		}
 
@@ -2707,7 +2709,13 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
 								s->session = NULL;
 								s->sub_session = NULL;
-								shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
+								if(s == ss->client_session.s) {
+									shutdown_client_connection(server, ss, 0, "TCP connection closed by client (callback)");
+								} else if(s == ss->alloc.relay_session.s) {
+									shutdown_client_connection(server, ss, 0, "TCP connection closed by peer (callback)");
+								} else {
+									shutdown_client_connection(server, ss, 0, "TCP connection closed by remote party (callback)");
+								}
 							} else if (events & BEV_EVENT_ERROR) {
 								if(EVUTIL_SOCKET_ERROR()) {
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"session %018llu: TCP socket error: %s %s\n",(unsigned long long)(ss->id),
@@ -3201,7 +3209,6 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 			log_socket_event(s, "socket broken", 0);
 			return 1;
 		} else if(s->tobeclosed) {
-			log_socket_event(s, "socket to be closed", 0);
 			return 1;
 		} else if(s->fd < 0) {
 			log_socket_event(s, "socket fd<0", 0);
