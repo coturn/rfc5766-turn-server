@@ -580,9 +580,7 @@ void delete_tcp_connection(tcp_connection *tc)
 				}
 			}
 		}
-		set_ioa_socket_sub_session(tc->client_s,NULL);
 		IOA_CLOSE_SOCKET(tc->client_s);
-		set_ioa_socket_sub_session(tc->peer_s,NULL);
 		IOA_CLOSE_SOCKET(tc->peer_s);
 		turn_free(tc,sizeof(tcp_connection));
 	}

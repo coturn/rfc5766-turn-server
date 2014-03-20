@@ -1269,7 +1269,6 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
 			if(ret->conn_bev) {
-				bufferevent_flush(ret->conn_bev,EV_READ|EV_WRITE,BEV_FINISHED);
 				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 				bufferevent_free(ret->conn_bev);
 				ret->conn_bev=NULL;
@@ -1283,7 +1282,6 @@ static void connect_eventcb(struct bufferevent *bev, short events, void *ptr)
 			ret->conn_cb = NULL;
 			ret->conn_arg = NULL;
 			if(ret->conn_bev) {
-				bufferevent_flush(ret->conn_bev,EV_READ|EV_WRITE,BEV_FINISHED);
 				bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 				bufferevent_free(ret->conn_bev);
 				ret->conn_bev=NULL;
@@ -1330,7 +1328,6 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 	set_ioa_socket_session(ret, s->session);
 
 	if(ret->conn_bev) {
-		bufferevent_flush(ret->conn_bev,EV_READ|EV_WRITE,BEV_FINISHED);
 		bufferevent_disable(ret->conn_bev,EV_READ|EV_WRITE);
 		bufferevent_free(ret->conn_bev);
 		ret->conn_bev=NULL;
@@ -1494,13 +1491,11 @@ static void close_socket_net_data(ioa_socket_handle s)
 			s->list_ev = NULL;
 		}
 		if(s->conn_bev) {
-			bufferevent_flush(s->conn_bev,EV_READ|EV_WRITE,BEV_FINISHED);
 			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->conn_bev);
 			s->conn_bev=NULL;
 		}
 		if(s->bev) {
-			bufferevent_flush(s->bev,EV_READ|EV_WRITE,BEV_FINISHED);
 			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->bev);
 			s->bev=NULL;
@@ -1549,7 +1544,6 @@ void detach_socket_net_data(ioa_socket_handle s)
 			s->acbarg = NULL;
 		}
 		if(s->conn_bev) {
-			bufferevent_flush(s->conn_bev,EV_READ|EV_WRITE,BEV_FINISHED);
 			bufferevent_disable(s->conn_bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->conn_bev);
 			s->conn_bev=NULL;
@@ -1557,7 +1551,6 @@ void detach_socket_net_data(ioa_socket_handle s)
 			s->conn_cb=NULL;
 		}
 		if(s->bev) {
-			bufferevent_flush(s->bev,EV_READ|EV_WRITE,BEV_FINISHED);
 			bufferevent_disable(s->bev,EV_READ|EV_WRITE);
 			bufferevent_free(s->bev);
 			s->bev=NULL;
@@ -1596,6 +1589,9 @@ void close_ioa_socket(ioa_socket_handle s)
 		delete_socket_from_parent(s);
 
 		close_socket_net_data(s);
+
+		s->session = NULL;
+		s->sub_session = NULL;
 
 		turn_free(s,sizeof(ioa_socket));
 	}
@@ -2238,13 +2234,13 @@ static int socket_input_worker(ioa_socket_handle s)
 	  if(s == s->sub_session->client_s) {
 	    if(!is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,0)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
-		bufferevent_disable(s->bev,EV_READ);
+	    	  bufferevent_disable(s->bev,EV_READ);
 	      }
 	    }
 	  } else if(s == s->sub_session->peer_s) {
 	    if(!is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,1)) {
 	      if(bufferevent_enabled(s->bev,EV_READ)) {
-		bufferevent_disable(s->bev,EV_READ);
+	    	  bufferevent_disable(s->bev,EV_READ);
 	      }
 	    }
 	  }
@@ -2527,8 +2523,6 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 		{
 			tcp_connection *tc = s->sub_session;
 			if (tc) {
-				s->sub_session = NULL;
-				s->session = NULL;
 				delete_tcp_connection(tc);
 			}
 		}
@@ -2539,8 +2533,6 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 			if (ss) {
 				turn_turnserver *server = (turn_turnserver *) ss->server;
 				if (server) {
-					s->session = NULL;
-					s->sub_session = NULL;
 					shutdown_client_connection(server, ss, 0, "general");
 				}
 			}
@@ -2551,43 +2543,53 @@ void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s)
 
 static void socket_output_handler_bev(struct bufferevent *bev, void* arg)
 {
-  UNUSED_ARG(bev);
-  UNUSED_ARG(arg);
-  
-  if(tcp_congestion_control) {
-    
-    if (bev && arg) {
-      
-      ioa_socket_handle s = (ioa_socket_handle) arg;
-      
-      if((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
-	return;
-      }
-      
-      if(s->sub_session) {
 	
-	if(s == s->sub_session->client_s) {
-	  if(s->sub_session->peer_s && s->sub_session->peer_s->bev) {
-	    if(!bufferevent_enabled(s->sub_session->peer_s->bev,EV_READ)) {
-	      if(is_socket_writeable(s->sub_session->peer_s, STUN_BUFFER_SIZE,__FUNCTION__,3)) {
-		bufferevent_enable(s->sub_session->peer_s->bev,EV_READ);
-		socket_input_handler_bev(s->sub_session->peer_s->bev, s->sub_session->peer_s);
-	      }
-	    }
-	  }
-	} else if(s == s->sub_session->peer_s) {
-	  if(s->sub_session->client_s && s->sub_session->client_s->bev) {
-	    if(!bufferevent_enabled(s->sub_session->client_s->bev,EV_READ)) {
-	      if(is_socket_writeable(s->sub_session->client_s, STUN_BUFFER_SIZE,__FUNCTION__,4)) {
-		bufferevent_enable(s->sub_session->client_s->bev,EV_READ);
-		socket_input_handler_bev(s->sub_session->client_s->bev, s->sub_session->client_s);
-	      }
-	    }
-	  }
+	UNUSED_ARG(bev);
+	UNUSED_ARG(arg);
+
+	if (tcp_congestion_control) {
+
+		if (bev && arg) {
+
+			ioa_socket_handle s = (ioa_socket_handle) arg;
+
+			if ((s->magic != SOCKET_MAGIC)||(s->done)||ioa_socket_tobeclosed(s)||(bev != s->bev)) {
+				return;
+			}
+
+			if (s->sub_session) {
+
+				if (s == s->sub_session->client_s) {
+					if (s->sub_session->peer_s && s->sub_session->peer_s->bev) {
+						if (!bufferevent_enabled(s->sub_session->peer_s->bev,
+								EV_READ)) {
+							if (is_socket_writeable(s->sub_session->peer_s,
+									STUN_BUFFER_SIZE, __FUNCTION__, 3)) {
+								bufferevent_enable(s->sub_session->peer_s->bev,EV_READ);
+								socket_input_handler_bev(
+										s->sub_session->peer_s->bev,
+										s->sub_session->peer_s);
+							}
+						}
+					}
+				} else if (s == s->sub_session->peer_s) {
+					if (s->sub_session->client_s
+							&& s->sub_session->client_s->bev) {
+						if (!bufferevent_enabled(s->sub_session->client_s->bev,
+								EV_READ)) {
+							if (is_socket_writeable(s->sub_session->client_s,
+									STUN_BUFFER_SIZE, __FUNCTION__, 4)) {
+								bufferevent_enable(s->sub_session->client_s->bev, EV_READ);
+								socket_input_handler_bev(
+										s->sub_session->client_s->bev,
+										s->sub_session->client_s);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-      }
-    }
-  }
 }
 
 static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
@@ -2626,8 +2628,6 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 			{
 				tcp_connection *tc = s->sub_session;
 				if(tc) {
-					s->sub_session = NULL;
-					s->session = NULL;
 					delete_tcp_connection(tc);
 				}
 			}
@@ -2638,8 +2638,6 @@ static void socket_input_handler_bev(struct bufferevent *bev, void* arg)
 				if (ss) {
 					turn_turnserver *server = (turn_turnserver *)ss->server;
 					if (server) {
-						s->session=NULL;
-						s->sub_session=NULL;
 						shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (input handler)");
 					}
 				}
@@ -2687,8 +2685,6 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 			{
 				tcp_connection *tc = s->sub_session;
 				if (tc) {
-					s->sub_session = NULL;
-					s->session = NULL;
 					delete_tcp_connection(tc);
 				}
 			}
@@ -2707,8 +2703,6 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 							if (events & BEV_EVENT_EOF) {
 								if(server->verbose)
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket closed remotely %s\n",(unsigned long long)(ss->id),sraddr);
-								s->session = NULL;
-								s->sub_session = NULL;
 								if(s == ss->client_session.s) {
 									shutdown_client_connection(server, ss, 0, "TCP connection closed by client (callback)");
 								} else if(s == ss->alloc.relay_session.s) {
@@ -2723,8 +2717,6 @@ static void eventcb_bev(struct bufferevent *bev, short events, void *arg)
 								} else if(server->verbose) {
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: TCP socket disconnected: %s\n",(unsigned long long)(ss->id),sraddr);
 								}
-								s->session = NULL;
-								s->sub_session = NULL;
 								shutdown_client_connection(server, ss, 0, "TCP socket buffer operation error (callback)");
 							 }
 						}
@@ -3209,6 +3201,7 @@ int ioa_socket_tobeclosed(ioa_socket_handle s)
 			log_socket_event(s, "socket broken", 0);
 			return 1;
 		} else if(s->tobeclosed) {
+			log_socket_event(s, "socket to be closed", 0);
 			return 1;
 		} else if(s->fd < 0) {
 			log_socket_event(s, "socket fd<0", 0);
