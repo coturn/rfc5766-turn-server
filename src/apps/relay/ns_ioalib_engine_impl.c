@@ -1592,6 +1592,7 @@ void close_ioa_socket(ioa_socket_handle s)
 
 		s->session = NULL;
 		s->sub_session = NULL;
+		s->magic = 0;
 
 		turn_free(s,sizeof(ioa_socket));
 	}
