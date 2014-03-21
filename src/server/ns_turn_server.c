@@ -3043,12 +3043,15 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 		} else if((method != STUN_METHOD_BINDING) || (*(server->secure_stun))) {
 
 			if(method == STUN_METHOD_ALLOCATE) {
+
 				SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
 				turn_server_addrs_list_t *asl = server->alternate_servers_list;
 
-				if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance ) {
+				if(((cst == UDP_SOCKET)||(cst == DTLS_SOCKET)) && server->self_udp_balance &&
+						server->aux_servers_list && server->aux_servers_list->size) {
 					asl = server->aux_servers_list;
-				} else if((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) {
+				} else if(((cst == TLS_SOCKET) || (cst == DTLS_SOCKET)) &&
+						server->tls_alternate_servers_list && server->tls_alternate_servers_list->size) {
 					asl = server->tls_alternate_servers_list;
 				}
 

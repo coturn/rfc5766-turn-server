@@ -2,6 +2,7 @@
 Version 3.2.2.912 'Marshal West':
 	- TCP-in-TCP congestion avoidance implemented.
 	- UDP-in-TCP congestion avoidance improved.
+	- Alternate-server code cleaned.
 
 03/10/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.911 'Marshal West':
