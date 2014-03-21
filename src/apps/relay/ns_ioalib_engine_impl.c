@@ -136,12 +136,14 @@ static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, 
 	    case 0:
 	    case 1:
 	      if(newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
-		return 0;
+	    	  return 0;
 	      }
 	      break;
 	    case 3:
 	    case 4:
-	      return 1;
+	    	if(newsz >= BUFFEREVENT_MAX_TCP_TO_TCP_WRITE) {
+	    	  return 0;
+	    	}
 	      break;
 	    default:
 	      return 1;
@@ -150,7 +152,7 @@ static int is_socket_writeable(ioa_socket_handle s, size_t sz, const char *msg, 
 	  default:
 	    if(option == 2) {
 	      if(newsz >= BUFFEREVENT_MAX_UDP_TO_TCP_WRITE) {
-		return 0;
+	    	  return 0;
 	      }
 	    }
 	  };
