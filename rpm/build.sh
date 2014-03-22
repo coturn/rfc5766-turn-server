@@ -93,8 +93,6 @@ chmod a+x turnserver-${TURNVERSION}/uninstall.turnserver.sh
 
 PLATFORM=`cat ${BUILDDIR}/platform`
 
-rm -rf di/libevent*
-
-tar cvfz turnserver-${TURNVERSION}-${PLATFORM}-${ARCH}.tar.gz di turnserver-${TURNVERSION}
+tar cvfz turnserver-${TURNVERSION}-${PLATFORM}-${ARCH}.tar.gz turnserver-${TURNVERSION}
 
 cd ${CPWD}
