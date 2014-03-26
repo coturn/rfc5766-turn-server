@@ -1,6 +1,6 @@
 03/25/2014 Oleg Moskalenko <mom040267@gmail.com>
-Version 3.2.2.913 'Marshal West':
-	- TCP-in-TCP congestion avoidance improved.
+Version 3.2.3.1 'Marshal West':
+	- TCP congestion avoidance completed.
 
 03/17/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.912 'Marshal West':

@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.2.2.913
+Version:	3.2.3.1
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -288,7 +288,7 @@ fi
 
 %changelog
 * Tue Mar 25 2014 Oleg Moskalenko <mom040267@gmail.com>
-  - Sync to 3.2.2.913
+  - Sync to 3.2.3.1
 * Mon Mar 17 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.2.912
 * Mon Mar 10 2014 Oleg Moskalenko <mom040267@gmail.com>
