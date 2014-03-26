@@ -481,6 +481,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 	int err_code = 0;
 	u08bits err_msg[129];
 	int rc = 0;
+	int applen = 0;
 
 	if (clnet_verbose && verbose_packets) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "before read ...\n");
@@ -553,8 +554,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				}
 
 				int rlen = stun_attr_get_len(sar);
+				applen = rlen;
 				if (rlen != clmessage_length) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "ERROR: received DATA message has wrong len: %d, must be %d\n", rlen, clmessage_length);
+					tot_recv_bytes += applen;
 					return rc;
 				}
 
@@ -661,7 +664,10 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 
 		elem->rmsgnum+=buffers;
 		tot_recv_messages+=buffers;
-		tot_recv_bytes += elem->in_buffer.len;
+		if(applen > 0)
+			tot_recv_bytes += applen;
+		else
+			tot_recv_bytes += elem->in_buffer.len;
 		elem->recvtimems=current_mstime;
 		elem->wait_cycles = 0;
 
@@ -762,7 +768,7 @@ static int client_write(app_ur_session *elem) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "wrote %d bytes\n", (int) rc);
 	  }
       tot_send_messages++;
-      tot_send_bytes += elem->out_buffer.len;
+      tot_send_bytes += clmessage_length;
     } else {
     	return -1;
     }

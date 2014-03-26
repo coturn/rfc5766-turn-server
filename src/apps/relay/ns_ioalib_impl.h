@@ -197,7 +197,8 @@ struct _ioa_socket
 	int current_tos;
 	stun_buffer_list bufs;
 	turn_time_t jiffie;
-	band_limit_t jiffie_bytes;
+	band_limit_t jiffie_bytes_read;
+	band_limit_t jiffie_bytes_write;
 	/* RFC 6062 ==>> */
 	//Connection session:
 	tcp_connection *sub_session;

@@ -374,8 +374,9 @@ Options with required values:
 			(both in the database and in the "static" fashion).
 
 -s, --max-bps		Max bytes-per-second bandwidth a TURN session is allowed to handle
-			(input and output network streams combined). Anything above that limit
-			will be dropped.
+			(input and output network streams are treated separately). Anything above 
+			that limit will be dropped or temporary suppressed (within the
+			available buffer limits).
 
 --cert			Certificate file, PEM format. Same file 
 			search rules applied as for the configuration 

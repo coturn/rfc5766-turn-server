@@ -17,8 +17,8 @@
 # 10) -u ninefingers means that if the server challenges the client with 
 # authentication challenge, then we use account "ninefingers".
 # 11) -w youhavetoberealistic sets the password for the account as "youhavetoberealistic".
-# 12) -s option is absent - it means that the client will be using 
-# the "channel" mechanism for data.
+# 12) -s option is present - it means that the client will be using 
+# the DATA mechanism for data.
 # 13) ::1 (the last parameter) is the TURN Server IP address. We use IPv6 here
 # to illustrate how the TURN Server convert the traffic from IPv6 to IPv4 and back.
 #
