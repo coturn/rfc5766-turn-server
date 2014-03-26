@@ -146,6 +146,7 @@ struct _ioa_engine
   SSL_CTX *dtls_ctx;
   turn_time_t jiffie;
   band_limit_t max_bpj;
+  struct ev_token_bucket_cfg *rate_cfg;
   ioa_timer_handle timer_ev;
   s08bits cmsg[TURN_CMSG_SZ+1];
   int predef_timer_intervals[PREDEF_TIMERS_NUM];

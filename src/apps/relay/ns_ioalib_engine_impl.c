@@ -362,6 +362,12 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 		e->sm = sm;
 		e->default_relays = default_relays;
 		e->max_bpj = max_bps;
+		if(max_bps) {
+			e->rate_cfg = ev_token_bucket_cfg_new(
+					max_bps, max_bps*10,
+					max_bps, max_bps*10,
+					NULL);
+		}
 		e->verbose = verbose;
 		e->tp = tp;
 		if (eb) {
@@ -2318,6 +2324,8 @@ static int socket_input_worker(ioa_socket_handle s)
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+			if(s->e->rate_cfg)
+				bufferevent_set_rate_limit(s->bev,s->e->rate_cfg);
 		} else
 #endif //TURN_NO_TLS
 		{
@@ -2332,6 +2340,8 @@ static int socket_input_worker(ioa_socket_handle s)
 					eventcb_bev, s);
 			bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 			bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+			if(s->e->rate_cfg)
+				bufferevent_set_rate_limit(s->bev,s->e->rate_cfg);
 		}
 	}
 
@@ -3133,6 +3143,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+						if(s->e->rate_cfg)
+							bufferevent_set_rate_limit(s->bev,s->e->rate_cfg);
 					}
 					break;
 				case TLS_SOCKET:
@@ -3164,6 +3176,8 @@ int register_callback_on_ioa_socket(ioa_engine_handle e, ioa_socket_handle s, in
 							eventcb_bev, s);
 						bufferevent_setwatermark(s->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
 						bufferevent_enable(s->bev, EV_READ|EV_WRITE); /* Start reading. */
+						if(s->e->rate_cfg)
+							bufferevent_set_rate_limit(s->bev,s->e->rate_cfg);
 #endif
 					}
 					break;
