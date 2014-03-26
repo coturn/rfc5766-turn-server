@@ -610,10 +610,7 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz)
 {
-	if((s->e->max_bpj != 0) &&
-			((s->sat == CLIENT_SOCKET)||
-			 (s->sat == TCP_CLIENT_DATA_SOCKET)||
-			 (s->sat == TCP_RELAY_DATA_SOCKET))) {
+	if((s->e->max_bpj != 0) && (s->sat == CLIENT_SOCKET)) {
 		band_limit_t bsz = (band_limit_t)sz;
 		if(s->jiffie != s->e->jiffie) {
 			s->jiffie = s->e->jiffie;
