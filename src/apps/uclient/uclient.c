@@ -626,6 +626,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				}
 
 				mi = (message_info*)(elem->in_buffer.buf + 4);
+				applen = elem->in_buffer.len -4;
 			}
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
