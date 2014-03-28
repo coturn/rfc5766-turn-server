@@ -743,7 +743,7 @@ public:
 		u08bits *srealm=(u08bits*)strdup(realm.c_str());
 		u08bits *supwd=(u08bits*)strdup(upwd.c_str());
 		SHATYPE sht = SHATYPE_SHA1;
-		bool ret = (0< stun_check_message_integrity_str(ct,_buffer, _sz, suname, srealm, supwd, &sht));
+		bool ret = (0< stun_check_message_integrity_str(ct,_buffer, _sz, suname, srealm, supwd, sht));
 		free(suname);
 		free(srealm);
 		free(supwd);
