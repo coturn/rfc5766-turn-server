@@ -22,8 +22,8 @@
 # 5) use 10 relay threads (-m 10)
 # 6) use min UDP relay port 32355 and max UDP relay port 65535
 # 7) "-r north.gov" means "use authentication realm north.gov"
-# 8) "--user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee" means 
-# "allow user 'ninefinger' with generated key '0xbc807ee29df3c9ffa736523fb2c4e8ee' ".
+# 8) "--user=ninefingers:youhavetoberealistic" means 
+# "allow user 'ninefinger' with password 'youhavetoberealistic' ".
 # 9) "--user=gorst:hero" means "allow user 'gorst' with password 'hero' ".
 # 10) "--cert=example_turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 11) "--pkey=example_turn_server_pkey.pem" sets the OpenSSL private key name.
@@ -39,4 +39,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --aux-server=127.0.0.1:12345 --aux-server=[::1]:12345 --aux-server=127.0.0.1:12346 --aux-server=[::1]:12346 --udp-self-balance --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout --cipher-list=ALL:SSLv2 $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --aux-server=127.0.0.1:12345 --aux-server=[::1]:12345 --aux-server=127.0.0.1:12346 --aux-server=[::1]:12346 --udp-self-balance --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:youhavetoberealistic --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout --cipher-list=ALL:SSLv2 $@
