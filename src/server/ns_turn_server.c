@@ -110,24 +110,6 @@ void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
 	}
 }
 
-/////////////////// Security ///////////////////////
-
-static inline void upgrade_shatype(ts_ur_super_session *ss, SHATYPE new_sht)
-{
-	if(ss && ss->shatype<new_sht) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session 0x%lx upgraded security from %s to %s\n",
-			(unsigned long)ss,
-			shatype_name(ss->shatype),shatype_name(new_sht));
-		ss->shatype = new_sht;
-	}
-}
-
-static inline void adjust_shatype(turn_turnserver *server, ts_ur_super_session *ss)
-{
-	if(server)
-		upgrade_shatype(ss,server->shatype);
-}
-
 /////////////////// RFC 5780 ///////////////////////
 
 void set_rfc5780(turn_turnserver *server, get_alt_addr_cb cb, send_message_cb smcb)
@@ -365,7 +347,6 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 			}
 			STRCPY(tsi->username,ss->username);
 			tsi->enforce_fingerprints = ss->enforce_fingerprints;
-			tsi->shatype = ss->shatype;
 			STRCPY(tsi->tls_method, get_ioa_socket_tls_method(ss->client_session.s));
 			STRCPY(tsi->tls_cipher, get_ioa_socket_tls_cipher(ss->client_session.s));
 
@@ -648,7 +629,6 @@ static ts_ur_super_session* create_new_ss(turn_turnserver* server) {
 	ts_ur_super_session *ss = (ts_ur_super_session*)turn_malloc(sizeof(ts_ur_super_session));
 	ns_bzero(ss,sizeof(ts_ur_super_session));
 	ss->server = server;
-	ss->shatype = server->shatype;
 	put_session_into_map(ss);
 	init_allocation(ss,&(ss->alloc), server->tcp_relay_connections);
 	return ss;
@@ -1342,8 +1322,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 										}
 
 										if(message_integrity) {
-											adjust_shatype(server,ss);
-											stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+											stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 											ioa_network_buffer_set_size(nbh,len);
 										}
 
@@ -1570,8 +1549,7 @@ static void tcp_peer_connection_completed_callback(int success, void *arg)
 		ioa_network_buffer_set_size(nbh,len);
 
 		if(need_stun_authentication(server)) {
-			adjust_shatype(server,ss);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -1754,8 +1732,7 @@ static void tcp_peer_accept_connection(ioa_socket_handle s, void *arg)
 		/* We add integrity for short-term indication messages, only */
 		if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
 		{
-			adjust_shatype(server,ss);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -2012,8 +1989,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 		if(message_integrity && ss) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			adjust_shatype(server,ss);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -2904,14 +2880,28 @@ static int check_stun_auth(turn_turnserver *server,
 		ss->hmackey_set = 1;
 	}
 
-	SHATYPE sht;
-
 	/* Check integrity */
+	int too_weak = 0;
 	if(stun_check_message_integrity_by_key_str(server->ct,ioa_network_buffer_data(in_buffer->nbh),
 					  ioa_network_buffer_get_size(in_buffer->nbh),
 					  ss->hmackey,
 					  ss->pwd,
-					  &sht)<1) {
+					  server->shatype,
+					  &too_weak)<1) {
+
+		if(too_weak) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
+							"%s: user %s credentials are incorrect: SHA function is too weak\n",
+									__FUNCTION__, (char*)usname);
+					*err_code = SHA_TOO_WEAK;
+					*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
+					if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
+						return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+					} else {
+						return -1;
+					}
+		}
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect\n",
 				__FUNCTION__, (char*)usname);
@@ -2923,22 +2913,6 @@ static int check_stun_auth(turn_turnserver *server,
 			return -1;
 		}
 	}
-
-	if((sht < server->shatype)||(sht < ss->shatype)) {
-		adjust_shatype(server,ss);
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
-				"%s: user %s credentials are incorrect: SHA function is too weak\n",
-						__FUNCTION__, (char*)usname);
-		*err_code = SHA_TOO_WEAK;
-		*reason = (const u08bits*)"Unauthorised: weak SHA function is used";
-		if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
-			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-		} else {
-			return -1;
-		}
-	}
-
-	upgrade_shatype(ss, sht);
 
 	*message_integrity = 1;
 
@@ -3284,8 +3258,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(message_integrity) {
 			size_t len = ioa_network_buffer_get_size(nbh);
-			adjust_shatype(server,ss);
-			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+			stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 			ioa_network_buffer_set_size(nbh,len);
 		}
 
@@ -4106,8 +4079,7 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 				/* We add integrity for short-term indication messages, only */
 				if(server->ct == TURN_CREDENTIALS_SHORT_TERM)
 				{
-					adjust_shatype(server,ss);
-					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,ss->shatype);
+					stun_attr_add_integrity_str(server->ct,ioa_network_buffer_data(nbh),&len,ss->hmackey,ss->pwd,server->shatype);
 					ioa_network_buffer_set_size(nbh,len);
 				}
 

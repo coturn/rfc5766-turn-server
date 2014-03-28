@@ -134,14 +134,13 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 /////////// USER DB CHECK //////////////////
 
 static int convert_string_key_to_binary(char* keysource, hmackey_t key) {
-	if(strlen(keysource)!=(2*sizeof(hmackey_t))) {
-		return -1;
-	} else {
+	{
 		char is[3];
 		size_t i;
 		unsigned int v;
 		is[2]=0;
-		for(i=0;i<sizeof(hmackey_t);i++) {
+		size_t sz = get_hmackey_size(turn_params.shatype);
+		for(i=0;i<sz;i++) {
 			is[0]=keysource[i*2];
 			is[1]=keysource[i*2+1];
 			sscanf(is,"%02x",&v);
@@ -842,7 +841,6 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 			u08bits hmac[MAXSHASIZE];
 			unsigned int hmac_len;
 			st_password_t pwdtmp;
-			SHATYPE shatype;
 
 			hmac[0] = 0;
 
@@ -855,11 +853,13 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 			int sarlen = stun_attr_get_len(sar);
 			switch(sarlen) {
 			case SHA1SIZEBYTES:
-				shatype = SHATYPE_SHA1;
+				if(turn_params.shatype != SHATYPE_SHA1)
+					return -1;
 				hmac_len = SHA1SIZEBYTES;
 				break;
 			case SHA256SIZEBYTES:
-				shatype = SHATYPE_SHA256;
+				if(turn_params.shatype != SHATYPE_SHA256)
+					return -1;
 				hmac_len = SHA256SIZEBYTES;
 				break;
 			default:
@@ -871,7 +871,7 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 				const char* secret = get_secrets_list_elem(&sl,sll);
 
 				if(secret) {
-					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, shatype)>=0) {
+					if(stun_calculate_hmac(usname, strlen((char*)usname), (const u08bits*)secret, strlen(secret), hmac, &hmac_len, turn_params.shatype)>=0) {
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
@@ -879,16 +879,14 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 							if(pwd_length<1) {
 								turn_free(pwd,strlen(pwd)+1);
 							} else {
-								if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)pwd, key)>=0) {
-
-									SHATYPE sht;
+								if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)pwd, key, turn_params.shatype)>=0) {
 
 									if(stun_check_message_integrity_by_key_str(TURN_CREDENTIALS_LONG_TERM,
 										ioa_network_buffer_data(nbh),
 										ioa_network_buffer_get_size(nbh),
 										key,
 										pwdtmp,
-										&sht)>0) {
+										turn_params.shatype,NULL)>0) {
 
 										ret = 0;
 									}
@@ -923,7 +921,8 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 	ur_string_map_unlock(turn_params.users_params.users.static_accounts);
 
 	if(ret==0) {
-		ns_bcopy(ukey,key,sizeof(hmackey_t));
+		size_t sz = get_hmackey_size(turn_params.shatype);
+		ns_bcopy(ukey,key,sz);
 		return 0;
 	}
 
@@ -977,10 +976,8 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 					if(row && row[0]) {
 						unsigned long *lengths = mysql_fetch_lengths(mres);
 						if(lengths) {
-							size_t sz = sizeof(hmackey_t)*2;
-							if(lengths[0]!=sz) {
-								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong hmackey data for user %s, size in MySQL DB is %lu\n",usname,lengths[0]);
-							} else {
+							size_t sz = get_hmackey_size(turn_params.shatype)*2;
+							{
 								char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
 								ns_bcopy(row[0],kval,sz);
 								kval[sz]=0;
@@ -1033,7 +1030,7 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 						if (rget->type != REDIS_REPLY_NIL)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 					} else {
-						if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)rget->str, key)>=0) {
+						if(stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)rget->str, key, turn_params.shatype)>=0) {
 							ret = 0;
 						}
 					}
@@ -1313,7 +1310,7 @@ int add_user_account(char *user, int dynamic)
 					return -1;
 				}
 			} else {
-				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)s, *key);
+				stun_produce_integrity_key_str((u08bits*)usname, (u08bits*)turn_params.users_params.global_realm, (u08bits*)s, *key, turn_params.shatype);
 			}
 			if(dynamic) {
 				ur_string_map_lock(turn_params.users_params.users.dynamic_accounts);
@@ -1777,16 +1774,17 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: with long-term mechanism, you must specify the realm !\n");
 				exit(-1);
 			}
-			stun_produce_integrity_key_str(user, realm, pwd, key);
+			stun_produce_integrity_key_str(user, realm, pwd, key, turn_params.shatype);
 			size_t i = 0;
-			int maxsz = (int)sizeof(skey);
+			size_t sz = get_hmackey_size(turn_params.shatype);
+			int maxsz = (int)(sz*2)+1;
 			char *s=skey;
-			for(i=0;(i<sizeof(hmackey_t)) && (maxsz>2);i++) {
-			  snprintf(s,(size_t)maxsz,"%02x",(unsigned int)key[i]);
-			  s+=2;
+			for(i=0;(i<sz) && (maxsz>2);i++) {
+			  snprintf(s,(size_t)(sz*2),"%02x",(unsigned int)key[i]);
 			  maxsz-=2;
+			  s+=2;
 			}
-			skey[sizeof(skey)-1]=0;
+			skey[sz*2]=0;
 		}
 	}
 
@@ -1953,7 +1951,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 					STRCPY(us, (char*) user);
 					strncpy(us + strlen(us), ":0x", sizeof(us)-1-strlen(us));
 					us[sizeof(us)-1]=0;
-					for (i = 0; i < sizeof(hmackey_t); i++) {
+					size_t sz = get_hmackey_size(turn_params.shatype);
+					for (i = 0; i < sz; i++) {
 						snprintf(
 							us + strlen(us),
 							sizeof(us)-strlen(us),
@@ -1976,7 +1975,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		  STRCPY(us,(char*)user);
 		  strncpy(us+strlen(us),":0x",sizeof(us)-1-strlen(us));
 		  us[sizeof(us)-1]=0;
-		  for(i=0;i<sizeof(hmackey_t);i++) {
+		  size_t sz = get_hmackey_size(turn_params.shatype);
+		  for(i=0;i<sz;i++) {
 		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
 		  }
 		  content = (char**)realloc(content,sizeof(char*)*(++csz));

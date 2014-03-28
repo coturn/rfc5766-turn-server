@@ -65,7 +65,6 @@ struct _ts_ur_super_session {
   int enforce_fingerprints;
   int is_tcp_relay;
   int to_be_closed;
-  SHATYPE shatype;
   /* Stats */
   u32bits received_packets;
   u32bits sent_packets;
@@ -108,7 +107,6 @@ struct turn_session_info {
 	addr_data relay_addr_data;
 	u08bits username[STUN_MAX_USERNAME_SIZE+1];
 	int enforce_fingerprints;
-	SHATYPE shatype;
 /* Stats */
 	u64bits received_packets;
 	u64bits sent_packets;

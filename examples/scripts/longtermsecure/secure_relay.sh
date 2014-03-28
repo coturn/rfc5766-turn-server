@@ -15,8 +15,8 @@
 # 3) use 10 relay threads (-m 10)
 # 4) use min UDP relay port 32355 and max UDP relay port 65535
 # 5) "-r north.gov" means "use authentication realm north.gov"
-# 6) "--user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee" means 
-# "allow user 'ninefinger' with generated key '0xbc807ee29df3c9ffa736523fb2c4e8ee' ".
+# 6) "--user=ninefingers:youhavetoberealistic" means 
+# "allow user 'ninefinger' with password 'youhavetoberealistic' ".
 # 7) "--user=gorst:hero" means "allow user 'gorst' with password 'hero' ".
 # 8) "--cert=turn_server_cert.pem" sets the OpenSSL certificate file name. 
 # 9) "--pkey=turn_server_pkey.pem" sets the OpenSSL private key name.
@@ -32,4 +32,4 @@ fi
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib/:/usr/local/mysql/lib/
 
-PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:0xbc807ee29df3c9ffa736523fb2c4e8ee --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v --cipher-list=ALL:SSLv2 $@
+PATH="./bin/:../bin/:../../bin/:${PATH}" turnserver --syslog -a -L 127.0.0.1 -L ::1 -E 127.0.0.1 -E ::1 --max-bps=3000000 -f -m 10 --min-port=32355 --max-port=65535 --user=ninefingers:youhavetoberealistic --user=gorst:hero -r north.gov --cert=turn_server_cert.pem --pkey=turn_server_pkey.pem --log-file=stdout -v --cipher-list=ALL:SSLv2 $@

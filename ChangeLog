@@ -4,6 +4,7 @@ Version 3.2.3.1 'Marshal West':
 	- Read and write streams are treated separately in
 	bandwidth control.
 	- Test client fixed.
+	- Experimental SHA256 key storage supported.
 
 03/17/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.2.912 'Marshal West':

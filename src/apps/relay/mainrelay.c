@@ -506,9 +506,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 " --secure-stun					Require authentication of the STUN Binding request.\n"
 "						By default, the clients are allowed anonymous access to the STUN Binding functionality.\n"
 " --sha256					Require SHA256 digest function to be used for the message integrity.\n"
-"						By default, the server accepts both SHA1 (as per TURN standard specs)\n"
-"						and SHA256 (as an extension) functions and the server switches to SHA256\n"
-"						only if the client session uses it. With this option, the server always\n"
+"						By default, the server SHA1 (as per TURN standard specs).\n"
+"						With this option, the server\n"
 "						requires the stronger SHA256 function. The client application must\n"
 "						support SHA256 hash function if this option is used. If the server obtains\n"
 "						a message from the client with a weaker (SHA1) hash function then the server\n"
@@ -568,11 +567,13 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-u, --user			Username\n"
 	"	-r, --realm			Realm for long-term mechanism only\n"
 	"	-p, --password			Password\n"
+	"	-H, --sha256		Use SHA256 digest function to be used for the message integrity.\n"
+	"						By default, the server SHA1 (as per TURN standard specs).\n"
 	"	-h, --help			Help\n";
 
 #define OPTIONS "c:d:p:L:E:X:i:m:l:r:u:b:e:M:N:O:q:Q:s:C:vVofhznaAS"
 
-#define ADMIN_OPTIONS "lLkaADSdb:e:M:N:u:r:p:s:X:h"
+#define ADMIN_OPTIONS "HlLkaADSdb:e:M:N:u:r:p:s:X:h"
 
 enum EXTRA_OPTS {
 	NO_UDP_OPT=256,
@@ -752,6 +753,7 @@ static struct option admin_long_options[] = {
 				{ "user", required_argument, NULL, 'u' },
 				{ "realm", required_argument, NULL, 'r' },
 				{ "password", required_argument, NULL, 'p' },
+				{ "sha256", no_argument, NULL, 'H' },
 				{ "help", no_argument, NULL, 'h' },
 				{ NULL, no_argument, NULL, 0 }
 };
@@ -1370,6 +1372,12 @@ static int adminmain(int argc, char **argv)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong password: %s\n",pwd);
 				exit(-1);
 			}
+			break;
+		case 'H':
+			if(get_bool_value(optarg))
+				turn_params.shatype = SHATYPE_SHA256;
+			else
+				turn_params.shatype = SHATYPE_SHA1;
 			break;
 		case 'h':
 			printf("\n%s\n", AdminUsage);

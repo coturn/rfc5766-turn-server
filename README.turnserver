@@ -217,10 +217,8 @@ Flags:
 			(224.0.0.0 and above, and FFXX:*).
 
 --sha256		Require SHA256 digest function to be used for the message integrity.
-			By default, the server accepts both SHA1 (as per TURN standard specs) 
-			and SHA256 (as an extension) functions and the server switches to SHA256 
-			only if the client session uses it. With this option, the server always 
-			requires the stronger SHA256 function. The client application must support
+			By default, the server uses SHA1 hashes. With this option, the server 
+			requires the stronger SHA256 hashes. The client application must support
 			SHA256 hash function if this option is used. If the server obtains a message 
 			from the client with a weaker (SHA1) hash function then the server returns 
 			error code 426.

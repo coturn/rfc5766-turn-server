@@ -504,7 +504,6 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				}
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
-				myprintf(cs,"      SHA256: %s\n",get_flag(tsi->shatype));
 				if(turn_params.shatype == SHATYPE_SHA1)
 					myprintf(cs,"      SHA type: SHA1\n");
 				else if(turn_params.shatype == SHATYPE_SHA256)

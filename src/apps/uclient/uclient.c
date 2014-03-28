@@ -513,7 +513,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				SHATYPE sht = elem->pinfo.shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 							elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-							elem->pinfo.realm, g_upwd, &sht)<1) {
+							elem->pinfo.realm, g_upwd, sht)<1) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in indication message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
 					return -1;
 				}
@@ -572,7 +572,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 				SHATYPE sht = elem->pinfo.shatype;
 				if(stun_check_message_integrity_str(get_turn_credentials_type(),
 								elem->in_buffer.buf, (size_t)(elem->in_buffer.len), g_uname,
-								elem->pinfo.realm, g_upwd, &sht)<0) {
+								elem->pinfo.realm, g_upwd, sht)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Wrong integrity in success message 0x%x received from server\n",(unsigned int)stun_get_method(&(elem->in_buffer)));
 					return -1;
 				}

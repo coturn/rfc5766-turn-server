@@ -667,7 +667,7 @@ The schema description:
 #
 CREATE TABLE turnusers_lt (
     name varchar(512) PRIMARY KEY,
-    hmackey char(32)
+    hmackey char(128)
 );
 
 # Table for short-term credentials mechanism authorisation:
@@ -698,11 +698,14 @@ CREATE TABLE denied_peer_ip (
 );
 
 
-The field hmackey contains HEX string representation of the 128 bits key.
+The field hmackey contains HEX string representation of the key.
 We do not store the user open passwords for long-term credentials, for security reasons.
 Storing only the HMAC key has its own implications - if you change the realm,
 you will have to update the HMAC keys of all users, because the realm is 
 used for the HMAC key generation.
+
+The key must be 32 characters (HEX representation of 16 bytes) for SHA1,
+or 64 characters (HEX representation of 32 bytes) for SHA256.
 
 You can use turnadmin program to manage the database - you can either use 
 turnadmin to add/modify/delete users, or you can use turnadmin to produce 
