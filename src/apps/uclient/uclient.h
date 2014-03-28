@@ -62,6 +62,8 @@ extern int default_address_family;
 extern int dont_fragment;
 extern u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 extern st_password_t g_upwd;
+extern char g_auth_secret[1025];
+extern int g_use_auth_secret_with_timestamp;
 extern int use_fingerprints;
 extern SSL_CTX *root_tls_ctx[32];
 extern int root_tls_ctx_num;
@@ -93,6 +95,8 @@ void client_input_handler(evutil_socket_t fd, short what, void* arg);
 turn_credential_type get_turn_credentials_type(void);
 
 int add_integrity(app_ur_conn_info *clnet_info, stun_buffer *message);
+
+void recalculate_restapi_hmac(void);
 
 ////////////////////////////////////////////
 

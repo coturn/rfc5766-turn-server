@@ -63,6 +63,8 @@ int default_address_family = STUN_ATTRIBUTE_REQUESTED_ADDRESS_FAMILY_VALUE_DEFAU
 int dont_fragment = 0;
 u08bits g_uname[STUN_MAX_USERNAME_SIZE+1];
 st_password_t g_upwd;
+char g_auth_secret[1025]="\0";
+int g_use_auth_secret_with_timestamp = 0;
 int use_fingerprints = 1;
 
 static char ca_cert_file[1025]="";
@@ -141,6 +143,34 @@ static char Usage[] =
 
 //////////////////////////////////////////////////
 
+void recalculate_restapi_hmac(void) {
+
+	if (g_use_auth_secret_with_timestamp) {
+
+		u08bits hmac[MAXSHASIZE];
+		unsigned int hmac_len;
+
+		hmac_len = SHA256SIZEBYTES;
+
+		hmac[0] = 0;
+
+		if (stun_calculate_hmac(g_uname, strlen((char*) g_uname),
+				(u08bits*) g_auth_secret, strlen(g_auth_secret), hmac,
+				&hmac_len, SHATYPE_SHA256) >= 0) {
+			size_t pwd_length = 0;
+			char *pwd = base64_encode(hmac, hmac_len, &pwd_length);
+
+			if (pwd) {
+				if (pwd_length > 0) {
+					ns_bcopy(pwd,g_upwd,pwd_length);
+					g_upwd[pwd_length] = 0;
+				}
+			}
+			free(pwd);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int port = 0;
@@ -151,9 +181,7 @@ int main(int argc, char **argv)
 	char peer_address[129] = "\0";
 	int peer_port = PEER_DEFAULT_PORT;
 
-	int use_auth_secret_with_timestamp = 0;
 	char rest_api_separator = ':';
-	char auth_secret[1025]="\0";
 	int use_null_cipher=0;
 
 	set_logfile("stdout");
@@ -283,8 +311,8 @@ int main(int argc, char **argv)
 			use_secure = 1;
 			break;
 		case 'W':
-			use_auth_secret_with_timestamp = 1;
-			STRCPY(auth_secret,optarg);
+			g_use_auth_secret_with_timestamp = 1;
+			STRCPY(g_auth_secret,optarg);
 			break;
 		case 'i':
 		{
@@ -314,7 +342,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(use_auth_secret_with_timestamp) {
+	if(g_use_auth_secret_with_timestamp) {
 
 		if(use_short_term) {
 			fprintf(stderr,"ERROR: You cannot use authentication secret (REST API) with short-term credentials mechanism.\n");
@@ -344,7 +372,7 @@ int main(int argc, char **argv)
 
 			hmac[0]=0;
 
-			if(stun_calculate_hmac(g_uname, strlen((char*)g_uname), (u08bits*)auth_secret, strlen(auth_secret), hmac, &hmac_len, shatype)>=0) {
+			if(stun_calculate_hmac(g_uname, strlen((char*)g_uname), (u08bits*)g_auth_secret, strlen(g_auth_secret), hmac, &hmac_len, shatype)>=0) {
 				size_t pwd_length = 0;
 				char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 

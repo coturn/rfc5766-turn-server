@@ -2774,7 +2774,30 @@ static int check_stun_auth(turn_turnserver *server,
 		} else {
 			return -1;
 		}
+	}
 
+	{
+		int sarlen = stun_attr_get_len(sar);
+		switch(sarlen) {
+		case SHA1SIZEBYTES:
+			if(server->shatype != SHATYPE_SHA1) {
+				*err_code = SHA_TOO_WEAK;
+				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+				return -1;
+			}
+			break;
+		case SHA256SIZEBYTES:
+			if(server->shatype != SHATYPE_SHA256) {
+				*err_code = 401;
+				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+				return -1;
+			}
+			break;
+		default:
+			*err_code = 401;
+			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
+			return -1;
+		};
 	}
 
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {

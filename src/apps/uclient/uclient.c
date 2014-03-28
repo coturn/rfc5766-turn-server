@@ -598,7 +598,9 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 							clnet_info->realm,clnet_info->nonce)) {
 			if(err_code == SHA_TOO_WEAK && (elem->pinfo.shatype == SHATYPE_SHA1)) {
 				elem->pinfo.shatype = SHATYPE_SHA256;
+				recalculate_restapi_hmac();
 			}
+
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
 			} else if(stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
