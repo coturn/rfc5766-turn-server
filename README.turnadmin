@@ -82,6 +82,9 @@ Options with required values:
 -u, --user		User name.
 -r, --realm		Realm, for long-term credentials mechanism only.
 -p, --password		Password.
+-H, --sha256	Use SHA256 keys and message integrity. By default,
+				HMAC-SHA1 is used for the message digest calculation,
+				and MD5 is used for the key storage encryption.
 -h, --help		Help.
   
 Generate a key:  
