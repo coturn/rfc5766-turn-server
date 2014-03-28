@@ -1,7 +1,7 @@
 
 CREATE TABLE turnusers_lt (
     name varchar(512) PRIMARY KEY,
-    hmackey char(129)
+    hmackey char(128)
 );
 
 CREATE TABLE turnusers_st (
