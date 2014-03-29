@@ -97,7 +97,7 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
-#if !defined(OPENSSL_NO_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
