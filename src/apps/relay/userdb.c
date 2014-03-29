@@ -133,13 +133,12 @@ void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 
 /////////// USER DB CHECK //////////////////
 
-static int convert_string_key_to_binary(char* keysource, hmackey_t key) {
+static int convert_string_key_to_binary(char* keysource, hmackey_t key, size_t sz) {
 	{
 		char is[3];
 		size_t i;
 		unsigned int v;
 		is[2]=0;
-		size_t sz = get_hmackey_size(turn_params.shatype);
 		for(i=0;i<sz;i++) {
 			is[0]=keysource[i*2];
 			is[1]=keysource[i*2+1];
@@ -938,8 +937,12 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error retrieving PostgreSQL DB information: %s\n",PQerrorMessage(pqc));
 			} else {
 				char *kval = PQgetvalue(res,0,0);
+				int len = PQgetlength(res,0,0);
 				if(kval) {
-					if(convert_string_key_to_binary(kval, key)<0) {
+					size_t sz = get_hmackey_size(turn_params.shatype);
+					if(((size_t)len<sz*2)||(strlen(kval)<sz*2)) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",kval,usname);
+					} else if(convert_string_key_to_binary(kval, key, sz)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
 					} else {
 						ret = 0;
@@ -977,11 +980,13 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 						unsigned long *lengths = mysql_fetch_lengths(mres);
 						if(lengths) {
 							size_t sz = get_hmackey_size(turn_params.shatype)*2;
-							{
+							if(lengths[0]<sz) {
+								TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: string length=%d (must be %d): user %s\n",(int)lengths[0],(int)sz,usname);
+							} else {
 								char kval[sizeof(hmackey_t)+sizeof(hmackey_t)+1];
 								ns_bcopy(row[0],kval,sz);
 								kval[sz]=0;
-								if(convert_string_key_to_binary(kval, key)<0) {
+								if(convert_string_key_to_binary(kval, key, sz/2)<0) {
 									TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",kval,usname);
 								} else {
 									ret = 0;
@@ -1012,7 +1017,10 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 					if (rget->type != REDIS_REPLY_NIL)
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
 				} else {
-					if(convert_string_key_to_binary(rget->str, key)<0) {
+					size_t sz = get_hmackey_size(turn_params.shatype);
+					if(strlen(rget->str)<sz*2) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s, user %s\n",rget->str,usname);
+					} else if(convert_string_key_to_binary(rget->str, key, sz)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s, user %s\n",rget->str,usname);
 					} else {
 						ret = 0;
@@ -1303,7 +1311,10 @@ int add_user_account(char *user, int dynamic)
 			hmackey_t *key = (hmackey_t*)turn_malloc(sizeof(hmackey_t));
 			if(strstr(s,"0x")==s) {
 				char *keysource = s + 2;
-				if(convert_string_key_to_binary(keysource, *key)<0) {
+				size_t sz = get_hmackey_size(turn_params.shatype);
+				if(strlen(keysource)<sz*2) {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
+				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
 					free(usname);
 					free(key);

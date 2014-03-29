@@ -750,6 +750,9 @@ Fill in users, for example:
   $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
   
+  Long-term credentials mechanism with SHA256 extention:
+  $ bin/turnadmin -a -e "host=localhost dbname=turn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
+  
   Short-term credentials mechanism:
    
   $ bin/turnadmin -A -e "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
@@ -801,6 +804,9 @@ the root account.
   
   $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u gorst -r north.gov -p hero
   $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  
+  Long-term credentials mechanism with SHA256 extention:
+  $ bin/turnadmin -a -M "host=localhost dbname=turn user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
   
   Short-term credentials mechanism:
    
@@ -875,6 +881,25 @@ timeout 0
 ..........
 tcp-keepalive 60
 ..........
+
+Redis TURN admin commands:
+
+  Shared secret for the TURN REST API:
+  
+  $ bin/turnadmin -s logen -N "host=localhost dbname=0 user=turn password=turn"
+  
+  Long-term credentials mechanism:
+  
+  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic
+  
+  Long-term credentials mechanism with SHA256 extention:
+  $ bin/turnadmin -a -N "host=localhost dbname=0 user=turn password=turn" -u bethod -r north.gov -p king-of-north --sha256
+  
+  Short-term credentials mechanism:
+   
+  $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u gorst -r north.gov -p hero
+  $ bin/turnadmin -A -N "host=localhost dbname=0 user=turn password=turn" -u ninefingers -r north.gov -p youhavetoberealistic 
 
 XV. Performance tuning
 
