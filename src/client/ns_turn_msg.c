@@ -66,7 +66,7 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-#if !defined(OPENSSL_NO_SHA256)
+#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
 	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
