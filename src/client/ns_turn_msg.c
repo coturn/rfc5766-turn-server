@@ -83,6 +83,9 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 
 int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd, hmackey_t key, SHATYPE shatype)
 {
+	ERR_clear_error();
+	UNUSED_ARG(shatype);
+
 	size_t ulen = strlen((s08bits*)uname);
 	size_t rlen = strlen((s08bits*)realm);
 	size_t plen = strlen((s08bits*)upwd);
