@@ -65,6 +65,7 @@ struct _ts_ur_super_session {
   int enforce_fingerprints;
   int is_tcp_relay;
   int to_be_closed;
+  int quota_used;
   /* Stats */
   u32bits received_packets;
   u32bits sent_packets;
