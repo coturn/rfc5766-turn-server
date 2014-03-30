@@ -106,7 +106,7 @@ static void __turn_getMSTime(void) {
 
 ////////////////////////////////////////////////////////////////////
 
-static int refresh_channel(app_ur_session* elem, u16bits method);
+static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt);
 
 //////////////////////// SS ////////////////////////////////////////
 
@@ -604,7 +604,7 @@ static int client_read(app_ur_session *elem, int is_tcp_data, app_tcp_conn_info 
 			if(is_TCP_relay() && (stun_get_method(&(elem->in_buffer)) == STUN_METHOD_CONNECT)) {
 				turn_tcp_connect(clnet_verbose, &(elem->pinfo), &(elem->pinfo.peer_addr));
 			} else if(stun_get_method(&(elem->in_buffer)) == STUN_METHOD_REFRESH) {
-				refresh_channel(elem, stun_get_method(&elem->in_buffer));
+				refresh_channel(elem, stun_get_method(&elem->in_buffer),600);
 			}
 			return rc;
 		} else if (stun_is_error_response(&(elem->in_buffer), NULL,NULL,0)) {
@@ -919,7 +919,7 @@ static int start_client(const char *remote_address, int port,
   
   elems[i]=ss;
 
-  refresh_channel(ss,0);
+  refresh_channel(ss, 0, 600);
 
   if(!no_rtcp)
     elems[i+1]=ss_rtcp;
@@ -1070,7 +1070,7 @@ static int start_c2c(const char *remote_address, int port,
   return 0;
 }
 
-static int refresh_channel(app_ur_session* elem, u16bits method)
+static int refresh_channel(app_ur_session* elem, u16bits method, uint32_t lt)
 {
 
 	stun_buffer message;
@@ -1081,7 +1081,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 
 	if (!method || (method == STUN_METHOD_REFRESH)) {
 		stun_init_request(STUN_METHOD_REFRESH, &message);
-		uint32_t lt = htonl(600);
+		lt = htonl(lt);
 		stun_attr_add(&message, STUN_ATTRIBUTE_LIFETIME, (const char*) &lt, 4);
 		if(add_integrity(clnet_info, &message)<0) return -1;
 		if(use_fingerprints)
@@ -1089,7 +1089,7 @@ static int refresh_channel(app_ur_session* elem, u16bits method)
 		send_buffer(clnet_info, &message, 0,0);
 	}
 
-	if (!addr_any(&(elem->pinfo.peer_addr))) {
+	if (lt && !addr_any(&(elem->pinfo.peer_addr))) {
 
 		if(!no_permissions) {
 			if (!method || (method == STUN_METHOD_CREATE_PERMISSION)) {
@@ -1122,7 +1122,7 @@ static inline int client_timer_handler(app_ur_session* elem)
 {
 	if (elem) {
 		if (!turn_time_before(current_mstime, elem->refresh_time)) {
-			refresh_channel(elem, 0);
+			refresh_channel(elem, 0, 600);
 		}
 
 		if(hang_on && elem->completed)
@@ -1149,6 +1149,7 @@ static inline int client_timer_handler(app_ur_session* elem)
 					elem->jitter=0;
 					elem->completed = 1;
 					if (!hang_on) {
+						refresh_channel(elem,0,0);
 						client_shutdown(elem);
 						return 1;
 					} else {
