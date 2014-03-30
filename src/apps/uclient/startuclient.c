@@ -443,6 +443,11 @@ static int clnet_allocate(int verbose,
 						goto beg_allocate;
 					} else if (stun_is_error_response(&message, &err_code,err_msg,sizeof(err_msg))) {
 
+						if(err_code == SHA_TOO_WEAK && (clnet_info->shatype == SHATYPE_SHA1) && use_short_term) {
+							clnet_info->shatype = SHATYPE_SHA256;
+							goto beg_allocate;
+						}
+
 						allocate_received = 1;
 
 						if(err_code == 300) {
