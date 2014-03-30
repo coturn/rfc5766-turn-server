@@ -82,9 +82,9 @@ Options with required values:
 -u, --user		User name.
 -r, --realm		Realm, for long-term credentials mechanism only.
 -p, --password		Password.
--H, --sha256	Use SHA256 keys and message integrity. By default,
-				HMAC-SHA1 is used for the message digest calculation,
-				and MD5 is used for the key storage encryption.
+-H, --sha256	Use SHA256 as the keys hash function (a non-standard feature). 
+				By default, MD5 is used for the key storage encryption 
+				(as required by the current STUN/TURNstandards). 
 -h, --help		Help.
   
 Generate a key:  
