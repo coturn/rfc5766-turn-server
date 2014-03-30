@@ -1,4 +1,4 @@
-03/25/2014 Oleg Moskalenko <mom040267@gmail.com>
+03/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.1 'Marshal West':
 	- TCP congestion avoidance completed.
 	- Read and write streams are treated separately in
