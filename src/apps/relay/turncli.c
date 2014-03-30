@@ -504,10 +504,6 @@ static int print_session(ur_map_key_type key, ur_map_value_type value, void *arg
 				}
 				myprintf(cs,"      fingerprints enforced: %s\n",get_flag(tsi->enforce_fingerprints));
 				myprintf(cs,"      mobile: %s\n",get_flag(tsi->is_mobile));
-				if(turn_params.shatype == SHATYPE_SHA1)
-					myprintf(cs,"      SHA type: SHA1\n");
-				else if(turn_params.shatype == SHATYPE_SHA256)
-					myprintf(cs,"      SHA type: SHA256\n");
 				if(tsi->tls_method[0]) {
 					myprintf(cs,"      TLS method: %s\n",tsi->tls_method);
 					myprintf(cs,"      TLS cipher: %s\n",tsi->tls_cipher);
@@ -661,11 +657,10 @@ static void cli_print_configuration(struct cli_session* cs)
 		cli_print_str(cs,turn_params.cert_file,"Certificate file",0);
 		cli_print_str(cs,turn_params.pkey_file,"Private Key file",0);
 
-		if(turn_params.shatype == SHATYPE_SHA1)
-			cli_print_str(cs,"SHA1 and SHA256","allowed SHA types",0);
-		else if(turn_params.shatype == SHATYPE_SHA256)
-					cli_print_str(cs,"SHA256 only","allowed SHA types",0);
-
+		if(turn_params.shatype == SHATYPE_SHA256)
+					cli_print_str(cs,"SHA256","SHA type",0);
+				else
+					cli_print_str(cs,"SHA1","SHA type",0);
 		myprintf(cs,"\n");
 
 		cli_print_str_array(cs,turn_params.listener.addrs,turn_params.listener.addrs_number,"Listener addr",0);
