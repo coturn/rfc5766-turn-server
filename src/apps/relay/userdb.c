@@ -1174,7 +1174,7 @@ int check_new_allocation_quota(u08bits *user)
 		ur_string_map_lock(turn_params.users_params.users.alloc_counters);
 		if (turn_params.users_params.users.total_quota && (turn_params.users_params.users.total_current_allocs >= turn_params.users_params.users.total_quota)) {
 			ret = -1;
-		} else {
+		} else if(username[0]){
 			ur_string_map_value_type value = 0;
 			if (!ur_string_map_get(turn_params.users_params.users.alloc_counters, (ur_string_map_key_type) username, &value)) {
 				value = (ur_string_map_value_type) 1;
@@ -1189,6 +1189,8 @@ int check_new_allocation_quota(u08bits *user)
 					++(turn_params.users_params.users.total_current_allocs);
 				}
 			}
+		} else {
+			++(turn_params.users_params.users.total_current_allocs);
 		}
 		turn_free(username,strlen(username)+1);
 		ur_string_map_unlock(turn_params.users_params.users.alloc_counters);
