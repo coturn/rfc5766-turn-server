@@ -205,6 +205,9 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 
 int set_df_on_ioa_socket(ioa_socket_handle s, int value)
 {
+	if(!s)
+		return 0;
+
 	if(s->parent_s)
 		return 0;
 
