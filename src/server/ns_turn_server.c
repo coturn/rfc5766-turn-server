@@ -99,6 +99,35 @@ turn_time_t get_turn_server_time(turn_turnserver *server)
 	return turn_time();
 }
 
+/////////////////// quota //////////////////////
+
+static int inc_quota(ts_ur_super_session* ss, u08bits *username)
+{
+	if(ss && !(ss->quota_used) && ss->server && ((turn_turnserver*)ss->server)->chquotacb && username) {
+
+		if((((turn_turnserver*)ss->server)->chquotacb)(username)<0) {
+
+			return -1;
+
+		} else {
+
+			STRCPY(ss->username,username);
+
+			ss->quota_used = 1;
+		}
+	}
+
+	return 0;
+}
+
+static void dec_quota(ts_ur_super_session* ss)
+{
+	if(ss && ss->quota_used && ss->server && ((turn_turnserver*)ss->server)->raqcb) {
+		ss->quota_used = 0;
+		(((turn_turnserver*)ss->server)->raqcb)(ss->username);
+	}
+}
+
 /////////////////// server lists ///////////////////
 
 void init_turn_server_addrs_list(turn_server_addrs_list_t *l)
@@ -647,10 +676,7 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		if(ss->quota_used) {
-			(((turn_turnserver*)ss->server)->raqcb)(ss->username);
-			ss->quota_used = 0;
-		}
+		dec_quota(ss);
 		if (ss->client_session.s) {
 			clear_ioa_socket_session_if(ss->client_session.s, ss);
 		}
@@ -1012,22 +1038,20 @@ static int handle_turn_allocate(turn_turnserver *server,
 			lifetime = stun_adjust_allocate_lifetime(lifetime);
 			u64bits out_reservation_token = 0;
 
-			STRCPY(ss->username,username);
-
-			if((server->chquotacb)(username)<0) {
+			if(inc_quota(ss, username)<0) {
 
 				*err_code = 486;
 				*reason = (const u08bits *)"Allocation Quota Reached";
 
 			} else {
 
-				ss->quota_used = 1;
-
 				if (create_relay_connection(server, ss, lifetime,
 							af, transport,
 							even_port, in_reservation_token, &out_reservation_token,
 							err_code, reason,
 							tcp_peer_accept_connection) < 0) {
+
+					dec_quota(ss);
 
 					if (!*err_code) {
 						*err_code = 437;
