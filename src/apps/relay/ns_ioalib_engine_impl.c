@@ -2994,8 +2994,10 @@ int send_data_from_ioa_socket_nbh(ioa_socket_handle s, ioa_addr* dest_addr,
 {
 	int ret = -1;
 
-	if(!s)
+	if(!s) {
+		ioa_network_buffer_delete(NULL, nbh);
 		return -1;
+	}
 
 	if (s->done || (s->fd == -1)) {
 		TURN_LOG_FUNC(
