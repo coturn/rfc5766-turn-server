@@ -1,7 +1,8 @@
 03/30/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.2 'Marshal West':
 	- Allocation counters fixed (issue 117);
-	- a possible core dump in the server code fixed.
+	- a possible core dump in the server code fixed;
+	- a possible memory leak in server fixed.
 	
 03/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.1 'Marshal West':
