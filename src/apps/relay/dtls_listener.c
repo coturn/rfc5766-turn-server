@@ -740,7 +740,7 @@ static int create_server_socket(dtls_listener_relay_server_type* server, int rep
 			  char saddr[129];
 			  addr_to_string(&server->addr,(u08bits*)saddr);
 			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"Cannot bind UDP/DTLS listener socket to addr %s\n",saddr);
-			  if(addr_bind_cycle<max_binding_time) {
+			  if(addr_bind_cycle++<max_binding_time) {
 				  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"Trying to bind UDP/DTLS listener socket to addr %s, again...\n",saddr);
 				  sleep(1);
 				  goto retry_addr_bind;
