@@ -3502,6 +3502,8 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	ts_ur_session* elem = &(ss->client_session);
 
+	dec_quota(ss);
+
 	if(!force) {
 
 		if (elem->s && server->verbose) {
