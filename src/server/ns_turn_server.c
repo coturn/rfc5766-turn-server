@@ -123,7 +123,9 @@ static int inc_quota(ts_ur_super_session* ss, u08bits *username)
 static void dec_quota(ts_ur_super_session* ss)
 {
 	if(ss && ss->quota_used && ss->server && ((turn_turnserver*)ss->server)->raqcb) {
+
 		ss->quota_used = 0;
+
 		(((turn_turnserver*)ss->server)->raqcb)(ss->username);
 	}
 }
@@ -354,7 +356,7 @@ int turn_session_info_copy_from(struct turn_session_info* tsi, ts_ur_super_sessi
 	if(tsi && ss) {
 		tsi->id = ss->id;
 		tsi->start_time = ss->start_time;
-		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed);
+		tsi->valid = is_allocation_valid(&(ss->alloc)) && !(ss->to_be_closed) && (ss->quota_used);
 		if(tsi->valid) {
 			tsi->expiration_time = ss->alloc.expiration_time;
 			if(ss->client_session.s) {
@@ -676,7 +678,6 @@ static int turn_server_remove_all_from_ur_map_ss(ts_ur_super_session* ss) {
 		return 0;
 	else {
 		int ret = 0;
-		dec_quota(ss);
 		if (ss->client_session.s) {
 			clear_ioa_socket_session_if(ss->client_session.s, ss);
 		}
@@ -3502,6 +3503,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 	ts_ur_session* elem = &(ss->client_session);
 
+	report_turn_session_info(server,ss,1);
 	dec_quota(ss);
 
 	if(!force) {
@@ -3523,8 +3525,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 
 		return 0;
 	}
-
-	report_turn_session_info(server,ss,1);
 
 	if (eve(server->verbose)) {
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
