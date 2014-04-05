@@ -1912,10 +1912,14 @@ static void adjust_key_file_name(char *fn, const char* file_title, int critical)
 	} else {
 
 	  full_path_to_file = find_config_file(fn, 1);
-	  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
-	  if(!f) {
-	    TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (1)\n",file_title,fn);
-	    goto keyerr;
+	  {
+		  FILE *f = full_path_to_file ? fopen(full_path_to_file,"r") : NULL;
+		  if(!f) {
+			  TURN_LOG_FUNC(TURN_LOG_LEVEL_WARNING,"WARNING: cannot find %s file: %s (1)\n",file_title,fn);
+			  goto keyerr;
+		  } else {
+			  fclose(f);
+		  }
 	  }
 
 	  if(!full_path_to_file) {
