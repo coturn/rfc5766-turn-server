@@ -1,6 +1,9 @@
 04/04/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.3 'Marshal West':
-	- Pkey and cert file descriptors closed (issue 118);
+	- Pkey and cert file descriptors to be closed 
+	on initialization (issue 118);
+	- Address bind indefinite cycle on start-up fixed
+	(Issue 119);
 	- Allocation counters time lag improved.
 	
 03/30/2014 Oleg Moskalenko <mom040267@gmail.com>
