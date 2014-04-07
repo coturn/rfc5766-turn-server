@@ -2879,6 +2879,12 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
+	if(ss->username[0] && strcmp((char*)ss->username,(char*)usname)) {
+		*err_code = 401;
+		*reason = (const u08bits*)"Wrong username";
+		return -1;
+	}
+
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
 		/* NONCE ATTR: */
 
