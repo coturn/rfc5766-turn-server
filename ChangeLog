@@ -1,3 +1,8 @@
+04/06/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.3.4 'Marshal West':
+	- Mobile TCP sessions fixed (issue 120);
+	- log information improvements.
+
 04/04/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.3 'Marshal West':
 	- Pkey and cert file descriptors to be closed 
