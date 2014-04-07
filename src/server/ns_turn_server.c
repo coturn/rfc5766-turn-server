@@ -1988,16 +1988,20 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				err_code = 500;
 			} else {
 				ss = (ts_ur_super_session*)(a->owner);
-				tc->state = TC_STATE_READY;
-				tc->client_s = s;
-				set_ioa_socket_session(s,ss);
-				set_ioa_socket_sub_session(s,tc);
-				set_ioa_socket_app_type(s,TCP_CLIENT_DATA_SOCKET);
-				if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_client_input_handler_rfc6062data, tc, 1)<0) {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
-					err_code = 500;
+				if(!check_username_hash(s,ss->username)) {
+					err_code = 401;
 				} else {
-					IOA_EVENT_DEL(tc->conn_bind_timeout);
+					tc->state = TC_STATE_READY;
+					tc->client_s = s;
+					set_ioa_socket_session(s,ss);
+					set_ioa_socket_sub_session(s,tc);
+					set_ioa_socket_app_type(s,TCP_CLIENT_DATA_SOCKET);
+					if(register_callback_on_ioa_socket(server->e, s, IOA_EV_READ, tcp_client_input_handler_rfc6062data, tc, 1)<0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot set TCP client data input callback\n", __FUNCTION__);
+						err_code = 500;
+					} else {
+						IOA_EVENT_DEL(tc->conn_bind_timeout);
+					}
 				}
 			}
 		}
@@ -2879,10 +2883,15 @@ static int check_stun_auth(turn_turnserver *server,
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
 
-	if(ss->username[0] && strcmp((char*)ss->username,(char*)usname)) {
-		*err_code = 401;
-		*reason = (const u08bits*)"Wrong username";
-		return -1;
+	if(ss->username[0]) {
+		if(strcmp((char*)ss->username,(char*)usname)) {
+			*err_code = 401;
+			*reason = (const u08bits*)"Wrong username";
+			return -1;
+		}
+	} else {
+		STRCPY(ss->username,usname);
+		set_username_hash(ss->client_session.s,ss->username);
 	}
 
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
@@ -3715,6 +3724,13 @@ static int create_relay_connection(turn_turnserver* server,
 				return -1;
 			}
 
+			if(!check_username_hash(newelem->s,ss->username)) {
+				IOA_CLOSE_SOCKET(newelem->s);
+				*err_code = 508;
+				*reason = (const u08bits *)"Cannot find a valid reserved socket for this username";
+				return -1;
+			}
+
 			addr_debug_print(server->verbose, get_local_addr_from_ioa_socket(newelem->s), "Local relay addr (RTCP)");
 
 		} else {
@@ -3742,8 +3758,11 @@ static int create_relay_connection(turn_turnserver* server,
 			return -1;
 		}
 
+		set_username_hash(newelem->s,ss->username);
+
 		if (rtcp_s) {
 			if (out_reservation_token && *out_reservation_token) {
+				set_username_hash(rtcp_s,ss->username);
 				/* OK */
 			} else {
 				IOA_CLOSE_SOCKET(newelem->s);

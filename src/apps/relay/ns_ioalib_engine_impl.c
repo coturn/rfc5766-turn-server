@@ -1685,6 +1685,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		ret->magic = SOCKET_MAGIC;
 
+		ret->username_hash = s->username_hash;
+
 		ret->ssl = s->ssl;
 		ret->fd = s->fd;
 
@@ -3249,6 +3251,32 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s)
 		s->tobeclosed = 1;
+}
+
+static u32bits string_hash(const u08bits *str) {
+
+  u32bits hash = 0;
+  int c = 0;
+
+  while ((c = *str++))
+    hash = c + (hash << 6) + (hash << 16) - hash;
+
+  return hash;
+}
+
+int check_username_hash(ioa_socket_handle s, u08bits *username)
+{
+	if(s && username && username[0]) {
+		return (s->username_hash == string_hash(username));
+	}
+	return 1;
+}
+
+void set_username_hash(ioa_socket_handle s, u08bits *username)
+{
+	if(s && username && username[0]) {
+		s->username_hash = string_hash(username);
+	}
 }
 
 /*
