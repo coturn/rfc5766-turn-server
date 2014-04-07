@@ -1614,8 +1614,16 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 {
 	FUNCSTART;
 
-	if(!ss || !(a->relay_session.s)) {
+	if(!ss) {
 		*err_code = 500;
+		*reason = (const u08bits *)"Server error: empty session";
+		FUNCEND;
+		return -1;
+	}
+
+	if(!(a->relay_session.s)) {
+		*err_code = 500;
+		*reason = (const u08bits *)"Server error: no relay connection created";
 		FUNCEND;
 		return -1;
 	}
@@ -1632,6 +1640,7 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	if(!tc) {
 		if(!(*err_code)) {
 			*err_code = 500;
+			*reason = (const u08bits *)"Server error: TCP connection object creation failed";
 		}
 		FUNCEND;
 		return -1;
@@ -1650,6 +1659,7 @@ static int tcp_start_connection_to_peer(turn_turnserver *server, ts_ur_super_ses
 	if(!tcs) {
 		delete_tcp_connection(tc);
 		*err_code = 500;
+		*reason = (const u08bits *)"Server error: TCP relay socket for connection cannot be created";
 		FUNCEND;
 		return -1;
 	}
@@ -3005,7 +3015,7 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 	}
 }
 
-#define log_method(ss, username, method, err_code) \
+#define log_method(ss, username, method, err_code, reason) \
 {\
   if(!(err_code)) {\
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
@@ -3013,8 +3023,8 @@ static void set_alternate_server(turn_server_addrs_list_t *asl, const ioa_addr *
 		  (unsigned long long)(ss->id),(const char*)(username));\
   } else {\
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: user <%s>: incoming packet " method " processed, error %d\n",\
-		  (unsigned long long)(ss->id), (username), (err_code));\
+		  "session %018llu: user <%s>: incoming packet " method " processed, error %d: %s\n",\
+		  (unsigned long long)(ss->id), (username), (err_code), (reason));\
   }\
 }
 
@@ -3105,7 +3115,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "ALLOCATE", err_code);
+				  log_method(ss, ss->username, "ALLOCATE", err_code, reason);
 				}
 
 				break;
@@ -3117,7 +3127,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							unknown_attrs, &ua_num, in_buffer);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "CONNECT", err_code);
+				  log_method(ss, ss->username, "CONNECT", err_code, reason);
 				}
 
 				if(!err_code)
@@ -3131,7 +3141,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh, message_integrity);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "CONNECTION_BIND", err_code);
+				  log_method(ss, ss->username, "CONNECTION_BIND", err_code, reason);
 				}
 
 				break;
@@ -3143,7 +3153,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								&no_response, can_resume);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "REFRESH", err_code);
+				  log_method(ss, ss->username, "REFRESH", err_code, reason);
 				}
 				break;
 
@@ -3153,7 +3163,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "CHANNEL_BIND", err_code);
+				  log_method(ss, ss->username, "CHANNEL_BIND", err_code, reason);
 				}
 				break;
 
@@ -3163,7 +3173,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 								unknown_attrs, &ua_num, in_buffer, nbh);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "CREATE_PERMISSION", err_code);
+				  log_method(ss, ss->username, "CREATE_PERMISSION", err_code, reason);
 				}
 				break;
 
@@ -3182,7 +3192,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 							0, 0);
 
 				if(server->verbose) {
-				  log_method(ss, ss->username, "BINDING", err_code);
+				  log_method(ss, ss->username, "BINDING", err_code, reason);
 				}
 
 				if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
@@ -3234,7 +3244,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				handle_turn_send(server, ss, &err_code, &reason, unknown_attrs, &ua_num, in_buffer);
 
 				if(eve(server->verbose)) {
-				  log_method(ss, ss->username, "SEND", err_code);
+				  log_method(ss, ss->username, "SEND", err_code, reason);
 				}
 
 				break;
@@ -3244,7 +3254,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 				err_code = 403;
 
 				if(eve(server->verbose)) {
-				  log_method(ss, ss->username, "DATA", err_code);
+				  log_method(ss, ss->username, "DATA", err_code, reason);
 				}
 
 				break;
@@ -3312,7 +3322,7 @@ static int handle_turn_command(turn_turnserver *server, ts_ur_super_session *ss,
 
 		if(err_code) {
 			if(server->verbose) {
-			  log_method(ss, ss->username, "message", err_code);
+			  log_method(ss, ss->username, "message", err_code, reason);
 			}
 		}
 
@@ -3368,7 +3378,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 						cookie,1);
 
 			if(server->verbose) {
-			  log_method(ss, ss->username, "OLD BINDING", err_code);
+			  log_method(ss, ss->username, "OLD BINDING", err_code, reason);
 			}
 
 			if(*resp_constructed && !err_code && (origin_changed || dest_changed)) {
@@ -3442,7 +3452,7 @@ static int handle_old_stun_command(turn_turnserver *server, ts_ur_super_session 
 
 		if(err_code) {
 			if(server->verbose) {
-			  log_method(ss, ss->username, "OLD STUN message", err_code);
+			  log_method(ss, ss->username, "OLD STUN message", err_code, reason);
 			}
 		}
 
@@ -3519,7 +3529,6 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 		}
 
 		IOA_CLOSE_SOCKET(elem->s);
-		IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
 
 		FUNCEND;
 
