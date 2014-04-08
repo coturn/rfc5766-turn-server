@@ -143,7 +143,7 @@ typedef u32bits turn_time_t;
 #endif
 
 #define STRCPY(dst,src) \
-	do { if((char*)(dst) != (char*)(src)) { \
+	do { if((const char*)(dst) != (const char*)(src)) { \
 		if(sizeof(dst)==sizeof(char*))\
 			strcpy(((char*)(dst)),(const char*)(src));\
 		else {\
