@@ -350,7 +350,7 @@ int main(int argc, char **argv)
 		}
 		{
 			char new_uname[1025];
-			const unsigned long exp_time = 600; /* one day */
+			const unsigned long exp_time = 3600 * 24; /* one day */
 			if(g_uname[0]) {
 			  snprintf(new_uname,sizeof(new_uname),"%lu%c%s",(unsigned long)time(NULL) + exp_time,rest_api_separator, (char*)g_uname);
 			} else {
