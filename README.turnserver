@@ -154,7 +154,7 @@ Flags:
 			is to support "TURN Server REST API" as described in
 			the TURN REST API section below.
 			This option uses timestamp as part of combined username:
-			usercombo -> "user_id:timestamp",
+			usercombo -> "timestamp:username",
 			turn user -> usercombo,
 			turn password -> base64(hmac(secret key, usercombo)).
 			This allows TURN credentials to be accounted for a specific user id.
@@ -356,7 +356,7 @@ Options with required values:
 -r, --realm		Realm to be used for all users. Must be used with long-term credentials mechanism 
 			or with TURN REST API.
 
--C, --rest-api-separator	This is the username/timestamp separator symbol (character) in TURN REST API.
+-C, --rest-api-separator	This is the timestamp/username separator symbol (character) in TURN REST API.
 				The default value is :.
 
 -q, --user-quota	Per-user allocations quota: how many concurrent 
@@ -574,7 +574,7 @@ too.
 
 The temporary user is generated as:
 
-temporary-username="username" + ":" + "timestamp"
+temporary-username="timestamp" + ":" + "username"
 
 where username is the persistent user name, and the timestamp format is just 
 seconds sinse 1970 - the same value as time(NULL) function returns.

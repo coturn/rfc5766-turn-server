@@ -139,7 +139,7 @@ static char Usage[] =
   "	-u	STUN/TURN user name.\n"
   "	-w	STUN/TURN user password.\n"
   "	-W	TURN REST API authentication secret. Is not compatible with -A option.\n"
-  "	-C	TURN REST API username/timestamp separator symbol (character). The default value is ':'.\n";
+  "	-C	TURN REST API timestamp/username separator symbol (character). The default value is ':'.\n";
 
 //////////////////////////////////////////////////
 
