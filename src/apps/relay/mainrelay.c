@@ -484,6 +484,8 @@ static char Usage[] = "Usage: turnserver [options]\n"
 "						a log file. With this option everything will be going to the log file only\n"
 "						(unless the log file itself is stdout).\n"
 " --syslog					Output all log information into the system log (syslog), do not use the file output.\n"
+" --simple-log			This flags means that no log file rollover will be used, and the log file\n"
+"						name will be constructed as-is, without date appendage.\n"
 " --stale-nonce					Use extra security with nonce value having limited lifetime (600 secs).\n"
 " -S, --stun-only				Option to set standalone STUN operation only, all TURN requests will be ignored.\n"
 "     --no-stun					Option to suppress STUN functionality, only TURN requests will be processed.\n"
@@ -597,6 +599,7 @@ enum EXTRA_OPTS {
 	AUTH_SECRET_TS_EXP, /* deprecated */
 	NO_STDOUT_LOG_OPT,
 	SYSLOG_OPT,
+	SIMPLE_LOG_OPT,
 	AUX_SERVER_OPT,
 	UDP_SELF_BALANCE_OPT,
 	ALTERNATE_SERVER_OPT,
@@ -688,6 +691,7 @@ static struct option long_options[] = {
 				{ "log-file", required_argument, NULL, 'l' },
 				{ "no-stdout-log", optional_argument, NULL, NO_STDOUT_LOG_OPT },
 				{ "syslog", optional_argument, NULL, SYSLOG_OPT },
+				{ "simple-log", optional_argument, NULL, SIMPLE_LOG_OPT },
 				{ "aux-server", required_argument, NULL, AUX_SERVER_OPT },
 				{ "udp-self-balance", optional_argument, NULL, UDP_SELF_BALANCE_OPT },
 				{ "alternate-server", required_argument, NULL, ALTERNATE_SERVER_OPT },
@@ -1137,6 +1141,7 @@ static void set_option(int c, char *value)
 	case 'l':
 	case NO_STDOUT_LOG_OPT:
 	case SYSLOG_OPT:
+	case SIMPLE_LOG_OPT:
 	case 'c':
 	case 'n':
 	case 'h':
@@ -1259,6 +1264,8 @@ static void read_config_file(int argc, char **argv, int pass)
 						set_no_stdout_log(get_bool_value(value));
 					} else if((pass==0) && (c==SYSLOG_OPT)) {
 						set_log_to_syslog(get_bool_value(value));
+					} else if((pass==0) && (c==SIMPLE_LOG_OPT)) {
+						set_simple_log(get_bool_value(value));
 					} else if((pass == 0) && (c != 'u')) {
 					  set_option(c, value);
 					} else if((pass > 0) && (c == 'u')) {
@@ -1563,6 +1570,9 @@ int main(int argc, char **argv)
 				break;
 			case SYSLOG_OPT:
 				set_log_to_syslog(get_bool_value(optarg));
+				break;
+			case SIMPLE_LOG_OPT:
+				set_simple_log(get_bool_value(optarg));
 				break;
 			default:
 				;

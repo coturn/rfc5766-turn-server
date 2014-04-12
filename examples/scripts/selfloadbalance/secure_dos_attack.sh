@@ -15,6 +15,8 @@ export SLEEP_TIME=9
 
 while [ 0 ] ; do 
 
+rm -rf /var/log/turnserver/*
+
 ##########################
 
 PATH=examples/bin/:../bin/:./bin/:${PATH} turnutils_uclient -G  -n 30 -m 10 -l 170 -g -u ninefingers -w youhavetoberealistic -y $@ ::1 &

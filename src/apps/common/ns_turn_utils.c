@@ -228,6 +228,7 @@ void addr_debug_print(int verbose, const ioa_addr *addr, const s08bits* s)
 
 static FILE* _rtpfile = NULL;
 static int to_syslog = 0;
+static int simple_log = 0;
 static char log_fn[FILE_STR_LEN]="\0";
 static char log_fn_base[FILE_STR_LEN]="\0";
 
@@ -281,6 +282,11 @@ void reset_rtpprintf(void)
 
 static void set_log_file_name(char *base, char *f)
 {
+	if(simple_log) {
+		STRCPY(f,base);
+		return;
+	}
+
 	char logdate[125];
 	char *tail=strdup(".log");
 
@@ -343,6 +349,8 @@ static void set_rtpfile(void)
 			} else {
 				set_log_file_name(log_fn_base,log_fn);
 				_rtpfile = fopen(log_fn, "w");
+				if(_rtpfile)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
 			}
 			if (!_rtpfile) {
 				fprintf(stderr,"ERROR: Cannot open log file for writing: %s\n",log_fn);
@@ -353,33 +361,49 @@ static void set_rtpfile(void)
 	}
 
 	if(!_rtpfile) {
+
 		char logbase[FILE_STR_LEN];
 		char logtail[FILE_STR_LEN];
 		char logf[FILE_STR_LEN];
 
-		snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
+		if(simple_log)
+			snprintf(logtail, FILE_STR_LEN, "turn.log");
+		else
+			snprintf(logtail, FILE_STR_LEN, "turn_%d_", (int)getpid());
+
 		snprintf(logbase, FILE_STR_LEN, "/var/log/turnserver/%s", logtail);
 
 		set_log_file_name(logbase, logf);
+
 		_rtpfile = fopen(logf, "w");
-		if (!_rtpfile) {
+		if(_rtpfile)
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+		else {
 			snprintf(logbase, FILE_STR_LEN, "/var/log/%s", logtail);
 
 			set_log_file_name(logbase, logf);
 			_rtpfile = fopen(logf, "w");
-			if (!_rtpfile) {
+			if(_rtpfile)
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+			else {
 				snprintf(logbase, FILE_STR_LEN, "/var/tmp/%s", logtail);
 				set_log_file_name(logbase, logf);
 				_rtpfile = fopen(logf, "w");
-				if (!_rtpfile) {
+				if(_rtpfile)
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+				else {
 					snprintf(logbase, FILE_STR_LEN, "/tmp/%s", logtail);
 					set_log_file_name(logbase, logf);
 					_rtpfile = fopen(logf, "w");
-					if (!_rtpfile) {
+					if(_rtpfile)
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+					else {
 						snprintf(logbase, FILE_STR_LEN, "%s", logtail);
 						set_log_file_name(logbase, logf);
 						_rtpfile = fopen(logf, "w");
-						if (!_rtpfile) {
+						if(_rtpfile)
+							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", logf);
+						else {
 							_rtpfile = stdout;
 							return;
 						}
@@ -398,12 +422,32 @@ void set_log_to_syslog(int val)
 	to_syslog = val;
 }
 
+void set_simple_log(int val)
+{
+	simple_log = val;
+}
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
 void rollover_logfile(void)
 {
-	if(to_syslog)
+	if(to_syslog || !(log_fn[0]))
+		return;
+
+	{
+		FILE *f = fopen(log_fn,"r");
+		if(!f) {
+			fprintf(stderr, "log file is damaged\n");
+			reset_rtpprintf();
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file reopened: %s\n", log_fn);
+			return;
+		} else {
+			fclose(f);
+		}
+	}
+
+	if(simple_log)
 		return;
 
 	log_lock();
@@ -415,10 +459,11 @@ void rollover_logfile(void)
 			fclose(_rtpfile);
 			log_fn[0]=0;
 			_rtpfile = fopen(logf, "w");
-			if(!_rtpfile) {
-				_rtpfile = stdout;
-			} else {
+			if(_rtpfile) {
 				STRCPY(log_fn,logf);
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "log file opened: %s\n", log_fn);
+			} else {
+				_rtpfile = stdout;
 			}
 		}
 	}
@@ -459,8 +504,11 @@ int vrtpprintf(TURN_LOG_LEVEL level, const char *format, va_list args)
 	} else {
 		log_lock();
 		set_rtpfile();
-		fprintf(_rtpfile,"%s",s);
-		fflush(_rtpfile);
+		if(fprintf(_rtpfile,"%s",s)<0) {
+			reset_rtpprintf();
+		} else if(fflush(_rtpfile)<0) {
+			reset_rtpprintf();
+		}
 		log_unlock();
 	}
 

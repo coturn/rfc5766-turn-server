@@ -201,6 +201,9 @@ Flags:
 			the log file only (unless the log file itself is stdout).
 			
 --syslog		With this flag, all log will be redirected to the system log (syslog).
+
+--simple-log	This flags means that no log file rollover will be used, and the log file
+				name will be constructed as-is, without date appendage.
 				
 --secure-stun		Require authentication of the STUN Binding request.
 			By default, the clients are allowed anonymous access to the STUN Binding functionality.
