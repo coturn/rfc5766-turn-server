@@ -1,6 +1,7 @@
 04/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.5 'Marshal West':
 	- Mobile allocation quota fixed (issue 121);
+	- --simple-log option added (Issue 122);
 	- documentation fixes (REST API, Redis).
 
 04/06/2014 Oleg Moskalenko <mom040267@gmail.com>
