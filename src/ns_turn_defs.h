@@ -147,8 +147,9 @@ typedef u32bits turn_time_t;
 		if(sizeof(dst)==sizeof(char*))\
 			strcpy(((char*)(dst)),(const char*)(src));\
 		else {\
-			strncpy((char*)(dst),(const char*)(src),sizeof((dst)));\
-			((char*)(dst))[sizeof((dst))-1] = 0; \
+			size_t szdst = sizeof((dst));\
+			strncpy((char*)(dst),(const char*)(src),szdst);\
+			((char*)(dst))[szdst-1] = 0;\
 		}\
 	} } while(0)
 

@@ -3595,8 +3595,8 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 		}
 
 		{
-			if(chn)
-				TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, chunks=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)chn, (unsigned long)(r->sm_chunk+1), (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated[chn],(unsigned long)size);
+			//if(chn)
+			//	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"(%s:%s:%d): allocated super memory: region id = %u, chunk=%lu, chunks=%lu, total=%lu, allocated=%lu, want=%lu\n",file,func,line,(unsigned int)r->id, (unsigned long)chn, (unsigned long)(r->sm_chunk+1), (unsigned long)r->sm_total_sz, (unsigned long)r->sm_allocated[chn],(unsigned long)size);
 
 			char* ptr = region + *rsz;
 
