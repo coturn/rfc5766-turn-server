@@ -3547,7 +3547,7 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 			char sraddr[129]="\0";
 			char sladdr[129]="\0";
 			addr_to_string(get_remote_addr_from_ioa_socket(elem->s),(u08bits*)sraddr);
-			addr_to_string(get_remote_addr_from_ioa_socket(elem->s),(u08bits*)sladdr);
+			addr_to_string(get_local_addr_from_ioa_socket(elem->s),(u08bits*)sladdr);
 
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (1st stage), user <%s>, local %s, remote %s, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,sladdr,sraddr,reason);
 		}

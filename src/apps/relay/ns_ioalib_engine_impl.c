@@ -1098,8 +1098,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 		ioa_addr rtcp_local_addr;
 		addr_cpy(&rtcp_local_addr, &relay_addr);
 
-		addr_debug_print(e->verbose, &relay_addr, "Server relay addr");
-
 		int i = 0;
 		int port = 0;
 		ioa_addr local_addr;
