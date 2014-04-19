@@ -549,7 +549,7 @@ static char AdminUsage[] = "Usage: turnadmin [command] [options]\n"
 	"	-D, --delete-st			delete a short-term mechanism user\n"
 	"	-l, --list			list all long-term mechanism users\n"
 	"	-L, --list-st			list all short-term mechanism users\n"
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
 	"	-s, --set-secret=<value>	Add shared secret for TURN RESP API\n"
 	"	-S, --show-secret		Show stored shared secrets for TURN REST API\n"
 	"	-X, --delete-secret=<value>	Delete a shared secret\n"
