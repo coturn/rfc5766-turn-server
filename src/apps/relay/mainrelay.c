@@ -735,7 +735,7 @@ static struct option admin_long_options[] = {
 				{ "delete", no_argument, NULL, 'd' },
 				{ "list", no_argument, NULL, 'l' },
 				{ "list-st", no_argument, NULL, 'L' },
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
 				{ "set-secret", required_argument, NULL, 's' },
 				{ "show-secret", no_argument, NULL, 'S' },
 				{ "delete-secret", required_argument, NULL, 'X' },
@@ -1320,7 +1320,7 @@ static int adminmain(int argc, char **argv)
 			ct = TA_LIST_USERS;
 			is_st = 1;
 			break;
-#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL)
+#if !defined(TURN_NO_PQ) || !defined(TURN_NO_MYSQL) || !defined(TURN_NO_HIREDIS)
 		case 's':
 			ct = TA_SET_SECRET;
 			STRCPY(secret,optarg);
