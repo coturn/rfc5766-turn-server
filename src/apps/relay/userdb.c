@@ -1425,7 +1425,7 @@ static int list_users(int is_st)
 			redisReply *reply = NULL;
 
 			if(!is_st) {
-				redisReply *reply = (redisReply*)redisCommand(rc, "keys turn/user/*/key");
+				reply = (redisReply*)redisCommand(rc, "keys turn/user/*/key");
 				if(reply) {
 
 					if (reply->type == REDIS_REPLY_ERROR)
