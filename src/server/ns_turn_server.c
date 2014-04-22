@@ -3588,12 +3588,18 @@ int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss,
 	if (server->disconnect)
 		server->disconnect(ss);
 
+	if (server->verbose) {
+
+		char sraddr[129]="\0";
+		char sladdr[129]="\0";
+		addr_to_string(get_remote_addr_from_ioa_socket(elem->s),(u08bits*)sraddr);
+		addr_to_string(get_local_addr_from_ioa_socket(elem->s),(u08bits*)sladdr);
+
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (2nd stage), user <%s>, local %s, remote %s, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,sladdr,sraddr,reason);
+	}
+
 	IOA_CLOSE_SOCKET(elem->s);
 	IOA_CLOSE_SOCKET(ss->alloc.relay_session.s);
-
-	if (server->verbose) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "session %018llu: closed (2nd stage), user <%s>, reason: %s\n",(unsigned long long)(ss->id),(char*)ss->username,reason);
-	}
 
 	turn_server_remove_all_from_ur_map_ss(ss);
 
