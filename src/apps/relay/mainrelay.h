@@ -83,9 +83,7 @@
 
 #include "ns_ioalib_impl.h"
 
-#if !defined(TURN_NO_HIREDIS)
 #include "hiredis_libevent2.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -151,9 +149,7 @@ struct listener_server {
 	dtls_listener_relay_server_type ***udp_services;
 	dtls_listener_relay_server_type ***dtls_services;
 	dtls_listener_relay_server_type ***aux_udp_services;
-#if !defined(TURN_NO_HIREDIS)
 	redis_context_handle rch;
-#endif
 };
 
 enum _NET_ENG_VERSION {
@@ -247,10 +243,8 @@ typedef struct _turn_params_ {
 
   char listener_ifname[1025];
 
-#if !defined(TURN_NO_HIREDIS)
   char redis_statsdb[1025];
   int use_redis_statsdb;
-#endif
 
   struct listener_server listener;
 

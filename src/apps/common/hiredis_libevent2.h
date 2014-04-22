@@ -32,8 +32,6 @@
 
 #define __HIREDIS_LIBEVENT_H__
 
-#if !defined(TURN_NO_HIREDIS)
-
 #include <event2/event.h>
 
 #ifdef __cplusplus
@@ -48,6 +46,8 @@ typedef void* redis_context_handle;
 
 //////////////////////////////////////
 
+#if !defined(TURN_NO_HIREDIS)
+
 redis_context_handle redisLibeventAttach(struct event_base *base, char *ip, int port, char *pwd, int db);
 
 void set_default_async_context(redis_context_handle rch);
@@ -56,12 +56,12 @@ void send_message_to_redis(redis_context_handle rch, const char *command, const 
 
 void delete_redis_keys(const char *key_pattern);
 
+#endif
+/* TURN_NO_HIREDIS */
+
 #ifdef __cplusplus
 }
 #endif
-
-#endif
-/* TURN_NO_HIREDIS */
 
 #endif
 /*__HIREDIS_LIBEVENT_H__*/
