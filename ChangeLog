@@ -3,7 +3,7 @@ Version 3.2.3.6 'Marshal West':
 	- Addresses logging fixed.
 	- Redis admin options fixed.
 	- Redis compilation cleaned.
-	- "Socket to be closed" redundant log messages fixed (Issue 123).
+	- Performance and logging socket problem fixed (Issue 123).
 
 04/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.5 'Marshal West':
