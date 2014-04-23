@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.2.3.6
+Version:	3.2.3.7
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -287,6 +287,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sun Apr 23 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 3.2.3.7
 * Sun Apr 13 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.3.6
 * Mon Apr 07 2014 Oleg Moskalenko <mom040267@gmail.com>
