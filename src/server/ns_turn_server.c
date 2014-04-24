@@ -2831,20 +2831,17 @@ static int check_stun_auth(turn_turnserver *server,
 			if(server->shatype != SHATYPE_SHA1) {
 				*err_code = SHA_TOO_WEAK;
 				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-				return -1;
 			}
 			break;
 		case SHA256SIZEBYTES:
 			if(server->shatype != SHATYPE_SHA256) {
 				*err_code = 401;
 				return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-				return -1;
 			}
 			break;
 		default:
 			*err_code = 401;
 			return create_challenge_response(server,ss,tid,resp_constructed,err_code,reason,nbh,method);
-			return -1;
 		};
 	}
 
