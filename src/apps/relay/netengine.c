@@ -776,9 +776,9 @@ static void setup_listener(void)
 
 	{
 		struct bufferevent *pair[2];
-		int opts = BEV_OPT_DEFER_CALLBACKS;
+		int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-		opts |= BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS;
+		opts |= BEV_OPT_THREADSAFE;
 
 		bufferevent_pair_new(turn_params.listener.event_base, opts, pair);
 		turn_params.listener.in_buf = pair[0];
@@ -1309,7 +1309,7 @@ void run_listener_server(struct event_base *eb)
 static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int to_set_rfc5780)
 {
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS;
+	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
 	if(e) {
 		rs->event_base = e->event_base;
@@ -1329,7 +1329,7 @@ static void setup_relay_server(struct relay_server *rs, ioa_engine_handle e, int
 		ioa_engine_set_rtcp_map(rs->ioa_eng, turn_params.listener.rtcpmap);
 	}
 
-	opts |= BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS;
+	opts |= BEV_OPT_THREADSAFE;
 
 	bufferevent_pair_new(rs->event_base, opts, pair);
 	rs->in_buf = pair[0];
@@ -1439,9 +1439,9 @@ static void* run_auth_server_thread(void *arg)
 	TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"IO method (auth thread): %s\n",event_base_get_method(turn_params.authserver.event_base));
 
 	struct bufferevent *pair[2];
-	int opts = BEV_OPT_DEFER_CALLBACKS;
+	int opts = BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS;
 
-	opts |= BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS;
+	opts |= BEV_OPT_THREADSAFE;
 
 	bufferevent_pair_new(turn_params.authserver.event_base, opts, pair);
 	turn_params.authserver.in_buf = pair[0];
