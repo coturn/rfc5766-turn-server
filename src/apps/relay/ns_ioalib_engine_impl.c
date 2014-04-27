@@ -1856,7 +1856,7 @@ int get_local_mtu_ioa_socket(ioa_socket_handle s)
 {
 	if(s) {
 		if(s->parent_s)
-			return get_local_mtu_ioa_socket(s->parent_s);
+			s = s->parent_s;
 
 		return get_socket_mtu(s->fd, s->family, (s->e && eve(s->e->verbose)));
 	}
