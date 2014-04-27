@@ -1651,13 +1651,14 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		evutil_socket_t udp_fd = -1;
 
 		if(s->parent_s) {
-
+#if defined(SO_REUSEPORT)
 			udp_fd = socket(s->local_addr.ss.sa_family, SOCK_DGRAM, 0);
 			if (udp_fd < 0) {
 				perror("socket");
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"%s: Cannot allocate new socket\n",__FUNCTION__);
 				return ret;
 			}
+#endif
 		}
 
 		detach_socket_net_data(s);
@@ -1693,10 +1694,18 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s)
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
+		ioa_socket_handle parent_s = s->parent_s;
+		ur_addr_map *sockets_container = s->sockets_container;
+		
 		delete_socket_from_map(s);
 		delete_socket_from_parent(s);
 
-		if(udp_fd>=0) {
+		if(udp_fd<0) {
+
+		  add_socket_to_parent(parent_s, ret);
+		  add_socket_to_map(ret,sockets_container);
+
+		} else {
 
 			ret->fd = udp_fd;
 
