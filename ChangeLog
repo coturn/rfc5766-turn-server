@@ -1,6 +1,7 @@
 04/23/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.7 'Marshal West':
-	- Performance and logging socket fix (improved) (Issue 123).
+	- Performance and socket logging fix (improved) (Issue 123).
+	- Code cleaning.
 	
 04/13/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.6 'Marshal West':
