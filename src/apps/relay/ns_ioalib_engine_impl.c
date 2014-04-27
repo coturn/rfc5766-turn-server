@@ -1810,8 +1810,10 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 	if (s && (s->magic == SOCKET_MAGIC) && !(s->done)) {
 
 		if(s->parent_s) {
-			return get_local_addr_from_ioa_socket(s->parent_s);
-		} else if (s->local_addr_known) {
+			s = s->parent_s;
+		}
+
+		if (s->local_addr_known) {
 			return &(s->local_addr);
 		} else if (s->bound && (addr_get_port(&(s->local_addr)) > 0)) {
 			s->local_addr_known = 1;
