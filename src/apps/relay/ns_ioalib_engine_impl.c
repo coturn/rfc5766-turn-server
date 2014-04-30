@@ -1692,6 +1692,8 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 		ret->connected = s->connected;
 		addr_cpy(&(ret->remote_addr),&(s->remote_addr));
 
+		STRCPY(ret->orig_ctx_type, s->orig_ctx_type);
+
 		ioa_socket_handle parent_s = s->parent_s;
 		ur_addr_map *sockets_container = s->sockets_container;
 		
@@ -3401,8 +3403,15 @@ void turn_report_allocation_set(void *a, turn_time_t lifetime, int refresh)
 				ioa_engine_handle e = turn_server_get_engine(server);
 				if(e && e->verbose) {
 					if(ss->client_session.s->ssl) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", (unsigned long long)ss->id, status, (char*)ss->username, (unsigned long)lifetime, SSL_get_cipher(ss->client_session.s->ssl),
-							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),ss->client_session.s->orig_ctx_type);
+					  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+							"session %018llu: %s, username=<%s>, lifetime=%lu, cipher=%s, method=%s (%s)\n", 
+							(unsigned long long)ss->id, 
+							status, 
+							(char*)ss->username, 
+							(unsigned long)lifetime, 
+							SSL_get_cipher(ss->client_session.s->ssl),
+							turn_get_ssl_method(ss->client_session.s->ssl, ss->client_session.s->orig_ctx_type),
+							ss->client_session.s->orig_ctx_type);
 					} else {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,"session %018llu: %s, username=<%s>, lifetime=%lu\n", (unsigned long long)ss->id, status, (char*)ss->username, (unsigned long)lifetime);
 					}
