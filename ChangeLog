@@ -1,3 +1,9 @@
+05/02/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.3.8 'Marshal West':
+	- Code cleaning (compilation warnings, etc).
+	- TLS/DTLS log messages fixed.
+	- uclient performance improvements.
+
 04/23/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.7 'Marshal West':
 	- Performance and socket logging fix (improved) (Issue 123).
