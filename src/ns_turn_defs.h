@@ -171,6 +171,20 @@ typedef enum _SHATYPE SHATYPE;
 
 #define SHA_TOO_WEAK (426)
 
+//////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
+
+#if !defined(TURN_CHANNEL_HANDLER_KERNEL)
+#define TURN_CHANNEL_HANDLER_KERNEL void*
+#endif
+
+#if !defined(CREATE_TURN_CHANNEL_KERNEL)
+#define CREATE_TURN_CHANNEL_KERNEL(channel_number, address_family_client, address_family_peer, protocol_client, client_addr, local_addr, local_relay_addr, peer_addr) ((TURN_CHANNEL_HANDLER_KERNEL)(1))
+#endif
+
+#if !defined(DELETE_TURN_CHANNEL_KERNEL)
+#define DELETE_TURN_CHANNEL_KERNEL(handler)
+#endif
+
 ////////////////////////////////////////////////////////
 
 #ifdef __cplusplus

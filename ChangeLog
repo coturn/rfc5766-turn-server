@@ -1,8 +1,9 @@
-05/02/2014 Oleg Moskalenko <mom040267@gmail.com>
+05/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.8 'Marshal West':
 	- Code cleaning (compilation warnings, etc).
 	- TLS/DTLS log messages fixed.
 	- uclient performance improvements.
+	- channel function place holders  defined for kernel-level calls.
 
 04/23/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.7 'Marshal West':
