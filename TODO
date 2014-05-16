@@ -27,7 +27,7 @@
 
 ==================================================================
 
-1) Exclusive IP addresses for relay
+1) Kernel module for data channels.
 
 ==================================================================
 
@@ -41,57 +41,9 @@
 	the slave servers, currently it is only just a dumb 
 	round-robin load distributor.
 
-2) For a large enterprise, a user-space stack to be integrated.
-
-	An another socket abstraction to be implemented, 
-	the one that uses the user-space TCP/IP stack with 
-	zero memory copy. This is an ambitious goal that would 
-	increase the system scaleability, significantly. 
-	The stock TCP/IP stack in UNIX and in MS Windows do not 
-	scale gracefully. We are trying to suppress those issues 
-	in the TURN Server, by using an advanced synchronous 
-	I/O technique, but still the underlying stock TCP/IP stack 
-	is a limitation.  
-	
-3) Multiple authentication threads.
-
 ==================================================================
 
-###   V. SECURITY   ###
-
-==================================================================
-
-1) RADIUS integration ?
-
-2) Watch new TURN security draft. oAuth integration.
-
-==================================================================
-
-###   VI. STANDARDS SUPPORT   ###
-
-==================================================================
-
-1) Follow the draft ICE endpoint mobility standard and add changes 
-when necessary:
-
-   https://ietf.org/doc/draft-wing-mmusic-ice-mobility/
-
-2) For extra difficult NAT/FWs, consider implementing Websockets.
-
-3) MS TURN, MS STUN extensions.
-
-4) Origin draft.
-	Multi-tenant server.
-
-5) Bandwidth draft.
-
-6) ALPN with TLS and DTLS.
-
-7) Redirect draft.
-
-==================================================================
-
-###   VII. MISC FEATURES   ###
+###   V. MISC FEATURES   ###
 
 ==================================================================
 
@@ -118,14 +70,6 @@ when necessary:
 	(for testing and security purposes). 
 
 4) Ganglia monitoring.
-
-==================================================================
-
-###   VIII. CODING STUFF   ###
-
-==================================================================
-
-Nope
 
 ==================================================================
 
