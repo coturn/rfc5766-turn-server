@@ -78,6 +78,7 @@ typedef enum _MESSAGE_TO_RELAY_TYPE MESSAGE_TO_RELAY_TYPE;
 struct socket_message {
 	ioa_socket_handle s;
 	ioa_net_data nd;
+	int can_resume;
 };
 
 typedef enum {
@@ -93,7 +94,7 @@ typedef void (*get_username_resume_cb)(int success, hmackey_t hmackey, st_passwo
 typedef u08bits *(*get_user_key_cb)(turnserver_id id, u08bits *uname, get_username_resume_cb resume, ioa_net_data *in_buffer, u64bits ctxkey, int *postpone_reply);
 typedef int (*check_new_allocation_quota_cb)(u08bits *username);
 typedef void (*release_allocation_quota_cb)(u08bits *username);
-typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd);
+typedef int (*send_socket_to_relay_cb)(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd, int can_resume);
 typedef int (*send_turn_session_info_cb)(struct turn_session_info *tsi);
 
 struct _turn_turnserver {
@@ -202,7 +203,7 @@ int open_client_connection_session(turn_turnserver* server, struct socket_messag
 int shutdown_client_connection(turn_turnserver *server, ts_ur_super_session *ss, int force, const char* reason);
 void set_disconnect_cb(turn_turnserver* server, int (*disconnect)(ts_ur_super_session*));
 
-int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *nd);
+int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_connection_id tcid, stun_tid *tid, ioa_socket_handle s, int message_integrity, ioa_net_data *nd, int can_resume);
 
 int report_turn_session_info(turn_turnserver *server, ts_ur_super_session *ss, int force_invalid);
 
