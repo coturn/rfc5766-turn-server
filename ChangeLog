@@ -3,6 +3,7 @@ Version 3.2.3.9 'Marshal West':
 	- ephemeral REST API credentials fixed in RFC 6062 TCP communications
 	(Issue 126 and Issue 127).
 	- Auth code cleaning.
+	- Password change in the database of an active session is supported.
 	
 05/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.8 'Marshal West':

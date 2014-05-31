@@ -3033,6 +3033,13 @@ static int check_stun_auth(turn_turnserver *server,
 					}
 		}
 
+		if(can_resume) {
+			(server->userkeycb)(server->id, usname, resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+			if(*postpone_reply) {
+				return 0;
+			}
+		}
+
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,
 				"%s: user %s credentials are incorrect\n",
 				__FUNCTION__, (char*)usname);
