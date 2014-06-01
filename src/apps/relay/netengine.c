@@ -390,7 +390,8 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 }
 
 static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, ioa_socket_handle s, 
-				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd, int can_resume)
+				int message_integrity, MESSAGE_TO_RELAY_TYPE rmt, ioa_net_data *nd,
+				int can_resume)
 {
 	int ret = 0;
 
@@ -453,7 +454,6 @@ static int send_socket_to_relay(turnserver_id id, u64bits cid, stun_tid *tid, io
 			sm.m.sm.nd.recv_ttl = nd->recv_ttl;
 			sm.m.sm.nd.nbh = nd->nbh;
 			sm.m.sm.can_resume = can_resume;
-
 			nd->nbh = NULL;
 		} else {
 			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Empty buffer with mobile socket\n",__FUNCTION__);
