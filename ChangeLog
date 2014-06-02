@@ -1,3 +1,7 @@
+06/02/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.3.91 'Marshal West':
+	-Issue 128 (sigfault in RFC 6062 TCP operations) fixed.
+
 05/30/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.9 'Marshal West':
 	- ephemeral REST API credentials fixed in RFC 6062 TCP communications
