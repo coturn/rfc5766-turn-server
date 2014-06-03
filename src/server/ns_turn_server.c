@@ -48,15 +48,15 @@ int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
 #define log_method(ss, username, method, err_code, reason) \
-{\
+if((ss) && (username) && (reason)) {\
   if(!(err_code)) {\
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 		  "session %018llu: user <%s>: incoming packet " method " processed, success\n",\
-		  (unsigned long long)(ss->id),(const char*)(username));\
+		  (unsigned long long)((ss)->id),(const char*)(username));\
   } else {\
     TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
 		  "session %018llu: user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)(ss->id), (username), (err_code), (reason));\
+		  (unsigned long long)((ss)->id), (username), (err_code), (reason));\
   }\
 }
 
@@ -2007,7 +2007,7 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 
 	if(tcid && tid && s) {
 
-		tc = get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
+		tc = get_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 		ioa_network_buffer_handle nbh = ioa_network_buffer_allocate(server->e);
 		int resp_constructed = 0;
 		if(!tc || (tc->state == TC_STATE_READY) || (tc->client_s)) {
@@ -2044,6 +2044,9 @@ int turnserver_accept_tcp_client_data_connection(turn_turnserver *server, tcp_co
 				}
 			}
 		}
+
+		if(tc)
+			get_and_clean_tcp_connection_by_id(server->tcp_relay_connections, tcid);
 
 		if(!resp_constructed) {
 			if(!err_code) {
