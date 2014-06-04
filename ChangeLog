@@ -1,3 +1,7 @@
+06/03/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.3.92 'Marshal West':
+	-Issues 126, 127 and 128 fixed.
+
 06/02/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.91 'Marshal West':
 	-Issue 128 (sigfault in RFC 6062 TCP operations) fixed.
