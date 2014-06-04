@@ -92,7 +92,7 @@ build/obj/ns_turn_msg.o:	src/client/ns_turn_msg.c ${LUBCLIENTTURN_DEPS}
 ### Clean all:
 
 clean:	
-	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core include Makefile tmp
+	${RMCMD} bin build lib obj *bak *~ */*~ */*/*~ */*/*/*~ *core */*core include Makefile tmp
 
 distclean:	clean
 
