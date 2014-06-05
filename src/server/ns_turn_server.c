@@ -47,23 +47,22 @@
 int TURN_MAX_ALLOCATE_TIMEOUT = 60;
 int TURN_MAX_ALLOCATE_TIMEOUT_STUN_ONLY = 3;
 
-#define log_method(ss0, username0, method, err_code0, reason0) \
-if(ss0) {\
-  ts_ur_super_session* _ss = (ss0); \
-  const char *_username = (const char*)(username0); \
-  if(!_username) _username = "unknown"; \
-  int _err_code = err_code0; \
-  if(!_err_code) {\
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: user <%s>: incoming packet " method " processed, success\n",\
-		  (unsigned long long)((_ss)->id),(const char*)(_username));\
-  } else {\
-	const char *_reason = (const char*)(reason0); \
-	if(!_reason) _reason="Unknown error"; \
-    TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,\
-		  "session %018llu: user <%s>: incoming packet " method " processed, error %d: %s\n",\
-		  (unsigned long long)((_ss)->id), (_username), (_err_code), (_reason));\
-  }\
+static inline void log_method(ts_ur_super_session* ss, const u08bits *username, const char *method, int err_code, const u08bits* reason)
+{
+  if(ss) {
+	  if(!username) username = (const u08bits*)"unknown";
+	  if(!method) method = "unknown";
+	  if(!err_code) {
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				  "session %018llu: user <%s>: incoming packet %s processed, success\n",
+				  (unsigned long long)(ss->id),(const char*)username, method);
+	  } else {
+		  if(!reason) reason=(const u08bits*)"Unknown error";
+		  TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
+				  "session %018llu: user <%s>: incoming packet %s processed, error %d: %s\n",
+				  (unsigned long long)(ss->id), (const char*)username, method, err_code, (const char*)reason);
+	  }
+  }
 }
 
 ///////////////////////////////////////////
