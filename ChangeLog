@@ -1,3 +1,8 @@
+06/13/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.3.93 'Marshal West':
+	- SIGHUP for logfile reset implemented
+	(Gustavo Garcia suggestion).
+
 06/03/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.92 'Marshal West':
 	-Issues 126, 127 and 128 fixed.
