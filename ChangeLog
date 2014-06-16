@@ -3,6 +3,9 @@ Version 3.2.3.93 'Marshal West':
 	- SIGHUP for logfile reset implemented
 	(Gustavo Garcia suggestion).
 	- log reset command in CLI added.
+	- Some error code corrections:
+	    * "Mobility forbidden" error changed, to value 405.
+	    * "Wrong credentials" situation is now treated as error 441.
 
 06/03/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.92 'Marshal West':
