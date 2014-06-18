@@ -2,7 +2,7 @@
 
 # Common settings script.
 
-TURNVERSION=3.2.3.93
+TURNVERSION=3.2.3.94
 BUILDDIR=~/rpmbuild
 ARCH=`uname -p`
 TURNSERVER_SVN_URL=http://rfc5766-turn-server.googlecode.com/svn
