@@ -33,7 +33,7 @@
 
 #define TURN_SERVER_VERSION "3.2.3.94"
 #define TURN_SERVER_VERSION_NAME "Marshal West"
-#define TURN_SOFTWARE "Citrix-"TURN_SERVER_VERSION" '"TURN_SERVER_VERSION_NAME"'"
+#define TURN_SOFTWARE "Citrix-" TURN_SERVER_VERSION " '" TURN_SERVER_VERSION_NAME "'"
 
 #if (defined(__unix__) || defined(unix)) && !defined(USG)
 #include <sys/param.h>
