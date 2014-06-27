@@ -1,6 +1,6 @@
 06/25/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.95 'Marshal West':
-	- c++11 compilation warnings fixed.
+	- working on compilation warnings.
 	
 06/13/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.94 'Marshal West':
