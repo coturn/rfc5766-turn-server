@@ -62,7 +62,6 @@ void clear_allocation(allocation *a)
 				if(tc) {
 					delete_tcp_connection(tc);
 					a->tcs.elems[i] = NULL;
-					break;
 				}
 			}
 			turn_free(a->tcs.elems,sz*sizeof(tcp_connection*));
