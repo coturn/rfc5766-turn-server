@@ -42,8 +42,8 @@ static pthread_barrier_t barrier;
 #define get_real_general_relay_servers_number() (turn_params.general_relay_servers_number > 1 ? turn_params.general_relay_servers_number : 1)
 #define get_real_udp_relay_servers_number() (turn_params.udp_relay_servers_number > 1 ? turn_params.udp_relay_servers_number : 1)
 
-static struct relay_server *general_relay_servers[(turnserver_id)-1];
-static struct relay_server *udp_relay_servers[(turnserver_id)-1];
+static struct relay_server *general_relay_servers[1+((turnserver_id)-1)];
+static struct relay_server *udp_relay_servers[1+((turnserver_id)-1)];
 
 //////////////////////////////////////////////
 
