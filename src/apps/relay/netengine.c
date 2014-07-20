@@ -386,7 +386,6 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 			success = 1;
 			smptr->m.sm.nd.nbh=NULL;
 		}
-
 	}
 
 	label_end:
@@ -394,8 +393,8 @@ static int send_socket_to_general_relay(ioa_engine_handle e, struct message_to_r
 	if(!success) {
 		ioa_network_buffer_delete(e, smptr->m.sm.nd.nbh);
 		smptr->m.sm.nd.nbh=NULL;
-			IOA_CLOSE_SOCKET(smptr->m.sm.s);
-			return -1;
+		IOA_CLOSE_SOCKET(smptr->m.sm.s);
+		return -1;
 	}
 
 	return 0;
