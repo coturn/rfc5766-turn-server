@@ -2,6 +2,7 @@
 Version 3.2.3.96 'Marshal West':
 	- TCP 6062 relay connection fix.
 	- "pu" CLI command fixed.
+	- Some crash conditions fixed.
 	
 07/11/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.95 'Marshal West':
