@@ -1,3 +1,7 @@
+07/29/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.4.1 'Marshal West':
+	- Server-side forceful session cancellation implemented.
+	
 07/18/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.96 'Marshal West':
 	- TCP 6062 relay connection fix.
