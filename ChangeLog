@@ -1,6 +1,7 @@
 07/29/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.1 'Marshal West':
-	- Server-side forceful session cancellation implemented (in telnet console).
+	- Server-side forceful session cancellation implemented
+	(in telnet console).
 	
 07/18/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.3.96 'Marshal West':
