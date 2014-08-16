@@ -92,6 +92,8 @@ compatibility.
 38) Package memory copy eliminated in traffic routing.
 
 39) Congestion avoidance implemented, for all protocols.
+
+40) Secure MySQL connection implemented.
  
 Things to be implemented in future (the development roadmap) 
 are described in the TODO file.
