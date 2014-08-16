@@ -1,5 +1,6 @@
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.2 'Marshal West':
+	- MySQL SSL connection support.
 	- Crash fixed when incorrect DB connection string.
 	- Minor docs fixes.
 	
