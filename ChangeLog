@@ -1,3 +1,7 @@
+08/22/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.4.3 'Marshal West':
+	- SHA-256 memory leak fixed.
+	
 08/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.2 'Marshal West':
 	- MySQL SSL connection support.
