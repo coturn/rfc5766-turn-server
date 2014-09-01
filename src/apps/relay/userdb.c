@@ -1072,15 +1072,17 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 	{
 		redisContext * rc = get_redis_connection();
 		if(rc) {
+			ret = -1;
 			char s[LONG_STRING_SIZE];
 			snprintf(s,sizeof(s),"get turn/user/%s/key", usname);
 			redisReply *rget = (redisReply *)redisCommand(rc, s);
 			if(rget) {
-				if (rget->type == REDIS_REPLY_ERROR)
+				if (rget->type == REDIS_REPLY_ERROR) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Error: %s\n", rget->str);
-				else if (rget->type != REDIS_REPLY_STRING) {
-					if (rget->type != REDIS_REPLY_NIL)
+				} else if (rget->type != REDIS_REPLY_STRING) {
+					if (rget->type != REDIS_REPLY_NIL) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Unexpected type: %d\n", rget->type);
+					}
 				} else {
 					size_t sz = get_hmackey_size(turn_params.shatype);
 					if(strlen(rget->str)<sz*2) {
@@ -1093,7 +1095,8 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 				}
 				turnFreeRedisReply(rget);
 			}
-			if(ret != 0) {
+
+			if(ret == 0) {
 				snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
 				rget = (redisReply *)redisCommand(rc, s);
 				if(rget) {
