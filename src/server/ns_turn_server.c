@@ -1171,9 +1171,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 				if(!(*(server->mobility))) {
 					*err_code = 405;
 					*reason = (const u08bits *)"Mobility forbidden";
-				} if(is_allocation_valid(a)) {
-					*err_code = 400;
-					*reason = (const u08bits *)"Mobility ticket cannot be used for a stable, already established allocation";
 				} else {
 					int smid_len = stun_attr_get_len(sar);
 					if(smid_len>0 && (((size_t)smid_len)<sizeof(smid))) {
@@ -1181,6 +1178,10 @@ static int handle_turn_refresh(turn_turnserver *server,
 						if(smid_val) {
 							ns_bcopy(smid_val, smid, (size_t)smid_len);
 							mid = string_to_mobile_id(smid);
+							if(is_allocation_valid(a) && (mid != ss->old_mobile_id)) {
+								*err_code = 400;
+								*reason = (const u08bits *)"Mobility ticket cannot be used for a stable, already established allocation";
+							}
 						}
 					} else {
 						*err_code = 400;
@@ -1357,6 +1358,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 										//Use new buffer and redefine ss:
 										nbh = ioa_network_buffer_allocate(server->e);
 										ss = orig_ss;
+										ss->old_mobile_id = mid;
 										size_t len = ioa_network_buffer_get_size(nbh);
 
 										turn_report_allocation_set(&(ss->alloc), lifetime, 1);
@@ -1433,6 +1435,14 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 				size_t len = ioa_network_buffer_get_size(nbh);
 				stun_init_success_response_str(STUN_METHOD_REFRESH, ioa_network_buffer_data(nbh), &len, tid);
+
+				if(ss->s_mobile_id[0]) {
+					stun_attr_add_str(ioa_network_buffer_data(nbh), &len,
+								STUN_ATTRIBUTE_MOBILITY_TICKET,
+								(u08bits*)ss->s_mobile_id,strlen(ss->s_mobile_id));
+					ioa_network_buffer_set_size(nbh,len);
+				}
+
 				u32bits lt = nswap32(lifetime);
 
 				stun_attr_add_str(ioa_network_buffer_data(nbh), &len, STUN_ATTRIBUTE_LIFETIME,
