@@ -431,7 +431,6 @@ void set_ssl_ctx(ioa_engine_handle e,
 		SSL_CTX *dtls_ctx)
 {
 	e->tls_ctx_ssl23 = tls_ctx_ssl23;
-
 	e->tls_ctx_v1_0 = tls_ctx_v1_0;
 #if defined(SSL_TXT_TLSV1_1)
 	e->tls_ctx_v1_1 = tls_ctx_v1_1;
