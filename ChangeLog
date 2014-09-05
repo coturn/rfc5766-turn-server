@@ -1,3 +1,7 @@
+09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.4.4 'Marshal West':
+	- TLS renegotiation DoS attack prevention implemented (Issue 136);
+	
 09/01/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.3 'Marshal West':
 	- Redis DB user key database operation fixed.
