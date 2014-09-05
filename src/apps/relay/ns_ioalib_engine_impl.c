@@ -1489,7 +1489,7 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	return ret;
 }
 
-static void ssl_info_callback(const SSL *ssl, int where, int ret) {
+static void ssl_info_callback(SSL *ssl, int where, int ret) {
 
     UNUSED_ARG(ret);
 
@@ -1510,6 +1510,8 @@ static void ssl_info_callback(const SSL *ssl, int where, int ret) {
     }
 }
 
+typedef void (*ssl_info_callback_t)(const SSL *ssl,int type,int val);
+
 static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
 {
 	if(s && (s->ssl != ssl)) {
@@ -1519,7 +1521,7 @@ static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
 		s->ssl = ssl;
 		if(ssl) {
 			SSL_set_app_data(ssl,s);
-			SSL_set_info_callback(ssl, ssl_info_callback);
+			SSL_set_info_callback(ssl, (ssl_info_callback_t)ssl_info_callback);
 		}
 	}
 }
