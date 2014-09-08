@@ -1,6 +1,7 @@
 09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.4 'Marshal West':
 	- TLS renegotiation DoS attack prevention implemented (Issue 136);
+	- FQDN is allowed as a relay-ip or a listener-ip parameter.
 	
 09/01/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.3 'Marshal West':
