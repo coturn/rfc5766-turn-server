@@ -53,7 +53,7 @@ long turn_random(void)
 
 void turn_random32_size(u32bits *ar, size_t sz)
 {
-	if(!RAND_bytes((unsigned char *)ar, sz<<2)<0) {
+	if(!RAND_bytes((unsigned char *)ar, sz<<2)) {
 		size_t i;
 		for(i=0;i<sz;++i) {
 			ar[i] = (u32bits)random();
