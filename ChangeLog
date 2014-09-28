@@ -1,6 +1,7 @@
 09/27/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.5 'Marshal West':
 	- Mobile sessions authentication improved.
+	- Authentication code cleaning.
 	
 09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.4 'Marshal West':
