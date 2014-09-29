@@ -1341,11 +1341,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 									*reason = (const u08bits *)"Cannot refresh relay connection (internal error)";
 								}
 
-							} else if(!to_delete && orig_ss && (inc_quota(orig_ss, orig_ss->username)<0)) {
-
-								*err_code = 486;
-								*reason = (const u08bits *)"Allocation Quota Reached";
-
 							} else {
 
 								//Transfer socket:
@@ -1355,14 +1350,12 @@ static int handle_turn_refresh(turn_turnserver *server,
 								ss->to_be_closed = 1;
 
 								if(!s) {
-									dec_quota(orig_ss);
 									*err_code = 500;
 								} else {
 
 									if(attach_socket_to_session(server, s, orig_ss) < 0) {
 										IOA_CLOSE_SOCKET(s);
 										*err_code = 500;
-										dec_quota(orig_ss);
 									} else {
 
 										delete_session_from_mobile_map(ss);
@@ -1404,7 +1397,6 @@ static int handle_turn_refresh(turn_turnserver *server,
 
 										if ((server->fingerprint) || ss->enforce_fingerprints) {
 											if (stun_attr_add_fingerprint_str(ioa_network_buffer_data(nbh), &len) < 0) {
-												dec_quota(ss);
 												*err_code = 500;
 												ioa_network_buffer_delete(server->e, nbh);
 												return -1;
