@@ -1141,6 +1141,19 @@ static int handle_turn_allocate(turn_turnserver *server,
 	return 0;
 }
 
+static void copy_auth_parameters(ts_ur_super_session *orig_ss, ts_ur_super_session *ss) {
+	if(orig_ss && ss) {
+		dec_quota(ss);
+		ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
+		ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
+		ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
+		ss->hmackey_set = orig_ss->hmackey_set;
+		ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
+		ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+		inc_quota(ss,ss->username);
+	}
+}
+
 static int handle_turn_refresh(turn_turnserver *server,
 			       ts_ur_super_session *ss, stun_tid *tid, int *resp_constructed,
 			       int *err_code, 	const u08bits **reason, u16bits *unknown_attrs, u16bits *ua_num,
@@ -1305,12 +1318,7 @@ static int handle_turn_refresh(turn_turnserver *server,
 						int postpone_reply = 0;
 
 						if(!(ss->hmackey_set)) {
-							ns_bcopy(orig_ss->nonce,ss->nonce,sizeof(ss->nonce));
-							ss->nonce_expiration_time = orig_ss->nonce_expiration_time;
-							ns_bcopy(orig_ss->username,ss->username,sizeof(ss->username));
-							ss->hmackey_set = orig_ss->hmackey_set;
-							ns_bcopy(orig_ss->hmackey,ss->hmackey,sizeof(ss->hmackey));
-							ns_bcopy(orig_ss->pwd,ss->pwd,sizeof(ss->pwd));
+							copy_auth_parameters(orig_ss,ss);
 						}
 
 						if(check_stun_auth(server, ss, tid, resp_constructed, err_code, reason, in_buffer, nbh,
@@ -1358,13 +1366,21 @@ static int handle_turn_refresh(turn_turnserver *server,
 										*err_code = 500;
 									} else {
 
+										if(ss->hmackey_set) {
+											copy_auth_parameters(ss,orig_ss);
+										}
+
 										delete_session_from_mobile_map(ss);
 										delete_session_from_mobile_map(orig_ss);
 										put_session_into_mobile_map(orig_ss);
 
 										//Use new buffer and redefine ss:
 										nbh = ioa_network_buffer_allocate(server->e);
+
+										dec_quota(ss);
 										ss = orig_ss;
+										inc_quota(ss,ss->username);
+
 										ss->old_mobile_id = mid;
 										size_t len = ioa_network_buffer_get_size(nbh);
 
