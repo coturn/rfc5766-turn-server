@@ -1167,6 +1167,11 @@ static int handle_turn_refresh(turn_turnserver *server,
 		*err_code = 437;
 		*reason = (const u08bits *)"Invalid allocation";
 
+	} else if(ioa_socket_tobeclosed(a->relay_session.s)) {
+
+		*err_code = 404;
+		*reason = (const u08bits *)"Invalid allocation";
+
 	} else {
 
 		u32bits lifetime = 0;
