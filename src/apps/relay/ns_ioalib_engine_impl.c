@@ -1879,7 +1879,11 @@ ioa_addr* get_local_addr_from_ioa_socket(ioa_socket_handle s)
 			}
 		}
 	}
-	return NULL;
+
+	{
+	  static ioa_addr lbad_addr;
+	  return &lbad_addr;
+	}
 }
 
 ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
@@ -1890,7 +1894,11 @@ ioa_addr* get_remote_addr_from_ioa_socket(ioa_socket_handle s)
 			return &(s->remote_addr);
 		}
 	}
-	return NULL;
+
+	{
+	  static ioa_addr rbad_addr;
+	  return &rbad_addr;
+	}
 }
 
 int get_local_mtu_ioa_socket(ioa_socket_handle s)

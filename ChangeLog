@@ -2,7 +2,8 @@
 Version 3.2.4.5 'Marshal West':
 	- Mobile sessions authentication improved.
 	- Authentication code cleaning.
-	- Quota allocation fixes.
+	- Quota allocation fixed.
+	- Core dump fixed.
 	
 09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.4 'Marshal West':
