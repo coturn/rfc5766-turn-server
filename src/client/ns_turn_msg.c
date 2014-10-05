@@ -66,14 +66,16 @@ int stun_calculate_hmac(const u08bits *buf, size_t len, const u08bits *key, size
 	ERR_clear_error();
 	UNUSED_ARG(shatype);
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 	  if (!HMAC(EVP_sha256(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
-	} else
+#else
+	  fprintf(stderr,"SHA256 is not supported\n");
+	  return -1;
 #endif
-
+	} else
 	  if (!HMAC(EVP_sha1(), key, keylen, buf, len, hmac, hmac_len)) {
 	    return -1;
 	  }
@@ -100,17 +102,19 @@ int stun_produce_integrity_key_str(u08bits *uname, u08bits *realm, u08bits *upwd
 	strncpy((s08bits*)str+ulen+1+rlen+1,(s08bits*)upwd,sz-ulen-1-rlen-1);
 	str[strl]=0;
 
-#if !defined(OPENSSL_NO_SHA256) && defined(SSL_TXT_SHA256)
 	if(shatype == SHATYPE_SHA256) {
+#if !defined(OPENSSL_NO_SHA256) && defined(SHA256_DIGEST_LENGTH)
 		unsigned int keylen = 0;
 		EVP_MD_CTX ctx;
 		EVP_DigestInit(&ctx,EVP_sha256());
 		EVP_DigestUpdate(&ctx,str,strl);
 		EVP_DigestFinal(&ctx,key,&keylen);
 		EVP_MD_CTX_cleanup(&ctx);
-	} else
+#else
+		fprintf(stderr,"SHA256 is not supported\n");
+		return -1;
 #endif
-	{
+	} else {
 		MD5_CTX ctx;
 		MD5_Init(&ctx);
 		MD5_Update(&ctx,str,strl);
@@ -785,12 +789,14 @@ int stun_set_binding_response_str(u08bits* buf, size_t *len, stun_tid* tid,
 		} else {
 			old_stun_init_success_response_str(STUN_METHOD_BINDING, buf, len, tid, cookie);
 		}
-		if(!old_stun) {
+		if(!old_stun && reflexive_addr) {
 			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_XOR_MAPPED_ADDRESS, reflexive_addr) < 0)
 				return -1;
 		}
-		if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
-			return -1;
+		if(reflexive_addr) {
+			if (stun_attr_add_addr_str(buf, len, STUN_ATTRIBUTE_MAPPED_ADDRESS, reflexive_addr) < 0)
+				return -1;
+		}
 	} else if (!old_stun) {
 		stun_init_error_response_str(STUN_METHOD_BINDING, buf, len, error_code, reason, tid);
 	} else {
@@ -1472,7 +1478,7 @@ int stun_check_message_integrity_by_key_str(turn_credential_type ct, u08bits *bu
 	if(bcmp(old_hmac,new_hmac,shasize))
 		return 0;
 
-	return 1;
+	return +1;
 }
 
 /*
