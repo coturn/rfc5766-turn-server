@@ -3625,10 +3625,13 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	UNUSED_ARG(func);
 	UNUSED_ARG(line);
 
-	if(!r)
-		return malloc(size);
-
 	void *ret = NULL;
+
+	if(!r) {
+		ret = malloc(size);
+		ns_bzero(ret, size);
+		return ret;
+	}
 
 	pthread_mutex_lock(&r->mutex_sm);
 
@@ -3680,8 +3683,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 	pthread_mutex_unlock(&r->mutex_sm);
 
-	if(!ret)
+	if(!ret) {
 		ret = malloc(size);
+		ns_bzero(ret, size);
+	}
 
 	return ret;
 }
