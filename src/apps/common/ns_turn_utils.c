@@ -536,7 +536,7 @@ void rtpprintf(const char *format, ...)
 	va_end (args);
 }
 
-//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
 #if defined(TURN_MEMORY_DEBUG)
@@ -545,15 +545,13 @@ void rtpprintf(const char *format, ...)
 #include <set>
 #include <string>
 
-using namespace std;
-
 static volatile int tmm_init = 0;
 static pthread_mutex_t tm;
 
 typedef void* ptrtype;
-typedef set<ptrtype> ptrs_t;
-typedef map<string,ptrs_t> str_to_ptrs_t;
-typedef map<ptrtype,string> ptr_to_str_t;
+typedef std::set<ptrtype> ptrs_t;
+typedef std::map<std::string,ptrs_t> str_to_ptrs_t;
+typedef std::map<ptrtype,std::string> ptr_to_str_t;
 
 static str_to_ptrs_t str_to_ptrs;
 static ptr_to_str_t ptr_to_str;
@@ -573,7 +571,7 @@ static void add_tm_ptr(void *ptr, const char *id) {
   if(!ptr)
     return;
 
-  string sid(id);
+  std::string sid(id);
 
   str_to_ptrs_t::iterator iter;
 
@@ -582,7 +580,7 @@ static void add_tm_ptr(void *ptr, const char *id) {
   iter = str_to_ptrs.find(sid);
 
   if(iter == str_to_ptrs.end()) {
-    set<ptrtype> sp;
+    std::set<ptrtype> sp;
     sp.insert(ptr);
     str_to_ptrs[sid]=sp;
   } else {
@@ -611,7 +609,7 @@ static void del_tm_ptr(void *ptr, const char *id) {
 
   } else {
 
-    string sid = pts_iter->second;
+    std::string sid = pts_iter->second;
     ptr_to_str.erase(pts_iter);
 
     str_to_ptrs_t::iterator iter = str_to_ptrs.find(sid);
@@ -646,7 +644,7 @@ void tm_print_func(void) {
   }
   printf("=============================================\n");
   pthread_mutex_unlock(&tm);
-}
+} 
 
 extern "C" void *turn_malloc_func(size_t sz, const char* file, int line);
 void *turn_malloc_func(size_t sz, const char* file, int line) {
@@ -654,7 +652,7 @@ void *turn_malloc_func(size_t sz, const char* file, int line) {
   TM_START();
 
   void *ptr = malloc(sz);
-
+  
   add_tm_ptr(ptr,id);
 
   return ptr;
@@ -701,7 +699,7 @@ void turn_free_simple(void *ptr) {
 
 extern "C" void *turn_calloc_func(size_t number, size_t size, const char* file, int line);
 void *turn_calloc_func(size_t number, size_t size, const char* file, int line) {
-
+  
   TM_START();
 
   void *ptr = calloc(number,size);
