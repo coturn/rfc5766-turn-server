@@ -188,6 +188,8 @@ static void log_socket_event(ioa_socket_handle s, const char *msg, int error) {
 		if(error)
 			ll = TURN_LOG_LEVEL_ERROR;
 
+		UNUSED_ARG(ll);
+
 		{
 			char sraddr[129]="\0";
 			char sladdr[129]="\0";
@@ -363,7 +365,7 @@ ioa_engine_handle create_ioa_engine(super_memory_t *sm,
 	}
 
 	if (!relays_number || !relay_addrs || !tp) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Cannot create TURN engine\n", __FUNCTION__);
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: Cannot create TURN engine\n", __FUNCTION__);
 		return NULL;
 	} else {
 		ioa_engine_handle e = (ioa_engine_handle)allocate_super_memory_region(sm, sizeof(ioa_engine));
@@ -567,7 +569,7 @@ ioa_timer_handle set_ioa_timer(ioa_engine_handle e, int secs, int ms, ioa_timer_
 		te->e = e;
 		te->ev = ev;
 		te->cb = cb;
-		te->txt = strdup(txt);
+		te->txt = turn_strdup(txt);
 
 		if(!ms) {
 			tv.tv_usec = 0;
@@ -3590,11 +3592,11 @@ static void init_super_memory_region(super_memory_t *r)
 	if(r) {
 		ns_bzero(r,sizeof(super_memory_t));
 
-		r->super_memory = (char**)malloc(sizeof(char*));
-		r->super_memory[0] = (char*)malloc(TURN_SM_SIZE);
+		r->super_memory = (char**)turn_malloc(sizeof(char*));
+		r->super_memory[0] = (char*)turn_malloc(TURN_SM_SIZE);
 		ns_bzero(r->super_memory[0],TURN_SM_SIZE);
 
-		r->sm_allocated = (size_t*)malloc(sizeof(size_t*));
+		r->sm_allocated = (size_t*)turn_malloc(sizeof(size_t*));
 		r->sm_allocated[0] = 0;
 
 		r->sm_total_sz = TURN_SM_SIZE;
@@ -3614,7 +3616,7 @@ void init_super_memory(void)
 
 super_memory_t* new_super_memory_region(void)
 {
-	super_memory_t* r = (super_memory_t*)malloc(sizeof(super_memory_t));
+	super_memory_t* r = (super_memory_t*)turn_malloc(sizeof(super_memory_t));
 	init_super_memory_region(r);
 	return r;
 }
@@ -3628,7 +3630,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	void *ret = NULL;
 
 	if(!r) {
-		ret = malloc(size);
+		ret = turn_malloc(size);
 		ns_bzero(ret, size);
 		return ret;
 	}
@@ -3661,10 +3663,10 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 
 		if(!region) {
 			r->sm_chunk += 1;
-			r->super_memory = (char**)realloc(r->super_memory,(r->sm_chunk+1) * sizeof(char*));
-			r->super_memory[r->sm_chunk] = (char*)malloc(TURN_SM_SIZE);
+			r->super_memory = (char**)turn_realloc(r->super_memory,0, (r->sm_chunk+1) * sizeof(char*));
+			r->super_memory[r->sm_chunk] = (char*)turn_malloc(TURN_SM_SIZE);
 			ns_bzero(r->super_memory[r->sm_chunk],TURN_SM_SIZE);
-			r->sm_allocated = (size_t*)realloc(r->sm_allocated,(r->sm_chunk+1) * sizeof(size_t*));
+			r->sm_allocated = (size_t*)turn_realloc(r->sm_allocated,0,(r->sm_chunk+1) * sizeof(size_t*));
 			r->sm_allocated[r->sm_chunk] = 0;
 			region = r->super_memory[r->sm_chunk];
 			rsz = r->sm_allocated + r->sm_chunk;
@@ -3684,7 +3686,7 @@ void* allocate_super_memory_region_func(super_memory_t *r, size_t size, const ch
 	pthread_mutex_unlock(&r->mutex_sm);
 
 	if(!ret) {
-		ret = malloc(size);
+		ret = turn_malloc(size);
 		ns_bzero(ret, size);
 	}
 

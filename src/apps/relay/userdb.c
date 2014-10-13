@@ -125,8 +125,8 @@ const char* get_secrets_list_elem(secrets_list_t *sl, size_t i)
 void add_to_secrets_list(secrets_list_t *sl, const char* elem)
 {
 	if(sl && elem) {
-		sl->secrets = (char**)realloc(sl->secrets,(sizeof(char*)*(sl->sz+1)));
-		sl->secrets[sl->sz] = strdup(elem);
+		sl->secrets = (char**)turn_realloc(sl->secrets,0,(sizeof(char*)*(sl->sz+1)));
+		sl->secrets[sl->sz] = turn_strdup(elem);
 		sl->sz += 1;
 	}
 }
@@ -261,7 +261,7 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 	Myconninfo *co = (Myconninfo*)turn_malloc(sizeof(Myconninfo));
 	ns_bzero(co,sizeof(Myconninfo));
 	if(userdb) {
-		char *s0=strdup(userdb);
+		char *s0=turn_strdup(userdb);
 		char *s = s0;
 
 		while(s && *s) {
@@ -278,44 +278,44 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 				MyconninfoFree(co);
 				co = NULL;
 				if(errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
 
 			*seq = 0;
 			if(!strcmp(s,"host"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"ip"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"addr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"ipaddr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"hostaddr"))
-				co->host = strdup(seq+1);
+				co->host = turn_strdup(seq+1);
 			else if(!strcmp(s,"dbname"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"db"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"database"))
-				co->dbname = strdup(seq+1);
+				co->dbname = turn_strdup(seq+1);
 			else if(!strcmp(s,"user"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"uname"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"name"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"username"))
-				co->user = strdup(seq+1);
+				co->user = turn_strdup(seq+1);
 			else if(!strcmp(s,"password"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"pwd"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"passwd"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"secret"))
-				co->password = strdup(seq+1);
+				co->password = turn_strdup(seq+1);
 			else if(!strcmp(s,"port"))
 				co->port = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"p"))
@@ -325,30 +325,30 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 			else if(!strcmp(s,"timeout"))
 				co->connect_timeout = (unsigned int)atoi(seq+1);
 			else if(!strcmp(s,"key"))
-				co->key = strdup(seq+1);
+				co->key = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-key"))
-				co->key = strdup(seq+1);
+				co->key = turn_strdup(seq+1);
 			else if(!strcmp(s,"ca"))
-				co->ca = strdup(seq+1);
+				co->ca = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-ca"))
-				co->ca = strdup(seq+1);
+				co->ca = turn_strdup(seq+1);
 			else if(!strcmp(s,"capath"))
-				co->capath = strdup(seq+1);
+				co->capath = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-capath"))
-				co->capath = strdup(seq+1);
+				co->capath = turn_strdup(seq+1);
 			else if(!strcmp(s,"cert"))
-				co->cert = strdup(seq+1);
+				co->cert = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-cert"))
-				co->cert = strdup(seq+1);
+				co->cert = turn_strdup(seq+1);
 			else if(!strcmp(s,"cipher"))
-				co->cipher = strdup(seq+1);
+				co->cipher = turn_strdup(seq+1);
 			else if(!strcmp(s,"ssl-cipher"))
-				co->cipher = strdup(seq+1);
+				co->cipher = turn_strdup(seq+1);
 			else {
 				MyconninfoFree(co);
 				co = NULL;
 				if(errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
@@ -361,13 +361,13 @@ static Myconninfo *MyconninfoParse(char *userdb, char **errmsg)
 
 	if(co) {
 		if(!(co->dbname))
-			co->dbname=strdup("0");
+			co->dbname=turn_strdup("0");
 		if(!(co->host))
-			co->host=strdup("127.0.0.1");
+			co->host=turn_strdup("127.0.0.1");
 		if(!(co->user))
-			co->user=strdup("");
+			co->user=turn_strdup("");
 		if(!(co->password))
-			co->password=strdup("");
+			co->password=turn_strdup("");
 	}
 
 	return co;
@@ -454,7 +454,7 @@ typedef struct _Ryconninfo Ryconninfo;
 static void RyconninfoFree(Ryconninfo *co) {
 	if(co) {
 		if(co->host) turn_free(co->host, strlen(co->host)+1);
-		if(co->dbname) turn_free(co->dbname, strlen(co->username)+1);
+		if(co->dbname) turn_free(co->dbname, strlen(co->dbname)+1);
 		if(co->password) turn_free(co->password, strlen(co->password)+1);
 		ns_bzero(co,sizeof(Ryconninfo));
 	}
@@ -465,7 +465,7 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 	Ryconninfo *co = (Ryconninfo*) turn_malloc(sizeof(Ryconninfo));
 	ns_bzero(co,sizeof(Ryconninfo));
 	if (userdb) {
-		char *s0 = strdup(userdb);
+		char *s0 = turn_strdup(userdb);
 		char *s = s0;
 
 		while (s && *s) {
@@ -483,28 +483,28 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 				RyconninfoFree(co);
 				co = NULL;
 				if (errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
 
 			*seq = 0;
 			if (!strcmp(s, "host"))
-				co->host = strdup(seq + 1);
+				co->host = turn_strdup(seq + 1);
 			else if (!strcmp(s, "ip"))
-				co->host = strdup(seq + 1);
+				co->host = turn_strdup(seq + 1);
 			else if (!strcmp(s, "addr"))
-				co->host = strdup(seq + 1);
+				co->host = turn_strdup(seq + 1);
 			else if (!strcmp(s, "ipaddr"))
-				co->host = strdup(seq + 1);
+				co->host = turn_strdup(seq + 1);
 			else if (!strcmp(s, "hostaddr"))
-				co->host = strdup(seq + 1);
+				co->host = turn_strdup(seq + 1);
 			else if (!strcmp(s, "dbname"))
-				co->dbname = strdup(seq + 1);
+				co->dbname = turn_strdup(seq + 1);
 			else if (!strcmp(s, "db"))
-				co->dbname = strdup(seq + 1);
+				co->dbname = turn_strdup(seq + 1);
 			else if (!strcmp(s, "database"))
-				co->dbname = strdup(seq + 1);
+				co->dbname = turn_strdup(seq + 1);
 			else if (!strcmp(s, "user"))
 				;
 			else if (!strcmp(s, "uname"))
@@ -514,13 +514,13 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 			else if (!strcmp(s, "username"))
 				;
 			else if (!strcmp(s, "password"))
-				co->password = strdup(seq + 1);
+				co->password = turn_strdup(seq + 1);
 			else if (!strcmp(s, "pwd"))
-				co->password = strdup(seq + 1);
+				co->password = turn_strdup(seq + 1);
 			else if (!strcmp(s, "passwd"))
-				co->password = strdup(seq + 1);
+				co->password = turn_strdup(seq + 1);
 			else if (!strcmp(s, "secret"))
-				co->password = strdup(seq + 1);
+				co->password = turn_strdup(seq + 1);
 			else if (!strcmp(s, "port"))
 				co->port = (unsigned int) atoi(seq + 1);
 			else if (!strcmp(s, "p"))
@@ -533,7 +533,7 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 				RyconninfoFree(co);
 				co = NULL;
 				if (errmsg) {
-					*errmsg = strdup(s);
+					*errmsg = turn_strdup(s);
 				}
 				break;
 			}
@@ -546,11 +546,11 @@ static Ryconninfo *RyconninfoParse(char *userdb, char **errmsg)
 
 	if(co) {
 		if(!(co->dbname))
-			co->dbname=strdup("0");
+			co->dbname=turn_strdup("0");
 		if(!(co->host))
-			co->host=strdup("127.0.0.1");
+			co->host=turn_strdup("127.0.0.1");
 		if(!(co->password))
-			co->password=strdup("");
+			co->password=turn_strdup("");
 	}
 
 	return co;
@@ -868,7 +868,7 @@ static char *get_real_username(char *usname)
 					usname = col+1;
 				} else {
 					*col=0;
-					usname = strdup(usname);
+					usname = turn_strdup(usname);
 					*col=turn_params.users_params.rest_api_separator;
 					return usname;
 				}
@@ -876,7 +876,7 @@ static char *get_real_username(char *usname)
 		}
 	}
 
-	return strdup(usname);
+	return turn_strdup(usname);
 }
 
 /*
@@ -1260,7 +1260,7 @@ int check_new_allocation_quota(u08bits *user)
 		} else {
 			++(turn_params.users_params.users.total_current_allocs);
 		}
-		turn_free(username,strlen(username)+1);
+		turn_free(username,strlen((char*)username)+1);
 		ur_string_map_unlock(turn_params.users_params.users.alloc_counters);
 	}
 	return ret;
@@ -1280,7 +1280,7 @@ void release_allocation_quota(u08bits *user)
 		if (turn_params.users_params.users.total_current_allocs)
 			--(turn_params.users_params.users.total_current_allocs);
 		ur_string_map_unlock(turn_params.users_params.users.alloc_counters);
-		turn_free(username, strlen(username)+1);
+		turn_free(username, strlen((char*)username)+1);
 	}
 }
 
@@ -1386,8 +1386,8 @@ int add_user_account(char *user, int dynamic)
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key format: %s\n",s);
 				} if(convert_string_key_to_binary(keysource, *key, sz)<0) {
 					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong key: %s\n",s);
-					free(usname);
-					free(key);
+					turn_free(usname,strlen((char*)usname)+1);
+					turn_free(key,sizeof(hmackey_t));
 					return -1;
 				}
 			} else {
@@ -1403,7 +1403,7 @@ int add_user_account(char *user, int dynamic)
 				ur_string_map_unlock(turn_params.users_params.users.static_accounts);
 			}
 			turn_params.users_params.users_number++;
-			free(usname);
+			turn_free(usname,strlen(usname)+1);
 			return 0;
 		}
 	}
@@ -2045,8 +2045,8 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 				}
 
 				add_and_cont:
-				content = (char**)realloc(content, sizeof(char*) * (++csz));
-				content[csz - 1] = strdup(s0);
+				content = (char**)turn_realloc(content, 0, sizeof(char*) * (++csz));
+				content[csz - 1] = turn_strdup(s0);
 			}
 
 			fclose(f);
@@ -2060,12 +2060,12 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		  for(i=0;i<sz;i++) {
 		    snprintf(us+strlen(us),sizeof(us)-strlen(us),"%02x",(unsigned int)key[i]);
 		  }
-		  content = (char**)realloc(content,sizeof(char*)*(++csz));
-		  content[csz-1]=strdup(us);
+		  content = (char**)turn_realloc(content,0,sizeof(char*)*(++csz));
+		  content[csz-1]=turn_strdup(us);
 		}
 
 		if(!full_path_to_userdb_file)
-			full_path_to_userdb_file=strdup(turn_params.users_params.userdb);
+			full_path_to_userdb_file=turn_strdup(turn_params.users_params.userdb);
 
 		size_t dirsz = strlen(full_path_to_userdb_file)+21;
 		char *dir = (char*)turn_malloc(dirsz+1);
@@ -2091,7 +2091,7 @@ int adminuser(u08bits *user, u08bits *realm, u08bits *pwd, u08bits *secret, TURN
 		fclose(f);
 
 		rename(dir,full_path_to_userdb_file);
-		free(dir);
+		turn_free(dir,dirsz+1);
 	}
 
 	return 0;
@@ -2361,15 +2361,15 @@ static void ip_list_free(ip_range_list_t *l)
 		size_t i;
 		for(i=0;i<l->ranges_number;++i) {
 			if(l->ranges && l->ranges[i])
-				free(l->ranges[i]);
+				turn_free(l->ranges[i],strlen(l->ranges[i])+1);
 			if(l->encaddrsranges && l->encaddrsranges[i])
-				free(l->encaddrsranges[i]);
+				turn_free(l->encaddrsranges[i],sizeof(ioa_addr_range));
 		}
 		if(l->ranges)
-			free(l->ranges);
+			turn_free(l->ranges,l->ranges_number * sizeof(char*));
 		if(l->encaddrsranges)
-			free(l->encaddrsranges);
-		free(l);
+			turn_free(l->encaddrsranges,l->ranges_number * sizeof(ioa_addr_range*));
+		turn_free(l,sizeof(ip_range_list_t));
 	}
 }
 
@@ -2426,9 +2426,9 @@ int add_ip_list_range(char* range, ip_range_list_t * list)
 		*separator = '-';
 
 	++(list->ranges_number);
-	list->ranges = (char**) realloc(list->ranges, sizeof(char*) * list->ranges_number);
-	list->ranges[list->ranges_number - 1] = strdup(range);
-	list->encaddrsranges = (ioa_addr_range**) realloc(list->encaddrsranges, sizeof(ioa_addr_range*) * list->ranges_number);
+	list->ranges = (char**) turn_realloc(list->ranges, 0, sizeof(char*) * list->ranges_number);
+	list->ranges[list->ranges_number - 1] = turn_strdup(range);
+	list->encaddrsranges = (ioa_addr_range**) turn_realloc(list->encaddrsranges, 0, sizeof(ioa_addr_range*) * list->ranges_number);
 
 	list->encaddrsranges[list->ranges_number - 1] = (ioa_addr_range*) turn_malloc(sizeof(ioa_addr_range));
 

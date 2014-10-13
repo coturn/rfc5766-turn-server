@@ -169,7 +169,7 @@ void recalculate_restapi_hmac(void) {
 					g_upwd[pwd_length] = 0;
 				}
 			}
-			free(pwd);
+			turn_free(pwd,strlen(pwd)+1);
 		}
 	}
 }
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			STRCPY(cert_file,fn);
-			free(fn);
+			turn_free(fn,strlen(fn)+1);
 		}
 			break;
 		case 'k':
@@ -339,7 +339,7 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			STRCPY(pkey_file,fn);
-			free(fn);
+			turn_free(fn,strlen(fn)+1);
 		}
 			break;
 		default:
@@ -388,7 +388,7 @@ int main(int argc, char **argv)
 						g_upwd[pwd_length]=0;
 					}
 				}
-				free(pwd);
+				turn_free(pwd,strlen(pwd)+1);
 			}
 		}
 	}

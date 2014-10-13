@@ -441,7 +441,7 @@ static int clnet_allocate(int verbose,
 						current_reservation_token = rtv;
 						if (verbose)
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"%s: rtv=%llu\n", __FUNCTION__, rtv);
+								      "%s: rtv=%llu\n", __FUNCTION__, (unsigned long long)rtv);
 
 						read_mobility_ticket(clnet_info, &message);
 
@@ -492,7 +492,7 @@ static int clnet_allocate(int verbose,
 							return -1;
 						} else {
 							TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO,
-									"trying allocate again...\n", err_code);
+									"trying allocate again: err=%d...\n", err_code);
 							sleep(1);
 							reopen_socket = 1;
 						}
@@ -1487,7 +1487,7 @@ void tcp_data_connect(app_ur_session *elem, u32bits cid)
 
 	++elem->pinfo.tcp_conn_number;
 	int i = (int)(elem->pinfo.tcp_conn_number-1);
-	elem->pinfo.tcp_conn=(app_tcp_conn_info**)realloc(elem->pinfo.tcp_conn,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
+	elem->pinfo.tcp_conn=(app_tcp_conn_info**)turn_realloc(elem->pinfo.tcp_conn,0,elem->pinfo.tcp_conn_number*sizeof(app_tcp_conn_info*));
 	elem->pinfo.tcp_conn[i]=(app_tcp_conn_info*)turn_malloc(sizeof(app_tcp_conn_info));
 	ns_bzero(elem->pinfo.tcp_conn[i],sizeof(app_tcp_conn_info));
 
