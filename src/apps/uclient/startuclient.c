@@ -428,12 +428,13 @@ static int clnet_allocate(int verbose,
 							return -1;
 						} else {
 							if (verbose) {
-								ioa_addr remote_addr;
-								memcpy(&remote_addr, relay_addr,
+								ioa_addr raddr;
+								memcpy(&raddr, relay_addr,
 										sizeof(ioa_addr));
-								addr_debug_print(verbose, &remote_addr,
+								addr_debug_print(verbose, &raddr,
 										"Received relay addr");
 							}
+							addr_cpy(&(clnet_info->relay_addr),relay_addr);
 						}
 						stun_attr_ref rt_sar = stun_attr_get_first_by_type(
 								&message, STUN_ATTRIBUTE_RESERVATION_TOKEN);

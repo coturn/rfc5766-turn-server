@@ -6,6 +6,7 @@ Version 3.2.4.5 'Marshal West':
 	- Core dump fixed.
 	- Memory code cleaning.
 	- Logging code cleaning.
+	- TCP/TLS tests improved.
 	
 09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.4 'Marshal West':
