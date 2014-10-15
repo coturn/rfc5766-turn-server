@@ -1039,7 +1039,9 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr, int 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
 		int res = addr_bind(s->fd, local_addr, reusable);
-		if (res >= 0) {
+		if (res < 0) {
+			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind socket, sat=%d, st=%d, reusable=%d\n", __FUNCTION__, (int)s->sat, (int)s->st, reusable);
+		} else {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
 			if(addr_get_port(local_addr)<1) {
@@ -1129,6 +1131,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					addr_set_port(&rtcp_local_addr, rtcp_port);
 					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr,
 						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) < 0) {
+						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind rtcp socket, sat=%d, st=%d, transport=%d\n", __FUNCTION__, (int)(*rtcp_s)->sat, (int)(*rtcp_s)->st, transport);
 						addr_set_port(&local_addr, port);
 						turnipports_release(tp, transport, &local_addr);
 						turnipports_release(tp, transport, &rtcp_local_addr);
@@ -1169,6 +1172,7 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) >= 0) {
 					break;
 				} else {
+					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind rtp socket, sat=%d, st=%d, transport=%d\n", __FUNCTION__, (int)(*rtp_s)->sat, (int)(*rtp_s)->st, transport);
 					IOA_CLOSE_SOCKET(*rtp_s);
 					if (rtcp_s)
 						IOA_CLOSE_SOCKET(*rtcp_s);
@@ -1341,6 +1345,7 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 #endif
 
 	if(bind_ioa_socket(ret, &new_local_addr,1)<0) {
+		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind socket, sat=%d, st=%d\n", __FUNCTION__, (int)s->sat, (int)s->st);
 		IOA_CLOSE_SOCKET(ret);
 		ret = NULL;
 		goto ccs_end;
