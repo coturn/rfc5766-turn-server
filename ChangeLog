@@ -7,6 +7,7 @@ Version 3.2.4.5 'Marshal West':
 	- Memory code cleaning.
 	- Logging code cleaning.
 	- TCP/TLS tests improved.
+	- relay RTCP sockets ports allocation fixed.
 	
 09/05/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.4 'Marshal West':
