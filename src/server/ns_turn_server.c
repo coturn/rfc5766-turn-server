@@ -3026,7 +3026,6 @@ static int check_stun_auth(turn_turnserver *server,
 		}
 	} else {
 		STRCPY(ss->username,usname);
-		set_username_hash(ss->client_session.s,ss->username);
 	}
 
 	if(server->ct != TURN_CREDENTIALS_SHORT_TERM) {
@@ -3857,18 +3856,12 @@ static int create_relay_connection(turn_turnserver* server,
 
 		if (in_reservation_token) {
 
-			if (get_ioa_socket_from_reservation(server->e, in_reservation_token,
-					&newelem->s) < 0) {
+			if ((get_ioa_socket_from_reservation(server->e, in_reservation_token, &newelem->s) < 0)||
+				!(newelem->s) ||
+				ioa_socket_tobeclosed(newelem->s)) {
 				IOA_CLOSE_SOCKET(newelem->s);
 				*err_code = 508;
 				*reason = (const u08bits *)"Cannot find reserved socket";
-				return -1;
-			}
-
-			if(!check_username_hash(newelem->s,ss->username)) {
-				IOA_CLOSE_SOCKET(newelem->s);
-				*err_code = 508;
-				*reason = (const u08bits *)"Cannot find a valid reserved socket for this username";
 				return -1;
 			}
 
@@ -3899,11 +3892,8 @@ static int create_relay_connection(turn_turnserver* server,
 			return -1;
 		}
 
-		set_username_hash(newelem->s,ss->username);
-
 		if (rtcp_s) {
 			if (out_reservation_token && *out_reservation_token) {
-				set_username_hash(rtcp_s,ss->username);
 				/* OK */
 			} else {
 				IOA_CLOSE_SOCKET(newelem->s);

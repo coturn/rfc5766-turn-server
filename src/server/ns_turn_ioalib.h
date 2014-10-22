@@ -238,8 +238,6 @@ void set_do_not_use_df(ioa_socket_handle s);
 int ioa_socket_tobeclosed(ioa_socket_handle s);
 void set_ioa_socket_tobeclosed(ioa_socket_handle s);
 void close_ioa_socket_after_processing_if_necessary(ioa_socket_handle s);
-int check_username_hash(ioa_socket_handle s, u08bits *username);
-void set_username_hash(ioa_socket_handle s, u08bits *username);
 
 ////////////////// Base64 /////////////////////////////
 

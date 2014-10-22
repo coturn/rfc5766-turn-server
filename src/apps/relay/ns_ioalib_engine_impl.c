@@ -672,7 +672,6 @@ int get_ioa_socket_from_reservation(ioa_engine_handle e, u64bits in_reservation_
   if (e && in_reservation_token && s) {
     *s = rtcp_map_get(e->map_rtcp, in_reservation_token);
     if (*s) {
-      rtcp_map_del_savefd(e->map_rtcp, in_reservation_token);
       return 0;
     }
   }
@@ -1039,9 +1038,7 @@ static int bind_ioa_socket(ioa_socket_handle s, const ioa_addr* local_addr, int 
 	if (s && s->fd >= 0 && s->e && local_addr) {
 
 		int res = addr_bind(s->fd, local_addr, reusable);
-		if (res < 0) {
-			TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind socket, sat=%d, st=%d, reusable=%d\n", __FUNCTION__, (int)s->sat, (int)s->st, reusable);
-		} else {
+		if (res >= 0) {
 			s->bound = 1;
 			addr_cpy(&(s->local_addr), local_addr);
 			if(addr_get_port(local_addr)<1) {
@@ -1131,7 +1128,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					addr_set_port(&rtcp_local_addr, rtcp_port);
 					if (bind_ioa_socket(*rtcp_s, &rtcp_local_addr,
 						(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) < 0) {
-						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind rtcp socket, sat=%d, st=%d, transport=%d\n", __FUNCTION__, (int)(*rtcp_s)->sat, (int)(*rtcp_s)->st, transport);
 						addr_set_port(&local_addr, port);
 						turnipports_release(tp, transport, &local_addr);
 						turnipports_release(tp, transport, &rtcp_local_addr);
@@ -1177,7 +1173,6 @@ int create_relay_ioa_sockets(ioa_engine_handle e,
 					(transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE)) >= 0) {
 					break;
 				} else {
-					TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind rtp socket, sat=%d, st=%d, transport=%d\n", __FUNCTION__, (int)(*rtp_s)->sat, (int)(*rtp_s)->st, transport);
 					IOA_CLOSE_SOCKET(*rtp_s);
 					int rtcp_bound = 0;
 					if (rtcp_s && *rtcp_s) {
@@ -1355,7 +1350,6 @@ ioa_socket_handle ioa_create_connecting_tcp_relay_socket(ioa_socket_handle s, io
 #endif
 
 	if(bind_ioa_socket(ret, &new_local_addr,1)<0) {
-		TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "%s: cannot bind socket, sat=%d, st=%d\n", __FUNCTION__, (int)s->sat, (int)s->st);
 		IOA_CLOSE_SOCKET(ret);
 		ret = NULL;
 		goto ccs_end;
@@ -1457,6 +1451,7 @@ void add_socket_to_map(ioa_socket_handle s, ur_addr_map *amap)
 void delete_socket_from_map(ioa_socket_handle s)
 {
 	if(s && s->sockets_container) {
+
 		ur_addr_map_del(s->sockets_container,
 				&(s->remote_addr),
 				NULL);
@@ -1481,18 +1476,20 @@ ioa_socket_handle create_ioa_socket_from_fd(ioa_engine_handle e,
 	ret->magic = SOCKET_MAGIC;
 
 	ret->fd = fd;
-	ret->family = local_addr->ss.sa_family;
 	ret->st = st;
 	ret->sat = sat;
 	ret->e = e;
 
 	if (local_addr) {
+		ret->family = local_addr->ss.sa_family;
 		ret->bound = 1;
 		addr_cpy(&(ret->local_addr), local_addr);
 	}
 
 	if (remote_addr) {
 		ret->connected = 1;
+		if(!(ret->family))
+			ret->family = remote_addr->ss.sa_family;
 		addr_cpy(&(ret->remote_addr), remote_addr);
 	}
 
@@ -1533,6 +1530,7 @@ static void set_socket_ssl(ioa_socket_handle s, SSL *ssl)
 	if(s && (s->ssl != ssl)) {
 		if(s->ssl) {
 			SSL_set_app_data(s->ssl,NULL);
+			SSL_set_info_callback(s->ssl, (ssl_info_callback_t)NULL);
 		}
 		s->ssl = ssl;
 		if(ssl) {
@@ -1737,12 +1735,14 @@ ioa_socket_handle detach_ioa_socket(ioa_socket_handle s, int full_detach)
 
 		ret->magic = SOCKET_MAGIC;
 
-		ret->username_hash = s->username_hash;
-
 		set_socket_ssl(ret,s->ssl);
 		ret->fd = s->fd;
 
-		ret->family = s->family;
+		if(s->parent_s)
+			ret->family = s->parent_s->family;
+		else
+			ret->family = s->family;
+
 		ret->st = s->st;
 		ret->sat = s->sat;
 		ret->bound = s->bound;
@@ -1835,10 +1835,15 @@ void set_ioa_socket_sub_session(ioa_socket_handle s, tcp_connection *tc)
 }
 
 int get_ioa_socket_address_family(ioa_socket_handle s) {
-	if(!s) {
+
+	int first_time = 1;
+	beg:
+	if (!(s && (s->magic == SOCKET_MAGIC) && !(s->done))) {
 		return AF_INET;
-	} else if(s->parent_s) {
-		return s->parent_s->family;
+	} else if(first_time && s->parent_s && (s != s->parent_s)) {
+		first_time = 0;
+		s = s->parent_s;
+		goto beg;
 	} else {
 		return s->family;
 	}
@@ -3338,32 +3343,6 @@ void set_ioa_socket_tobeclosed(ioa_socket_handle s)
 {
 	if(s)
 		s->tobeclosed = 1;
-}
-
-static u32bits string_hash(const u08bits *str) {
-
-  u32bits hash = 0;
-  int c = 0;
-
-  while ((c = *str++))
-    hash = c + (hash << 6) + (hash << 16) - hash;
-
-  return hash;
-}
-
-int check_username_hash(ioa_socket_handle s, u08bits *username)
-{
-	if(s && username && username[0]) {
-		return (s->username_hash == string_hash(username));
-	}
-	return 1;
-}
-
-void set_username_hash(ioa_socket_handle s, u08bits *username)
-{
-	if(s && username && username[0]) {
-		s->username_hash = string_hash(username);
-	}
 }
 
 /*
