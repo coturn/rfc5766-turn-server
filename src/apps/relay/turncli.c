@@ -1110,7 +1110,7 @@ static void cliserver_input_handler(struct evconnlistener *l, evutil_socket_t fd
 
 	clisession->bev = bufferevent_socket_new(cliserver.event_base,
 					fd,
-					BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+					TURN_BUFFEREVENTS_OPTIONS);
 	bufferevent_setcb(clisession->bev, cli_socket_input_handler_bev, NULL,
 			cli_eventcb_bev, clisession);
 	bufferevent_setwatermark(clisession->bev, EV_READ|EV_WRITE, 0, BUFFEREVENT_HIGH_WATERMARK);
@@ -1142,7 +1142,7 @@ void setup_cli_thread(void)
 
 	struct bufferevent *pair[2];
 
-	bufferevent_pair_new(cliserver.event_base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
+	bufferevent_pair_new(cliserver.event_base, TURN_BUFFEREVENTS_OPTIONS, pair);
 	cliserver.in_buf = pair[0];
 	cliserver.out_buf = pair[1];
 	bufferevent_setcb(cliserver.in_buf, cli_server_receive_message, NULL, NULL, &cliserver);

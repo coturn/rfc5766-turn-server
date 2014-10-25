@@ -300,7 +300,7 @@ redis_context_handle redisLibeventAttach(struct event_base *base, char *ip0, int
 
   struct bufferevent *pair[2];
 
-  bufferevent_pair_new(base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE, pair);
+  bufferevent_pair_new(base, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS, pair);
   e->in_buf = pair[0];
   e->out_buf = pair[1];
   bufferevent_setcb(e->in_buf, receive_message_for_redis, NULL, NULL, e);

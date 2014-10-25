@@ -201,6 +201,10 @@ typedef enum _SHATYPE SHATYPE;
 
 #define SHA_TOO_WEAK (426)
 
+//////////////// Bufferevents /////////////////////
+
+#define TURN_BUFFEREVENTS_OPTIONS (BEV_OPT_DEFER_CALLBACKS | BEV_OPT_THREADSAFE | BEV_OPT_UNLOCK_CALLBACKS)
+
 //////////////// KERNEL-LEVEL CHANNEL HANDLERS /////////
 
 #if !defined(TURN_CHANNEL_HANDLER_KERNEL)
