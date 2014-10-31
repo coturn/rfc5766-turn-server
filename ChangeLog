@@ -1,8 +1,9 @@
 
 10/19/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.6 'Marshal West':
+	- Debian UFW file added (Issue 1 fixed).
+	- Relay RTCP sockets ports allocation fixed.
 	- List of libraries cleaned.
-	- rtcp sockets fixed.
 	- SSL renegotiation callback fixed.
 
 10/16/2014 Oleg Moskalenko <mom040267@gmail.com>
