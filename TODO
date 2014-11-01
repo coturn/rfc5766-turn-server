@@ -14,8 +14,6 @@ coturn project TODO.
 	Cygwin is supported. A "real" MS-Windows port would 
 	involve a usable GUI.
 
-3) Add ufw file to Debian package.
-
 ==================================================================
 
 ###   II. DOCS   ###
