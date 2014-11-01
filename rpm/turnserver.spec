@@ -288,7 +288,7 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
-* Sun Oct 19 2014 Oleg Moskalenko <mom040267@gmail.com>
+* Sun Oct 31 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.4.6
 * Thu Oct 16 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.4.5
