@@ -1,3 +1,6 @@
+11/07/2014 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.4.7 'Marshal West':
+	- TLS connection procedure improved in uclient test program.
 
 10/31/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.4.6 'Marshal West':
