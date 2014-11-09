@@ -305,6 +305,7 @@ int main(int argc, char **argv)
 		case 'P':
 			passive_tcp = 1;
 			/* implies 'T': */
+			/* no break */
 		case 'T':
 			relay_transport = STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE;
 			break;
@@ -327,7 +328,7 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			STRCPY(cert_file,fn);
-			turn_free(fn,strlen(fn)+1);
+			free(fn);
 		}
 			break;
 		case 'k':
@@ -338,7 +339,7 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			STRCPY(pkey_file,fn);
-			turn_free(fn,strlen(fn)+1);
+			free(fn);
 		}
 			break;
 		default:
@@ -387,7 +388,7 @@ int main(int argc, char **argv)
 						g_upwd[pwd_length]=0;
 					}
 				}
-				turn_free(pwd,strlen(pwd)+1);
+				free(pwd);
 			}
 		}
 	}
