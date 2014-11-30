@@ -4210,13 +4210,15 @@ static void peer_input_handler(ioa_socket_handle s, int event_type,
 
 	UNUSED_ARG(can_resume);
 
-	if(ioa_socket_tobeclosed(s)) return;
+	if(!s || ioa_socket_tobeclosed(s)) return;
 
 	ts_ur_super_session* ss = (ts_ur_super_session*) arg;
 
 	if(!ss) return;
 
 	if(ss->to_be_closed) return;
+
+	if(!(ss->client_session.s) || ioa_socket_tobeclosed(ss->client_session.s)) return;
 
 	turn_turnserver *server = (turn_turnserver*) (ss->server);
 
