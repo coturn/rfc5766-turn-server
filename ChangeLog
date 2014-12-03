@@ -2,6 +2,7 @@
 Version 3.2.5.2 'Marshal West':
 	- TLS connection procedure improved in uclient test program.
 	- Reliability improvements (Issue 141).
+	- external address mapping fixes for Amazon EC2.
 
 11/07/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.1 'Marshal West':
