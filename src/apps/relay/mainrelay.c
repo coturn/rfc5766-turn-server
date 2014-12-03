@@ -1800,7 +1800,7 @@ int main(int argc, char **argv)
 					ioa_addr ra;
 					if(make_ioa_addr((const u08bits*)sra,0,&ra)<0) {
 						TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR,"-X : Wrong address format: %s\n",sra);
-					} else {
+					} else if(ra.ss.sa_family == turn_params.external_ip->ss.sa_family) {
 						ioa_addr_add_mapping(turn_params.external_ip,&ra);
 					}
 				}
