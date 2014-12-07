@@ -336,9 +336,10 @@ Options with required values:
 				
 -m, --relay-threads	Number of relay threads to handle the established connections
 			(in addition to authentication thread and the listener thread).
-			If set to 0 then application runs relay process in a single thread,
+			If explicitly set to 0 then application runs relay process in a single thread,
 			in the same thread with the listener process (the authentication thread will 
-			still be a separate thread). In older systems (before Linux kernel 3.9),
+			still be a separate thread). If not set then the default threading policy
+			will be employed. In older systems (before Linux kernel 3.9),
 			the number of UDP threads is always one threads per network listening endpoint -
 			unless "-m 0" or "-m 1" is set.
 
