@@ -1,5 +1,5 @@
 Name:		turnserver
-Version:	3.2.5.3
+Version:	3.2.5.4
 Release:	0%{dist}
 Summary:	RFC5766 TURN Server
 
@@ -44,8 +44,7 @@ STUN specs:
 The implementation fully supports the following client-to-TURN-server protocols:
 - UDP (per RFC 5766)
 - TCP (per RFC 5766 and RFC 6062)
-- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2; SSL2 wrapping
-  supported
+- TLS (per RFC 5766 and RFC 6062); SSL3/TLS1.0/TLS1.1/TLS1.2
 - DTLS (experimental non-standard feature)
 
 Supported relay protocols:
@@ -288,6 +287,8 @@ fi
 %{_includedir}/turn/client/TurnMsgLib.h
 
 %changelog
+* Sat Jan 10 2014 Oleg Moskalenko <mom040267@gmail.com>
+  - Sync to 3.2.5.4
 * Sun Dec 14 2014 Oleg Moskalenko <mom040267@gmail.com>
   - Sync to 3.2.5.3
 * Mon Nov 10 2014 Oleg Moskalenko <mom040267@gmail.com>

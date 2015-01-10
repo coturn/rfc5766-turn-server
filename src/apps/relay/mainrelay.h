@@ -64,6 +64,8 @@
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
+#include <openssl/dh.h>
+#include <openssl/bn.h>
 
 #include <sys/utsname.h>
 

@@ -1,3 +1,7 @@
+1/10/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.5.4 'Marshal West':
+	- SSLv2 support removed;
+	
 12/14/2014 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.3 'Marshal West':
 	- Redis read message queue backlog fixed.
@@ -452,7 +456,7 @@ Version 2.6.1.1 'Harding Grim':
 		* Configurable cipher suite in the TURN server.
 		* SSL3 support.
 		* TLS 1.1 and 1.2 support.
-		* SSL2 "encapsulation" mode support.
+		* SSLv2 "encapsulation" mode support.
 		* NULL OpenSSL cipher is allowed to be negotiated between
 			server and client.
 		* -U option (NULL cipher) added to the test client.
