@@ -454,7 +454,7 @@ Version 2.6.1.1 'Harding Grim':
 			= In REST API timestamp, we are now using
 				the expiration time (Issue 31).
 		* Configurable cipher suite in the TURN server.
-		* SSL3 support.
+		* SSLv3 support.
 		* TLS 1.1 and 1.2 support.
 		* SSLv2 "encapsulation" mode support.
 		* NULL OpenSSL cipher is allowed to be negotiated between
