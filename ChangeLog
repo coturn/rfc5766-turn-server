@@ -1,4 +1,4 @@
-1/10/2015 Oleg Moskalenko <mom040267@gmail.com>
+1/26/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.4 'Marshal West':
 	- SSLv2 support removed;
 	- OpenSSL 1.1.0 support added.
