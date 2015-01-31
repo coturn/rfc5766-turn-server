@@ -924,15 +924,15 @@ static int handle_turn_allocate(turn_turnserver *server,
 					const u08bits* value = stun_attr_get_value(sar);
 					if (value) {
 						transport = get_transport_value(value);
-						if (!transport || value[1] || value[2] || value[3]) {
+						if (!transport) {
 							*err_code = 442;
 							*reason = (const u08bits *)"Unsupported Transport Protocol";
 						}
 						if((transport == STUN_ATTRIBUTE_TRANSPORT_TCP_VALUE) && *(server->no_tcp_relay)) {
-							*err_code = 403;
+							*err_code = 442;
 							*reason = (const u08bits *)"TCP Transport is not allowed by the TURN Server configuration";
 						} else if((transport == STUN_ATTRIBUTE_TRANSPORT_UDP_VALUE) && *(server->no_udp_relay)) {
-							*err_code = 403;
+							*err_code = 442;
 							*reason = (const u08bits *)"UDP Transport is not allowed by the TURN Server configuration";
 						} else if(ss->client_session.s) {
 							SOCKET_TYPE cst = get_ioa_socket_type(ss->client_session.s);
