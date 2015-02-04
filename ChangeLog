@@ -2,7 +2,7 @@
 Version 3.2.5.5 'Marshal West':
 	- hostname-to-ip-address resolution fixed;
 	- TRANSPORT attribute handling fixed;
-	- TOS IP header field handling fixed;
+	- TOS (DiffServer) and TTL IP header field handling fixed;
 
 1/26/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.4 'Marshal West':
