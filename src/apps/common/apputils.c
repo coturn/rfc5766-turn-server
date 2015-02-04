@@ -459,6 +459,131 @@ int get_socket_mtu(evutil_socket_t fd, int family, int verbose)
 	return ret;
 }
 
+int get_raw_socket_ttl(evutil_socket_t fd, int family)
+{
+	int ttl = 0;
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_UNICAST_HOPS)
+		UNUSED_ARG(fd);
+		do { return TTL_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(ttl);
+		if(getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,&slen)<0) {
+			perror("get HOPLIMIT on socket");
+			return TTL_IGNORE;
+		}
+#endif
+	} else {
+#if !defined(IP_TTL)
+		UNUSED_ARG(fd);
+		do { return TTL_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(ttl);
+		if(getsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,&slen)<0) {
+			perror("get TTL on socket");
+			return TTL_IGNORE;
+		}
+#endif
+	}
+
+	CORRECT_RAW_TTL(ttl);
+
+	return ttl;
+}
+
+int get_raw_socket_tos(evutil_socket_t fd, int family)
+{
+	int tos = 0;
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_TCLASS)
+		UNUSED_ARG(fd);
+		do { return TOS_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(tos);
+		if(getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,&slen)<0) {
+			perror("get TCLASS on socket");
+			return -1;
+		}
+#endif
+	} else {
+#if !defined(IP_TOS)
+		UNUSED_ARG(fd);
+		do { return TOS_IGNORE; } while(0);
+#else
+		socklen_t slen = (socklen_t)sizeof(tos);
+		if(getsockopt(fd, IPPROTO_IP, IP_TOS, &tos,&slen)<0) {
+			perror("get TOS on socket");
+			return -1;
+		}
+#endif
+	}
+
+	CORRECT_RAW_TOS(tos);
+
+	return tos;
+}
+
+int set_raw_socket_ttl(evutil_socket_t fd, int family, int ttl)
+{
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_UNICAST_HOPS)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(ttl);
+#else
+		CORRECT_RAW_TTL(ttl);
+		if(setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl,sizeof(ttl))<0) {
+			perror("set HOPLIMIT on socket");
+			return -1;
+		}
+#endif
+	} else {
+#if !defined(IP_TTL)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(ttl);
+#else
+		CORRECT_RAW_TTL(ttl);
+		if(setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl,sizeof(ttl))<0) {
+			perror("set TTL on socket");
+			return -1;
+		}
+#endif
+	}
+
+	return 0;
+}
+
+int set_raw_socket_tos(evutil_socket_t fd, int family, int tos)
+{
+
+	if(family == AF_INET6) {
+#if !defined(IPV6_TCLASS)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(tos);
+#else
+		CORRECT_RAW_TOS(tos);
+		if(setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos,sizeof(tos))<0) {
+			perror("set TCLASS on socket");
+			return -1;
+		}
+#endif
+	} else {
+#if !defined(IP_TOS)
+		UNUSED_ARG(fd);
+		UNUSED_ARG(tos);
+#else
+		if(setsockopt(fd, IPPROTO_IP, IP_TOS, &tos,sizeof(tos))<0) {
+			perror("set TOS on socket");
+			return -1;
+		}
+#endif
+	}
+
+	return 0;
+}
+
 //////////////////// socket error handle ////////////////////
 
 int handle_socket_error() {
