@@ -325,9 +325,6 @@ static void free_blist_elem(ioa_engine_handle e, stun_buffer_list_elem *buf_elem
 
 /************** ENGINE *************************/
 
-#define TURN_JIFFIE_SIZE (3)
-#define TURN_JIFFIE_LENGTH (1<<(TURN_JIFFIE_SIZE))
-
 static void timer_handler(ioa_engine_handle e, void* arg) {
 
   UNUSED_ARG(arg);
@@ -335,7 +332,7 @@ static void timer_handler(ioa_engine_handle e, void* arg) {
   _log_time_value = turn_time();
   _log_time_value_set = 1;
 
-  e->jiffie = _log_time_value >> TURN_JIFFIE_SIZE;
+  e->jiffie = _log_time_value;
 }
 
 ioa_engine_handle create_ioa_engine(super_memory_t *sm,
@@ -619,13 +616,13 @@ void delete_ioa_timer(ioa_timer_handle th)
 
 /************** SOCKETS HELPERS ***********************/
 
-static int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
+int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read)
 {
-	if(s && (s->e) && sz && (s->e->max_bpj != 0) && (s->sat == CLIENT_SOCKET) && s->session) {
+	if(s && (s->e) && sz && (s->e->max_bpj != 0) &&
+			((s->sat == CLIENT_SOCKET) || (s->sat == RELAY_SOCKET) || (s->sat == RELAY_RTCP_SOCKET)) &&
+			s->session) {
 
 		band_limit_t max_bps = s->e->max_bpj;
-
-		max_bps = max_bps<<TURN_JIFFIE_SIZE;
 
 		band_limit_t bsz = (band_limit_t)sz;
 

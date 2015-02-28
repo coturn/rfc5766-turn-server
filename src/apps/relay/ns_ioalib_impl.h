@@ -276,6 +276,8 @@ int set_socket_options(ioa_socket_handle s);
 
 int send_session_cancellation_to_relay(turnsession_id sid);
 
+int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read);
+
 ///////////////////////// SUPER MEMORY ////////
 
 #define allocate_super_memory_engine(e,size) allocate_super_memory_engine_func(e, size, __FILE__, __FUNCTION__, __LINE__)
