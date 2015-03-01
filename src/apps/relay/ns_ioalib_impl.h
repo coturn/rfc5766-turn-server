@@ -276,7 +276,7 @@ int set_socket_options(ioa_socket_handle s);
 
 int send_session_cancellation_to_relay(turnsession_id sid);
 
-int ioa_socket_check_bandwidth(ioa_socket_handle s, size_t sz, int read);
+int ioa_socket_check_bandwidth(ioa_socket_handle s, ioa_network_buffer_handle nbh, int read);
 
 ///////////////////////// SUPER MEMORY ////////
 
