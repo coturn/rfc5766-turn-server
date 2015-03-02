@@ -1080,7 +1080,7 @@ static void set_option(int c, char *value)
 		turn_params.users_params.users.total_quota = atoi(value);
 		break;
 	case 's':
-		turn_params.max_bps = (band_limit_t)atol(value);
+		turn_params.max_bps = (band_limit_t)strtoul(value,NULL,10);
 		TURN_LOG_FUNC(TURN_LOG_LEVEL_INFO, "%lu bytes per second allowed per session\n",(unsigned long)turn_params.max_bps);
 		break;
 	case NO_UDP_OPT:
