@@ -3,7 +3,6 @@ Version 3.2.5.6 'Marshal West':
 	- bandwidth control fixed;
 	- STUN/TURN control traffic counted separately from data traffic,
 	for the sake of the bandwidth control;
-	- higher bandwidth limit capacity on 64 bits systems;
 	- REST API docs fixed;
 
 2/3/2015 Oleg Moskalenko <mom040267@gmail.com>
