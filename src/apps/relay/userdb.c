@@ -1096,7 +1096,7 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 				turnFreeRedisReply(rget);
 			}
 
-			if(ret == 0) {
+			if(ret < 0) {
 				snprintf(s,sizeof(s),"get turn/user/%s/password", usname);
 				rget = (redisReply *)redisCommand(rc, s);
 				if(rget) {

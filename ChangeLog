@@ -1,3 +1,7 @@
+3/18/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.5.7 'Marshal West':
+	- plain passwords in Redis database fixed;
+
 2/28/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.6 'Marshal West':
 	- bandwidth control fixed;
