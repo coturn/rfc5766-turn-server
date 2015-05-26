@@ -8,8 +8,6 @@ CPWD=`pwd`
 
 cd ${CPWD}
 
-EPELRPM=epel-release-6-8.noarch.rpm
-
 # Common packs
 
 PACKS="libevent-devel mariadb-devel"
@@ -23,13 +21,14 @@ fi
 
 # EPEL (for hiredis)
 
-cd ${CPWD}
-./epel.install.sh
+sudo yum -y install epel
  
 # Platform file
 
+cd ${CPWD}
 echo "CentOS7" > ${BUILDDIR}/platform
 
-cp ${CPWD}/epel.install.sh ${BUILDDIR}/install.sh
+echo "#!/bin/sh" > ${BUILDDIR}/install.sh
+echo "sudo yum -y install epel" > ${BUILDDIR}/install.sh
 
 cd ${CPWD}
