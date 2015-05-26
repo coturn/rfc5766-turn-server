@@ -77,12 +77,12 @@ fi
 # EPEL (for hiredis)
 
 cd ${CPWD}
-./epel.install.sh
+./epel6.install.sh
  
 # Platform file
 
 echo "CentOS6.6" > ${BUILDDIR}/platform
 
-cp ${CPWD}/epel.install.sh ${BUILDDIR}/install.sh
+cp ${CPWD}/epel6.install.sh ${BUILDDIR}/install.sh
 
 cd ${CPWD}

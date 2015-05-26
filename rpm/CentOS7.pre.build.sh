@@ -21,14 +21,13 @@ fi
 
 # EPEL (for hiredis)
 
-sudo yum -y install epel
+cd ${CPWD}
+./epel7.install.sh
  
 # Platform file
 
-cd ${CPWD}
-echo "CentOS7" > ${BUILDDIR}/platform
+echo "CentOS7.1" > ${BUILDDIR}/platform
 
-echo "#!/bin/sh" > ${BUILDDIR}/install.sh
-echo "sudo yum -y install epel" > ${BUILDDIR}/install.sh
+cp ${CPWD}/epel7.install.sh ${BUILDDIR}/install.sh
 
 cd ${CPWD}
