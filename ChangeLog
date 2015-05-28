@@ -1,3 +1,7 @@
+5/29/2015 Oleg Moskalenko <mom040267@gmail.com>
+Version 3.2.5.8 'Marshal West':
+	- The fix for Issue 11 backported from coturn;
+	
 3/18/2015 Oleg Moskalenko <mom040267@gmail.com>
 Version 3.2.5.7 'Marshal West':
 	- plain passwords in Redis database fixed;
