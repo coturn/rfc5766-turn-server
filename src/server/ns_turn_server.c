@@ -903,6 +903,11 @@ static int handle_turn_allocate(turn_turnserver *server,
 						*reason = (const u08bits *)"User name is too long";
 						break;
 					}
+					if(!is_secure_username(value)) {
+						*err_code = 400;
+						*reason = (const u08bits *)"User name is wrong";
+						break;
+					}
 					ns_bcopy(value,username,ulen);
 					username[ulen]=0;
 				}
@@ -3020,6 +3025,12 @@ static int check_stun_auth(turn_turnserver *server,
 	alen = min((size_t)stun_attr_get_len(sar),sizeof(usname)-1);
 	ns_bcopy(stun_attr_get_value(sar),usname,alen);
 	usname[alen]=0;
+
+	if(!is_secure_username(usname)) {
+		*err_code = 400;
+		*reason = (const u08bits*)"Wrong username";
+		return -1;
+	}
 
 	if(ss->username[0]) {
 		if(strcmp((char*)ss->username,(char*)usname)) {

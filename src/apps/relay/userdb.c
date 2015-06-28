@@ -995,6 +995,7 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 		PGconn * pqc = get_pqdb_connection();
 		if(pqc) {
 			char statement[LONG_STRING_SIZE];
+			/* direct user input eliminated - there is no SQL injection problem (since version 3.2.5.8) */
 			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",usname);
 			PGresult *res = PQexec(pqc, statement);
 
@@ -1029,6 +1030,7 @@ int get_user_key(u08bits *usname, hmackey_t key, ioa_network_buffer_handle nbh)
 		MYSQL * myc = get_mydb_connection();
 		if(myc) {
 			char statement[LONG_STRING_SIZE];
+			/* direct user input eliminated - there is no SQL injection problem (since version 3.2.5.8) */
 			snprintf(statement,sizeof(statement),"select hmackey from turnusers_lt where name='%s'",usname);
 			int res = mysql_query(myc, statement);
 			if(res) {

@@ -1380,6 +1380,10 @@ static int adminmain(int argc, char **argv)
 #endif
 		case 'u':
 			STRCPY(user,optarg);
+			if(!is_secure_username((u08bits*)user)) {
+				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrongly structured user name, pick a different one: %s\n",user);
+				exit(-1);
+			}
 			if(SASLprep((u08bits*)user)<0) {
 				TURN_LOG_FUNC(TURN_LOG_LEVEL_ERROR, "Wrong user name: %s\n",user);
 				exit(-1);
