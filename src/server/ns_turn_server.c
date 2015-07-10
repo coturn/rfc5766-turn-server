@@ -903,13 +903,13 @@ static int handle_turn_allocate(turn_turnserver *server,
 						*reason = (const u08bits *)"User name is too long";
 						break;
 					}
-					if(!is_secure_username(value)) {
+					ns_bcopy(value,username,ulen);
+					username[ulen]=0;
+					if(!is_secure_username(username)) {
 						*err_code = 400;
 						*reason = (const u08bits *)"User name is wrong";
 						break;
 					}
-					ns_bcopy(value,username,ulen);
-					username[ulen]=0;
 				}
 			}
 
