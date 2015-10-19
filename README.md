@@ -1,6 +1,6 @@
-This is RFC5766-TURN-SERVER development repository
+RFC5766-TURN-SERVER legacy project repository
 =================================================
-This is a legacy project. The new development is here:
+The new development is here:
 --------------------------------------------------------------
 [Coturn project](https://github.com/coturn/coturn)
 --------------------------------------------------------------
